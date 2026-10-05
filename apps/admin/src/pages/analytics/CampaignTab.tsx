@@ -51,7 +51,7 @@ export function CampaignTab({ days, today }: { days: number; today: number }) {
       cell: (c) => (
         <div className="min-w-0">
           <p className="font-medium truncate">{c.name}</p>
-          <p className="font-mono text-[11px] text-muted">{c.code}</p>
+          <p className="font-mono text-[0.6875rem] text-muted">{c.code}</p>
         </div>
       ),
     },

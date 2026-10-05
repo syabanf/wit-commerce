@@ -17,8 +17,8 @@ export function SplitStats({ items, className }: SplitStatsProps) {
     >
       {items.map((item, index) => (
         <div key={index} className="min-w-0 px-2 py-3 text-center">
-          <span className="font-medium block truncate text-[10.5px] text-muted">{item.label}</span>
-          <span className="font-extrabold block truncate text-[15px] tabular-nums">{item.value}</span>
+          <span className="font-medium block truncate text-[0.6562rem] text-muted">{item.label}</span>
+          <span className="font-extrabold block truncate text-[0.9375rem] tabular-nums">{item.value}</span>
         </div>
       ))}
     </div>

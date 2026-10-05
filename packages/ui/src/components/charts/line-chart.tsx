@@ -212,7 +212,7 @@ export function LineChart({
               x={lastPoint.x - 8}
               y={lastPoint.y - 8 < TOP + 4 ? lastPoint.y + 18 : lastPoint.y - 8}
               textAnchor="end"
-              className="font-semibold fill-foreground text-[11px] tabular-nums"
+              className="font-semibold fill-foreground text-[0.6875rem] tabular-nums"
             >
               {format(lastPoint.value)}
             </text>

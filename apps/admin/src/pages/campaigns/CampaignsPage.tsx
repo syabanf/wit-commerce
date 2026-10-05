@@ -104,7 +104,7 @@ export function CampaignsPage() {
       cell: (c) => (
         <div className="min-w-0">
           <p className="font-medium truncate">{c.name}</p>
-          <p className="font-mono text-[11px] text-muted">{c.code}</p>
+          <p className="font-mono text-[0.6875rem] text-muted">{c.code}</p>
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap">
             <CampaignStatusBadge status={c.status} />
           </div>
@@ -147,7 +147,7 @@ export function CampaignsPage() {
         c.segmentId ? (
           <div className="min-w-0">
             <p className="truncate">{s.segmentName(c.segmentId)}</p>
-            <p className="text-[11px] text-muted">{plural(audience.get(c.segmentId) ?? 0, 'customer')}</p>
+            <p className="text-[0.6875rem] text-muted">{plural(audience.get(c.segmentId) ?? 0, 'customer')}</p>
           </div>
         ) : (
           <span className="text-muted">No audience</span>
@@ -181,7 +181,7 @@ export function CampaignsPage() {
       cell: (c) => (
         <div className="whitespace-nowrap tabular-nums">
           <p>{fmtNumber(c.funnel.purchased)}</p>
-          <p className="text-[11px] text-muted">{fmtPercent(clickToPurchase(c.funnel))} of clicks</p>
+          <p className="text-[0.6875rem] text-muted">{fmtPercent(clickToPurchase(c.funnel))} of clicks</p>
         </div>
       ),
     },

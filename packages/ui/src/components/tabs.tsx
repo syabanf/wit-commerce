@@ -102,7 +102,7 @@ function TabList({
               {item.count !== undefined && (
                 <span
                   className={cn(
-                    'px-1.5 font-bold leading-4 rounded-full py-px text-[10px] tabular-nums',
+                    'px-1.5 font-bold leading-4 rounded-full py-px text-[0.625rem] tabular-nums',
                     countClasses[variant],
                   )}
                 >

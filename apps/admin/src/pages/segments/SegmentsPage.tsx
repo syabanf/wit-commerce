@@ -80,7 +80,7 @@ export function SegmentsPage() {
       cell: (r) => (
         <div className="min-w-0">
           <p className="font-medium truncate">{r.seg.name}</p>
-          <p className="truncate text-[11px] text-muted">{r.seg.description || r.summary}</p>
+          <p className="truncate text-[0.6875rem] text-muted">{r.seg.description || r.summary}</p>
           <p className="mt-1 text-xs lg:hidden text-body/80">{r.summary}</p>
         </div>
       ),

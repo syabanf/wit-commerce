@@ -160,7 +160,7 @@ export function PhoneNav({
           </div>
           {!q && recent.length > 0 && (
             <div className="px-5 pb-2">
-              <p className="font-semibold tracking-wider text-[11px] text-on-ink-muted uppercase">Recent</p>
+              <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">Recent</p>
               <div className="mt-2 gap-2 flex flex-wrap">
                 {recent.map((to) => {
                   const leaf = leaves.find((l) => l.to === to)
@@ -192,7 +192,7 @@ export function PhoneNav({
                   type="button"
                   aria-expanded={open}
                   onClick={() => setOpenSection(open ? null : section.id)}
-                  className="px-5 py-3 font-semibold tracking-wider hover:text-white flex w-full items-center justify-between text-left text-[11px] text-on-ink-muted uppercase"
+                  className="px-5 py-3 font-semibold tracking-wider hover:text-white flex w-full items-center justify-between text-left text-[0.6875rem] text-on-ink-muted uppercase"
                 >
                   {section.label}
                   <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
@@ -218,7 +218,7 @@ export function PhoneNav({
                           >
                             <Icon />
                             {badge > 0 && (
-                              <span className="-right-1 -top-1 bg-white px-1 font-bold absolute flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] text-ink">
+                              <span className="-right-1 -top-1 bg-white px-1 font-bold absolute flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full text-[0.625rem] text-ink">
                                 {badge > 99 ? '99+' : badge}
                               </span>
                             )}

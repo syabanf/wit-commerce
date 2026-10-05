@@ -230,7 +230,7 @@ export function LeadDetailPage() {
           </div>
         </div>
         <div className="mt-6">
-          <p className="font-semibold tracking-wider text-[11px] text-on-ink-muted uppercase">Deal value</p>
+          <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">Deal value</p>
           <p className="mt-1 text-5xl font-bold tracking-tight sm:text-6xl truncate tabular-nums">
             {lead.value ? fmtIdrShort(lead.value) : 'Not set'}
           </p>

@@ -49,8 +49,8 @@ export function SideRail({
           </span>
           {expanded && (
             <span className="min-w-0">
-              <span className="font-bold leading-tight tracking-tight block text-[15px]">Commerce OS</span>
-              <span className="block text-[11px] text-on-ink-muted">Brand · Commerce · CRM</span>
+              <span className="font-bold leading-tight tracking-tight block text-[0.9375rem]">Commerce OS</span>
+              <span className="block text-[0.6875rem] text-on-ink-muted">Brand · Commerce · CRM</span>
             </span>
           )}
         </Link>
@@ -82,7 +82,7 @@ export function SideRail({
             {firstInGroup &&
               index > 0 &&
               (expanded ? (
-                <p className="px-3 pb-1 pt-3 font-semibold tracking-wider text-[10.5px] text-on-ink-muted uppercase">
+                <p className="px-3 pb-1 pt-3 font-semibold tracking-wider text-[0.6562rem] text-on-ink-muted uppercase">
                   {section.group}
                 </p>
               ) : (

@@ -100,7 +100,7 @@ function UserMenu() {
             <span className="text-sm font-semibold leading-tight block max-w-[10rem] truncate">
               {user.name}
             </span>
-            <span className="block max-w-[10rem] truncate text-[11px] text-muted">
+            <span className="block max-w-[10rem] truncate text-[0.6875rem] text-muted">
               {ROLE_LABEL[user.role]}
             </span>
           </span>

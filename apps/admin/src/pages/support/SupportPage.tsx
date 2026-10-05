@@ -101,7 +101,7 @@ export function SupportPage() {
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap items-center">
             <TicketStatusBadge status={t.status} />
             <span
-              className={isLate(t, now) ? 'font-semibold text-[11px] text-accent' : 'text-[11px] text-muted'}
+              className={isLate(t, now) ? 'font-semibold text-[0.6875rem] text-accent' : 'text-[0.6875rem] text-muted'}
             >
               {slaText(t, now)}
             </span>

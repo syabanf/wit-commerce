@@ -18,7 +18,7 @@ const iconTileVariants = cva('flex shrink-0 items-center justify-center [&_svg]:
     },
     size: {
       sm: 'size-9 rounded-xl [&_svg]:size-4',
-      md: 'size-[42px] rounded-[13px] [&_svg]:size-[18px]',
+      md: 'size-[2.625rem] rounded-[13px] [&_svg]:size-[1.125rem]',
       lg: 'size-12 rounded-2xl [&_svg]:size-5',
     },
     shape: { square: '', round: 'rounded-full' },

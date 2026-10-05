@@ -92,7 +92,7 @@ export function PerformancePage() {
           <Avatar name={r.seller.name} color={r.seller.color} size="sm" />
           <span className="min-w-0">
             <span className="font-medium block truncate">{r.seller.name}</span>
-            <span className="block font-mono text-[11px] text-muted">{r.seller.code}</span>
+            <span className="block font-mono text-[0.6875rem] text-muted">{r.seller.code}</span>
           </span>
         </span>
       ),

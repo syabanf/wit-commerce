@@ -99,7 +99,7 @@ export function Donut({
             <div className="text-2xl font-bold tracking-tight leading-none">{centerValue}</div>
           )}
           {centerLabel !== undefined && (
-            <div className="mt-1 font-medium text-[11px] text-muted">{centerLabel}</div>
+            <div className="mt-1 font-medium text-[0.6875rem] text-muted">{centerLabel}</div>
           )}
         </div>
       )}

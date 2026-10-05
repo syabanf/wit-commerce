@@ -113,7 +113,7 @@ export function OrdersPage() {
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap">
             <OrderStatusBadge status={o.status} />
           </div>
-          <p className="mt-1.5 leading-4 md:hidden text-[11px] text-muted">{fmtWhen(o.createdAt, now)}</p>
+          <p className="mt-1.5 leading-4 md:hidden text-[0.6875rem] text-muted">{fmtWhen(o.createdAt, now)}</p>
         </div>
       ),
     },
@@ -172,7 +172,7 @@ export function OrdersPage() {
       cell: (o) => (
         <div className="whitespace-nowrap">
           <p className="font-semibold tabular-nums">{fmtIdr(o.total)}</p>
-          <p className="text-[11px] text-muted">{plural(unitCount(o.lines), 'item')}</p>
+          <p className="text-[0.6875rem] text-muted">{plural(unitCount(o.lines), 'item')}</p>
         </div>
       ),
     },

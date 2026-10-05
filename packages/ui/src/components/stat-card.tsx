@@ -29,9 +29,9 @@ export function StatCard({
     <>
       <div className="gap-3 flex w-full items-start">
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-[13px] text-body/80">{label}</div>
+          <div className="font-semibold text-[0.8125rem] text-body/80">{label}</div>
           <div className="mt-1.5 gap-1 flex items-start">
-            <span className="font-extrabold truncate text-[28px] leading-[1.15] tracking-[-0.5px]">
+            <span className="font-extrabold truncate text-[1.75rem] leading-[1.15] tracking-[-0.5px]">
               {value}
             </span>
             {unit !== undefined && (

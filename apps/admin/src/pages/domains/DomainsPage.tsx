@@ -53,7 +53,7 @@ export function DomainsPage() {
       cell: (p) => (
         <div className="min-w-0">
           <p className="font-medium truncate">{p.title}</p>
-          <p className="truncate font-mono text-[11px] text-muted">{p.slug}</p>
+          <p className="truncate font-mono text-[0.6875rem] text-muted">{p.slug}</p>
         </div>
       ),
     },

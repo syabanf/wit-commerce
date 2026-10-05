@@ -45,7 +45,7 @@ export function CustomerLink({
       {showAvatar && <Avatar name={c.name} color={c.color} size="sm" />}
       <span className="min-w-0">
         <span className="font-medium block truncate">{c.name}</span>
-        <span className="block truncate font-mono text-[11px] text-muted">{c.code}</span>
+        <span className="block truncate font-mono text-[0.6875rem] text-muted">{c.code}</span>
       </span>
     </Link>
   )
@@ -82,7 +82,7 @@ export function ProductLink({ productId, className }: { productId: string; class
       className={cn('min-w-0 inline-flex flex-col hover:text-accent', className)}
     >
       <span className="font-medium truncate">{p.name}</span>
-      <span className="truncate font-mono text-[11px] text-muted">{p.code}</span>
+      <span className="truncate font-mono text-[0.6875rem] text-muted">{p.code}</span>
     </Link>
   )
 }

@@ -22,7 +22,7 @@ function SideCard({ title, action, children }: { title: string; action?: ReactNo
   return (
     <Card>
       <CardHeader action={action}>
-        <Kicker className="font-bold text-[13px] tracking-[0.4px] text-foreground">{title}</Kicker>
+        <Kicker className="font-bold text-[0.8125rem] tracking-[0.4px] text-foreground">{title}</Kicker>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -102,7 +102,7 @@ export function SegmentsCard({ customer }: { customer: Customer }) {
               <Link to={paths.segment(seg.id)} className={rowClass}>
                 <span className="min-w-0 flex-1">
                   <span className="text-sm font-medium block truncate">{seg.name}</span>
-                  <span className="block truncate text-[11px] text-muted">{seg.description}</span>
+                  <span className="block truncate text-[0.6875rem] text-muted">{seg.description}</span>
                 </span>
                 <Badge variant={seg.builtIn ? 'muted' : 'outline'}>
                   {seg.builtIn ? 'Built-in' : 'Custom'}
@@ -171,7 +171,7 @@ export function TicketsCard({ customer }: { customer: Customer }) {
               <Link to={paths.ticket(t.id)} className={rowClass}>
                 <span className="min-w-0 flex-1">
                   <span className="text-sm font-medium block truncate">{t.subject}</span>
-                  <span className="block truncate text-[11px] text-muted">
+                  <span className="block truncate text-[0.6875rem] text-muted">
                     <span className="font-mono">{t.code}</span> · {fmtDate(t.createdAt)}
                   </span>
                 </span>
@@ -217,7 +217,7 @@ export function RecommendedCard({ customer, metrics }: { customer: Customer; met
                 <Link to={paths.product(p.id)} className={rowClass}>
                   <span className="min-w-0 flex-1">
                     <span className="text-sm font-medium block truncate">{p.name}</span>
-                    <span className="block truncate font-mono text-[11px] text-muted">{p.code}</span>
+                    <span className="block truncate font-mono text-[0.6875rem] text-muted">{p.code}</span>
                   </span>
                   <span className="text-sm font-semibold shrink-0 tabular-nums">
                     {p.assisted ? 'Talk to sales' : fmtIdr(p.price)}

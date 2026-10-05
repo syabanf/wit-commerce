@@ -222,10 +222,10 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
                           {fmtNumber(available)} in stock · {fmtNumber(views)} views
                         </span>
                       </span>
-                      <span className="shrink-0 font-mono text-[11px] text-muted">{product.code}</span>
+                      <span className="shrink-0 font-mono text-[0.6875rem] text-muted">{product.code}</span>
                     </Link>
                   ))}
-                  {d.slow.length > 5 && <p className="text-[11px] text-muted">+{d.slow.length - 5} more</p>}
+                  {d.slow.length > 5 && <p className="text-[0.6875rem] text-muted">+{d.slow.length - 5} more</p>}
                 </>
               ) : (
                 <EmptyState

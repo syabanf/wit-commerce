@@ -90,7 +90,7 @@ export function NotificationsButton() {
     >
       <Bell />
       {unread > 0 && (
-        <span className="-right-1 -top-1 px-1 font-bold absolute flex h-[19px] min-w-[19px] items-center justify-center rounded-full border-2 border-surface bg-accent text-[10.5px] text-on-ink">
+        <span className="-right-1 -top-1 px-1 font-bold absolute flex h-[1.1875rem] min-w-[1.1875rem] items-center justify-center rounded-full border-2 border-surface bg-accent text-[0.6562rem] text-on-ink">
           {unread > 99 ? '99+' : unread}
         </span>
       )}
@@ -146,7 +146,7 @@ export function NotificationsButton() {
                     )}
                   </span>
                   <span className="mt-0.5 text-xs block text-muted">{n.body}</span>
-                  <span className="mt-1 font-medium block text-[11px] text-silver">
+                  <span className="mt-1 font-medium block text-[0.6875rem] text-silver">
                     {NOTIFICATION_KIND_LABEL[n.kind]} · {fmtAgo(n.at)}
                   </span>
                 </span>

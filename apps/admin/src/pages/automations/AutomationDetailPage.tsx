@@ -201,7 +201,7 @@ export function AutomationDetailPage() {
                 <Zap />
               </IconTile>
               <div className="min-w-0">
-                <p className="font-semibold tracking-wider text-[11px] text-on-ink-muted uppercase">
+                <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">
                   Trigger
                 </p>
                 <p className="font-semibold truncate">{AUTOMATION_TRIGGER_LABEL[automation.trigger]}</p>
@@ -290,7 +290,7 @@ export function AutomationDetailPage() {
 
         <Card className="min-w-0 self-start">
           <CardHeader>
-            <Kicker className="font-bold text-[13px] tracking-[0.4px] text-foreground">Details</Kicker>
+            <Kicker className="font-bold text-[0.8125rem] tracking-[0.4px] text-foreground">Details</Kicker>
           </CardHeader>
           <CardContent>
             <KeyValue
@@ -315,7 +315,7 @@ export function AutomationDetailPage() {
 
 /** The line that joins two journey cards, centred under the 42px icon tile of a padded row. */
 function Connector() {
-  return <div aria-hidden="true" className="h-5 ml-[33px] w-px bg-border" />
+  return <div aria-hidden="true" className="h-5 ml-[2.0625rem] w-px bg-border" />
 }
 
 function AddStepDialog({

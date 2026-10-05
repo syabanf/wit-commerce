@@ -91,8 +91,8 @@ export function AttributesPage() {
       cell: (r) => (
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate">{r.def.name}</p>
-          <p className="truncate font-mono text-[11px] text-muted">{r.def.code}</p>
-          <p className="mt-1 leading-4 md:hidden text-[11px] text-muted">
+          <p className="truncate font-mono text-[0.6875rem] text-muted">{r.def.code}</p>
+          <p className="mt-1 leading-4 md:hidden text-[0.6875rem] text-muted">
             {ATTRIBUTE_TYPE_LABEL[r.def.type]} · {scope(r.def)}
           </p>
         </div>
@@ -110,7 +110,7 @@ export function AttributesPage() {
             {r.def.unit && <span className="text-muted"> · {r.def.unit}</span>}
           </p>
           {r.def.type === 'select' && (
-            <p className="mt-0.5 max-w-56 truncate text-[11px] text-muted" title={r.def.options.join(', ')}>
+            <p className="mt-0.5 max-w-56 truncate text-[0.6875rem] text-muted" title={r.def.options.join(', ')}>
               {r.def.options.join(', ')}
             </p>
           )}
@@ -151,7 +151,7 @@ export function AttributesPage() {
               tone={gap ? 'warning' : 'ink'}
               aria-label={`${r.filled} of ${r.applies} products filled`}
             />
-            <p className="mt-1 text-[11px] text-muted tabular-nums">
+            <p className="mt-1 text-[0.6875rem] text-muted tabular-nums">
               {r.filled} of {plural(r.applies, 'product')}
             </p>
           </div>

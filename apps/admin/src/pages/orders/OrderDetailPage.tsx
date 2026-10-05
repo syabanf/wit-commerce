@@ -293,7 +293,7 @@ export function OrderDetailPage() {
                   </span>
                   <span className="min-w-0">
                     <span className="text-sm block">{e.note}</span>
-                    <span className="block text-[11px] text-muted">{s.userName(e.by)}</span>
+                    <span className="block text-[0.6875rem] text-muted">{s.userName(e.by)}</span>
                   </span>
                 </div>
               ))}
@@ -409,7 +409,7 @@ function SideCard({ title, action, children }: { title: string; action?: ReactNo
   return (
     <Card>
       <CardHeader action={action}>
-        <Kicker className="font-bold text-[13px] tracking-[0.4px] text-foreground">{title}</Kicker>
+        <Kicker className="font-bold text-[0.8125rem] tracking-[0.4px] text-foreground">{title}</Kicker>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>

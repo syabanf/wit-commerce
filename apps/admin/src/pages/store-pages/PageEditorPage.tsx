@@ -234,7 +234,7 @@ function SeoCard({ page, url }: { page: Page; url: string }) {
   const length = (text: string, max: number) => {
     const n = text.trim().length
     return (
-      <span className={cn('text-[11px] tabular-nums', n > max ? 'font-semibold text-warning' : 'text-muted')}>
+      <span className={cn('text-[0.6875rem] tabular-nums', n > max ? 'font-semibold text-warning' : 'text-muted')}>
         {n ? `${n} of ${max} characters` : 'Missing'}
       </span>
     )

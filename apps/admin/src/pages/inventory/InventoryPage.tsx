@@ -112,10 +112,10 @@ export function InventoryPage() {
       cell: (r) => (
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{r.product?.name ?? 'Removed product'}</p>
-          <p className="truncate font-mono text-[11px] text-muted">
+          <p className="truncate font-mono text-[0.6875rem] text-muted">
             {r.variant?.sku} · {r.variant?.name}
           </p>
-          <p className="mt-1 md:hidden text-[11px] text-muted">{r.warehouse?.name}</p>
+          <p className="mt-1 md:hidden text-[0.6875rem] text-muted">{r.warehouse?.name}</p>
         </div>
       ),
     },
@@ -217,7 +217,7 @@ export function InventoryPage() {
             <p className="text-sm truncate">
               {variant ? s.productName(variant.productId) : 'Removed product'}
             </p>
-            <p className="truncate font-mono text-[11px] text-muted">{variant?.sku}</p>
+            <p className="truncate font-mono text-[0.6875rem] text-muted">{variant?.sku}</p>
           </div>
         )
       },

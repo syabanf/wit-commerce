@@ -2,3 +2,11 @@
 @import '@rc/tailwind-config/theme.css';
 
 @source '../../../packages/ui/src';
+
+/* Desktop density: from lg the console sets 1rem to 13px, so type, spacing, cards and controls scale
+   together. Breakpoints use the browser's 16px, so layouts switch at the same widths; phones keep 16px. */
+@media (min-width: 1024px) {
+  html {
+    font-size: 13px;
+  }
+}

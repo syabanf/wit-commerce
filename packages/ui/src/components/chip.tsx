@@ -38,7 +38,7 @@ export function Chip({ active = false, icon, count, variant, className, children
       {count !== undefined && (
         <span
           className={cn(
-            'px-1.5 font-bold leading-4 rounded-full py-px text-[10px] tabular-nums',
+            'px-1.5 font-bold leading-4 rounded-full py-px text-[0.625rem] tabular-nums',
             active ? 'bg-white/20' : 'bg-surface text-body',
           )}
         >

@@ -111,7 +111,7 @@ export function TenantsPage() {
                       {/* Tenant brand colour: storefront data, so an inline style. */}
                       <span
                         aria-hidden="true"
-                        className="size-[42px] shrink-0 rounded-[13px]"
+                        className="size-[2.625rem] shrink-0 rounded-[13px]"
                         style={{ background: t.brand.colors.primary }}
                       />
                       <div className="min-w-0">
@@ -139,7 +139,7 @@ export function TenantsPage() {
                       tone={remaining.length ? 'ink' : 'success'}
                       aria-label={`${t.name} setup progress`}
                     />
-                    <p className="mt-1 text-[11px] text-muted">
+                    <p className="mt-1 text-[0.6875rem] text-muted">
                       {remaining.length
                         ? `Still to do: ${remaining.map((s) => s.label.toLowerCase()).join(', ')}`
                         : 'Setup complete'}
@@ -147,11 +147,11 @@ export function TenantsPage() {
                   </div>
                   <dl className="mt-4 gap-3 rounded-2xl p-3 text-sm grid grid-cols-2 bg-surface-2">
                     <div className="min-w-0">
-                      <dt className="text-[11px] text-muted">Revenue, 30 days</dt>
+                      <dt className="text-[0.6875rem] text-muted">Revenue, 30 days</dt>
                       <dd className="font-bold truncate tabular-nums">{fmtIdrShort(row.revenue)}</dd>
                     </div>
                     <div className="min-w-0">
-                      <dt className="text-[11px] text-muted">Customers</dt>
+                      <dt className="text-[0.6875rem] text-muted">Customers</dt>
                       <dd className="font-bold truncate tabular-nums">{fmtNumber(row.customers)}</dd>
                     </div>
                   </dl>

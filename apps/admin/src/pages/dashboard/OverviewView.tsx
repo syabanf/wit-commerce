@@ -188,7 +188,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
 
         <div className="gap-3 sm:gap-4 grid grid-cols-1">
           <Card variant="accent" className="p-5 flex flex-col">
-            <p className="font-semibold text-white/80 text-[13px]">Orders to pack and ship</p>
+            <p className="font-semibold text-white/80 text-[0.8125rem]">Orders to pack and ship</p>
             <p className="mt-2 text-5xl font-bold tracking-tight leading-none tabular-nums">
               {data.fulfil.length}
             </p>
@@ -429,7 +429,7 @@ function AttentionCard({ queues }: { queues: Queue[] }) {
                 )}
                 <span className="min-w-0">
                   <span className="text-lg font-bold block leading-none tabular-nums">{q.count}</span>
-                  <span className="font-semibold block truncate text-[11px]">{q.label}</span>
+                  <span className="font-semibold block truncate text-[0.6875rem]">{q.label}</span>
                 </span>
               </Link>
             ))

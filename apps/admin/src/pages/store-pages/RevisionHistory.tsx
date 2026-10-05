@@ -36,7 +36,7 @@ export function RevisionHistory({ page, editable }: { page: Page; editable: bool
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'top-1.5 size-3 absolute -left-[26px] rounded-full ring-4 ring-card',
+                    'top-1.5 size-3 absolute -left-[1.625rem] rounded-full ring-4 ring-card',
                     current ? (page.status === 'published' ? 'bg-success' : 'bg-warning') : 'bg-border',
                   )}
                 />
@@ -46,7 +46,7 @@ export function RevisionHistory({ page, editable }: { page: Page; editable: bool
                       {rev.note}
                       {current && <Badge variant="ink">Current</Badge>}
                     </p>
-                    <p className="text-[11px] text-muted">
+                    <p className="text-[0.6875rem] text-muted">
                       {s.userName(rev.by)} · {fmtWhen(rev.at, now)} · {plural(rev.sections.length, 'section')}
                     </p>
                   </div>

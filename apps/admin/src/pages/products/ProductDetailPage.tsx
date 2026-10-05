@@ -423,7 +423,7 @@ function ProductRecord({ id }: { id: string }) {
                 {collections.map((c) => (
                   <div key={c.id} className="rounded-2xl p-3 bg-surface-2">
                     <p className="text-sm font-medium">{c.name}</p>
-                    <p className="mt-0.5 text-[11px] text-muted">
+                    <p className="mt-0.5 text-[0.6875rem] text-muted">
                       {c.mode === 'smart' ? 'Smart' : plural(c.productIds.length, 'product')}
                       {c.description && ` · ${c.description}`}
                     </p>
@@ -551,14 +551,14 @@ function VariantTable({ product, tracked }: { product: Product; tracked: boolean
                         <td key={o.name} className={cn(TD, i === 0 && 'font-medium')}>
                           {v.optionValues[o.name] ?? <span className="text-muted">–</span>}
                           {i === 0 && (
-                            <p className="sm:hidden font-normal font-mono text-[11px] text-muted">{v.sku}</p>
+                            <p className="sm:hidden font-normal font-mono text-[0.6875rem] text-muted">{v.sku}</p>
                           )}
                         </td>
                       ))
                     ) : (
                       <td className={cn(TD, 'font-medium')}>
                         {v.name}
-                        <p className="sm:hidden font-normal font-mono text-[11px] text-muted">{v.sku}</p>
+                        <p className="sm:hidden font-normal font-mono text-[0.6875rem] text-muted">{v.sku}</p>
                       </td>
                     )}
                     <td className={cn(TD, 'text-xs sm:table-cell hidden font-mono whitespace-nowrap')}>
@@ -608,7 +608,7 @@ function SideCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card>
       <CardHeader>
-        <Kicker className="font-bold text-[13px] tracking-[0.4px] text-foreground">{title}</Kicker>
+        <Kicker className="font-bold text-[0.8125rem] tracking-[0.4px] text-foreground">{title}</Kicker>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>

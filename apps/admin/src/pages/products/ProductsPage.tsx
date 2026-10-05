@@ -115,7 +115,7 @@ export function ProductsPage() {
           <p className="text-xs font-semibold font-mono">{p.code}</p>
           <p className="text-sm font-medium truncate">{p.name}</p>
           {p.variants.length > 1 && (
-            <p className="truncate text-[11px] text-muted">
+            <p className="truncate text-[0.6875rem] text-muted">
               {plural(p.variants.length, 'variant')}
               {optionAxes(p) && ` · ${optionAxes(p)}`}
             </p>
@@ -153,7 +153,7 @@ export function ProductsPage() {
           <div className="whitespace-nowrap">
             <p className="font-semibold tabular-nums">{fmtIdr(p.price)}</p>
             {p.compareAt && (
-              <p className="text-[11px] text-muted tabular-nums line-through">{fmtIdr(p.compareAt)}</p>
+              <p className="text-[0.6875rem] text-muted tabular-nums line-through">{fmtIdr(p.compareAt)}</p>
             )}
           </div>
         ),
@@ -169,7 +169,7 @@ export function ProductsPage() {
           <div className="whitespace-nowrap">
             <StockBadge state={state} />
             {state !== 'untracked' && (
-              <p className="mt-1 text-[11px] text-muted tabular-nums">
+              <p className="mt-1 text-[0.6875rem] text-muted tabular-nums">
                 {fmtNumber(summary.available)} available
               </p>
             )}

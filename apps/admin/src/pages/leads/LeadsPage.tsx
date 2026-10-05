@@ -189,7 +189,7 @@ export function LeadsPage() {
                     <h2 className="text-sm font-semibold truncate">{LEAD_STAGE_LABEL[col.stage]}</h2>
                     <p className="text-xs text-muted tabular-nums">{fmtIdrShort(col.value)}</p>
                   </div>
-                  <span className="px-2 py-0.5 font-bold shrink-0 rounded-full bg-surface text-[11px] tabular-nums">
+                  <span className="px-2 py-0.5 font-bold shrink-0 rounded-full bg-surface text-[0.6875rem] tabular-nums">
                     {col.leads.length}
                   </span>
                 </div>
@@ -237,7 +237,7 @@ function LeadCard({ lead, now, onOpen }: { lead: Lead; now: number; onOpen: () =
       <div className="gap-2 flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate">{lead.company || lead.name}</p>
-          <p className="truncate text-[11px] text-muted">
+          <p className="truncate text-[0.6875rem] text-muted">
             <span className="font-mono">{lead.code}</span>
             {lead.company && <span> · {lead.name}</span>}
           </p>
@@ -249,7 +249,7 @@ function LeadCard({ lead, now, onOpen }: { lead: Lead; now: number; onOpen: () =
       {lead.productId && (
         <p className="mt-1.5 text-xs truncate text-body/80">{s.productName(lead.productId)}</p>
       )}
-      <div className="mt-2.5 gap-2 flex items-center justify-between text-[11px]">
+      <div className="mt-2.5 gap-2 flex items-center justify-between text-[0.6875rem]">
         <span className="min-w-0 gap-1.5 flex items-center text-muted">
           {seller ? <Avatar name={seller.name} color={seller.color} size="xs" /> : null}
           <span className="truncate">{seller?.name ?? 'Unassigned'}</span>

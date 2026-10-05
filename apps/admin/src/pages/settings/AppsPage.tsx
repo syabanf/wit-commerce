@@ -60,7 +60,7 @@ export function AppsPage() {
                   >
                     Install
                   </Button>
-                  <span className="mt-1 text-[11px] text-muted">Comes with the app marketplace</span>
+                  <span className="mt-1 text-[0.6875rem] text-muted">Comes with the app marketplace</span>
                 </div>
                 <Button
                   size="sm"

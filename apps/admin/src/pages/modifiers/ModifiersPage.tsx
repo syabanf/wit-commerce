@@ -179,7 +179,7 @@ export function ModifiersPage() {
                       </Link>
                     ))}
                     {g.productIds.length > 3 && (
-                      <span className="self-center text-[11px] text-muted">
+                      <span className="self-center text-[0.6875rem] text-muted">
                         +{g.productIds.length - 3} more
                       </span>
                     )}

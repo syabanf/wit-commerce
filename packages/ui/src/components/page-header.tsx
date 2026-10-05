@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '../lib/cn'
 
-const kickerClass = 'text-[11px] font-semibold uppercase tracking-wider text-muted'
+const kickerClass = 'text-[0.6875rem] font-semibold uppercase tracking-wider text-muted'
 
 export function Kicker({ className, ...props }: ComponentProps<'p'>) {
   return <p className={cn(kickerClass, className)} {...props} />

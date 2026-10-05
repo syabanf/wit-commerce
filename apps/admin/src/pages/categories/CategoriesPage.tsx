@@ -82,7 +82,7 @@ export function CategoriesPage() {
           <p className="text-xs truncate text-muted">
             {r.category.parentId ? `In ${s.categoryName(r.category.parentId)}` : 'Top level'}
           </p>
-          <p className="mt-1 leading-4 md:hidden text-[11px] text-muted">
+          <p className="mt-1 leading-4 md:hidden text-[0.6875rem] text-muted">
             {plural(r.products, 'product')} · {plural(r.attributes, 'attribute')}
           </p>
         </div>

@@ -40,7 +40,7 @@ export function Steps({ steps, className }: StepsProps) {
             <span className="leading-tight flex flex-col">
               <span>{step.label}</span>
               {step.hint !== undefined && (
-                <span className="font-medium text-[11px] opacity-70">{step.hint}</span>
+                <span className="font-medium text-[0.6875rem] opacity-70">{step.hint}</span>
               )}
             </span>
           </li>

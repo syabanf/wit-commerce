@@ -114,7 +114,7 @@ export function YGrid({ ticks, labels, y, left, right }: YGridProps) {
         y={y(tick)}
         dy="0.32em"
         textAnchor="end"
-        className="fill-muted text-[11px] tabular-nums"
+        className="fill-muted text-[0.6875rem] tabular-nums"
       >
         {labels[index]}
       </text>
@@ -129,7 +129,7 @@ export function XLabels({ labels, y }: { labels: ReturnType<typeof xAxisLabels>;
       x={label.x}
       y={y}
       textAnchor="middle"
-      className="fill-muted text-[11px] tabular-nums"
+      className="fill-muted text-[0.6875rem] tabular-nums"
     >
       {label.text}
     </text>
@@ -151,7 +151,7 @@ export function ReferenceLine({ y, left, right, label, className }: ReferenceLin
         shapeRendering="crispEdges"
         className={className}
       />
-      <text x={right} y={y - 5} textAnchor="end" className="fill-muted text-[11px]">
+      <text x={right} y={y - 5} textAnchor="end" className="fill-muted text-[0.6875rem]">
         {label}
       </text>
     </g>

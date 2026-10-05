@@ -8,7 +8,7 @@ export function BottomBar({ className, ...props }: ComponentProps<'nav'>) {
   return (
     <nav
       className={cn(
-        'inset-x-3 bottom-3 px-3 md:hidden fixed z-40 mb-[env(safe-area-inset-bottom)] flex h-[68px] items-center justify-between rounded-[22px] bg-ink shadow-float',
+        'inset-x-3 bottom-3 px-3 md:hidden fixed z-40 mb-[env(safe-area-inset-bottom)] flex h-[4.25rem] items-center justify-between rounded-[22px] bg-ink shadow-float',
         className,
       )}
       {...props}

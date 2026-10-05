@@ -126,7 +126,7 @@ function TicketPanel({ ticket, now }: { ticket: Ticket; now: number }) {
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate">{e.label}</span>
-                    <span className="block text-[11px] text-muted">{CUSTOMER_EVENT_LABEL[e.kind]}</span>
+                    <span className="block text-[0.6875rem] text-muted">{CUSTOMER_EVENT_LABEL[e.kind]}</span>
                   </span>
                 </li>
               ))}

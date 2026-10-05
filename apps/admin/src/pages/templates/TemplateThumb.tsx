@@ -28,7 +28,7 @@ function HeroSketch({ hero }: { hero: TemplateLook['hero'] }) {
   if (hero === 'offer')
     return (
       <div className="h-12 rounded-md flex overflow-hidden bg-accent-soft">
-        <span className="font-black flex w-1/4 items-center justify-center border-r-2 border-dashed border-accent/40 text-[11px] text-accent">
+        <span className="font-black flex w-1/4 items-center justify-center border-r-2 border-dashed border-accent/40 text-[0.6875rem] text-accent">
           %
         </span>
         <span className="p-2 gap-1 flex flex-1 flex-col justify-center">

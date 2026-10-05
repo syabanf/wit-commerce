@@ -105,7 +105,7 @@ export function ColumnChart({
                       x={center(index)}
                       y={Math.min(top, baseY) - 6}
                       textAnchor="middle"
-                      className="font-semibold fill-foreground text-[11px] tabular-nums"
+                      className="font-semibold fill-foreground text-[0.6875rem] tabular-nums"
                     >
                       {format(item.value)}
                     </text>

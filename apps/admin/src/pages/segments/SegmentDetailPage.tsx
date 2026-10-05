@@ -324,7 +324,7 @@ function SegmentEditor({ segment }: { segment: Segment | null }) {
                         >
                           <span className="min-w-0 flex-1">
                             <span className="text-sm font-medium block truncate">{c.name}</span>
-                            <span className="block truncate font-mono text-[11px] text-muted">{c.code}</span>
+                            <span className="block truncate font-mono text-[0.6875rem] text-muted">{c.code}</span>
                           </span>
                           <CampaignStatusBadge status={c.status} />
                         </Link>

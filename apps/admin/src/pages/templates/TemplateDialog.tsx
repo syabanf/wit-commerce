@@ -140,7 +140,7 @@ function TemplateDetail({ template }: { template: Template }) {
                 </li>
               ))}
             </ol>
-            <p className="mt-2 text-[11px] text-muted">
+            <p className="mt-2 text-[0.6875rem] text-muted">
               Required sections stay on every page. Locked sections render as the template sets them.
             </p>
           </div>

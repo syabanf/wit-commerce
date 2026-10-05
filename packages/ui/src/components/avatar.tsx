@@ -2,8 +2,8 @@ import { cn } from '../lib/cn'
 import { AVATAR_PALETTE } from '../lib/palette'
 
 const sizes = {
-  xs: 'size-6 text-[9px]',
-  sm: 'size-7 text-[10px]',
+  xs: 'size-6 text-[0.5625rem]',
+  sm: 'size-7 text-[0.625rem]',
   md: 'size-9 text-xs',
   lg: 'size-12 text-sm',
   xl: 'size-20 text-2xl',

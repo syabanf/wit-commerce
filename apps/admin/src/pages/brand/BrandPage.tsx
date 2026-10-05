@@ -360,7 +360,7 @@ function BrandEditor({ saved }: { saved: BrandConfig }) {
                   page={home}
                   brand={effective}
                   fallback={
-                    <div className="rounded-2xl max-h-[640px] overflow-y-auto">
+                    <div className="rounded-2xl max-h-[40rem] overflow-y-auto">
                       <StorefrontPreview
                         brand={effective}
                         storeName={s.tenant.name}

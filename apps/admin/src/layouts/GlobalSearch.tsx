@@ -175,7 +175,7 @@ export function GlobalSearch({
         placeholder="Search orders, customers, products"
         rightSlot={
           !autoFocus ? (
-            <kbd className="rounded-md px-1.5 py-0.5 font-semibold sm:inline hidden border border-border bg-surface text-[10px] text-muted">
+            <kbd className="rounded-md px-1.5 py-0.5 font-semibold sm:inline hidden border border-border bg-surface text-[0.625rem] text-muted">
               ⌘K
             </kbd>
           ) : undefined
@@ -206,7 +206,7 @@ export function GlobalSearch({
           ) : (
             groups.map((g) => (
               <div key={g.group} className="py-1">
-                <p className="px-3 pb-1 pt-2 font-semibold tracking-wider text-[11px] text-muted uppercase">
+                <p className="px-3 pb-1 pt-2 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
                   {g.group}
                 </p>
                 {g.hits.map((hit) => {

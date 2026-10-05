@@ -20,7 +20,7 @@ const GLOW = [
 const scrollTops = new Map<string, number>()
 
 export function AdminLayout() {
-  const isDesktop = useMediaQuery('(min-width: 1280px)')
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [expandedPref, setExpandedPref] = usePersistentState('rc.admin.rail', true)
   const [moreOpen, setMoreOpen] = useState(false)
   const { key, pathname } = useLocation()
@@ -83,7 +83,7 @@ export function AdminLayout() {
               This browser is out of storage or blocks it. Your changes stay until you reload the page.
             </Banner>
           )}
-          <SectionTabs />
+          {!expanded && <SectionTabs />}
           <Outlet />
         </main>
       </div>
@@ -92,7 +92,7 @@ export function AdminLayout() {
   )
 }
 
-/** Pill tabs across the pages of the current section, on its list pages only. */
+/** Pill tabs across the pages of the current section, on its list pages, while the rail is collapsed. */
 function SectionTabs() {
   const { pathname } = useLocation()
   const counts = useNavCounts()
@@ -102,7 +102,7 @@ function SectionTabs() {
   return (
     <nav
       aria-label={`${section.label} pages`}
-      className="mb-4 xl:hidden no-scrollbar flex max-w-full overflow-x-auto"
+      className="mb-4 no-scrollbar flex max-w-full overflow-x-auto"
     >
       <div className="gap-1 p-1 inline-flex shrink-0 rounded-full bg-card shadow-card">
         {section.items.map((item) => {
@@ -124,7 +124,7 @@ function SectionTabs() {
                   {count > 0 && (
                     <span
                       className={cn(
-                        'px-1.5 font-bold rounded-full text-[11px]',
+                        'px-1.5 font-bold rounded-full text-[0.6875rem]',
                         isActive ? 'bg-white/20' : 'bg-accent-soft text-accent',
                       )}
                     >

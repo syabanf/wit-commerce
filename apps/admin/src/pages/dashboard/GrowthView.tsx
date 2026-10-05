@@ -179,7 +179,7 @@ export function GrowthView({ s, now }: { s: Scoped; now: number }) {
                           tone={i === 0 ? 'accent' : 'ink'}
                           aria-label={`${seller.name} revenue`}
                         />
-                        <span className="shrink-0 text-[11px] text-muted tabular-nums">
+                        <span className="shrink-0 text-[0.6875rem] text-muted tabular-nums">
                           {p.orders} orders · {fmtPercent(p.conversion, 1)}
                         </span>
                       </span>
@@ -210,7 +210,7 @@ export function GrowthView({ s, now }: { s: Scoped; now: number }) {
                     <span className="font-semibold">{s.customerName(e.customerId)}</span> ·{' '}
                     {CUSTOMER_EVENT_LABEL[e.kind].toLowerCase()}
                   </span>
-                  <span className="block truncate text-[11px] text-muted">{e.label}</span>
+                  <span className="block truncate text-[0.6875rem] text-muted">{e.label}</span>
                 </span>
               </Link>
             ))}

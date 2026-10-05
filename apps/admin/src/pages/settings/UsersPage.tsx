@@ -231,7 +231,7 @@ function PermissionMatrix({ currentRole }: { currentRole: Role }) {
                     scope="rowgroup"
                     className={cn(
                       sticky,
-                      'px-5 py-2 font-semibold tracking-wider bg-surface-2 text-left text-[11px] text-muted uppercase',
+                      'px-5 py-2 font-semibold tracking-wider bg-surface-2 text-left text-[0.6875rem] text-muted uppercase',
                     )}
                   >
                     {group.area}

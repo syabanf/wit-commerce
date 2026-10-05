@@ -102,7 +102,7 @@ export function CollectionsPage() {
             </Badge>
             {r.collection.featured && <Badge variant="ink">Featured</Badge>}
           </div>
-          <p className="mt-1 leading-4 md:hidden text-[11px] text-muted">
+          <p className="mt-1 leading-4 md:hidden text-[0.6875rem] text-muted">
             {plural(r.products, 'product')} · {r.rules}
           </p>
         </div>

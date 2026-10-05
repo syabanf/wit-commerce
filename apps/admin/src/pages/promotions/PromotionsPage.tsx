@@ -129,7 +129,7 @@ export function PromotionsPage() {
             <p className="text-xs font-semibold text-muted">Automatic</p>
           )}
           <p className="text-sm truncate">{p.name}</p>
-          <p className="mt-0.5 md:hidden text-[11px] text-muted">{offer(p)}</p>
+          <p className="mt-0.5 md:hidden text-[0.6875rem] text-muted">{offer(p)}</p>
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap">
             <PromotionStatusBadge status={p.status} />
           </div>
@@ -144,7 +144,7 @@ export function PromotionsPage() {
       cell: (p) => (
         <div className="min-w-0">
           <p className="font-medium">{offer(p)}</p>
-          <p className="text-[11px] text-muted">{PROMOTION_KIND_LABEL[p.kind]}</p>
+          <p className="text-[0.6875rem] text-muted">{PROMOTION_KIND_LABEL[p.kind]}</p>
         </div>
       ),
     },

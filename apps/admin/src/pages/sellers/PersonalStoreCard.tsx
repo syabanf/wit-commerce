@@ -65,7 +65,7 @@ export function PersonalStoreCard({ seller }: { seller: Seller }) {
   }
 
   const simplePreview = (
-    <div className="mt-2 rounded-2xl p-3 max-h-[640px] overflow-auto bg-surface-2">
+    <div className="mt-2 rounded-2xl p-3 max-h-[40rem] overflow-auto bg-surface-2">
       <div className={cn('mx-auto w-full', device === 'mobile' && 'max-w-[375px]')}>
         <StorefrontPreview
           brand={s.tenant.brand}
@@ -117,7 +117,7 @@ export function PersonalStoreCard({ seller }: { seller: Seller }) {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold">{t.name}</p>
                         <p className="text-xs text-muted">{t.description}</p>
-                        <p className="mt-1 text-[11px] text-muted">
+                        <p className="mt-1 text-[0.6875rem] text-muted">
                           {t.sections.length} sections · best for {t.bestFor}
                         </p>
                       </div>
@@ -144,7 +144,7 @@ export function PersonalStoreCard({ seller }: { seller: Seller }) {
                     </div>
                   </div>
                   {canApply && !isCurrent && blocker && (
-                    <p className="mt-2 text-[11px] text-muted">{blocker}</p>
+                    <p className="mt-2 text-[0.6875rem] text-muted">{blocker}</p>
                   )}
                 </li>
               )

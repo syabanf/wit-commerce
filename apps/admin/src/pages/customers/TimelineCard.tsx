@@ -89,10 +89,10 @@ export function TimelineCard({
           <div className="space-y-5">
             {groups.map((g) => (
               <section key={g.key} aria-label={g.label}>
-                <h3 className="mb-3 font-semibold tracking-wider text-[11px] text-muted uppercase">
+                <h3 className="mb-3 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
                   {g.label}
                 </h3>
-                <ol className="space-y-4 before:bottom-2 before:top-2 relative before:absolute before:left-[17px] before:w-px before:bg-border">
+                <ol className="space-y-4 before:bottom-2 before:top-2 relative before:absolute before:left-[1.0625rem] before:w-px before:bg-border">
                   {g.events.map((e) => {
                     const Icon = CUSTOMER_EVENT_ICON[e.kind]
                     const isNote = e.kind === 'note'
@@ -134,7 +134,7 @@ export function TimelineCard({
                             {e.orderId && (
                               <>
                                 <span>·</span>
-                                <OrderLink orderId={e.orderId} className="text-[11px]" />
+                                <OrderLink orderId={e.orderId} className="text-[0.6875rem]" />
                               </>
                             )}
                             {e.productId && (

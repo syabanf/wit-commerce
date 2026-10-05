@@ -79,7 +79,7 @@ export function AutomationsPage() {
         <div className="min-w-0">
           <p className="font-medium truncate">{a.name}</p>
           <p className="text-xs truncate text-muted">{a.description}</p>
-          <p className="mt-1 md:hidden text-[11px] text-muted">{AUTOMATION_TRIGGER_LABEL[a.trigger]}</p>
+          <p className="mt-1 md:hidden text-[0.6875rem] text-muted">{AUTOMATION_TRIGGER_LABEL[a.trigger]}</p>
         </div>
       ),
     },
@@ -91,7 +91,7 @@ export function AutomationsPage() {
       cell: (a) => (
         <div className="min-w-0">
           <p className="truncate">{AUTOMATION_TRIGGER_LABEL[a.trigger]}</p>
-          <p className="truncate text-[11px] text-muted">{a.triggerDetail}</p>
+          <p className="truncate text-[0.6875rem] text-muted">{a.triggerDetail}</p>
         </div>
       ),
     },

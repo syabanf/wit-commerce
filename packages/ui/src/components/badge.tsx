@@ -45,7 +45,7 @@ export function CountBadge({ count, tone = 'accent', className }: CountBadgeProp
   return (
     <span
       className={cn(
-        'px-1 font-bold inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] leading-none tabular-nums ring-2',
+        'px-1 font-bold inline-flex h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full text-[0.625rem] leading-none tabular-nums ring-2',
         tone === 'accent' ? 'text-white bg-accent-strong ring-card' : 'bg-white text-ink ring-ink',
         className,
       )}

@@ -790,7 +790,7 @@ function TemplateOption({
       </span>
       <span className="mt-3 gap-1 flex flex-wrap">
         {template.sections.map((sec, i) => (
-          <span key={i} className="px-2 py-0.5 rounded-full bg-card text-[11px] text-body">
+          <span key={i} className="px-2 py-0.5 rounded-full bg-card text-[0.6875rem] text-body">
             {SECTION_KIND_LABEL[sec.kind]}
           </span>
         ))}

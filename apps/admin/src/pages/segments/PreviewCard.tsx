@@ -57,7 +57,7 @@ export function PreviewCard({ members, total }: { members: Customer[]; total: nu
         </div>
         {sample.length ? (
           <div>
-            <p className="mb-2 font-semibold tracking-wider text-[11px] text-muted uppercase">
+            <p className="mb-2 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
               {members.length > SAMPLE ? `First ${SAMPLE} of ${fmtNumber(members.length)}` : 'Members'}
             </p>
             <ul className="space-y-1.5">

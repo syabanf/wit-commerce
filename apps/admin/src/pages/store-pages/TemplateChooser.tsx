@@ -68,7 +68,7 @@ export function TemplateChooser({ page, seller }: { page: Page; seller: Seller |
                     {current && <Badge variant="ink">Current</Badge>}
                   </span>
                   <span className="mt-0.5 text-xs line-clamp-2 text-muted">{t.bestFor}</span>
-                  <span className="mt-1 text-[11px] text-muted">
+                  <span className="mt-1 text-[0.6875rem] text-muted">
                     {LOOK_HERO_LABEL[lookFor(t.id).hero]} · {LOOK_PRODUCTS_LABEL[lookFor(t.id).products]} ·{' '}
                     {t.sections.length} sections
                   </span>

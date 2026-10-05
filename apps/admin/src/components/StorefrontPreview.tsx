@@ -93,7 +93,7 @@ export function StorefrontPreview({
             <span className="size-2.5 rounded-full bg-border" />
             <span className="size-2.5 rounded-full bg-border" />
           </span>
-          <span className="min-w-0 gap-1.5 px-3 py-1 flex flex-1 items-center rounded-full bg-surface text-[11px] text-muted">
+          <span className="min-w-0 gap-1.5 px-3 py-1 flex flex-1 items-center rounded-full bg-surface text-[0.6875rem] text-muted">
             <Lock className="size-3 shrink-0" />
             <span className="truncate">{storeName}</span>
           </span>
@@ -278,7 +278,7 @@ function Hero({ section, ctx }: { section: PageSection; ctx: Ctx }) {
       <div className="gap-6 @2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] grid grid-cols-1 items-center">
         <div className="min-w-0">
           <p
-            className="mb-3 gap-2 font-bold tracking-widest flex items-center text-[11px] uppercase"
+            className="mb-3 gap-2 font-bold tracking-widest flex items-center text-[0.6875rem] uppercase"
             style={{ color: 'var(--sf-primary)' }}
           >
             <span className="h-1 w-6" style={{ background: 'var(--sf-accent)' }} />
@@ -454,7 +454,7 @@ function Promotion({ section }: { section: PageSection }) {
         style={{ background: 'var(--sf-primary)', color: 'var(--sf-bg)', borderRadius: 'var(--sf-radius)' }}
       >
         <div className="min-w-0">
-          <p className="font-bold tracking-widest text-[11px] uppercase opacity-80">Limited offer</p>
+          <p className="font-bold tracking-widest text-[0.6875rem] uppercase opacity-80">Limited offer</p>
           <Copy
             as="p"
             text={section.body}
@@ -496,7 +496,7 @@ function Countdown({ section }: { section: PageSection }) {
             <p className="text-2xl font-bold @3xl:text-3xl tabular-nums" style={heading}>
               {value}
             </p>
-            <p className="tracking-wider text-[10px] uppercase opacity-70">{label}</p>
+            <p className="tracking-wider text-[0.625rem] uppercase opacity-70">{label}</p>
           </div>
         ))}
       </div>
@@ -592,7 +592,7 @@ function BrandStory({ section }: { section: PageSection }) {
         <ImageBlock className="aspect-[4/3]" />
         <div className="min-w-0">
           <p
-            className="mb-2 font-bold tracking-widest text-[11px] uppercase"
+            className="mb-2 font-bold tracking-widest text-[0.6875rem] uppercase"
             style={{ color: 'var(--sf-primary)' }}
           >
             Our story

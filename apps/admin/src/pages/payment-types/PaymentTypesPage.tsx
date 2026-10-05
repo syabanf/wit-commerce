@@ -137,7 +137,7 @@ export function PaymentTypesPage() {
             {PAYMENT_METHOD_LABEL[t.method]}
             <span className="md:hidden"> · {t.provider}</span>
           </p>
-          <p className="mt-1 leading-4 lg:hidden text-[11px] text-muted tabular-nums">
+          <p className="mt-1 leading-4 lg:hidden text-[0.6875rem] text-muted tabular-nums">
             {feeLabel(t)} · {limitsLabel(t)}
           </p>
         </div>

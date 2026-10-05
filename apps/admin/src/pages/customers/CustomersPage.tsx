@@ -126,7 +126,7 @@ export function CustomersPage() {
           <Avatar name={c.name} color={c.color} size="sm" />
           <div className="min-w-0">
             <p className="font-medium truncate">{c.name}</p>
-            <p className="truncate text-[11px] text-muted">
+            <p className="truncate text-[0.6875rem] text-muted">
               <span className="font-mono">{c.code}</span>
               {c.phone && <span> · {c.phone}</span>}
             </p>

@@ -26,7 +26,7 @@ export function Rail({ expanded, header, action, workspace, footer, children, cl
       data-expanded={expanded}
       className={cn(
         'py-4 flex h-full flex-col rounded-hero bg-ink text-on-ink shadow-float transition-[width] duration-200',
-        expanded ? 'w-60 px-3' : 'w-[76px] items-center',
+        expanded ? 'w-60 px-3' : 'w-[4.75rem] items-center',
         className,
       )}
     >
@@ -92,7 +92,7 @@ export function RailItem({
     !expanded
       ? 'size-11 justify-center'
       : sub
-        ? 'h-9 w-full gap-3 pl-11 pr-3 text-[13px] font-medium'
+        ? 'h-9 w-full gap-3 pl-11 pr-3 text-[0.8125rem] font-medium'
         : 'h-11 w-full gap-3 px-3 text-sm font-medium',
     className,
   )
@@ -202,12 +202,12 @@ export function RailWorkspace({ icon, kicker, name, expanded, className, ...prop
       )}
       {...props}
     >
-      <span className="size-9 rounded-xl flex shrink-0 items-center justify-center bg-card text-ink [&_svg]:size-[18px]">
+      <span className="size-9 rounded-xl flex shrink-0 items-center justify-center bg-card text-ink [&_svg]:size-[1.125rem]">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="font-semibold block truncate text-[10.5px] text-on-ink-muted">{kicker}</span>
-        <span className="font-bold text-white block truncate text-[12.5px]">{name}</span>
+        <span className="font-semibold block truncate text-[0.6562rem] text-on-ink-muted">{kicker}</span>
+        <span className="font-bold text-white block truncate text-[0.7812rem]">{name}</span>
       </span>
       <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-on-ink-muted" />
     </button>

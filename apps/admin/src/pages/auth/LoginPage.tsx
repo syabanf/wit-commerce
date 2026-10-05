@@ -72,12 +72,12 @@ export function LoginPage() {
               <LogoMark className="size-7" />
             </span>
             <div>
-              <p className="font-bold leading-tight text-[15px]">Commerce OS</p>
+              <p className="font-bold leading-tight text-[0.9375rem]">Commerce OS</p>
               <p className="text-xs text-on-ink-muted">Brand · Commerce · CRM</p>
             </div>
           </div>
           <div>
-            <p className="font-semibold tracking-wider text-[11px] text-on-ink-muted uppercase">
+            <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">
               Unified commerce platform
             </p>
             <h1 className="mt-2 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
@@ -139,7 +139,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="mb-2 mt-8 font-semibold tracking-wider text-[11px] text-muted uppercase">
+          <p className="mb-2 mt-8 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
             Demo accounts
           </p>
           <div className="gap-2 sm:grid-cols-2 grid grid-cols-1">

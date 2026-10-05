@@ -300,7 +300,7 @@ export function SellerDetailPage() {
                   </li>
                 ))}
                 {leads.length > LEADS_SHOWN && (
-                  <li className="text-[11px] text-muted">+{leads.length - LEADS_SHOWN} more</li>
+                  <li className="text-[0.6875rem] text-muted">+{leads.length - LEADS_SHOWN} more</li>
                 )}
               </ul>
             )}

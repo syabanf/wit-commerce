@@ -268,7 +268,7 @@ export function CampaignDetailPage() {
           <CardContent>
             <div className="mb-5 rounded-2xl p-4 bg-surface-2">
               <Kicker>Campaign revenue attribution</Kicker>
-              <p className="mt-1 font-extrabold leading-tight tracking-tight text-[28px] tabular-nums">
+              <p className="mt-1 font-extrabold leading-tight tracking-tight text-[1.75rem] tabular-nums">
                 {fmtIdr(campaign.revenue)}
               </p>
               <p className="mt-0.5 text-xs text-muted">
@@ -436,7 +436,7 @@ function SideCard({ title, action, children }: { title: string; action?: ReactNo
   return (
     <Card>
       <CardHeader action={action}>
-        <Kicker className="font-bold text-[13px] tracking-[0.4px] text-foreground">{title}</Kicker>
+        <Kicker className="font-bold text-[0.8125rem] tracking-[0.4px] text-foreground">{title}</Kicker>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>

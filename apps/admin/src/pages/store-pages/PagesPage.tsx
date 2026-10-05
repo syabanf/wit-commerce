@@ -87,7 +87,7 @@ export function PagesPage() {
       cell: (p) => (
         <div className="min-w-0">
           <p className="font-medium truncate">{p.title}</p>
-          <p className="truncate font-mono text-[11px] text-muted">{p.slug}</p>
+          <p className="truncate font-mono text-[0.6875rem] text-muted">{p.slug}</p>
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap">
             <PageStatusBadge status={p.status} />
           </div>
@@ -126,7 +126,7 @@ export function PagesPage() {
         <div className="space-y-1">
           <PageStatusBadge status={p.status} />
           {p.status === 'scheduled' && p.scheduledAt && (
-            <p className="text-[11px] text-muted">Goes live {fmtAgo(p.scheduledAt, now)}</p>
+            <p className="text-[0.6875rem] text-muted">Goes live {fmtAgo(p.scheduledAt, now)}</p>
           )}
         </div>
       ),
@@ -139,7 +139,7 @@ export function PagesPage() {
       cell: (p) => (
         <div className="whitespace-nowrap">
           <p className="text-sm">{fmtAgo(p.updatedAt, now)}</p>
-          <p className="text-[11px] text-muted">by {s.userName(p.updatedBy)}</p>
+          <p className="text-[0.6875rem] text-muted">by {s.userName(p.updatedBy)}</p>
         </div>
       ),
     },

@@ -93,3 +93,9 @@ Payment types are master data (`state.paymentTypes`): checkout lists `availableP
 - Proportions: every product grid and rail uses `PRODUCT_GRID` / `PRODUCT_RAIL` from `components/sections.tsx` (2 columns on phones, 3 at md, 4 at lg, 5 at xl, 6 at 2xl), so a product card has one size everywhere. Rails scroll below lg and show a single row above it. Product photos are 4:5 in cards and in the product gallery (capped to the viewport height on desktop).
 - Type scale: `sf-hero-title`, `sf-title`, `sf-kicker`, `sf-lede` and `sf-price` in `index.css`. Promotions render through `components/promo.tsx` (`Ticket`, `PromoValue`, `CouponCode`, `CodeOfferStrip`).
 - Admin previews: `apps/admin/src/components/LiveStorefront.tsx` frames the real storefront (`?embed=1`) and posts the console state, plus any unsaved brand or page, with `postMessage` to `STOREFRONT_ORIGIN`. The storefront accepts it only from `VITE_ADMIN_ORIGINS` (default the admin dev and preview ports), overlays it in memory (`state/store.tsx`, `lib/embed.ts`), hides the demo bar and assistant, and shows a draft with `?page=<id>`; pages other than home and personal stores render at `/:store/preview/:pageId`. When the storefront does not answer within 6 seconds, the admin falls back to `StorefrontPreview`. Onboarding keeps `StorefrontPreview` because its tenant does not exist yet.
+
+## Admin density
+
+- From lg (1024px) the admin sets `html { font-size: 13px }` (`apps/admin/src/index.css`), so every rem-based size (type, spacing, cards, controls, the 15rem rail) renders at about 81 percent. Breakpoints still use the browser's 16px. Phones and tablets keep 16px.
+- Write custom sizes in rem (`text-[0.6875rem]`, not `text-[11px]`) so they follow the density. Keep px only for real device frames such as a 375px phone preview.
+- The rail opens from lg and remembers the choice; section pill tabs show only while it is collapsed.
