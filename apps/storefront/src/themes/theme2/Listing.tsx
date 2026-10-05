@@ -7,7 +7,7 @@ import { FilterControls, FilterSheetButton, SortSelect } from '../../components/
 import { useSearchSubmit } from '../../components/shell'
 import { Button, inputClass } from '../../components/ui'
 import type { ListingViewProps } from '../types'
-import { ProductGrid, StaggeredGrid } from './ProductCard'
+import { ProductGrid } from './ProductCard'
 
 function SearchForm({ query }: { query: string }) {
   const [q, setQ] = useState(query)
@@ -38,7 +38,7 @@ function SearchForm({ query }: { query: string }) {
   )
 }
 
-/** Theme 2 listing: serif title with a count, a staggered two-column grid on phones, a filter sidebar on desktop. */
+/** Theme 2 listing: serif title with a count, a two-column grid on phones, a filter sidebar on desktop. */
 export function Listing({ title, description, crumbs, chips, listing, query, empty }: ListingViewProps) {
   const hasFilters = listing.facets.length > 0
   return (
@@ -95,26 +95,18 @@ export function Listing({ title, description, crumbs, chips, listing, query, emp
           </aside>
         )}
         <div className="min-w-0">
-          <div className="mb-4 gap-2 flex items-center justify-between">
-            <FilterSheetButton listing={listing} className="lg:hidden" label="Filter" />
+          <div className="mb-4 gap-2 md:flex md:justify-between grid grid-cols-2 items-center">
+            <FilterSheetButton listing={listing} className="md:w-auto lg:hidden w-full" label="Filter" />
             <p
               className={cn('text-sm text-[color:var(--sf-muted)]', hasFilters && 'lg:block hidden')}
               aria-live="polite"
             >
               {plural(listing.results.length, 'item')} found
             </p>
-            <SortSelect listing={listing} className="ml-auto" />
+            <SortSelect listing={listing} className="md:ml-auto" />
           </div>
           {listing.results.length ? (
-            <>
-              <div className="md:hidden">
-                <StaggeredGrid products={listing.results} />
-              </div>
-              <ProductGrid
-                products={listing.results}
-                className={cn('md:grid hidden', hasFilters && 'lg:grid-cols-3')}
-              />
-            </>
+            <ProductGrid products={listing.results} className={hasFilters ? 'lg:grid-cols-3' : undefined} />
           ) : (
             empty
           )}

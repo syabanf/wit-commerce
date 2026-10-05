@@ -65,7 +65,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
             id={`${id}-cat`}
             value={cat}
             onChange={(e) => setCat(e.target.value)}
-            className="h-10 max-w-44 min-w-0 pr-2 pl-3 text-sm font-semibold truncate lg:block hidden rounded-full bg-transparent"
+            className="h-10 max-w-44 min-w-0 pr-2 pl-3 text-sm font-semibold lg:block hidden truncate rounded-full bg-transparent"
           >
             <option value="">All categories</option>
             {catalog.topCategories.map((c) => (
@@ -74,7 +74,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
               </option>
             ))}
           </select>
-          <span aria-hidden="true" className="h-6 w-px shrink-0 lg:block hidden bg-[var(--sf-line)]" />
+          <span aria-hidden="true" className="h-6 lg:block hidden w-px shrink-0 bg-[var(--sf-line)]" />
         </>
       )}
       <Search
@@ -251,7 +251,10 @@ function Footer() {
         <div id="help" className="min-w-0 scroll-mt-24">
           <h2 className="mb-2 text-sm font-bold">Help</h2>
           <ul className="space-y-2 text-sm text-[color:var(--sf-muted)]">
-            <li>Free shipping on orders from {fmtIdr(tenant.loyalty.freeShippingMin)}.</li>
+            <li>
+              Free shipping on orders from{' '}
+              <span className="whitespace-nowrap">{fmtIdr(tenant.loyalty.freeShippingMin)}</span>.
+            </li>
             <li>Couriers: JNE, SiCepat, GoSend same day in Jakarta, or pick up at our warehouse.</li>
             <li>{RETURNS_POLICY[tenant.industry]}</li>
           </ul>
@@ -291,7 +294,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </a>
       {isHome && <GreetingBar className="bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]" />}
       <ReferralBanner className="border-b border-[color:var(--sf-line)] bg-[var(--sf-soft)]" />
-      <header className="px-3 pt-3 md:px-6 lg:px-10 md:sticky md:top-0 z-40">
+      <header className="px-4 pt-3 md:px-6 lg:px-10 md:sticky md:top-0 z-40">
         <div className="backdrop-blur-md rounded-[var(--sf-card-radius)] bg-[var(--sf-bg)]/90 shadow-float">
           <div className="gap-4 px-6 py-4 lg:gap-6 md:flex hidden items-center">
             <Logo className="max-w-56 shrink-0" />

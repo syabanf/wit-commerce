@@ -90,7 +90,7 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
   })
 
   return (
-    <form onSubmit={submit} noValidate className="gap-4 pb-24 sm:grid-cols-2 lg:pb-0 grid grid-cols-1">
+    <form onSubmit={submit} noValidate className="gap-4 sm:grid-cols-2 grid grid-cols-1">
       <Field id={`${uid}-name`} label="Your name" error={errors.name}>
         <input
           {...field('name')}

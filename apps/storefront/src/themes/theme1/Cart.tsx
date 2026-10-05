@@ -78,17 +78,17 @@ export function Cart({ view }: { view: CartView }) {
                         <Trash aria-hidden="true" />
                       </IconButton>
                     </div>
-                    <div className="gap-2 mt-auto flex flex-wrap items-center justify-between">
+                    <div className="gap-2 mt-auto flex flex-wrap items-start justify-between">
                       <QtyStepper
                         value={item.line.qty}
                         onChange={(q) => view.setQty(item.line.key, q)}
                         max={left === null ? MAX_QTY : Math.max(1, left)}
                         label={`Quantity of ${item.product.name}`}
                       />
-                      <p className="text-right">
-                        <span className="font-bold block">{fmtIdr(item.total)}</span>
+                      <p className="ml-auto text-right">
+                        <span className="leading-6 md:leading-11 font-bold block">{fmtIdr(item.total)}</span>
                         {item.line.qty > 1 && (
-                          <span className="text-xs text-[color:var(--sf-muted)]">
+                          <span className="text-xs block text-[color:var(--sf-muted)]">
                             {fmtIdr(item.unit)} each
                           </span>
                         )}

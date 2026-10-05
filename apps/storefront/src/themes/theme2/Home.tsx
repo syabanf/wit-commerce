@@ -63,7 +63,7 @@ function FloatChip({
   )
 }
 
-/** Desktop hero (Belanja): tinted panel with a big rounded bottom, headline, two CTAs and floating chips over the photo. */
+/** Desktop hero (Belanja): an inset tinted panel under the floating navbar, headline, two CTAs and chips inside the photo. */
 function Hero({ data, product, main }: { data: HomeData; product: Product | null; main: boolean }) {
   const Title = main ? 'h1' : 'p'
   const { tenant, store, catalog } = useShop()
@@ -74,14 +74,14 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
   return (
     <section
       aria-label="Featured"
-      className="px-6 pt-32 pb-14 lg:px-10 md:block hidden rounded-b-[64px]"
+      className="mx-4 px-6 pt-32 pb-14 md:mx-6 lg:mx-10 lg:px-10 md:block hidden rounded-[var(--sf-card-radius)]"
       style={{ background: tint('--sf-primary', 10) }}
     >
       <div className="gap-10 grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-center">
         <div className="min-w-0">
-          <p className="min-h-9 gap-2 px-4 text-sm font-semibold inline-flex items-center rounded-full bg-[var(--sf-bg)]">
-            <Flame className="size-4 text-[color:var(--sf-accent)]" aria-hidden="true" />
-            Most popular product at {tenant.name}
+          <p className="min-h-9 gap-2 px-4 text-sm font-semibold inline-flex max-w-full items-center rounded-full bg-[var(--sf-bg)]">
+            <Flame className="size-4 shrink-0 text-[color:var(--sf-accent)]" aria-hidden="true" />
+            <span className="truncate">Most popular at {tenant.name}</span>
           </p>
           <Title className="sf-hero-title mt-5">
             <Underlined text={headline} />
@@ -117,10 +117,10 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
             </Link>
             <Stamp
               text={`${tenant.name} · since ${tenant.createdAt.slice(0, 4)} · `}
-              className="top-4 right-4 size-20 lg:size-24 absolute"
+              className="top-4 right-4 size-20 lg:top-6 lg:right-6 lg:size-24 absolute"
             />
             <FloatChip
-              className="top-4 left-4 lg:top-8 lg:-left-6"
+              className="top-4 left-4 lg:top-6 lg:left-6"
               icon={warranty ? <ShieldCheck aria-hidden="true" /> : <Star aria-hidden="true" />}
               title={warranty ? 'Includes warranty' : `Rated ${product.rating.toFixed(1)} of 5`}
               text={
@@ -130,13 +130,13 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
               }
             />
             <FloatChip
-              className="right-4 bottom-24 lg:flex hidden"
+              className="right-4 bottom-24 lg:right-6 lg:flex hidden"
               icon={<Truck aria-hidden="true" />}
               title="Free shipping"
               text={`over ${fmtIdrShort(tenant.loyalty.freeShippingMin)}`}
             />
             <FloatChip
-              className="bottom-4 left-4 lg:bottom-6 lg:left-8"
+              className="bottom-4 left-4 lg:bottom-6 lg:left-6"
               icon={<Wallet aria-hidden="true" />}
               title="Pay your way"
               text={`${catalog.paymentTypes.filter((t) => t.enabled).length} payment options`}
@@ -191,13 +191,6 @@ function PhoneShop({ data, main }: { data: HomeData; main: boolean }) {
     </section>
   )
 }
-
-const DiscoverGrid = ({ products }: { products: Product[] }) => (
-  <ProductGrid
-    products={products}
-    className="md:grid-cols-4 xl:grid-cols-4 2xl:[&>li:nth-child(n+7)]:hidden"
-  />
-)
 
 const MD_COLS = ['', 'md:grid-cols-1', 'md:grid-cols-2', 'md:grid-cols-3']
 
@@ -266,7 +259,7 @@ export function Home({ data }: { data: HomeData }) {
         <Collections collections={data.collections} />
         {/* Phones already lead with the best-seller grid in PhoneShop. */}
         <div className="md:block hidden">
-          <ProductTabs Heading={ShowHeading} Grid={DiscoverGrid} />
+          <ProductTabs Heading={ShowHeading} />
         </div>
         {beauty && <ConsultationBand />}
         {beauty && <RewardsLadder Heading={ShowHeading} />}

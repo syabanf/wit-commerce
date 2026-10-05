@@ -132,7 +132,7 @@ export function BrandChooserPage() {
   const using = (theme: StorefrontTheme) => tenants.filter((t) => t.brand.theme === theme)
 
   return (
-    <main className="px-4 py-10 md:py-16 min-h-dvh bg-surface">
+    <main className="px-4 py-10 md:px-6 md:py-16 lg:px-10 min-h-dvh bg-surface">
       <div className="max-w-6xl space-y-12 mx-auto">
         <header>
           <p className="font-semibold tracking-wider text-[11px] text-muted uppercase">
@@ -166,7 +166,7 @@ export function BrandChooserPage() {
                   <div className="pt-5 mt-auto">
                     <Link
                       to={live.length ? `/${lead.subdomain}` : `/${lead.subdomain}?theme=${theme}`}
-                      className="h-11 gap-2 px-5 text-sm font-semibold text-white sm:w-auto flex w-full items-center justify-center rounded-full bg-accent-strong shadow-glow sm:inline-flex hover:bg-accent-dark"
+                      className="h-11 gap-2 px-5 text-sm font-semibold text-white sm:w-auto sm:inline-flex flex w-full items-center justify-center rounded-full bg-accent-strong shadow-glow hover:bg-accent-dark"
                     >
                       Open the {lead.name} demo
                       <ArrowRight className="size-4" aria-hidden="true" />

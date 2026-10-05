@@ -26,7 +26,7 @@ export function GreetingBar({ className }: { className?: string }) {
     content = welcome ? (
       <>
         Get {offerText(welcome)} your first order with{' '}
-        <strong className="px-2 py-0.5 font-black tracking-[0.12em] rounded-full border border-dashed border-current">
+        <strong className="px-2 py-0.5 font-black rounded-full border border-dashed border-current tracking-[0.12em]">
           {welcome.code}
         </strong>
       </>
@@ -67,7 +67,7 @@ export function ReferralBanner({ className }: { className?: string }) {
   const { referral, setReferral, store } = useShop()
   if (!referral) return null
   return (
-    <div className={cn('gap-2 px-4 py-1 text-sm flex items-center justify-center', className)}>
+    <div className={cn('gap-2 px-14 py-1 text-sm relative flex items-center justify-center', className)}>
       <span
         aria-hidden="true"
         className="size-7 font-bold flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[10px] text-[color:var(--sf-on-primary)]"
@@ -83,7 +83,7 @@ export function ReferralBanner({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setReferral(null)}
-        className="size-11 inline-flex shrink-0 items-center justify-center rounded-full hover:bg-[var(--sf-soft)]"
+        className="right-2 size-11 absolute top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-full hover:bg-[var(--sf-soft)]"
         aria-label={`Stop shopping with ${referral.name}`}
       >
         <X className="size-4" aria-hidden="true" />

@@ -1,5 +1,5 @@
 import { cn } from '@rc/ui'
-import { SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { ListingState } from '../features/listing'
 import { SORT_LABEL, type SortKey, isSortKey } from '../lib/catalog'
@@ -78,18 +78,27 @@ export function SortSelect({ listing, className }: { listing: ListingState; clas
       <label htmlFor={id} className="text-sm md:not-sr-only sr-only shrink-0 text-[color:var(--sf-muted)]">
         Sort by
       </label>
-      <select
-        id={id}
-        value={listing.sort}
-        onChange={(e) => isSortKey(e.target.value) && listing.setSort(e.target.value)}
-        className={cn(inputClass, 'h-11 pr-8 font-semibold w-auto rounded-full')}
-      >
-        {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
-          <option key={k} value={k}>
-            {SORT_LABEL[k]}
-          </option>
-        ))}
-      </select>
+      <div className="min-w-0 md:flex-none relative flex-1">
+        <select
+          id={id}
+          value={listing.sort}
+          onChange={(e) => isSortKey(e.target.value) && listing.setSort(e.target.value)}
+          className={cn(
+            inputClass,
+            'h-11 pr-10 font-semibold md:w-auto appearance-none truncate rounded-[var(--sf-pill)]',
+          )}
+        >
+          {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
+            <option key={k} value={k}>
+              {SORT_LABEL[k]}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          aria-hidden="true"
+          className="right-4 size-4 pointer-events-none absolute top-1/2 -translate-y-1/2"
+        />
+      </div>
     </div>
   )
 }
@@ -108,7 +117,12 @@ export function FilterSheetButton({
   if (!listing.facets.length) return null
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)} className={className} aria-haspopup="dialog">
+      <Button
+        variant="outline"
+        onClick={() => setOpen(true)}
+        className={cn('h-11 min-h-11', className)}
+        aria-haspopup="dialog"
+      >
         <SlidersHorizontal aria-hidden="true" />
         {label}
         {listing.activeCount > 0 && ` (${listing.activeCount})`}

@@ -70,7 +70,7 @@ export function HeroRow({ section }: { section: PageSection }) {
         />
         <Stamp
           text={`${tenant.name} · since ${tenant.createdAt.slice(0, 4)} · `}
-          className="top-6 right-6 size-24 md:top-8 md:right-[34%] lg:size-28 absolute z-10"
+          className="top-6 right-6 size-24 md:top-8 md:right-auto md:left-[calc(54%_+_1.5rem)] lg:size-28 absolute z-10"
         />
         <div className="max-w-lg pt-5 pb-2 md:p-0 md:max-w-[50%] relative z-10 flex flex-col justify-center">
           <p className="sf-kicker gap-1.5 flex items-center">
@@ -94,7 +94,7 @@ export function HeroRow({ section }: { section: PageSection }) {
             to={paths.product(store, product.id)}
             className="right-6 bottom-6 w-44 p-2 md:block xl:w-52 absolute z-10 hidden rounded-[var(--sf-tile-radius)] bg-[var(--sf-bg)] shadow-float"
           >
-            <Sticker tilt="right" className="-top-3 -left-4 absolute z-10">
+            <Sticker tilt="right" className="-top-3 left-3 absolute z-10">
               Staff pick
             </Sticker>
             <ProductImage product={product} className="aspect-square rounded-[var(--sf-tile-radius)]" />
@@ -220,7 +220,10 @@ export function CategoryTiles({
       </div>
       <ul ref={ref} className={cn(RAIL, 'lg:flex lg:overflow-x-auto md:gap-5')}>
         {list.map((c) => (
-          <li key={c.id} className="w-32 md:w-44 xl:w-52 shrink-0 snap-start">
+          <li
+            key={c.id}
+            className="w-32 md:w-44 lg:w-[calc((100%_-_4_*_1.25rem)_/_5)] xl:w-[calc((100%_-_5_*_1.25rem)_/_6)] shrink-0 snap-start"
+          >
             <Link to={paths.category(store, c.id)} className="group block">
               <Photo
                 id={categoryPhoto(c.id)}
@@ -310,6 +313,7 @@ export function DealsStrip() {
 }
 
 const PANEL_TONES = ['--sf-primary', '--sf-accent', '--sf-secondary'] as const
+const XL_COLS = ['', 'xl:grid-cols-1', 'xl:grid-cols-2', 'xl:grid-cols-3', 'xl:grid-cols-4']
 
 /** One showcase row: a tinted panel with "Explore all" and up to eight compact product cells. */
 export function ShowcaseRow({
@@ -346,7 +350,12 @@ export function ShowcaseRow({
           <ArrowUpRight aria-hidden="true" />
         </ButtonLink>
       </div>
-      <ul className="gap-2 sm:grid sm:grid-cols-2 sm:overflow-visible xl:grid-cols-4 no-scrollbar flex snap-x overflow-x-auto">
+      <ul
+        className={cn(
+          'gap-2 sm:grid sm:grid-cols-2 sm:overflow-visible lg:self-center no-scrollbar flex snap-x overflow-x-auto',
+          XL_COLS[Math.min(products.length, 4)],
+        )}
+      >
         {products.slice(0, 4).map((p) => (
           <li key={p.id} className="min-w-0 sm:w-auto w-[80%] shrink-0 snap-start">
             <CompactCell product={p} />

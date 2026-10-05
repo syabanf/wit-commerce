@@ -79,7 +79,7 @@ export const quotesFor = (industry: Industry) => QUOTES[industry] ?? QUOTES.spor
  * turns into a grid from lg (no bleed there). Pair it with `lgCols(count)` so the desktop row has no holes.
  */
 export const RAIL =
-  '-mx-4 px-4 gap-3 no-scrollbar scroll-px-4 md:-mx-6 md:px-6 md:scroll-px-6 lg:mx-0 lg:px-0 lg:grid flex snap-x overflow-x-auto lg:overflow-visible'
+  '-mx-4 px-4 gap-3 no-scrollbar scroll-px-4 md:-mx-6 md:gap-5 md:px-6 md:scroll-px-6 lg:mx-0 lg:px-0 lg:grid flex snap-x overflow-x-auto lg:overflow-visible'
 
 const LG_COLS = ['', 'lg:grid-cols-1', 'lg:grid-cols-2', 'lg:grid-cols-3', 'lg:grid-cols-4', 'lg:grid-cols-5']
 export const lgCols = (count: number, max = 5) => LG_COLS[Math.min(count, max)]
@@ -88,14 +88,27 @@ export const lgCols = (count: number, max = 5) => LG_COLS[Math.min(count, max)]
 export const PRODUCT_GRID =
   'grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 md:gap-x-5 md:gap-y-10 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
 
-/** Product rails use the listing columns from lg and show a single row; shorter rows keep card width. */
-export const PRODUCT_RAIL = `${RAIL} lg:grid-cols-4 lg:gap-x-5 xl:grid-cols-5 2xl:grid-cols-6`
+/**
+ * Product rails use the listing columns from lg and show a single row: 4 at lg, 5 at xl and 6 at 2xl
+ * when there are that many products, so a short row never ends in an empty slot. Pass the count.
+ */
+export function productRail(count = 6) {
+  return [
+    RAIL,
+    'lg:grid-cols-4',
+    count >= 5 && 'xl:grid-cols-5',
+    count >= 6 ? '2xl:grid-cols-6' : count === 5 && '2xl:grid-cols-5',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+export const PRODUCT_RAIL = productRail()
 
-export function productRailItem(i: number) {
+export function productRailItem(i: number, count = 6) {
   const base = 'w-[44%] md:w-[30%] lg:w-auto shrink-0 snap-start'
   if (i < 4) return base
-  if (i === 4) return `${base} lg:hidden xl:flex`
-  if (i === 5) return `${base} lg:hidden 2xl:flex`
+  if (i === 4) return `${base} lg:hidden${count >= 5 ? ' xl:flex' : ''}`
+  if (i === 5) return `${base} lg:hidden${count >= 6 ? ' 2xl:flex' : ''}`
   return `${base} lg:hidden`
 }
 
@@ -108,7 +121,7 @@ export interface HeadingProps {
 /** Theme 1 heading: one bold line with a "View all" link. */
 export function PlainHeading({ title, id, action }: HeadingProps) {
   return (
-    <div className="mb-5 gap-3 flex flex-wrap items-end justify-between">
+    <div className="mb-5 gap-3 flex flex-wrap items-center justify-between">
       <h2 id={id} className="sf-title">
         {title}
       </h2>
@@ -118,7 +131,10 @@ export function PlainHeading({ title, id, action }: HeadingProps) {
           className="group min-h-11 gap-1 text-sm font-semibold inline-flex items-center hover:text-[color:var(--sf-primary)]"
         >
           {action.label}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+          <ArrowRight
+            className="size-4 group-hover:translate-x-0.5 transition-transform"
+            aria-hidden="true"
+          />
         </Link>
       )}
     </div>
@@ -229,9 +245,7 @@ export function BrandStory({ section }: { section: PageSection }) {
         <Sticker className="bottom-4 left-4 absolute">Since {tenant.createdAt.slice(0, 4)}</Sticker>
       </div>
       <div className="min-w-0">
-        <p className="sf-kicker">
-          Our story
-        </p>
+        <p className="sf-kicker">Our story</p>
         <h2 id={`${section.id}-h`} className="sf-display mt-2 text-2xl font-bold md:text-3xl text-balance">
           {section.headline || `About ${tenant.name}`}
         </h2>
@@ -344,7 +358,7 @@ export function PromoBlock({ section, seller }: { section: PageSection; seller?:
   const body = (
     <div className="gap-5 lg:flex-row lg:items-center lg:justify-between flex flex-col">
       <div className="min-w-0">
-        <p className="text-[11px] font-bold tracking-[0.16em] uppercase opacity-75">
+        <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">
           {seller ? `${firstName(seller.name)}'s code` : 'Limited offer'}
         </p>
         <p className="sf-title mt-1">{text || 'A code for this store'}</p>
@@ -404,11 +418,16 @@ export function SellerHero({
         {initials(seller.name)}
       </span>
       <div className="min-w-0">
-        <p className="sf-kicker">
-          {seller.name} · {SELLER_KIND_LABEL[seller.kind]}, {seller.city}
+        <p className="sf-kicker">{seller.name}</p>
+        <p className="mt-1 text-xs text-[color:var(--sf-muted)]">
+          {SELLER_KIND_LABEL[seller.kind]}, {seller.city}
         </p>
-        <h1 id="seller-h" className="sf-display mt-2 text-3xl leading-tight font-bold md:text-5xl">
-          {headline}
+        <h1
+          id="seller-h"
+          className="sf-display mt-3 text-3xl leading-tight font-bold md:text-5xl text-balance"
+        >
+          {/* Keep hyphenated words such as "race-day" on one line. */}
+          {headline.replace(/-/g, '\u2011')}
         </h1>
         <p className="mt-3 max-w-xl text-[color:var(--sf-muted)]">{section.body || seller.bio}</p>
         <div className="mt-6 gap-2 md:justify-start flex flex-wrap justify-center">

@@ -14,7 +14,10 @@ export function promoHeadline(p: Promotion): { value: string; unit: string } {
     case 'bxgy':
       return {
         value: `Buy ${p.buyQty ?? 1}`,
-        unit: (p.getDiscountPct ?? 100) >= 100 ? `get ${p.getQty ?? 1} free` : `get ${p.getQty ?? 1} at ${p.getDiscountPct}% off`,
+        unit:
+          (p.getDiscountPct ?? 100) >= 100
+            ? `get ${p.getQty ?? 1} free`
+            : `get ${p.getQty ?? 1} at ${p.getDiscountPct}% off`,
       }
     case 'free_shipping':
       return { value: 'Free', unit: 'shipping' }
@@ -38,8 +41,8 @@ export function PromoValue({ promotion, className }: { promotion: Promotion; cla
   const { value, unit } = promoHeadline(promotion)
   return (
     <p className={cn('sf-display leading-none', className)}>
-      <span className="text-[1em] font-black tracking-tight block tabular-nums">{value}</span>
-      <span className="mt-1 text-[0.32em] font-bold tracking-[0.18em] block uppercase">{unit}</span>
+      <span className="font-black tracking-tight block text-[1em] tabular-nums">{value}</span>
+      <span className="mt-1 font-bold block text-[0.32em] tracking-[0.18em] uppercase">{unit}</span>
     </p>
   )
 }
@@ -71,7 +74,11 @@ export function CouponCode({ code, className }: { code: string; className?: stri
         aria-label={`Copy code ${code}`}
         className="size-9 inline-flex items-center justify-center rounded-full hover:bg-[var(--sf-text)]/10"
       >
-        {copied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
+        {copied ? (
+          <Check className="size-4" aria-hidden="true" />
+        ) : (
+          <Copy className="size-4" aria-hidden="true" />
+        )}
       </button>
     </span>
   )
@@ -87,7 +94,7 @@ export function Ticket({
   children,
   className,
   stubClassName,
-  notchClassName = 'bg-[var(--sf-canvas)]',
+  notchClassName = 'sf-hole',
 }: {
   stub: ReactNode
   children: ReactNode
@@ -110,7 +117,10 @@ export function Ticket({
         )}
       >
         {stub}
-        <span aria-hidden="true" className={cn(notch, '-bottom-3 -left-3 md:-top-3 md:-right-3 md:bottom-auto md:left-auto')} />
+        <span
+          aria-hidden="true"
+          className={cn(notch, '-bottom-3 -left-3 md:-top-3 md:-right-3 md:bottom-auto md:left-auto')}
+        />
         <span aria-hidden="true" className={cn(notch, '-right-3 -bottom-3')} />
       </div>
       <div className="min-w-0 p-6 md:p-8">{children}</div>

@@ -370,7 +370,7 @@ export function CheckoutPage() {
         <Stepper step={step} onBack={setStep} />
       </div>
       <div className="gap-6 lg:grid-cols-[minmax(0,1fr)_380px] grid grid-cols-1">
-        <form onSubmit={next} noValidate className="sf-card min-w-0 space-y-6 p-5 md:p-8">
+        <form onSubmit={next} noValidate className="sf-card min-w-0 space-y-6 p-5 md:p-6">
           <h2 className="sf-display text-2xl font-bold">
             {step + 1}. {STEPS[step]}
           </h2>
@@ -660,11 +660,11 @@ export function CheckoutPage() {
 
           <div className="gap-2 pt-5 md:flex-row md:flex-wrap md:items-center md:justify-between flex flex-col-reverse items-stretch border-t border-[color:var(--sf-line)]">
             {step > 0 ? (
-              <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
+              <Button variant="ghost" className="px-0" onClick={() => setStep((s) => s - 1)}>
                 Back to {STEPS[step - 1]!.toLowerCase()}
               </Button>
             ) : (
-              <ButtonLink to={paths.cart(store)} variant="ghost">
+              <ButtonLink to={paths.cart(store)} variant="ghost" className="px-0">
                 Back to cart
               </ButtonLink>
             )}

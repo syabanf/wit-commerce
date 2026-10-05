@@ -21,6 +21,12 @@ const sizeCols = (n: number) =>
         ? 'grid-cols-3'
         : 'grid-cols-4'
 
+/** Colour chips share the size grid's edges; long names such as "02 Warm Beige" get two columns. */
+const colourCols = (values: { value: string }[]) =>
+  values.length === 2 || values.length === 4 || values.some((v) => v.value.length > 8)
+    ? 'grid-cols-2'
+    : 'grid-cols-3'
+
 /**
  * One selector per product option: sizes as boxes, colours as swatch chips with the colour name.
  * Values that are sold out with the other choices are disabled. `look="box"` is the Theme 2 square box.
@@ -37,7 +43,9 @@ export function OptionPickers({ detail, look = 'pill' }: { detail: ProductDetail
           <div
             className={cn(
               'mt-2 gap-2',
-              look === 'pill' && o.kind !== 'colour' ? ['grid', sizeCols(o.values.length)] : 'flex flex-wrap',
+              look === 'box'
+                ? 'flex flex-wrap'
+                : ['grid', o.kind === 'colour' ? colourCols(o.values) : sizeCols(o.values.length)],
             )}
           >
             {o.values.map((v) => {
@@ -53,8 +61,8 @@ export function OptionPickers({ detail, look = 'pill' }: { detail: ProductDetail
                     disabled={!v.available}
                     onClick={() => detail.selectValue(o.name, v.value)}
                     className={cn(
-                      'min-h-11 gap-2 px-3 text-sm font-semibold inline-flex items-center border transition disabled:cursor-not-allowed disabled:opacity-40',
-                      look === 'pill' ? 'rounded-full' : 'rounded-[var(--sf-pill)]',
+                      'min-h-11 min-w-0 gap-2 px-3 text-sm font-semibold inline-flex items-center border transition disabled:cursor-not-allowed disabled:opacity-40',
+                      look === 'pill' ? 'justify-center rounded-full' : 'rounded-[var(--sf-pill)]',
                       v.selected
                         ? 'border-[color:var(--sf-text)] ring-1 ring-[color:var(--sf-text)]'
                         : 'border-[color:var(--sf-line)]',
@@ -65,7 +73,7 @@ export function OptionPickers({ detail, look = 'pill' }: { detail: ProductDetail
                       className="size-5 shrink-0 rounded-full border border-[color:var(--sf-line)]"
                       style={{ background: swatch ?? 'var(--sf-soft)' }}
                     />
-                    <span className={cn(!v.available && 'line-through')}>{v.value}</span>
+                    <span className={cn('truncate', !v.available && 'line-through')}>{v.value}</span>
                   </button>
                 )
               return (

@@ -40,12 +40,12 @@ export function Cart({ view }: { view: CartView }) {
     )
   return (
     <div className="space-y-12 md:pt-12">
-      <div className="gap-8 lg:grid-cols-[minmax(0,1fr)_380px] grid grid-cols-1">
-        <div className="min-w-0">
-          <h1 className="sf-display pb-4 text-4xl md:text-5xl md:font-extrabold border-b border-[color:var(--sf-line)]">
-            Cart <span className="text-lg text-[color:var(--sf-muted)]">({view.totals.count})</span>
-          </h1>
-          <ul className="divide-y divide-[color:var(--sf-line)] border-b border-[color:var(--sf-line)]">
+      <div>
+        <h1 className="sf-display pb-4 text-4xl md:text-5xl md:font-extrabold">
+          Cart <span className="text-lg text-[color:var(--sf-muted)]">({view.totals.count})</span>
+        </h1>
+        <div className="gap-8 lg:grid-cols-[minmax(0,1fr)_380px] grid grid-cols-1">
+          <ul className="min-w-0 divide-y divide-[color:var(--sf-line)] self-start border-y border-[color:var(--sf-line)]">
             {view.items.map((item) => {
               const left = variantAvailable(catalog, item.product, item.variant.id)
               const max = left === null ? MAX_QTY : Math.max(1, left)
@@ -78,7 +78,7 @@ export function Cart({ view }: { view: CartView }) {
                         {m.priceDelta ? ` (+${fmtIdr(m.priceDelta)})` : ''}
                       </p>
                     ))}
-                    <div className="gap-4 pt-2 mt-auto flex flex-wrap items-center">
+                    <div className="gap-x-3 pt-2 mt-auto flex flex-wrap items-center">
                       <QtyStepper
                         value={item.line.qty}
                         onChange={(q) => view.setQty(item.line.key, q)}
@@ -91,7 +91,7 @@ export function Cart({ view }: { view: CartView }) {
                       >
                         Edit<span className="sr-only"> {item.product.name}</span>
                       </Link>
-                      <Button variant="ghost" onClick={() => view.remove(item)}>
+                      <Button variant="ghost" className="px-0 font-normal" onClick={() => view.remove(item)}>
                         Remove<span className="sr-only"> {item.product.name}</span>
                       </Button>
                     </div>
@@ -100,25 +100,25 @@ export function Cart({ view }: { view: CartView }) {
               )
             })}
           </ul>
+          <aside
+            aria-label="Order summary"
+            className="space-y-6 lg:sticky lg:top-[var(--sf-sticky-top)] lg:rounded-[var(--sf-card-radius)] lg:border lg:border-[color:var(--sf-line)] lg:bg-[var(--sf-bg)] lg:p-6 self-start"
+          >
+            <FreeShippingProgress />
+            <VoucherForm view={view} />
+            <PaymentHints hints={view.paymentHints} />
+            <SummaryRows
+              subtotal={view.totals.subtotal}
+              discounts={view.totals.discounts}
+              shipping={view.shipping}
+              shippingLabel="Shipping estimate"
+              total={view.total}
+            />
+            <ButtonLink to={paths.checkout(store)} variant="dark" size="lg" full>
+              Checkout
+            </ButtonLink>
+          </aside>
         </div>
-        <aside
-          aria-label="Order summary"
-          className="space-y-6 lg:sticky lg:top-[var(--sf-sticky-top)] lg:rounded-[var(--sf-card-radius)] lg:border lg:border-[color:var(--sf-line)] lg:bg-[var(--sf-bg)] lg:p-6 self-start"
-        >
-          <FreeShippingProgress />
-          <VoucherForm view={view} />
-          <PaymentHints hints={view.paymentHints} />
-          <SummaryRows
-            subtotal={view.totals.subtotal}
-            discounts={view.totals.discounts}
-            shipping={view.shipping}
-            shippingLabel="Shipping estimate"
-            total={view.total}
-          />
-          <ButtonLink to={paths.checkout(store)} variant="dark" size="lg" full>
-            Checkout
-          </ButtonLink>
-        </aside>
       </div>
       {crossSell}
     </div>

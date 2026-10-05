@@ -23,11 +23,12 @@ export const PRODUCT_LAYOUT: Record<
   { limit: number; rail: boolean; className?: string }
 > = {
   rail: { limit: 6, rail: true },
+  // One large product beside two stacked ones: a full 2x2 bento with no empty cell.
   feature: {
-    limit: 5,
+    limit: 3,
     rail: false,
     className:
-      'md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 md:[&>li:first-child]:col-span-2 md:[&>li:first-child]:row-span-2',
+      'md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 md:items-start md:[&>li:first-child]:col-span-2 md:[&>li:first-child]:row-span-2',
   },
   grid: { limit: 8, rail: false },
 }

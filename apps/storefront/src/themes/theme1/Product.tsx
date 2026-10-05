@@ -61,13 +61,13 @@ export function Product({ detail }: { detail: ProductDetail }) {
           ...detail.path.map((c) => ({ label: c.name, to: paths.category(store, c.id) })),
         ]}
       />
-      <div className="gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8 grid grid-cols-1 items-start">
-        <div className="md:sticky md:top-[var(--sf-sticky-top)] relative">
+      <div className="gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8 grid grid-cols-1 items-start">
+        <div className="lg:sticky lg:top-[var(--sf-sticky-top)] relative">
           <ProductImage
             product={product}
             size="lg"
             strength={24}
-            className="md:max-h-none aspect-square max-h-[480px] w-full rounded-[var(--sf-card-radius)] lg:aspect-[4/5] lg:max-h-[calc(100dvh_-_var(--sf-sticky-top)_-_2rem)]"
+            className="md:aspect-[4/3] md:max-h-[520px] lg:aspect-[4/5] lg:max-h-[calc(100dvh_-_var(--sf-sticky-top)_-_2rem)] aspect-square max-h-[480px] w-full rounded-[var(--sf-card-radius)]"
           />
           {detail.discountPct && (
             <Pill tone="accent" className="top-4 left-4 text-sm absolute">

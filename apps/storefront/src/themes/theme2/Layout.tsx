@@ -24,11 +24,11 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
       active ? 'text-[color:var(--sf-accent)]' : 'text-[color:var(--sf-on-primary)]',
     )
   return (
-    <div className="h-16 gap-4 pr-2 pl-3 flex items-center rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)] shadow-float">
-      <Link to={paths.home(store)} className="min-h-11 min-w-0 flex items-center">
+    <div className="h-16 gap-4 px-2.5 grid grid-cols-[1fr_auto_1fr] items-center rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)] shadow-float">
+      <Link to={paths.home(store)} className="min-h-11 min-w-0 flex items-center justify-self-start">
         <BrandLogo tenant={tenant} inverse />
       </Link>
-      <nav aria-label="Main" className="mx-auto flex items-center">
+      <nav aria-label="Main" className="flex items-center">
         <Link
           to={paths.search(store, '', { sort: 'best' })}
           className={link(shopActive)}
@@ -50,7 +50,7 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
           Rewards
         </Link>
       </nav>
-      <div className="gap-2 flex shrink-0 items-center">
+      <div className="gap-2 flex items-center justify-self-end">
         <Link
           to={paths.search(store)}
           aria-label="Search the store"
@@ -105,19 +105,22 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
   const { tenant, store, cart, catalog } = useShop()
   return (
     <div className="mx-3 mt-2 md:hidden backdrop-blur-md pointer-events-auto overflow-hidden rounded-[22px] bg-[var(--sf-bg)]/90 shadow-float">
-      <div className="h-14 px-2 grid grid-cols-[44px_minmax(0,1fr)_auto] items-center">
+      <div className="h-14 px-2 grid grid-cols-[1fr_auto_1fr] items-center">
         <button
           type="button"
           onClick={onMenu}
           aria-label="Open the menu"
-          className="size-11 inline-flex items-center justify-center"
+          className="size-11 inline-flex items-center justify-center justify-self-start"
         >
           <Menu className="size-5" aria-hidden="true" />
         </button>
         <Link to={paths.home(store)} className="min-h-11 min-w-0 flex items-center justify-center">
           <BrandLogo tenant={tenant} />
         </Link>
-        <Link to={paths.cart(store)} className="min-h-11 px-2 text-sm font-semibold inline-flex items-center">
+        <Link
+          to={paths.cart(store)}
+          className="min-h-11 px-2 text-sm font-semibold inline-flex items-center justify-self-end whitespace-nowrap"
+        >
           Cart ({cart.count})
         </Link>
       </div>
@@ -205,19 +208,26 @@ function Footer() {
       <p className="sf-display text-2xl font-bold">{tenant.name}</p>
       <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{tenant.brand.tagline}</p>
       <ul className="mt-6 max-w-2xl space-y-1 text-sm mx-auto text-[color:var(--sf-muted)]">
-        <li>Free shipping on orders from {fmtIdr(tenant.loyalty.freeShippingMin)}.</li>
+        <li>
+          Free shipping on orders from{' '}
+          <span className="whitespace-nowrap">{fmtIdr(tenant.loyalty.freeShippingMin)}</span>.
+        </li>
         <li>{RETURNS_POLICY[tenant.industry]}</li>
         <li>
           Pay with{' '}
           {catalog.paymentTypes
             .filter((t) => t.enabled)
-            .map((t) => t.name)
-            .join(', ')}
+            .map((t, i) => (
+              <span key={t.id}>
+                {i > 0 && ', '}
+                <span className="whitespace-nowrap">{t.name}</span>
+              </span>
+            ))}
           .
         </li>
       </ul>
       <p className="mt-6 text-xs text-[color:var(--sf-muted)]">
-        © {tenant.name}. Prices in rupiah, taxes included.
+        © {tenant.name.replace(/\.$/, '')}. Prices in rupiah, taxes included.
       </p>
     </footer>
   )

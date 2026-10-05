@@ -3,36 +3,23 @@ import type { Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { Link } from 'react-router'
 import { HeartButton, ProductImage, discountFor } from '../../components/product'
-import { type HeadingProps, PRODUCT_GRID, PRODUCT_RAIL, productRailItem } from '../../components/sections'
+import { type HeadingProps, PRODUCT_GRID, productRail, productRailItem } from '../../components/sections'
 import { Pill } from '../../components/ui'
 import { categoryName, fromPrice } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 
 /**
- * Theme 2 card: an editorial 4:5 photo (arched on the phone staggered grid), then the name, category and
- * price in primary. No border or box, so photography carries the grid.
+ * Theme 2 card: an editorial 4:5 photo, then the category, name and
+ * price in primary, the price pinned to the bottom so a row's prices line up. No border or box, so photography carries the grid.
  */
-export function ProductCard({
-  product,
-  arch = false,
-  className,
-}: {
-  product: Product
-  arch?: boolean
-  className?: string
-}) {
+export function ProductCard({ product, className }: { product: Product; className?: string }) {
   const { catalog, store } = useShop()
   const to = paths.product(store, product.id)
   const pct = discountFor(catalog, product)
   return (
     <article className={cn('group min-w-0 relative flex flex-col', className)}>
-      <div
-        className={cn(
-          'relative overflow-hidden rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]',
-          arch && 'md:rounded-t-[var(--sf-tile-radius)] rounded-t-full',
-        )}
-      >
+      <div className="relative overflow-hidden rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]">
         <Link to={to} tabIndex={-1} aria-hidden="true" className="block">
           <ProductImage
             product={product}
@@ -48,17 +35,19 @@ export function ProductCard({
         <HeartButton
           product={product}
           tone="bare"
-          className="top-2 right-2 md:size-10 absolute bg-[var(--sf-bg)]/90 shadow-card backdrop-blur"
+          className="top-2 right-2 md:size-10 backdrop-blur absolute bg-[var(--sf-bg)]/90 shadow-card"
         />
       </div>
       <div className="mt-3 min-w-0 gap-0.5 flex flex-1 flex-col">
-        <h3 className="sf-display text-[15px] leading-snug font-semibold md:text-base line-clamp-2">
+        <p className="text-xs truncate text-[color:var(--sf-muted)]">
+          {categoryName(catalog, product.categoryId)}
+        </p>
+        <h3 className="sf-display leading-snug font-semibold md:text-base line-clamp-2 text-[15px] text-pretty">
           <Link to={to} className="hover:underline">
             {product.name}
           </Link>
         </h3>
-        <p className="text-xs truncate text-[color:var(--sf-muted)]">{categoryName(catalog, product.categoryId)}</p>
-        <p className="sf-price pt-1 mt-auto text-[15px] font-bold md:text-base text-[color:var(--sf-primary)]">
+        <p className="sf-price pt-2 font-bold md:text-base mt-auto text-[15px] text-[color:var(--sf-primary)]">
           {product.assisted ? 'Talk to sales' : fmtIdr(fromPrice(product))}
         </p>
       </div>
@@ -77,31 +66,13 @@ export function ProductGrid({
   rail?: boolean
 }) {
   return (
-    <ul className={cn(rail ? PRODUCT_RAIL : PRODUCT_GRID, className)}>
+    <ul className={cn(rail ? productRail(products.length) : PRODUCT_GRID, className)}>
       {products.map((p, i) => (
-        <li key={p.id} className={cn('min-w-0 flex', rail && productRailItem(i))}>
+        <li key={p.id} className={cn('min-w-0 flex', rail && productRailItem(i, products.length))}>
           <ProductCard product={p} className="w-full" />
         </li>
       ))}
     </ul>
-  )
-}
-
-/** Phone grid where the right column starts lower and every third image has an arched top. */
-export function StaggeredGrid({ products }: { products: Product[] }) {
-  const columns = [products.filter((_, i) => i % 2 === 0), products.filter((_, i) => i % 2 === 1)]
-  return (
-    <div className="gap-3 grid grid-cols-2">
-      {columns.map((col, c) => (
-        <ul key={c} className={cn('min-w-0 gap-6 flex flex-col', c === 1 && 'pt-12')}>
-          {col.map((p, i) => (
-            <li key={p.id}>
-              <ProductCard product={p} arch={(i + c) % 3 === 0} />
-            </li>
-          ))}
-        </ul>
-      ))}
-    </div>
   )
 }
 
@@ -111,8 +82,8 @@ export function ShowHeading({ title, id, action }: HeadingProps) {
   const cut = Math.ceil(words.length / 2)
   const [first, second] = [words.slice(0, cut).join(' '), words.slice(cut).join(' ')]
   return (
-    <div className="mb-5 gap-3 flex flex-wrap items-end justify-between">
-      <h2 id={id} className="sf-title">
+    <div className="mb-5 gap-3 flex flex-wrap items-center justify-between">
+      <h2 id={id} className="sf-title m-0">
         {first}
         {second && (
           <>

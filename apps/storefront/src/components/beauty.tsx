@@ -131,7 +131,7 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
         <div className="space-y-5">
           <fieldset className="min-w-0">
             <legend className="text-sm font-bold">1. Your skin type</legend>
-            <div className="-mx-5 mt-2 gap-2 px-5 md:mx-0 md:px-0 md:flex-wrap no-scrollbar flex overflow-x-auto">
+            <div className="mt-2 gap-2 flex flex-wrap">
               {skins.map((s) => (
                 <button
                   key={s}
@@ -147,7 +147,7 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
           </fieldset>
           <fieldset className="min-w-0">
             <legend className="text-sm font-bold">2. What bothers you most</legend>
-            <div className="-mx-5 mt-2 gap-2 px-5 md:mx-0 md:px-0 md:flex-wrap no-scrollbar flex overflow-x-auto">
+            <div className="mt-2 gap-2 flex flex-wrap">
               {CONCERNS.map((c) => (
                 <button
                   key={c.key}
@@ -180,9 +180,9 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
             )}
           </div>
         </div>
-        <ol className="gap-3 md:grid-cols-4 grid grid-cols-2 items-start" aria-label="Routine steps">
+        <ol className="gap-3 md:grid-cols-4 grid grid-cols-2" aria-label="Routine steps">
           {routine.map(({ step, product }, i) => (
-            <li key={step.key} className="min-w-0">
+            <li key={step.key} className="min-w-0 flex flex-col">
               <p className="sf-kicker">
                 {i + 1}. {step.label}
               </p>
@@ -190,23 +190,25 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
               {product ? (
                 <Link
                   to={paths.product(store, product.id)}
-                  className="group p-2 flex flex-col rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]"
+                  className="group p-2 flex flex-1 flex-col rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]"
                 >
                   <ProductImage
                     product={product}
                     size="sm"
-                    className="aspect-square rounded-[var(--sf-tile-radius)]"
+                    className="lg:aspect-auto lg:min-h-32 lg:flex-1 aspect-square rounded-[var(--sf-tile-radius)]"
                   />
-                  <span className="mt-2 text-sm leading-snug font-semibold line-clamp-2">{product.name}</span>
-                  <span className="mt-1 text-sm">{fmtIdr(product.price)}</span>
+                  <span className="mt-2 text-sm leading-snug font-semibold line-clamp-2 min-h-[2lh]">
+                    {product.name}
+                  </span>
                   {attr(catalog, product, 'key_ingredient') && (
-                    <span className="mt-1 text-[11px] text-[color:var(--sf-muted)]">
+                    <span className="mt-1 truncate text-[11px] text-[color:var(--sf-muted)]">
                       with {attr(catalog, product, 'key_ingredient')}
                     </span>
                   )}
+                  <span className="pt-1 text-sm mt-auto">{fmtIdr(product.price)}</span>
                 </Link>
               ) : (
-                <p className="p-3 text-xs rounded-[var(--sf-tile-radius)] border border-dashed border-[color:var(--sf-line)] text-[color:var(--sf-muted)]">
+                <p className="p-3 text-xs flex-1 rounded-[var(--sf-tile-radius)] border border-dashed border-[color:var(--sf-line)] text-[color:var(--sf-muted)]">
                   Nothing in stock for this step yet.
                 </p>
               )}
@@ -300,7 +302,7 @@ export function IngredientSpotlight({ Heading = PlainHeading }: { Heading?: Head
               <p className="mt-1 text-sm text-[color:var(--sf-muted)]">
                 {INGREDIENT_NOTE[name] ?? 'A key active in our formulas.'}
               </p>
-              <ul className="mt-3 space-y-1 text-sm">
+              <ul className="pt-3 space-y-1 text-sm mt-auto">
                 {products.slice(0, 3).map((p) => (
                   <li key={p.id}>
                     <Link to={paths.product(store, p.id)} className="underline-offset-4 hover:underline">
@@ -387,7 +389,7 @@ export function RewardsLadder({ Heading = PlainHeading }: { Heading?: Heading })
           >
             <Sparkles className="size-5 text-[color:var(--sf-accent)]" aria-hidden="true" />
             <p className="sf-display mt-3 text-xl font-bold">{LOYALTY_TIER_LABEL[tier]}</p>
-            <p className="text-xs opacity-75">
+            <p className="text-xs min-h-[2lh] opacity-75">
               {spend[tier] ? `From ${fmtIdr(spend[tier])} a year` : 'When you join'}
             </p>
             <p className="mt-3 text-sm">{perk[tier]}</p>
@@ -411,9 +413,7 @@ export function ConsultationBand() {
       style={{ background: 'color-mix(in srgb, var(--sf-accent) 14%, var(--sf-bg))' }}
     >
       <div className="p-2">
-        <p className="sf-kicker">
-          Not sure where to start?
-        </p>
+        <p className="sf-kicker">Not sure where to start?</p>
         <h2 id="consult-h" className="sf-display mt-2 text-2xl font-bold md:text-3xl text-balance">
           Book a 30-minute skin consultation
         </h2>
@@ -449,8 +449,10 @@ export function GlowWall({ Heading = PlainHeading }: { Heading?: Heading }) {
           <li key={p.id}>
             <Link to={paths.product(store, p.id)} className="group block">
               <ProductImage product={p} className="aspect-[4/5] rounded-[var(--sf-tile-radius)]" />
-              <p className="mt-2 text-xs leading-snug line-clamp-2">“{quotes[i % quotes.length]!.quote}”</p>
-              <Pill tone="soft" className="mt-1.5 max-w-full">
+              <p className="mt-2 text-xs leading-snug line-clamp-2 min-h-[2lh]">
+                “{quotes[i % quotes.length]!.quote}”
+              </p>
+              <Pill tone="soft" className="mt-1.5 max-w-full border border-[color:var(--sf-line)]">
                 <span className="truncate">{p.name}</span>
               </Pill>
               <p className="mt-1 text-[11px] text-[color:var(--sf-muted)]">
@@ -463,6 +465,9 @@ export function GlowWall({ Heading = PlainHeading }: { Heading?: Heading }) {
     </section>
   )
 }
+
+/** Fact tags sit on the canvas, so they carry a hairline to read as chips. */
+const FACT = 'border border-[color:var(--sf-line)]'
 
 /** Product page: what the product suits and how to use it, plus the rest of the routine. */
 export function BeautyFacts({ product }: { product: Product }) {
@@ -480,10 +485,10 @@ export function BeautyFacts({ product }: { product: Product }) {
   return (
     <div className="space-y-4">
       <div className="gap-2 flex flex-wrap">
-        {skin && <Pill tone="soft">{skin === 'All' ? 'All skin types' : `${skin} skin`}</Pill>}
-        {free && <Pill tone="soft">Fragrance-free</Pill>}
-        {key && <Pill tone="soft">With {key}</Pill>}
-        {bpom && <Pill tone="soft">BPOM {bpom}</Pill>}
+        {skin && <Pill className={FACT}>{skin === 'All' ? 'All skin types' : `${skin} skin`}</Pill>}
+        {free && <Pill className={FACT}>Fragrance-free</Pill>}
+        {key && <Pill className={FACT}>With {key}</Pill>}
+        {bpom && <Pill className={FACT}>BPOM {bpom}</Pill>}
       </div>
       {key && INGREDIENT_NOTE[key] && (
         <p className="text-sm">
@@ -491,7 +496,7 @@ export function BeautyFacts({ product }: { product: Product }) {
         </p>
       )}
       {use && (
-        <div className="p-4 rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]">
+        <div className="p-4 rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-soft)]">
           <p className="text-sm font-bold">How to use</p>
           <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{use}</p>
         </div>
@@ -499,9 +504,9 @@ export function BeautyFacts({ product }: { product: Product }) {
       {others.length > 0 && product.categoryId === 'cat-aruna-skin' && (
         <div>
           <p className="text-sm font-bold">Complete your routine</p>
-          <ul className="mt-2 gap-2 lg:grid lg:grid-cols-3 lg:overflow-visible no-scrollbar flex snap-x overflow-x-auto">
+          <ul className="mt-2 gap-2 md:grid md:grid-cols-3 md:overflow-visible no-scrollbar flex snap-x overflow-x-auto">
             {others.slice(0, 3).map(({ step, product: p }) => (
-              <li key={step.key} className="md:w-[200px] lg:w-auto w-[160px] shrink-0 snap-start">
+              <li key={step.key} className="md:w-auto w-[160px] shrink-0 snap-start">
                 <Link
                   to={paths.product(store, p!.id)}
                   className="p-2 block h-full rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]"
@@ -509,7 +514,7 @@ export function BeautyFacts({ product }: { product: Product }) {
                   <span className="font-bold tracking-widest text-[10px] text-[color:var(--sf-primary)] uppercase">
                     {step.label}
                   </span>
-                  <span className="mt-1 text-xs font-semibold line-clamp-2 block">{p!.name}</span>
+                  <span className="mt-1 text-xs font-semibold line-clamp-2 block min-h-[2lh]">{p!.name}</span>
                   <span className="text-xs">{fmtIdr(p!.price)}</span>
                 </Link>
               </li>

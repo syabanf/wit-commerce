@@ -1,5 +1,5 @@
 import { fmtIdr, plural } from '@rc/fixtures'
-import type { Industry, PageSection, Product } from '@rc/types'
+import type { Industry, PageSection, PaymentMethod, Product } from '@rc/types'
 import { SELLER_KIND_LABEL } from '@rc/types'
 import { cn } from '@rc/ui'
 import {
@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Truck,
 } from 'lucide-react'
-import { type ComponentType, type FormEvent, type ReactNode, useId, useState } from 'react'
+import { type FormEvent, type ReactNode, useId, useState } from 'react'
 import { Link } from 'react-router'
 import { isBuyable, sortProducts } from '../lib/catalog'
 import { paths } from '../lib/paths'
@@ -28,6 +28,17 @@ const RETURNS: Partial<Record<Industry, { title: string; text: string }>> = {
   sport: { title: '14-day returns', text: 'Change of size or mind, no questions' },
   beauty: { title: '14-day returns', text: 'Unopened products, within 14 days' },
   industrial: { title: 'Parts returns', text: 'Per your quote and warranty terms' },
+}
+
+/** Short method names, so the ways-to-pay line fits one line in the strip. */
+const PAY_SHORT: Record<PaymentMethod, string> = {
+  qris: 'QRIS',
+  va: 'VA',
+  bank_transfer: 'transfer',
+  credit_card: 'card',
+  ewallet: 'e-wallet',
+  paylater: 'PayLater',
+  cod: 'COD',
 }
 
 /**
@@ -55,10 +66,7 @@ export function BenefitsStrip() {
           {
             icon: CreditCard,
             title: `${pays.length} ways to pay`,
-            text: pays
-              .slice(0, 3)
-              .map((t) => t.name)
-              .join(', '),
+            text: [...new Set(pays.map((t) => PAY_SHORT[t.method]))].slice(0, 4).join(', '),
           },
           points > 0
             ? {
@@ -81,9 +89,7 @@ export function BenefitsStrip() {
           </span>
           <span className="min-w-0">
             <span className="text-sm font-bold block">{title}</span>
-            <span className="mt-0.5 text-xs md:whitespace-normal block truncate text-[color:var(--sf-muted)]">
-              {text}
-            </span>
+            <span className="mt-0.5 text-xs line-clamp-2 block text-[color:var(--sf-muted)]">{text}</span>
           </span>
         </li>
       ))}
@@ -99,17 +105,17 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'deals', label: 'On sale' },
 ]
 
-/** Trending, new, best-selling and discounted products behind one row of tabs; `Grid` overrides the theme grid. */
-export function ProductTabs({
-  Heading = PlainHeading,
-  Grid,
-}: {
-  Heading?: Heading
-  Grid?: ComponentType<{ products: Product[] }>
-}) {
+/**
+ * Hides cards that would leave a partial last row of eight on the listing grid: six at three columns
+ * (md), five at five (xl), six at six (2xl).
+ */
+const FULL_ROWS =
+  'md:max-lg:[&>li:nth-child(n+7)]:hidden xl:max-2xl:[&>li:nth-child(n+6)]:hidden 2xl:[&>li:nth-child(n+7)]:hidden'
+
+/** Trending, new, best-selling and discounted products behind one row of tabs, on the theme's listing grid. */
+export function ProductTabs({ Heading = PlainHeading }: { Heading?: Heading }) {
   const { catalog, store } = useShop()
-  const theme = useTheme()
-  const ProductGrid = Grid ?? theme.ProductGrid
+  const { ProductGrid } = useTheme()
   const [tab, setTab] = useState<TabKey>('trending')
   const id = useId()
   const buyable = catalog.products.filter((p) => isBuyable(catalog, p))
@@ -159,7 +165,7 @@ export function ProductTabs({
         ))}
       </div>
       <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`}>
-        <ProductGrid products={lists[tab].slice(0, 8)} />
+        <ProductGrid products={lists[tab].slice(0, 8)} className={FULL_ROWS} />
       </div>
     </section>
   )
@@ -267,7 +273,7 @@ export function SellersRow({ Heading = PlainHeading }: { Heading?: Heading }) {
                 <span className="text-xs block text-[color:var(--sf-muted)]">
                   {SELLER_KIND_LABEL[s.kind]} · {s.city}
                 </span>
-                <span className="mt-1.5 text-sm line-clamp-2 block">{s.headline || s.bio}</span>
+                <span className="mt-1.5 text-sm line-clamp-2 block min-h-[2lh]">{s.headline || s.bio}</span>
               </span>
             </Link>
           </li>

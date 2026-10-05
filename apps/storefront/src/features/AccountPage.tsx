@@ -86,7 +86,7 @@ export function AccountPage() {
             <h2 id="demo-h" className="text-sm font-bold">
               Demo accounts
             </h2>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 -mx-2 space-y-2">
               {demo.map((c) => (
                 <li key={c.id}>
                   <button

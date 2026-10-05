@@ -73,7 +73,9 @@ export function CategoryGrid({ categories }: { categories?: Category[] }) {
             >
               <Photo id={categoryPhoto(c.id)} width={160} className="size-14 shrink-0 rounded-full" />
               <span className="min-w-0">
-                <span className="font-bold block">{c.name}</span>
+                <span className="font-bold lg:min-h-0 lg:line-clamp-1 line-clamp-2 block min-h-[2lh]">
+                  {c.name}
+                </span>
                 <span className="text-sm text-[color:var(--sf-muted)]">{count(c)}</span>
               </span>
             </Link>

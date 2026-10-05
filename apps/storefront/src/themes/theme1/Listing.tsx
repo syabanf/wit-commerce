@@ -34,7 +34,10 @@ export function Listing({ title, description, crumbs, chips, listing, empty }: L
       <h1 className="sf-display text-3xl font-bold md:text-4xl">{title}</h1>
       {description && <p className="mt-1 max-w-2xl text-[color:var(--sf-muted)]">{description}</p>}
       {chips.length > 1 && (
-        <Scroller className="mt-4" label="Narrow down">
+        <Scroller
+          className="mt-4 -mx-4 px-4 scroll-px-4 md:-mx-6 md:px-6 md:scroll-px-6 lg:-mx-px lg:px-px lg:scroll-px-0"
+          label="Narrow down"
+        >
           {chips.map((c) => (
             <Link
               key={c.to}
@@ -59,15 +62,15 @@ export function Listing({ title, description, crumbs, chips, listing, empty }: L
           </aside>
         )}
         <div className="min-w-0">
-          <div className="mb-4 gap-2 flex items-center justify-between">
-            <FilterSheetButton listing={listing} className="lg:hidden" />
+          <div className="mb-4 gap-2 md:flex md:justify-between grid grid-cols-2 items-center">
+            <FilterSheetButton listing={listing} className="md:w-auto lg:hidden w-full" />
             <p
               className={cn('text-sm text-[color:var(--sf-muted)]', hasFilters && 'lg:block hidden')}
               aria-live="polite"
             >
               {plural(listing.results.length, 'product')}
             </p>
-            <SortSelect listing={listing} className="ml-auto" />
+            <SortSelect listing={listing} className="md:ml-auto" />
           </div>
           {listing.results.length ? (
             <ProductGrid products={listing.results} className={hasFilters ? 'lg:grid-cols-3' : undefined} />
