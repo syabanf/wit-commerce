@@ -1,0 +1,17 @@
+{
+  "name": "@rc/fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rc/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@rc/tsconfig": "workspace:*",
+    "typescript": "~5.9.3"
+  }
+}

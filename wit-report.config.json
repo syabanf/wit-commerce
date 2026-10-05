@@ -1,0 +1,357 @@
+{
+  "product": "Commerce OS",
+  "client": "Belum ditentukan",
+  "style": "wit-code-agent",
+  "base": null,
+  "checks": [
+    {
+      "name": "Pemeriksaan tipe",
+      "cmd": "pnpm typecheck"
+    },
+    {
+      "name": "Lint",
+      "cmd": "pnpm lint"
+    },
+    {
+      "name": "Tes",
+      "cmd": "pnpm test"
+    },
+    {
+      "name": "Build",
+      "cmd": "pnpm build"
+    }
+  ],
+  "themes": [
+    "light"
+  ],
+  "apps": {
+    "admin": {
+      "devices": [
+        "desktop",
+        "tablet",
+        "phone"
+      ],
+      "dist": "apps/admin/dist",
+      "baseUrl": "http://localhost:4373",
+      "start": "pnpm --filter @rc/admin preview --port 4373 --strictPort",
+      "localStorage": {
+        "rc.admin.session": {
+          "userId": "usr-andi",
+          "tenantId": "ten-lari"
+        }
+      }
+    },
+    "mobile": {
+      "devices": [
+        "phone"
+      ],
+      "dist": "apps/mobile/dist",
+      "baseUrl": "http://localhost:4374",
+      "start": "pnpm --filter @rc/mobile preview --port 4374 --strictPort",
+      "localStorage": {
+        "rc.mobile.session": {
+          "userId": "usr-fahmi",
+          "tenantId": "ten-lari",
+          "sellerId": "sel-fahmi"
+        }
+      }
+    },
+    "storefront": {
+      "devices": [
+        "desktop",
+        "tablet",
+        "phone"
+      ],
+      "dist": "apps/storefront/dist",
+      "baseUrl": "http://localhost:4375",
+      "start": "pnpm --filter @rc/storefront preview --port 4375 --strictPort",
+      "localStorage": {}
+    }
+  },
+  "screens": [
+    {
+      "app": "admin",
+      "path": "/",
+      "name": "Beranda (ringkasan commerce)"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/orders",
+      "name": "Daftar order"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/orders/ord-lari-muuactpc90",
+      "name": "Detail order"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/products",
+      "name": "Daftar produk"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/products/prd-lr-101",
+      "name": "Detail produk Velocity Pro 3"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/collections",
+      "name": "Koleksi produk"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/categories",
+      "name": "Kategori produk"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/attributes",
+      "name": "Atribut produk"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/modifiers",
+      "name": "Modifier produk"
+    },
+    {
+      "app": "admin",
+      "path": "/commerce/inventory",
+      "name": "Inventori"
+    },
+    {
+      "app": "admin",
+      "path": "/store/pages",
+      "name": "Halaman storefront"
+    },
+    {
+      "app": "admin",
+      "path": "/store/pages/page-lari-runmonth",
+      "name": "Page builder: Running Month"
+    },
+    {
+      "app": "admin",
+      "path": "/store/templates",
+      "name": "Template library"
+    },
+    {
+      "app": "admin",
+      "path": "/store/brand",
+      "name": "Brand guideline dan brand lock"
+    },
+    {
+      "app": "admin",
+      "path": "/store/domains",
+      "name": "Domain dan SEO"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/all",
+      "name": "Daftar pelanggan"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/all/cus-lari-0399",
+      "name": "Customer 360"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/segments",
+      "name": "Segmen"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/segments/seg-lari-loyal",
+      "name": "Segment builder: Loyal runners"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/leads",
+      "name": "Pipeline lead"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/leads/lead-011",
+      "name": "Detail lead"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/loyalty",
+      "name": "Loyalty"
+    },
+    {
+      "app": "admin",
+      "path": "/customers/support",
+      "name": "Support"
+    },
+    {
+      "app": "admin",
+      "path": "/marketing/campaigns",
+      "name": "Kampanye"
+    },
+    {
+      "app": "admin",
+      "path": "/marketing/campaigns/cmp-lari-runmonth",
+      "name": "Detail kampanye Running Month"
+    },
+    {
+      "app": "admin",
+      "path": "/marketing/automations",
+      "name": "Automasi"
+    },
+    {
+      "app": "admin",
+      "path": "/marketing/automations/aut-lari-cart",
+      "name": "Journey abandoned cart"
+    },
+    {
+      "app": "admin",
+      "path": "/marketing/promotions",
+      "name": "Promosi"
+    },
+    {
+      "app": "admin",
+      "path": "/sales/sellers",
+      "name": "Jaringan seller"
+    },
+    {
+      "app": "admin",
+      "path": "/sales/sellers/sel-fahmi",
+      "name": "Personal store Fahmi"
+    },
+    {
+      "app": "admin",
+      "path": "/sales/performance",
+      "name": "Performa dan atribusi sales"
+    },
+    {
+      "app": "admin",
+      "path": "/analytics",
+      "name": "Analitik"
+    },
+    {
+      "app": "admin",
+      "path": "/integrations",
+      "name": "Integration hub"
+    },
+    {
+      "app": "admin",
+      "path": "/settings/payment-types",
+      "name": "Master data payment type"
+    },
+    {
+      "app": "admin",
+      "path": "/settings/users",
+      "name": "Pengguna dan role"
+    },
+    {
+      "app": "admin",
+      "path": "/settings/tenants",
+      "name": "Tenant"
+    },
+    {
+      "app": "admin",
+      "path": "/settings/tenants/new",
+      "name": "Onboarding tenant baru"
+    },
+    {
+      "app": "admin",
+      "path": "/settings/apps",
+      "name": "App marketplace"
+    },
+    {
+      "app": "mobile",
+      "path": "/",
+      "name": "Ponsel seller: beranda"
+    },
+    {
+      "app": "mobile",
+      "path": "/leads",
+      "name": "Ponsel seller: lead"
+    },
+    {
+      "app": "mobile",
+      "path": "/leads/lead-014",
+      "name": "Ponsel seller: detail lead"
+    },
+    {
+      "app": "mobile",
+      "path": "/customers",
+      "name": "Ponsel seller: pelanggan"
+    },
+    {
+      "app": "mobile",
+      "path": "/customers/cus-lari-0011",
+      "name": "Ponsel seller: detail pelanggan"
+    },
+    {
+      "app": "mobile",
+      "path": "/store",
+      "name": "Ponsel seller: toko pribadi dan template"
+    },
+    {
+      "app": "storefront",
+      "path": "/",
+      "name": "Storefront: hub demo (dua tema, tiga toko, alur uji)"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari?theme=theme2",
+      "name": "Storefront: Lari dalam pratinjau Theme 2"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari",
+      "name": "Storefront Theme 1: beranda Lari"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari/c/cat-lari-road",
+      "name": "Storefront Theme 1: kategori sepatu road"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari/p/prd-lr-102",
+      "name": "Storefront Theme 1: produk dengan varian ukuran dan warna"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari/cart",
+      "name": "Storefront Theme 1: keranjang"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari/checkout",
+      "name": "Storefront Theme 1: checkout"
+    },
+    {
+      "app": "storefront",
+      "path": "/lari/fahmi",
+      "name": "Storefront: toko pribadi Fahmi"
+    },
+    {
+      "app": "storefront",
+      "path": "/aruna",
+      "name": "Storefront Theme 2: beranda Aruna"
+    },
+    {
+      "app": "storefront",
+      "path": "/aruna/c/cat-aruna-skin",
+      "name": "Storefront Theme 2: kategori skincare"
+    },
+    {
+      "app": "storefront",
+      "path": "/aruna/p/prd-ar-101",
+      "name": "Storefront Theme 2: produk"
+    },
+    {
+      "app": "storefront",
+      "path": "/aruna/collections/sensitive-skin",
+      "name": "Storefront Theme 2: koleksi"
+    }
+  ],
+  "budgets": {
+    "entryKb": 200,
+    "chunkKb": 100
+  }
+}

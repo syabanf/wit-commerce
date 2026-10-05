@@ -1,0 +1,23 @@
+// Swatch colours for colour option values: data, applied as inline style.
+export const SWATCH: Record<string, string> = {
+  black: '#1f1f1f',
+  white: '#f7f7f5',
+  navy: '#1f2f5c',
+  coral: '#ff7f6a',
+  volt: '#d4f24a',
+  grey: '#9a9a9a',
+  gray: '#9a9a9a',
+  red: '#d22f2f',
+  blue: '#2f62d2',
+  green: '#3c8d5a',
+  olive: '#6b7139',
+  sand: '#d8c3a0',
+  pink: '#f2a2bd',
+  orange: '#f28c28',
+  yellow: '#f5d020',
+  purple: '#7a4cc2',
+  brown: '#7a5232',
+  nude: '#d9b39c',
+  rose: '#c9767f',
+  brick: '#a2482f',
+}

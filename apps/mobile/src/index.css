@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+@import '@rc/tailwind-config/theme.css';
+
+@source '../../../packages/ui/src';
+
+/* iOS Safari zooms into any field with text under 16px. Unlayered, so it wins over text-sm. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+@import '@rc/tailwind-config/theme.css';
+
+@source '../../../packages/ui/src';
+
+/* iOS Safari zooms into any field with text under 16px. Unlayered, so it wins over text-sm. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Storefront surface. Brand tokens (--sf-primary, --sf-bg …) arrive as inline variables on .sf-root;
+   each theme sets its surface variables here, keyed by data-theme. Layered as base so utilities win. */
+@layer base {
+  .sf-root {
+    --sf-muted: color-mix(in srgb, var(--sf-text) 64%, var(--sf-bg));
+    --sf-line: color-mix(in srgb, var(--sf-text) 12%, var(--sf-bg));
+    --sf-soft: color-mix(in srgb, var(--sf-text) 6%, var(--sf-bg));
+    font-family: var(--sf-body);
+    color: var(--sf-text);
+    background-color: var(--sf-canvas);
+    /* Faint paper grain, so the canvas reads as printed stock instead of a flat fill. */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  .sf-root {
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1,
+      'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    line-height: 1.55;
+  }
+  /* Headings set tight and balanced; paragraphs avoid one-word last lines. Utilities still win. */
+  .sf-root :is(h1, h2, h3) {
+    letter-spacing: -0.022em;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+  .sf-root p {
+    text-wrap: pretty;
+  }
+  .sf-root :focus-visible {
+    outline: 2px solid var(--sf-primary);
+    outline-offset: 2px;
+  }
+  .sf-root ::selection {
+    background: var(--sf-primary);
+    color: var(--sf-on-primary);
+  }
+
+  /* Theme 1 · Marketplace: grey canvas, white cards with generous radius, soft shadows, pills. */
+  .sf-root[data-theme='theme1'] {
+    --sf-canvas: color-mix(in srgb, var(--sf-text) 4%, var(--sf-bg));
+    --sf-card-radius: var(--sf-radius);
+    --sf-tile-radius: var(--sf-radius-sm);
+    --sf-card-border: transparent;
+    --sf-card-shadow: 0 1px 2px rgb(16 17 18 / 0.03), 0 8px 24px -18px rgb(16 17 18 / 0.16);
+    --sf-display: var(--sf-heading);
+    --sf-cta-radius: var(--sf-btn-radius);
+    --sf-pill: 9999px;
+    --sf-sticky-top: 10.5rem;
+  }
+
+  /* Theme 2 · Showcase: warm off-white and editorial serif on phones, bold rounded showcase on desktop. */
+  .sf-root[data-theme='theme2'] {
+    --sf-canvas: color-mix(in srgb, var(--sf-accent) 5%, var(--sf-bg));
+    --sf-card-radius: 2px;
+    --sf-tile-radius: 2px;
+    --sf-card-border: var(--sf-line);
+    --sf-card-shadow: none;
+    --sf-display: var(--sf-serif);
+    --sf-cta-radius: 2px;
+    --sf-pill: 2px;
+    --sf-sticky-top: 6.5rem;
+  }
+  @media (min-width: 768px) {
+    .sf-root[data-theme='theme2'] {
+      --sf-card-radius: var(--sf-radius);
+      --sf-tile-radius: var(--sf-radius-sm);
+      --sf-display: var(--sf-heading);
+      --sf-cta-radius: var(--sf-btn-radius);
+      --sf-pill: 9999px;
+    }
+  }
+}
+
+@utility sf-display {
+  font-family: var(--sf-display);
+}
+@utility sf-heading {
+  font-family: var(--sf-heading);
+}
+@utility sf-serif {
+  font-family: var(--sf-serif);
+}
+@utility sf-card {
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-card-border);
+  border-radius: var(--sf-card-radius);
+  box-shadow: var(--sf-card-shadow);
+}
+
+/* Type scale shared by both themes. Sizes are fluid between phone and desktop. */
+@utility sf-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sf-primary);
+}
+@utility sf-title {
+  font-family: var(--sf-display);
+  font-size: clamp(1.375rem, 1rem + 1.1vw, 2.125rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+@utility sf-hero-title {
+  font-family: var(--sf-display);
+  font-size: clamp(2.25rem, 1.3rem + 3vw, 4.25rem);
+  font-weight: 800;
+  letter-spacing: -0.032em;
+  line-height: 1;
+}
+@utility sf-lede {
+  font-size: clamp(1rem, 0.94rem + 0.3vw, 1.175rem);
+  line-height: 1.6;
+  color: var(--sf-muted);
+}
+@utility sf-price {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}

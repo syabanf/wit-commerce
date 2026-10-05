@@ -1,0 +1,250 @@
+import { fmtNumber, plural, stockAdjustBlocker } from '@rc/fixtures'
+import type { StockLevel } from '@rc/types'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  FormField,
+  Input,
+  SegmentedControl,
+  toast,
+} from '@rc/ui'
+import { type FormEvent, useState } from 'react'
+import { VariantPicker, WarehousePicker } from '../../components/pickers'
+import { useScoped } from '../../state/scoped'
+
+const toQty = (value: string) => value.replace(/[^\d]/g, '')
+
+export function AdjustDialog({
+  level,
+  onOpenChange,
+}: {
+  level: StockLevel | null
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={!!level} onOpenChange={onOpenChange}>
+      <DialogContent size="sm">
+        {level && <AdjustForm level={level} onDone={() => onOpenChange(false)} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AdjustForm({ level, onDone }: { level: StockLevel; onDone: () => void }) {
+  const { maps, productName, dispatch } = useScoped()
+  const [direction, setDirection] = useState<'add' | 'remove'>('remove')
+  const [qty, setQty] = useState('')
+  const [reason, setReason] = useState('')
+  const [tried, setTried] = useState(false)
+  const variant = maps.variant.get(level.variantId)
+  const warehouse = maps.warehouse.get(level.warehouseId)
+  const amount = Number(qty) || 0
+  const delta = direction === 'add' ? amount : -amount
+  const errors = {
+    qty: amount < 1 ? 'Enter a quantity of at least 1.' : (stockAdjustBlocker(level, delta) ?? undefined),
+    reason: !reason.trim() ? 'Say why the count changed, such as a recount or a damaged pair.' : undefined,
+  }
+  const show = (error: string | undefined) => (tried ? error : undefined)
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    setTried(true)
+    if (errors.qty || errors.reason) return
+    dispatch({ type: 'stock/adjust', levelId: level.id, delta, note: reason.trim() })
+    toast('Stock adjusted', {
+      tone: 'success',
+      description: `${variant?.sku ?? 'Variant'} · ${warehouse?.name ?? 'warehouse'} · ${delta > 0 ? '+' : ''}${delta}, on hand now ${fmtNumber(level.onHand + delta)}`,
+    })
+    onDone()
+  }
+
+  return (
+    <form onSubmit={submit} noValidate>
+      <DialogHeader>
+        <DialogTitle>Adjust {variant?.sku ?? 'stock'}</DialogTitle>
+        <DialogDescription>
+          {productName(level.productId)} · {variant?.name} at {warehouse?.name}. {fmtNumber(level.onHand)} on
+          hand, {fmtNumber(level.reserved)} reserved for open orders.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <SegmentedControl
+          aria-label="Add or remove units"
+          value={direction}
+          onChange={(value) => setDirection(value === 'add' ? 'add' : 'remove')}
+          options={[
+            { value: 'remove', label: 'Remove' },
+            { value: 'add', label: 'Add' },
+          ]}
+        />
+        <FormField
+          label="Units"
+          required
+          htmlFor="adjust-qty"
+          error={show(errors.qty)}
+          hint={
+            amount
+              ? `On hand goes from ${fmtNumber(level.onHand)} to ${fmtNumber(level.onHand + delta)}.`
+              : undefined
+          }
+        >
+          <Input
+            id="adjust-qty"
+            variant="soft"
+            autoFocus
+            inputMode="numeric"
+            inputClassName="tabular-nums"
+            value={qty}
+            onChange={(e) => setQty(toQty(e.target.value))}
+          />
+        </FormField>
+        <FormField
+          label="Reason"
+          required
+          htmlFor="adjust-reason"
+          error={show(errors.reason)}
+          hint="Shown in recent stock moves."
+        >
+          <Input
+            id="adjust-reason"
+            variant="soft"
+            value={reason}
+            placeholder="Stock count difference"
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          {amount ? `${direction === 'add' ? 'Add' : 'Remove'} ${plural(amount, 'unit')}` : 'Adjust stock'}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+export function ReceiveDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="md">{open && <ReceiveForm onDone={() => onOpenChange(false)} />}</DialogContent>
+    </Dialog>
+  )
+}
+
+function ReceiveForm({ onDone }: { onDone: () => void }) {
+  const { maps, tenantId, productName, dispatch } = useScoped()
+  const [variantId, setVariantId] = useState<string | null>(null)
+  const [warehouseId, setWarehouseId] = useState<string | null>(null)
+  const [qty, setQty] = useState('')
+  const [note, setNote] = useState('')
+  const [tried, setTried] = useState(false)
+  const amount = Number(qty) || 0
+  const variant = variantId ? maps.variant.get(variantId) : undefined
+  const errors = {
+    variant: !variant ? 'Choose the variant you received.' : undefined,
+    warehouse: !warehouseId ? 'Choose the warehouse it arrived at.' : undefined,
+    qty: amount < 1 ? 'Enter a quantity of at least 1.' : undefined,
+  }
+  const show = (error: string | undefined) => (tried ? error : undefined)
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    setTried(true)
+    if (!variant || !warehouseId || errors.qty) return
+    dispatch({
+      type: 'stock/receive',
+      tenantId,
+      productId: variant.productId,
+      variantId: variant.id,
+      warehouseId,
+      qty: amount,
+      note: note.trim() || 'Stock received',
+    })
+    toast(`${plural(amount, 'unit')} received`, {
+      tone: 'success',
+      description: `${productName(variant.productId)} · ${variant.sku} · ${maps.warehouse.get(warehouseId)?.name ?? 'warehouse'}`,
+    })
+    onDone()
+  }
+
+  return (
+    <form onSubmit={submit} noValidate>
+      <DialogHeader>
+        <DialogTitle>Receive stock</DialogTitle>
+        <DialogDescription>
+          Record a delivery from a supplier or another site. The units go on sale as soon as you save.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="gap-4 sm:grid-cols-2 grid grid-cols-1">
+        <FormField
+          label="Variant"
+          required
+          htmlFor="receive-variant"
+          error={show(errors.variant)}
+          className="sm:col-span-2"
+        >
+          <VariantPicker
+            id="receive-variant"
+            variant="soft"
+            productId={null}
+            value={variantId}
+            onChange={setVariantId}
+          />
+        </FormField>
+        <FormField label="Warehouse" required htmlFor="receive-warehouse" error={show(errors.warehouse)}>
+          <WarehousePicker
+            id="receive-warehouse"
+            variant="soft"
+            value={warehouseId}
+            onChange={setWarehouseId}
+          />
+        </FormField>
+        <FormField label="Units" required htmlFor="receive-qty" error={show(errors.qty)}>
+          <Input
+            id="receive-qty"
+            variant="soft"
+            inputMode="numeric"
+            inputClassName="tabular-nums"
+            value={qty}
+            onChange={(e) => setQty(toQty(e.target.value))}
+          />
+        </FormField>
+        <FormField
+          label="Note"
+          htmlFor="receive-note"
+          hint="Optional. A purchase order or delivery number."
+          className="sm:col-span-2"
+        >
+          <Input
+            id="receive-note"
+            variant="soft"
+            inputClassName="font-mono"
+            value={note}
+            placeholder="PO-2455"
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </FormField>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button type="submit">Receive stock</Button>
+      </DialogFooter>
+    </form>
+  )
+}
