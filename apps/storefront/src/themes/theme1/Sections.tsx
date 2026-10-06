@@ -52,7 +52,7 @@ export function Sections({ sections, seller }: SectionsProps) {
                 products={sectionProducts(catalog, s, layout.limit)}
                 rail={layout.rail}
                 gridClassName={layout.className}
-                action={{ label: 'View all', to: paths.search(store, '', { sort: 'best' }) }}
+                action={{ label: 'Browse all products', to: paths.search(store) }}
               />
             )
           case 'promotion':

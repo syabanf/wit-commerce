@@ -20,13 +20,21 @@ import {
   ShoppingBag,
   Wallet,
 } from 'lucide-react'
-import { type FormEvent, type ReactNode, useId, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
 import { ProductImage } from '../components/product'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
 import { cartTotals } from '../lib/cart'
-import { CITIES, COURIERS, EMAIL_PATTERN, PHONE_PATTERN, buildOrder, courierFee } from '../lib/checkout'
+import {
+  CITIES,
+  COURIERS,
+  DEFAULT_COURIER,
+  EMAIL_PATTERN,
+  PHONE_PATTERN,
+  buildOrder,
+  courierFee,
+} from '../lib/checkout'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
@@ -218,6 +226,8 @@ export function CheckoutPage() {
   useTitle(`Checkout · ${tenant.name}`)
 
   const [step, setStep] = useState(0)
+  const previousStep = useRef(step)
+  const stepHeading = useRef<HTMLHeadingElement>(null)
   const [mode, setMode] = useState<'guest' | 'account'>(customer ? 'account' : 'guest')
   const [contact, setContact] = useState({ name: '', email: '', phone: '' })
   const [lookup, setLookup] = useState(customer?.email ?? '')
@@ -227,11 +237,18 @@ export function CheckoutPage() {
     customer && (CITIES as readonly string[]).includes(customer.city) ? customer.city : '',
   )
   const [address, setAddress] = useState('')
-  const [courierId, setCourierId] = useState<Courier>('jne')
+  const [courierId, setCourierId] = useState<Courier>(DEFAULT_COURIER.id)
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [qrisPaid, setQrisPaid] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [placeError, setPlaceError] = useState<string | null>(null)
+
+  useLayoutEffect(() => {
+    if (previousStep.current === step) return
+    previousStep.current = step
+    window.scrollTo(0, 0)
+    stepHeading.current?.focus({ preventScroll: true })
+  }, [step])
 
   const totals = useMemo(
     () => cartTotals(catalog, cart.cart, referral?.id ?? null, nowMs(), paymentId),
@@ -326,6 +343,7 @@ export function CheckoutPage() {
       catalog,
       totals,
       stock: state.stock,
+      modifierStock: state.modifierStock,
       orderCodes: state.orders.map((o) => o.code),
       customerCodes: state.customers.map((c) => c.code),
       customer: existing,
@@ -335,7 +353,13 @@ export function CheckoutPage() {
       courier,
       payment,
     })
-    const blocker = orderPlaceBlocker(order, state.stock)
+    const blocker = orderPlaceBlocker(
+      order,
+      state.stock,
+      state.modifierStock,
+      state.modifiers,
+      state.products,
+    )
     if (blocker) {
       setPlaceError(blocker)
       return
@@ -371,7 +395,7 @@ export function CheckoutPage() {
       </div>
       <div className="gap-6 lg:grid-cols-[minmax(0,1fr)_380px] grid grid-cols-1">
         <form onSubmit={next} noValidate className="sf-card min-w-0 space-y-6 p-5 md:p-6">
-          <h2 className="sf-display text-2xl font-bold">
+          <h2 ref={stepHeading} tabIndex={-1} className="sf-display text-2xl font-bold">
             {step + 1}. {STEPS[step]}
           </h2>
 
@@ -383,8 +407,8 @@ export function CheckoutPage() {
                   name="mode"
                   checked={mode === 'guest'}
                   onChange={() => setMode('guest')}
-                  title="Check out as a guest"
-                  note="We create your member account with this order."
+                  title="Create an account with this order"
+                  note="Track orders and earn points. No password needed."
                 />
                 <Choice
                   name="mode"
@@ -481,7 +505,8 @@ export function CheckoutPage() {
                     value={city}
                     onChange={(e) => {
                       setCity(e.target.value)
-                      if (e.target.value !== 'Jakarta' && courierId === 'gojek') setCourierId('jne')
+                      if (e.target.value !== 'Jakarta' && courierId === 'gojek')
+                        setCourierId(DEFAULT_COURIER.id)
                     }}
                     className={inputClass}
                     {...describedBy(`${uid}-city`, errors.city)}

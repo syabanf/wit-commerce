@@ -100,96 +100,11 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
     <div className="space-y-4">
       <AttentionCard queues={queues} />
 
-      <div className="gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] grid grid-cols-1">
-        <Card variant="ink" className="p-5 flex flex-col">
-          {data.running ? (
-            <>
-              <div className="gap-3 flex flex-wrap items-start justify-between">
-                <div className="min-w-0">
-                  <Kicker className="text-on-ink-muted">Running campaign</Kicker>
-                  <p className="mt-1 text-2xl font-bold tracking-tight truncate">{data.running.name}</p>
-                  <p className="text-sm text-on-ink-muted">
-                    {data.running.code} · {s.segmentName(data.running.segmentId)} · ends{' '}
-                    {fmtAgo(data.running.endAt, now)}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 gap-2 flex items-end leading-none">
-                <span className="text-5xl font-bold tracking-tight sm:text-6xl tabular-nums">
-                  {fmtIdrShort(data.running.revenue)}
-                </span>
-                <span className="pb-1 text-sm font-semibold text-on-ink-muted">attributed revenue</span>
-              </div>
-              <div className="mt-4 gap-2 flex flex-wrap">
-                {FUNNEL_FLOW.filter(
-                  (f) => f === 'sent' || f === 'opened' || f === 'clicked' || f === 'purchased',
-                ).map((f) => (
-                  <span
-                    key={f}
-                    className={cn(
-                      'h-8 gap-1.5 px-3 text-xs font-semibold inline-flex items-center rounded-full border',
-                      f === 'purchased'
-                        ? 'text-white border-accent-strong bg-accent-strong'
-                        : 'border-white/10 bg-white/10 text-white',
-                    )}
-                  >
-                    {FUNNEL_STEP_LABEL[f]}{' '}
-                    <span className="tabular-nums">{fmtNumber(data.running!.funnel[f])}</span>
-                  </span>
-                ))}
-              </div>
-              {data.campaignOrders[0] && (
-                <Link
-                  to={paths.order(data.campaignOrders[0].id)}
-                  className="mt-4 gap-3 rounded-2xl bg-white/5 p-3 text-sm hover:bg-white/10 flex items-center transition-colors"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">
-                      Latest order <span className="text-xs font-mono">{data.campaignOrders[0].code}</span>{' '}
-                      from {s.customerName(data.campaignOrders[0].customerId)}
-                    </span>
-                    <span className="text-xs block text-on-ink-muted">
-                      {fmtIdr(data.campaignOrders[0].total)} · {fmtAgo(data.campaignOrders[0].createdAt, now)}
-                    </span>
-                  </span>
-                  <ArrowRight className="size-4 shrink-0" />
-                </Link>
-              )}
-              <div className="gap-2 pt-5 mt-auto flex flex-wrap items-center justify-between">
-                <p className="text-sm text-on-ink-muted">
-                  {plural(data.campaignOrders.length, 'order')} ·{' '}
-                  {fmtPercent(
-                    data.running.funnel.clicked
-                      ? data.running.funnel.purchased / data.running.funnel.clicked
-                      : 0,
-                    1,
-                  )}{' '}
-                  click to purchase
-                </p>
-                <Button asChild variant="onInk" size="sm">
-                  <Link to={paths.campaign(data.running.id)}>Open campaign</Link>
-                </Button>
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              className="text-on-ink [&_p]:text-on-ink-muted"
-              icon={null}
-              title="No campaign running"
-              description="Launch a campaign to a segment and its revenue shows here."
-              action={
-                <Button asChild variant="onInk" size="sm">
-                  <Link to="/marketing/campaigns">Open campaigns</Link>
-                </Button>
-              }
-            />
-          )}
-        </Card>
-
-        <div className="gap-3 sm:gap-4 grid grid-cols-1">
-          <Card variant="accent" className="p-5 flex flex-col">
+      <div className="gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] grid grid-cols-1">
+        <div className="lg:order-2 gap-3 order-1 grid grid-cols-1">
+          <Card variant="accent" className="p-4 flex flex-col">
             <p className="font-semibold text-white/80 text-[0.8125rem]">Orders to pack and ship</p>
-            <p className="mt-2 text-5xl font-bold tracking-tight leading-none tabular-nums">
+            <p className="mt-2 text-4xl font-bold tracking-tight leading-none tabular-nums">
               {data.fulfil.length}
             </p>
             <p className="mt-2 text-sm text-white/80">
@@ -197,7 +112,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
               · {data.shippedToday} shipped in the last 24 hours
             </p>
             <ProgressBar
-              className="mt-4 bg-white/25"
+              className="mt-3 bg-white/25"
               tone="white"
               value={
                 data.fulfil.length + data.shippedToday
@@ -206,7 +121,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
               }
               aria-label="Shipped against waiting"
             />
-            <div className="mt-4">
+            <div className="mt-3">
               <Button asChild variant="onInk" size="sm">
                 <Link to="/commerce/orders?view=to-fulfil">Open the queue</Link>
               </Button>
@@ -242,6 +157,73 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
             />
           </div>
         </div>
+        <Card variant="ink" className="lg:order-1 p-5 order-2 flex flex-col">
+          {data.running ? (
+            <>
+              <div className="gap-3 flex flex-wrap items-start justify-between">
+                <div className="min-w-0">
+                  <Kicker className="text-on-ink-muted">Running campaign</Kicker>
+                  <p className="mt-1 text-2xl font-bold tracking-tight truncate">{data.running.name}</p>
+                  <p className="text-sm text-on-ink-muted">
+                    {data.running.code} · {s.segmentName(data.running.segmentId)} · ends{' '}
+                    {fmtAgo(data.running.endAt, now)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 gap-2 flex items-end leading-none">
+                <span className="text-4xl font-bold tracking-tight sm:text-5xl tabular-nums">
+                  {fmtIdrShort(data.running.revenue)}
+                </span>
+                <span className="pb-1 text-sm font-semibold text-on-ink-muted">attributed revenue</span>
+              </div>
+              <div className="mt-3 gap-2 flex flex-wrap">
+                {FUNNEL_FLOW.filter(
+                  (f) => f === 'sent' || f === 'opened' || f === 'clicked' || f === 'purchased',
+                ).map((f) => (
+                  <span
+                    key={f}
+                    className={cn(
+                      'h-8 gap-1.5 px-3 text-xs font-semibold inline-flex items-center rounded-full border',
+                      f === 'purchased'
+                        ? 'text-white border-accent-strong bg-accent-strong'
+                        : 'border-white/10 bg-white/10 text-white',
+                    )}
+                  >
+                    {FUNNEL_STEP_LABEL[f]}{' '}
+                    <span className="tabular-nums">{fmtNumber(data.running!.funnel[f])}</span>
+                  </span>
+                ))}
+              </div>
+              <div className="gap-2 pt-4 mt-auto flex flex-wrap items-center justify-between">
+                <p className="text-sm text-on-ink-muted">
+                  {plural(data.campaignOrders.length, 'order')} ·{' '}
+                  {fmtPercent(
+                    data.running.funnel.clicked
+                      ? data.running.funnel.purchased / data.running.funnel.clicked
+                      : 0,
+                    1,
+                  )}{' '}
+                  click to purchase
+                </p>
+                <Button asChild variant="onInk" size="sm">
+                  <Link to={paths.campaign(data.running.id)}>Open campaign</Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              className="text-on-ink [&_p]:text-on-ink-muted"
+              icon={null}
+              title="No campaign running"
+              description="Launch a campaign to a segment and its revenue shows here."
+              action={
+                <Button asChild variant="onInk" size="sm">
+                  <Link to="/marketing/campaigns">Open campaigns</Link>
+                </Button>
+              }
+            />
+          )}
+        </Card>
       </div>
 
       <div className="gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6 grid grid-cols-2">
@@ -398,44 +380,48 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
 }
 
 function AttentionCard({ queues }: { queues: Queue[] }) {
+  const urgent = queues.filter((q) => q.urgent)
+  const other = queues.filter((q) => !q.urgent)
+
   return (
     <Card className="p-4" aria-labelledby="attention-title">
-      <div className="gap-3 flex flex-wrap items-center justify-between">
-        <div>
-          <h2 id="attention-title" className="gap-2 font-semibold flex items-center">
-            Attention required <CountBadge count={queues.filter((q) => q.urgent).length} />
-          </h2>
-          <p className="text-xs text-muted">Open the queue that needs action first.</p>
+      <h2 id="attention-title" className="gap-2 font-semibold flex items-center">
+        Urgent queues <CountBadge count={urgent.length} />
+      </h2>
+      {urgent.length ? (
+        <div className="mt-3 gap-2 sm:grid-cols-3 grid grid-cols-1">
+          {urgent.map((q) => (
+            <Link
+              key={q.key}
+              to={q.to}
+              className="min-w-0 gap-3 rounded-2xl px-3 py-2.5 flex items-center bg-accent-soft text-accent-strong transition-colors hover:bg-accent-soft/70 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
+            >
+              <CircleAlert className="size-4 shrink-0" />
+              <span className="text-lg font-bold leading-none tabular-nums">{q.count}</span>
+              <span className="text-xs font-semibold truncate">{q.label}</span>
+            </Link>
+          ))}
         </div>
-        <div className="gap-2 sm:grid-cols-3 xl:w-auto xl:grid-cols-4 grid w-full grid-cols-2">
-          {queues.length === 0 ? (
-            <p className="py-3 text-sm col-span-2 text-muted">No open issues.</p>
-          ) : (
-            queues.slice(0, 8).map((q) => (
-              <Link
-                key={q.key}
-                to={q.to}
-                className={cn(
-                  'min-w-0 gap-3 rounded-2xl px-3 py-2.5 [&_svg]:size-4 flex items-center transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none',
-                  q.urgent
-                    ? 'bg-accent-soft text-accent-strong hover:bg-accent-soft/70'
-                    : 'bg-surface text-foreground hover:bg-surface-2',
-                )}
-              >
-                {q.urgent ? (
-                  <CircleAlert className="shrink-0" />
-                ) : (
-                  <ArrowRight className="shrink-0 text-muted" />
-                )}
-                <span className="min-w-0">
-                  <span className="text-lg font-bold block leading-none tabular-nums">{q.count}</span>
-                  <span className="font-semibold block truncate text-[0.6875rem]">{q.label}</span>
-                </span>
-              </Link>
-            ))
-          )}
+      ) : (
+        <p className="mt-2 text-sm text-muted">
+          {queues.length ? 'No urgent queues.' : 'All queues are clear.'}
+        </p>
+      )}
+      {other.length > 0 && (
+        <div className="mt-3 gap-x-4 gap-y-2 pt-3 flex flex-wrap items-center border-t border-border">
+          <span className="text-xs font-semibold text-muted">Other queues</span>
+          {other.map((q) => (
+            <Link
+              key={q.key}
+              to={q.to}
+              className="gap-1 text-xs font-semibold inline-flex items-center hover:text-accent-strong focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
+            >
+              <span className="tabular-nums">{q.count}</span> {q.label}
+              <ArrowRight className="size-3 text-muted" />
+            </Link>
+          ))}
         </div>
-      </div>
+      )}
     </Card>
   )
 }

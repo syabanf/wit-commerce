@@ -2,7 +2,7 @@ import { fmtIdr } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { Link } from 'react-router'
-import { HeartButton, ProductImage, discountFor } from '../../components/product'
+import { HeartButton, ProductImage, automaticDiscountFor, discountFor } from '../../components/product'
 import { type HeadingProps, PRODUCT_GRID, productRail, productRailItem } from '../../components/sections'
 import { Pill } from '../../components/ui'
 import { categoryName, fromPrice } from '../../lib/catalog'
@@ -17,6 +17,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
   const { catalog, store } = useShop()
   const to = paths.product(store, product.id)
   const pct = discountFor(catalog, product)
+  const cartDiscountPct = automaticDiscountFor(catalog, product)
   return (
     <article className={cn('group min-w-0 relative flex flex-col', className)}>
       <div className="relative overflow-hidden rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]">
@@ -50,6 +51,11 @@ export function ProductCard({ product, className }: { product: Product; classNam
         <p className="sf-price pt-2 font-bold md:text-base mt-auto text-[15px] text-[color:var(--sf-primary)]">
           {product.assisted ? 'Talk to sales' : fmtIdr(fromPrice(product))}
         </p>
+        {cartDiscountPct && (
+          <p className="text-xs font-semibold text-[color:var(--sf-primary)]">
+            {cartDiscountPct}% off applied in cart
+          </p>
+        )}
       </div>
     </article>
   )

@@ -3,7 +3,14 @@ import type { Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { Plus, Star } from 'lucide-react'
 import { Link } from 'react-router'
-import { HeartButton, PriceTag, ProductImage, discountFor, useQuickAdd } from '../../components/product'
+import {
+  HeartButton,
+  PriceTag,
+  ProductImage,
+  automaticDiscountFor,
+  discountFor,
+  useQuickAdd,
+} from '../../components/product'
 import { PRODUCT_GRID, productRail, productRailItem } from '../../components/sections'
 import { Pill } from '../../components/ui'
 import { categoryName, fromPrice, quickAddable } from '../../lib/catalog'
@@ -18,6 +25,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
   const { catalog, store } = useShop()
   const quickAdd = useQuickAdd()
   const pct = discountFor(catalog, product)
+  const cartDiscountPct = automaticDiscountFor(catalog, product)
   const to = paths.product(store, product.id)
   const direct = quickAddable(catalog, product)
   const addLabel = product.assisted
@@ -80,6 +88,11 @@ export function ProductCard({ product, className }: { product: Product; classNam
             </span>
           )}
         </div>
+        {cartDiscountPct && (
+          <p className="text-xs font-semibold text-[color:var(--sf-primary)]">
+            {cartDiscountPct}% off applied in cart
+          </p>
+        )}
       </div>
     </article>
   )

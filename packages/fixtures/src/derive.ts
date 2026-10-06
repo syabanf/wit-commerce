@@ -22,6 +22,21 @@ const SOLD = new Set<OrderStatus>(SOLD_ORDER_STATUSES)
 /** True once an order counts as revenue. */
 export const isSold = (o: Order) => SOLD.has(o.status)
 
+/** A category and every child category beneath it. */
+export function categoryTreeIds(categories: readonly Category[], categoryId: string): Set<string> {
+  const ids = new Set([categoryId])
+  for (let changed = true; changed;) {
+    changed = false
+    for (const category of categories) {
+      if (category.parentId && ids.has(category.parentId) && !ids.has(category.id)) {
+        ids.add(category.id)
+        changed = true
+      }
+    }
+  }
+  return ids
+}
+
 // --- stock ---
 
 export interface StockSummary {
@@ -31,7 +46,9 @@ export interface StockSummary {
   safety: number
 }
 
-export function sumStock(levels: readonly StockLevel[]): StockSummary {
+export function sumStock(
+  levels: readonly Pick<StockLevel, 'onHand' | 'reserved' | 'safety'>[],
+): StockSummary {
   let onHand = 0
   let reserved = 0
   let safety = 0
@@ -60,6 +77,25 @@ export function stockByProduct(stock: readonly StockLevel[]): Map<string, StockS
     else groups.set(l.productId, [l])
   }
   return new Map([...groups].map(([id, levels]) => [id, sumStock(levels)]))
+}
+
+/** Total units needed for each modifier option across all lines of an order. */
+export function modifierDemand(order: Order): Map<string, number> {
+  const demand = new Map<string, number>()
+  for (const line of order.lines) {
+    for (const option of line.modifiers ?? []) {
+      demand.set(option.optionId, (demand.get(option.optionId) ?? 0) + line.qty)
+    }
+  }
+  return demand
+}
+
+export function variantDemand(order: Order): Map<string, number> {
+  const demand = new Map<string, number>()
+  for (const line of order.lines) {
+    demand.set(line.variantId, (demand.get(line.variantId) ?? 0) + line.qty)
+  }
+  return demand
 }
 
 // --- orders ---

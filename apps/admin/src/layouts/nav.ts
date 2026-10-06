@@ -4,6 +4,7 @@ import {
   Blocks,
   Boxes,
   CreditCard,
+  ReceiptText,
   Library,
   FolderTree,
   ListPlus,
@@ -44,8 +45,8 @@ export interface NavLeaf {
   badge?: BadgeKey
 }
 
-/** Groups in the order a brand team works: today's work, what it sells, how it grows, then setup. */
-export type NavGroup = 'Daily work' | 'Sell' | 'Grow' | 'Insights & setup'
+/** Separate daily selling work from catalog and payment configuration. */
+export type NavGroup = 'Daily work' | 'Selling' | 'Master data' | 'Growth' | 'Insights & setup'
 
 export interface NavSection {
   id: string
@@ -65,15 +66,22 @@ export const NAV: NavSection[] = [
     label: 'Orders',
     icon: ShoppingBag,
     to: '/commerce/orders',
-    group: 'Daily work',
+    group: 'Selling',
     badge: 'toFulfil',
+  },
+  {
+    id: 'payments',
+    label: 'Payment history',
+    icon: ReceiptText,
+    to: '/commerce/payments',
+    group: 'Selling',
   },
   {
     id: 'customers',
     label: 'Customers',
     icon: Users,
     to: '/customers/all',
-    group: 'Daily work',
+    group: 'Selling',
     items: [
       { to: '/customers/all', label: 'All customers', icon: UserRound },
       { to: '/customers/support', label: 'Support', icon: Headset, badge: 'openTickets' },
@@ -82,26 +90,19 @@ export const NAV: NavSection[] = [
     ],
   },
   {
-    id: 'catalog',
-    label: 'Catalog',
-    icon: Package,
-    to: '/commerce/products',
-    group: 'Sell',
-    items: [
-      { to: '/commerce/products', label: 'Products', icon: Package },
-      { to: '/commerce/categories', label: 'Categories', icon: FolderTree },
-      { to: '/commerce/collections', label: 'Collections', icon: Library },
-      { to: '/commerce/attributes', label: 'Attributes', icon: SlidersHorizontal },
-      { to: '/commerce/modifiers', label: 'Modifiers', icon: ListPlus },
-      { to: '/commerce/inventory', label: 'Inventory', icon: Boxes, badge: 'lowStock' },
-    ],
+    id: 'inventory',
+    label: 'Inventory',
+    icon: Boxes,
+    to: '/commerce/inventory',
+    group: 'Selling',
+    badge: 'lowStock',
   },
   {
     id: 'store',
     label: 'Online store',
     icon: Store,
     to: '/store/pages',
-    group: 'Sell',
+    group: 'Selling',
     items: [
       { to: '/store/pages', label: 'Pages', icon: PanelsTopLeft },
       { to: '/store/templates', label: 'Templates', icon: LayoutTemplate },
@@ -110,11 +111,32 @@ export const NAV: NavSection[] = [
     ],
   },
   {
+    id: 'catalog',
+    label: 'Catalog',
+    icon: Package,
+    to: '/commerce/products',
+    group: 'Master data',
+    items: [
+      { to: '/commerce/products', label: 'Products', icon: Package },
+      { to: '/commerce/categories', label: 'Categories', icon: FolderTree },
+      { to: '/commerce/collections', label: 'Collections', icon: Library },
+      { to: '/commerce/attributes', label: 'Attributes', icon: SlidersHorizontal },
+      { to: '/commerce/modifiers', label: 'Modifiers', icon: ListPlus },
+    ],
+  },
+  {
+    id: 'payment-types',
+    label: 'Payment types',
+    icon: CreditCard,
+    to: '/settings/payment-types',
+    group: 'Master data',
+  },
+  {
     id: 'marketing',
     label: 'Marketing',
     icon: Megaphone,
     to: '/marketing/campaigns',
-    group: 'Grow',
+    group: 'Growth',
     items: [
       { to: '/marketing/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/marketing/promotions', label: 'Promotions', icon: BadgePercent },
@@ -126,7 +148,7 @@ export const NAV: NavSection[] = [
     label: 'Sales network',
     icon: Network,
     to: '/customers/leads',
-    group: 'Grow',
+    group: 'Growth',
     items: [
       { to: '/customers/leads', label: 'Leads', icon: Handshake, badge: 'newLeads' },
       { to: '/sales/sellers', label: 'Sellers', icon: Gem },
@@ -143,7 +165,6 @@ export const NAV: NavSection[] = [
     group: 'Insights & setup',
     items: [
       { to: '/settings/users', label: 'Users & roles', icon: ShieldCheck },
-      { to: '/settings/payment-types', label: 'Payment types', icon: CreditCard },
       { to: '/settings/tenants', label: 'Tenants', icon: Building2 },
       { to: '/settings/apps', label: 'App marketplace', icon: Blocks },
     ],

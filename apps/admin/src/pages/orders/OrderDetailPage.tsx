@@ -93,7 +93,7 @@ export function OrderDetailPage() {
   const customer = s.maps.customer.get(order.customerId)
   const metrics = metricsFor(s.crm.metrics, order.customerId)
   const next = nextOrderStatus(order)
-  const advanceBlock = orderAdvanceBlocker(order, s.stock)
+  const advanceBlock = orderAdvanceBlocker(order, s.stock, s.modifierStock, s.modifiers, s.products)
   const cancelBlock = orderCancelBlocker(order)
   const refundBlock = orderRefundBlocker(order)
   const campaign = order.campaignId ? s.maps.campaign.get(order.campaignId) : undefined

@@ -162,7 +162,7 @@ export function Sections({ sections, seller }: SectionsProps) {
                         ? 'Our collection'
                         : 'Featured products')
                   }
-                  action={{ label: 'Explore all', to: paths.search(store, '', { sort: 'best' }) }}
+                  action={{ label: 'Browse all products', to: paths.search(store) }}
                 />
                 <ProductGrid
                   products={sectionProducts(catalog, s, layout.limit)}

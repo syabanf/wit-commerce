@@ -30,6 +30,7 @@ interface DraftOption {
   id: string
   name: string
   price: string
+  stockTracked: boolean
 }
 
 export function ModifierDialog({ open, onOpenChange, editing, onSaved }: Props) {
@@ -69,9 +70,10 @@ function ModifierForm({
       id: o.id,
       name: o.name,
       price: o.priceDelta ? String(o.priceDelta) : '',
+      stockTracked: o.stockTracked ?? false,
     })) ?? [
-      { id: newId('opt'), name: '', price: '' },
-      { id: newId('opt'), name: '', price: '' },
+      { id: newId('opt'), name: '', price: '', stockTracked: false },
+      { id: newId('opt'), name: '', price: '', stockTracked: false },
     ],
   )
   const [productIds, setProductIds] = useState<string[]>(editing?.productIds ?? [])
@@ -106,6 +108,7 @@ function ModifierForm({
         id: o.id,
         name: o.name.trim(),
         priceDelta: toAmount(o.price),
+        stockTracked: o.stockTracked,
       })),
       productIds,
     }
@@ -118,7 +121,8 @@ function ModifierForm({
       <DialogHeader>
         <DialogTitle>{editing ? `Edit ${editing.name}` : 'New modifier group'}</DialogTitle>
         <DialogDescription>
-          Shoppers see the group under the variant picker. A priced option adds its amount to the item.
+          Shoppers see these choices under the variant picker. Track stock for physical add-ons; leave
+          services untracked. Receive units before a tracked option becomes available at checkout.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
@@ -175,33 +179,54 @@ function ModifierForm({
           </p>
           <div className="space-y-2">
             {options.map((o, i) => (
-              <div key={o.id} className="gap-2 grid grid-cols-[minmax(0,1fr)_8rem_auto] items-center">
-                <Input
-                  variant="soft"
-                  aria-label={`Option ${i + 1} name`}
-                  value={o.name}
-                  onChange={(e) => setOption(o.id, { name: e.target.value })}
-                  placeholder={i === 0 ? 'Gift box and card' : 'Option name'}
-                />
-                <Input
-                  variant="soft"
-                  aria-label={`Option ${i + 1} extra price`}
-                  inputMode="numeric"
-                  inputClassName="tabular-nums"
-                  value={o.price}
-                  onChange={(e) => setOption(o.id, { price: e.target.value.replace(/[^\d]/g, '') })}
-                  placeholder="Free"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove option ${i + 1}`}
-                  disabled={options.length === 1}
-                  onClick={() => setOptions((list) => list.filter((x) => x.id !== o.id))}
-                >
-                  <X />
-                </Button>
+              <div key={o.id} className="rounded-2xl p-3 bg-surface-2">
+                <div className="gap-2 grid grid-cols-[minmax(0,1fr)_7rem_auto] items-center">
+                  <Input
+                    variant="soft"
+                    aria-label={`Option ${i + 1} name`}
+                    value={o.name}
+                    onChange={(e) => setOption(o.id, { name: e.target.value })}
+                    placeholder={i === 0 ? 'Gift box and card' : 'Option name'}
+                  />
+                  <Input
+                    variant="soft"
+                    aria-label={`Option ${i + 1} extra price`}
+                    inputMode="numeric"
+                    inputClassName="tabular-nums"
+                    value={o.price}
+                    onChange={(e) => setOption(o.id, { price: e.target.value.replace(/[^\d]/g, '') })}
+                    placeholder="Free"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remove option ${i + 1}`}
+                    disabled={
+                      options.length === 1 ||
+                      s.modifierStock.some(
+                        (level) => level.optionId === o.id && (level.onHand > 0 || level.reserved > 0),
+                      )
+                    }
+                    onClick={() => setOptions((list) => list.filter((x) => x.id !== o.id))}
+                  >
+                    <X />
+                  </Button>
+                </div>
+                <label className="mt-2 gap-2 text-xs flex items-center text-muted">
+                  <Switch
+                    checked={o.stockTracked}
+                    onCheckedChange={(checked) => setOption(o.id, { stockTracked: checked })}
+                    disabled={
+                      o.stockTracked &&
+                      s.modifierStock.some(
+                        (level) => level.optionId === o.id && (level.onHand > 0 || level.reserved > 0),
+                      )
+                    }
+                    aria-label={`Track stock for ${o.name || `option ${i + 1}`}`}
+                  />
+                  Track stock per warehouse
+                </label>
               </div>
             ))}
           </div>
@@ -212,7 +237,9 @@ function ModifierForm({
             variant="soft"
             size="sm"
             className="mt-2"
-            onClick={() => setOptions((list) => [...list, { id: newId('opt'), name: '', price: '' }])}
+            onClick={() =>
+              setOptions((list) => [...list, { id: newId('opt'), name: '', price: '', stockTracked: false }])
+            }
           >
             <Plus />
             Add option

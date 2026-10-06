@@ -1,5 +1,13 @@
 import { newId, nextCode, nowIso } from '@rc/fixtures'
-import type { Courier, Customer, Order, OrderEvent, PaymentType, StockLevel } from '@rc/types'
+import type {
+  Courier,
+  Customer,
+  ModifierStockLevel,
+  Order,
+  OrderEvent,
+  PaymentType,
+  StockLevel,
+} from '@rc/types'
 import type { CartTotals } from './cart'
 import type { Catalog } from './catalog'
 import { AVATAR_PALETTE } from '@rc/ui'
@@ -36,8 +44,11 @@ export const COURIERS: CourierOption[] = [
   { id: 'pickup', label: 'Store pickup', eta: 'Ready in 2 hours', fee: 0 },
 ]
 
-/** Cheapest paid courier, for the cart's shipping estimate. */
-export const CHEAPEST_FEE = Math.min(...COURIERS.filter((c) => c.fee > 0).map((c) => c.fee))
+/** The courier used for both the cart estimate and the initial checkout total. */
+export const DEFAULT_COURIER = COURIERS.filter((c) => c.fee > 0).reduce((cheapest, courier) =>
+  courier.fee < cheapest.fee ? courier : cheapest,
+)
+export const CHEAPEST_FEE = DEFAULT_COURIER.fee
 
 export function courierFee(courier: CourierOption, freeShipping: boolean) {
   return freeShipping ? 0 : courier.fee
@@ -49,17 +60,36 @@ export function pickWarehouse(
   city: string,
   lines: Order['lines'],
   stock: readonly StockLevel[],
+  modifierStock: readonly ModifierStockLevel[],
 ): string {
   const { warehouses } = catalog
   const local = warehouses.find((w) => w.city === city)
-  if (local) return local.id
-  const holdsAll = warehouses.find((w) =>
-    lines.every((l) => {
-      const level = stock.find((s) => s.variantId === l.variantId && s.warehouseId === w.id)
-      return !level || level.onHand - level.reserved >= l.qty
-    }),
+  const variantDemand = new Map<string, number>()
+  const variantProduct = new Map<string, string>()
+  const optionDemand = new Map<string, number>()
+  for (const line of lines) {
+    variantDemand.set(line.variantId, (variantDemand.get(line.variantId) ?? 0) + line.qty)
+    variantProduct.set(line.variantId, line.productId)
+    for (const selection of line.modifiers ?? []) {
+      optionDemand.set(selection.optionId, (optionDemand.get(selection.optionId) ?? 0) + line.qty)
+    }
+  }
+  const trackedOptions = new Set(
+    catalog.modifiers.flatMap((g) => g.options.filter((o) => o.stockTracked).map((o) => o.id)),
   )
-  return (holdsAll ?? warehouses[0])?.id ?? ''
+  const holdsAll = (warehouseId: string) =>
+    [...variantDemand].every(([variantId, qty]) => {
+      const level = stock.find((s) => s.variantId === variantId && s.warehouseId === warehouseId)
+      if (!level) return catalog.productMap.get(variantProduct.get(variantId) ?? '')?.type !== 'physical'
+      return level.onHand - level.reserved >= qty
+    }) &&
+    [...optionDemand].every(([optionId, qty]) => {
+      if (!trackedOptions.has(optionId)) return true
+      const level = modifierStock.find((s) => s.optionId === optionId && s.warehouseId === warehouseId)
+      return (level?.onHand ?? 0) - (level?.reserved ?? 0) >= qty
+    })
+  if (local && holdsAll(local.id)) return local.id
+  return (warehouses.find((w) => holdsAll(w.id)) ?? local ?? warehouses[0])?.id ?? ''
 }
 
 export interface Contact {
@@ -72,6 +102,7 @@ export interface PlaceInput {
   catalog: Catalog
   totals: CartTotals
   stock: readonly StockLevel[]
+  modifierStock: readonly ModifierStockLevel[]
   /** Existing order and customer codes, for the next sequential code. */
   orderCodes: readonly string[]
   customerCodes: readonly string[]
@@ -158,7 +189,7 @@ export function buildOrder(input: PlaceInput): { order: Order; customer: Custome
     paymentTypeId: payment.id,
     courier: courier.id,
     trackingNo: null,
-    warehouseId: pickWarehouse(catalog, input.city, lines, input.stock),
+    warehouseId: pickWarehouse(catalog, input.city, lines, input.stock, input.modifierStock),
     city: input.city,
     lines,
     subtotal: totals.subtotal,

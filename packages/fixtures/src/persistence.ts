@@ -20,7 +20,34 @@ export function loadLocalState(key: string): AppState {
     const raw = window.localStorage.getItem(key)
     if (!raw) return seedState()
     const stored = JSON.parse(raw) as Partial<StoredState>
-    return stored.version === STORAGE_VERSION && looksLikeState(stored.state) ? stored.state : seedState()
+    if (stored.version === STORAGE_VERSION && looksLikeState(stored.state)) {
+      const seed = seedState()
+      const seededOptions = new Map(
+        seed.modifiers.flatMap((g) => g.options.map((o) => [o.id, o.stockTracked] as const)),
+      )
+      const modifiers = stored.state.modifiers.map((g) => ({
+        ...g,
+        options: g.options.map((o) => ({
+          ...o,
+          stockTracked: o.stockTracked ?? seededOptions.get(o.id) ?? false,
+        })),
+      }))
+      const activeOptions = new Set(
+        modifiers.flatMap((g) => g.options.filter((o) => o.stockTracked).map((o) => o.id)),
+      )
+      const needsSeed = !stored.state.modifierStock?.length && !stored.state.modifierStockMoves?.length
+      return {
+        ...stored.state,
+        modifiers,
+        modifierStock: needsSeed
+          ? seed.modifierStock.filter((s) => activeOptions.has(s.optionId))
+          : stored.state.modifierStock,
+        modifierStockMoves: needsSeed
+          ? seed.modifierStockMoves.filter((m) => activeOptions.has(m.optionId))
+          : stored.state.modifierStockMoves,
+      }
+    }
+    return seedState()
   } catch {
     return seedState()
   }

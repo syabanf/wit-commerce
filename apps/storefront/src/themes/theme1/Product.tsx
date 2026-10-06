@@ -51,7 +51,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
     if (item) setAdded(item)
   }
   const buyNow = () => {
-    if (detail.add()) navigate(paths.cart(store))
+    if (detail.add()) navigate(paths.checkout(store))
   }
   return (
     <div>
@@ -89,9 +89,9 @@ export function Product({ detail }: { detail: ProductDetail }) {
           ) : (
             <div className="space-y-1">
               <PriceTag product={product} price={detail.variant?.price} priceClassName="text-3xl" />
-              {product.memberPrice && (
-                <p className="text-sm text-[color:var(--sf-muted)]">
-                  Member price {fmtIdr(product.memberPrice)}
+              {detail.cartDiscountPct && (
+                <p className="text-sm font-semibold text-[color:var(--sf-primary)]">
+                  {detail.cartDiscountPct}% off applied in cart
                 </p>
               )}
               {detail.codeOffer && <CodeOfferStrip {...detail.codeOffer} />}
@@ -188,9 +188,20 @@ export function Product({ detail }: { detail: ProductDetail }) {
           {detail.blocker && (
             <p className="mb-2 text-xs font-semibold text-center text-danger">{detail.blocker}</p>
           )}
-          <Button variant="dark" size="lg" full disabled={!!detail.blocker} onClick={buyNow}>
-            Buy for {fmtIdr(detail.lineTotal)}
-          </Button>
+          <div className="mb-2 text-sm flex items-center justify-between">
+            <span className="text-[color:var(--sf-muted)]">
+              {detail.variant ? 'Selected total' : 'Starting at'}
+            </span>
+            <strong>{fmtIdr(detail.lineTotal)}</strong>
+          </div>
+          <div className="gap-2 grid grid-cols-2">
+            <Button variant="outline" size="lg" full disabled={!!detail.blocker} onClick={add}>
+              Add to cart
+            </Button>
+            <Button variant="dark" size="lg" full disabled={!!detail.blocker} onClick={buyNow}>
+              Buy now
+            </Button>
+          </div>
         </div>
       )}
       <AddedDrawer item={added} onClose={() => setAdded(null)} />

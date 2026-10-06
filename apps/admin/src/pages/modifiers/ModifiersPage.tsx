@@ -143,7 +143,17 @@ export function ModifiersPage() {
                         size="icon-sm"
                         className="text-accent"
                         aria-label={`Remove ${g.name}`}
-                        onClick={() => setRemoving(g)}
+                        onClick={() => {
+                          const held = s.modifierStock.some(
+                            (level) => level.groupId === g.id && (level.onHand > 0 || level.reserved > 0),
+                          )
+                          if (held) {
+                            toast('This group still has stock', {
+                              tone: 'danger',
+                              description: 'Adjust tracked options to zero before removing the group.',
+                            })
+                          } else setRemoving(g)
+                        }}
                       >
                         <Trash2 />
                       </Button>
@@ -153,7 +163,12 @@ export function ModifiersPage() {
                 <ul className="mt-4 rounded-2xl px-4 divide-y divide-border bg-surface-2">
                   {g.options.map((o) => (
                     <li key={o.id} className="gap-3 py-2.5 text-sm flex items-center justify-between">
-                      <span className="min-w-0 truncate">{o.name}</span>
+                      <span className="min-w-0 truncate">
+                        {o.name}
+                        {o.stockTracked && (
+                          <span className="ml-1 text-[0.6875rem] text-muted">· Stock tracked</span>
+                        )}
+                      </span>
                       <span
                         className={
                           o.priceDelta ? 'font-semibold shrink-0 tabular-nums' : 'shrink-0 text-muted'

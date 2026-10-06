@@ -210,6 +210,8 @@ export interface ModifierOption {
   name: string
   /** Added to the item price when the shopper picks it; 0 for free choices. */
   priceDelta: number
+  /** Physical add-ons use their own stock per warehouse. Services can remain untracked. */
+  stockTracked?: boolean
 }
 
 /** Add-on choices shown with a product at checkout, such as gift wrap or installation. */
@@ -310,6 +312,30 @@ export interface StockMove {
   id: string
   tenantId: string
   variantId: string
+  warehouseId: string
+  kind: StockMoveKind
+  qty: number
+  at: IsoDate
+  by: string
+  note: string
+}
+
+export interface ModifierStockLevel {
+  id: string
+  tenantId: string
+  groupId: string
+  optionId: string
+  warehouseId: string
+  onHand: number
+  reserved: number
+  safety: number
+}
+
+export interface ModifierStockMove {
+  id: string
+  tenantId: string
+  groupId: string
+  optionId: string
   warehouseId: string
   kind: StockMoveKind
   qty: number

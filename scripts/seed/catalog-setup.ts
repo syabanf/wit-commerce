@@ -218,6 +218,7 @@ const group = (
   maxChoices: number,
   options: Opt[],
   productIds: string[],
+  stockTracked = false,
 ): ModifierGroup => ({
   id,
   tenantId,
@@ -225,7 +226,12 @@ const group = (
   selection,
   required,
   maxChoices,
-  options: options.map(([optName, priceDelta], i) => ({ id: `${id}-o${i + 1}`, name: optName, priceDelta })),
+  options: options.map(([optName, priceDelta], i) => ({
+    id: `${id}-o${i + 1}`,
+    name: optName,
+    priceDelta,
+    stockTracked,
+  })),
   productIds,
 })
 
@@ -243,6 +249,7 @@ export const modifiers: ModifierGroup[] = [
       ['Reflective', 25_000],
     ],
     ['prd-lr-101', 'prd-lr-102', 'prd-lr-103', 'prd-lr-104', 'prd-lr-105', 'prd-lr-106'],
+    true,
   ),
   group(
     'mod-lari-gift',
@@ -256,6 +263,7 @@ export const modifiers: ModifierGroup[] = [
       ['Eco wrap', 10_000],
     ],
     ['prd-lr-101', 'prd-lr-102', 'prd-lr-110', 'prd-lr-119', 'prd-lr-126'],
+    true,
   ),
   group(
     'mod-lari-print',
@@ -284,6 +292,7 @@ export const modifiers: ModifierGroup[] = [
       ['Salted caramel', 0],
     ],
     ['prd-lr-120'],
+    true,
   ),
   group(
     'mod-aruna-box',
@@ -297,6 +306,7 @@ export const modifiers: ModifierGroup[] = [
       ['Box with handwritten card', 45_000],
     ],
     ['prd-ar-115', 'prd-ar-116', 'prd-ar-117', 'prd-ar-118'],
+    true,
   ),
   group(
     'mod-aruna-sample',
@@ -311,6 +321,7 @@ export const modifiers: ModifierGroup[] = [
       ['Daily Sunscreen 10 ml', 0],
     ],
     ['prd-ar-101', 'prd-ar-102', 'prd-ar-104', 'prd-ar-105', 'prd-ar-117'],
+    true,
   ),
   group(
     'mod-tek-install',

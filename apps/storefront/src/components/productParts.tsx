@@ -141,18 +141,24 @@ export function ModifierGroups({ detail }: { detail: ProductDetail }) {
                   onChange={() => detail.toggleChoice(g, '')}
                 />
               )}
-              {g.options.map((o) => (
-                <ChoiceRow
-                  key={o.id}
-                  name={g.id}
-                  type={g.selection === 'single' ? 'radio' : 'checkbox'}
-                  label={o.name}
-                  price={o.priceDelta}
-                  checked={picked.includes(o.id)}
-                  disabled={full && !picked.includes(o.id)}
-                  onChange={() => detail.toggleChoice(g, o.id)}
-                />
-              ))}
+              {g.options.map((o) => {
+                const left = detail.modifierAvailable(o.id)
+                return (
+                  <ChoiceRow
+                    key={o.id}
+                    name={g.id}
+                    type={g.selection === 'single' ? 'radio' : 'checkbox'}
+                    label={o.name}
+                    hint={
+                      left === 0 ? 'Sold out' : left !== null && left <= 5 ? `Only ${left} left` : undefined
+                    }
+                    price={o.priceDelta}
+                    checked={picked.includes(o.id)}
+                    disabled={!picked.includes(o.id) && (left === 0 || full)}
+                    onChange={() => detail.toggleChoice(g, o.id)}
+                  />
+                )
+              })}
             </div>
           </fieldset>
         )
@@ -165,6 +171,7 @@ function ChoiceRow({
   name,
   type,
   label,
+  hint,
   price,
   checked,
   disabled,
@@ -173,6 +180,7 @@ function ChoiceRow({
   name: string
   type: 'radio' | 'checkbox'
   label: string
+  hint?: string
   price: number | null
   checked: boolean
   disabled?: boolean
@@ -193,7 +201,10 @@ function ChoiceRow({
         onChange={onChange}
         className="size-4 shrink-0 accent-[var(--sf-primary)]"
       />
-      <span className="min-w-0 flex-1">{label}</span>
+      <span className="min-w-0 flex-1">
+        {label}
+        {hint && <span className="text-xs block text-[color:var(--sf-muted)]">{hint}</span>}
+      </span>
       {price !== null && (
         <span className={cn('font-semibold shrink-0', price === 0 && 'text-[color:var(--sf-muted)]')}>
           {price ? `+${fmtIdr(price)}` : 'Free'}
@@ -205,6 +216,10 @@ function ChoiceRow({
 
 export function StockLine({ detail, className }: { detail: ProductDetail; className?: string }) {
   if (detail.product.assisted) return null
+  if (!detail.variant && detail.options.length)
+    return (
+      <p className={cn('text-sm text-[color:var(--sf-muted)]', className)}>Choose options to see stock</p>
+    )
   const out = detail.available !== null && detail.available <= 0
   return (
     <p className={cn('gap-2 text-sm flex items-center', className)}>
@@ -279,10 +294,24 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
             </div>
           </div>
           <FreeShippingProgress />
-          <p className="text-sm flex justify-between">
-            <span>Cart subtotal</span>
-            <strong>{fmtIdr(totals.subtotal)}</strong>
-          </p>
+          <div className="space-y-2 text-sm">
+            <p className="flex justify-between">
+              <span>Cart subtotal</span>
+              <strong>{fmtIdr(totals.subtotal)}</strong>
+            </p>
+            {totals.discounts.map((discount) => (
+              <p key={discount.promotionId} className="flex justify-between text-[color:var(--sf-primary)]">
+                <span>{discount.label}</span>
+                <span>−{fmtIdr(discount.amount)}</span>
+              </p>
+            ))}
+            {totals.discounts.length > 0 && (
+              <p className="pt-2 flex justify-between border-t border-[color:var(--sf-line)]">
+                <span>After offers, before shipping</span>
+                <strong>{fmtIdr(Math.max(0, totals.subtotal - totals.discount))}</strong>
+              </p>
+            )}
+          </div>
         </div>
       )}
     </Drawer>

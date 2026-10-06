@@ -25,7 +25,7 @@ import { type HeadingProps, PlainHeading, RAIL, lgCols } from './sections'
 type Heading = (p: HeadingProps) => ReactNode
 
 const RETURNS: Partial<Record<Industry, { title: string; text: string }>> = {
-  sport: { title: '14-day returns', text: 'Change of size or mind, no questions' },
+  sport: { title: '14-day returns', text: 'Unused items in the original box' },
   beauty: { title: '14-day returns', text: 'Unopened products, within 14 days' },
   industrial: { title: 'Parts returns', text: 'Per your quote and warranty terms' },
 }
@@ -51,7 +51,7 @@ export function BenefitsStrip() {
   const points = tenant.loyalty.pointsPer10k
   const bpom = catalog.attributes.find((a) => a.code === 'bpom_number')
   const items = [
-    { icon: Truck, title: 'Free shipping', text: `On orders over ${fmtIdr(tenant.loyalty.freeShippingMin)}` },
+    { icon: Truck, title: 'Free shipping', text: `On orders from ${fmtIdr(tenant.loyalty.freeShippingMin)}` },
     { icon: RotateCcw, ...(RETURNS[tenant.industry] ?? RETURNS.sport!) },
     ...(tenant.industry === 'beauty'
       ? [

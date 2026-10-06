@@ -45,6 +45,7 @@ function ThemedStore() {
   // Keep the launcher off forms and totals, and off Theme 2's first-visit intro on phones.
   const quiet =
     /\/(cart|checkout|account|order)(\/|$)/.test(pathname) ||
+    (isPhone && /\/p\/[^/]+/.test(pathname)) ||
     (theme.id === 'theme2' && isPhone && !introSeen && pathname === `/${tenant.subdomain}`)
   return (
     <BrandRoot brand={tenant.brand} theme={theme.id}>

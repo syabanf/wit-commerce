@@ -29,6 +29,42 @@ import tickets from '../data/tickets.json'
 import traffic from '../data/traffic.json'
 import users from '../data/users.json'
 import warehouses from '../data/warehouses.json'
+import { FIXTURE_NOW } from './clock'
+
+const modifierStock: AppState['modifierStock'] = (modifiers as AppState['modifiers']).flatMap((group) =>
+  (warehouses as AppState['warehouses'])
+    .filter((warehouse) => warehouse.tenantId === group.tenantId)
+    .flatMap((warehouse) =>
+      group.options.flatMap((option, index) =>
+        option.stockTracked
+          ? [
+              {
+                id: `mstk-${option.id}-${warehouse.id}`,
+                tenantId: group.tenantId,
+                groupId: group.id,
+                optionId: option.id,
+                warehouseId: warehouse.id,
+                onHand: index === group.options.length - 1 ? 4 : 24 + index * 6,
+                reserved: 0,
+                safety: 5,
+              },
+            ]
+          : [],
+      ),
+    ),
+)
+const modifierStockMoves: AppState['modifierStockMoves'] = modifierStock.map((level) => ({
+  id: `mmv-seed-${level.id}`,
+  tenantId: level.tenantId,
+  groupId: level.groupId,
+  optionId: level.optionId,
+  warehouseId: level.warehouseId,
+  kind: 'receipt',
+  qty: level.onHand,
+  at: FIXTURE_NOW,
+  by: 'system',
+  note: 'Opening stock',
+}))
 
 const seed = {
   tenants,
@@ -44,6 +80,8 @@ const seed = {
   warehouses,
   stock,
   stockMoves,
+  modifierStock,
+  modifierStockMoves,
   customers,
   customerEvents,
   orders,

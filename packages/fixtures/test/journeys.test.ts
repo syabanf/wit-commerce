@@ -70,6 +70,86 @@ function freshOrder(
 }
 
 describe('order journey', () => {
+  it('receives, reserves, releases and ships tracked modifier options separately', () => {
+    let state = seedState()
+    const optionId = 'mod-lari-laces-o1'
+    const groupId = 'mod-lari-laces'
+    const warehouseId = 'wh-lari-ckr'
+    const original = state.modifierStock.find(
+      (s) => s.optionId === optionId && s.warehouseId === warehouseId,
+    )!
+    const level = () => state.modifierStock.find((s) => s.id === original.id)!
+    const productLevel = state.stock.find(
+      (s) => s.productId === 'prd-lr-101' && s.warehouseId === warehouseId && s.onHand - s.reserved >= 2,
+    )!
+    const template = state.orders.find((o) => o.tenantId === 'ten-lari')!
+    const makeOrder = (id: string): Order => ({
+      ...template,
+      id,
+      code: id,
+      status: 'new',
+      paymentStatus: 'pending',
+      createdAt: at(),
+      warehouseId,
+      events: [],
+      lines: [
+        {
+          productId: productLevel.productId,
+          variantId: productLevel.variantId,
+          qty: 2,
+          price: 150_000,
+          modifiers: [{ groupId, optionId, name: 'Black', priceDelta: 15_000 }],
+        },
+      ],
+    })
+
+    state = run(state, {
+      type: 'modifierStock/receive',
+      tenantId: 'ten-lari',
+      groupId,
+      optionId,
+      warehouseId,
+      qty: 3,
+      note: 'Delivery 1',
+    })
+    assert.equal(level().onHand, original.onHand + 3)
+    assert.ok(
+      state.modifierStockMoves.some((m) => m.optionId === optionId && m.kind === 'receipt' && m.qty === 3),
+    )
+
+    const first = makeOrder('modifier-test-cancel')
+    state = run(state, { type: 'orders/place', order: first, customer: null })
+    assert.equal(level().reserved, 2)
+    state = run(state, { type: 'orders/cancel', id: first.id, reason: 'customer_request', note: '' })
+    assert.equal(level().reserved, 0)
+
+    const second = makeOrder('modifier-test-ship')
+    state = run(state, { type: 'orders/place', order: second, customer: null })
+    for (let i = 0; i < 5; i++) state = run(state, { type: 'orders/advance', id: second.id })
+    assert.equal(order(state, second.id).status, 'shipped')
+    assert.equal(level().onHand, original.onHand + 1)
+    assert.equal(level().reserved, 0)
+    assert.ok(
+      state.modifierStockMoves.some((m) => m.optionId === optionId && m.kind === 'sale' && m.qty === -2),
+    )
+
+    state = run(state, {
+      type: 'modifierStock/adjust',
+      levelId: original.id,
+      delta: -level().onHand,
+      note: 'Recount',
+    })
+    assert.match(
+      orderPlaceBlocker(
+        makeOrder('modifier-test-empty'),
+        state.stock,
+        state.modifierStock,
+        state.modifiers,
+      ) ?? '',
+      /Black has only 0 left/,
+    )
+  })
+
   it('moves a QRIS order from placed to completed and takes stock off the shelf when it ships', () => {
     const fresh = freshOrder(seedState())
     const { id } = fresh

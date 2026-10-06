@@ -29,7 +29,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { usePersistentState } from '../lib/storage'
@@ -101,7 +101,7 @@ export function PhoneNav({
     setRecent((list) => [to, ...list.filter((x) => x !== to)].slice(0, 4))
     onMoreChange(false)
   }
-  const ordered = [current, ...NAV.filter((s) => s.id !== current.id)]
+  const ordered = NAV
 
   return (
     <>
@@ -160,7 +160,9 @@ export function PhoneNav({
           </div>
           {!q && recent.length > 0 && (
             <div className="px-5 pb-2">
-              <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">Recent</p>
+              <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">
+                Recent
+              </p>
               <div className="mt-2 gap-2 flex flex-wrap">
                 {recent.map((to) => {
                   const leaf = leaves.find((l) => l.to === to)
@@ -178,7 +180,7 @@ export function PhoneNav({
               </div>
             </div>
           )}
-          {ordered.map((section) => {
+          {ordered.map((section, index) => {
             const items = (
               section.items ?? [{ to: section.to, label: section.label, icon: section.icon }]
             ).filter(
@@ -187,49 +189,71 @@ export function PhoneNav({
             if (!items.length) return null
             const open = !!q || openSection === section.id
             return (
-              <div key={section.id || 'home'}>
-                <button
-                  type="button"
-                  aria-expanded={open}
-                  onClick={() => setOpenSection(open ? null : section.id)}
-                  className="px-5 py-3 font-semibold tracking-wider hover:text-white flex w-full items-center justify-between text-left text-[0.6875rem] text-on-ink-muted uppercase"
-                >
-                  {section.label}
-                  <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
-                </button>
-                {open && (
-                  <div className="gap-2 px-3 pb-2 grid grid-cols-3">
-                    {items.map((d) => {
-                      const Icon = d.icon
-                      const active = is(d.to)
-                      const badge = 'badge' in d && d.badge ? counts[d.badge] : 0
-                      return (
-                        <Link
-                          key={d.to}
-                          to={d.to}
-                          onClick={() => choose(d.to)}
-                          className="gap-2 rounded-2xl p-3 hover:bg-white/10 flex flex-col items-center text-center transition-colors"
-                        >
-                          <span
-                            className={cn(
-                              'size-11 rounded-2xl bg-white/10 [&_svg]:size-5 relative flex items-center justify-center',
-                              active && 'text-white bg-accent shadow-glow',
-                            )}
-                          >
-                            <Icon />
-                            {badge > 0 && (
-                              <span className="-right-1 -top-1 bg-white px-1 font-bold absolute flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full text-[0.625rem] text-ink">
-                                {badge > 99 ? '99+' : badge}
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-xs font-medium leading-tight">{d.label}</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
+              <Fragment key={section.id}>
+                {!q && (index === 0 || ordered[index - 1]?.group !== section.group) && (
+                  <p className="px-5 pb-1 pt-4 font-semibold tracking-wider text-[0.6562rem] text-on-ink-muted uppercase">
+                    {section.group}
+                  </p>
                 )}
-              </div>
+                <div>
+                  {!section.items ? (
+                    <Link
+                      to={section.to}
+                      onClick={() => choose(section.to)}
+                      className={cn(
+                        'px-5 py-3 font-semibold tracking-wider hover:text-white flex w-full items-center text-[0.6875rem] text-on-ink-muted uppercase',
+                        is(section.to) && 'text-white',
+                      )}
+                    >
+                      {section.label}
+                    </Link>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        onClick={() => setOpenSection(open ? null : section.id)}
+                        className="px-5 py-3 font-semibold tracking-wider hover:text-white flex w-full items-center justify-between text-left text-[0.6875rem] text-on-ink-muted uppercase"
+                      >
+                        {section.label}
+                        <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
+                      </button>
+                      {open && (
+                        <div className="gap-2 px-3 pb-2 grid grid-cols-3">
+                          {items.map((d) => {
+                            const Icon = d.icon
+                            const active = is(d.to)
+                            const badge = 'badge' in d && d.badge ? counts[d.badge] : 0
+                            return (
+                              <Link
+                                key={d.to}
+                                to={d.to}
+                                onClick={() => choose(d.to)}
+                                className="gap-2 rounded-2xl p-3 hover:bg-white/10 flex flex-col items-center text-center transition-colors"
+                              >
+                                <span
+                                  className={cn(
+                                    'size-11 rounded-2xl bg-white/10 [&_svg]:size-5 relative flex items-center justify-center',
+                                    active && 'text-white bg-accent shadow-glow',
+                                  )}
+                                >
+                                  <Icon />
+                                  {badge > 0 && (
+                                    <span className="-right-1 -top-1 bg-white px-1 font-bold absolute flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full text-[0.625rem] text-ink">
+                                      {badge > 99 ? '99+' : badge}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-xs font-medium leading-tight">{d.label}</span>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Fragment>
             )
           })}
           <div className="mt-3 gap-3 border-white/10 px-5 pt-4 flex items-center border-t">

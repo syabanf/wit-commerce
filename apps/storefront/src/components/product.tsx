@@ -173,12 +173,17 @@ export function PriceTag({
   )
 }
 
+/** An automatic offer is applied to the cart, so the displayed product price stays unchanged. */
+export function automaticDiscountFor(catalog: Catalog, product: Product): number | null {
+  const promo = promoFor(catalog, product, nowMs())
+  return promo?.trigger === 'automatic' ? promo.value : null
+}
+
 /** "-12%" from compare-at, or an automatic category offer. Code offers are left to the deals strip. */
 export function discountFor(catalog: Catalog, product: Product): number | null {
   const pct = compareAtPct(product)
   if (pct) return pct
-  const promo = promoFor(catalog, product, nowMs())
-  return promo?.trigger === 'automatic' ? promo.value : null
+  return automaticDiscountFor(catalog, product)
 }
 
 export function HeartButton({

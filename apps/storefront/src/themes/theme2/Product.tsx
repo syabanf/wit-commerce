@@ -92,17 +92,21 @@ export function Product({ detail }: { detail: ProductDetail }) {
             {product.assisted ? (
               <p className="text-lg font-bold">Price on request</p>
             ) : (
-              <PriceTag
-                product={product}
-                price={detail.variant?.price}
-                className="flex"
-                priceClassName="text-xl md:text-2xl"
-              />
+              <>
+                <PriceTag
+                  product={product}
+                  price={detail.variant?.price}
+                  className="flex"
+                  priceClassName="text-xl md:text-2xl"
+                />
+                {detail.cartDiscountPct && (
+                  <p className="text-sm font-semibold text-[color:var(--sf-primary)]">
+                    {detail.cartDiscountPct}% off applied in cart
+                  </p>
+                )}
+              </>
             )}
           </div>
-          {!product.assisted && product.memberPrice && (
-            <p className="text-sm text-[color:var(--sf-muted)]">Member price {fmtIdr(product.memberPrice)}</p>
-          )}
           {!product.assisted && detail.codeOffer && <CodeOfferStrip {...detail.codeOffer} />}
           <p className="leading-relaxed text-[color:var(--sf-muted)]">{product.description}</p>
           <BeautyFacts product={product} />
@@ -125,6 +129,11 @@ export function Product({ detail }: { detail: ProductDetail }) {
                 </p>
               )}
               <div className="inset-x-0 bottom-0 p-3 md:static md:border-0 md:bg-transparent md:p-0 fixed z-40 border-t border-[color:var(--sf-line)] bg-[var(--sf-bg)] pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+                {detail.blocker && (
+                  <p className="mb-2 text-xs font-semibold md:hidden text-center text-danger">
+                    {detail.blocker}
+                  </p>
+                )}
                 <Button variant="dark" size="lg" full disabled={!!detail.blocker} onClick={add}>
                   Add to cart · {fmtIdr(detail.lineTotal)}
                 </Button>

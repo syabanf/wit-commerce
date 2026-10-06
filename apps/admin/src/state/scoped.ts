@@ -33,6 +33,7 @@ export function useScoped() {
     const customerEvents = own(state.customerEvents)
     const sellers = own(state.sellers)
     const stock = own(state.stock)
+    const modifierStock = own(state.modifierStock)
     const maps = {
       user: byId(state.users),
       seller: byId(state.sellers),
@@ -70,6 +71,8 @@ export function useScoped() {
       sellers,
       stock,
       stockMoves: own(state.stockMoves),
+      modifierStock,
+      modifierStockMoves: own(state.modifierStockMoves),
       stockByProduct: stockByProduct(stock),
       /** Order count, spend and cart state per customer, as segment rules read them. */
       crm: segmentContext(orders, products, customerEvents),

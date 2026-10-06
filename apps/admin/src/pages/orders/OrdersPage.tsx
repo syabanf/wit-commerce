@@ -13,8 +13,8 @@ import {
   PageHeader,
   StatCard,
 } from '@rc/ui'
-import { CreditCard, PackageCheck, Search, Truck, Undo2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { ChevronLeft, ChevronRight, CreditCard, PackageCheck, Search, Truck, Undo2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { OrderStatusBadge, PaymentBadge } from '../../components/badges'
 import { CustomerLink, SellerChip, paths } from '../../components/links'
@@ -61,6 +61,35 @@ export function OrdersPage() {
   const [query, setQuery] = useHistoryState('query', params.get('q') ?? '')
   const [status, setStatus] = useHistoryState<OrderStatus | null>('status', null)
   const table = useTableHistory()
+  const statusRowRef = useRef<HTMLDivElement>(null)
+  const [scrollEdges, setScrollEdges] = useState({ left: false, right: false })
+
+  const updateScrollEdges = useCallback(() => {
+    const row = statusRowRef.current
+    if (!row) return
+    setScrollEdges({
+      left: row.scrollLeft > 1,
+      right: row.scrollLeft + row.clientWidth < row.scrollWidth - 1,
+    })
+  }, [])
+
+  useEffect(() => {
+    const row = statusRowRef.current
+    if (!row) return
+    const observer = new ResizeObserver(updateScrollEdges)
+    observer.observe(row)
+    const frame = requestAnimationFrame(updateScrollEdges)
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [updateScrollEdges, view, status, s.orders])
+
+  const scrollStatusFilters = (direction: -1 | 1) => {
+    const row = statusRowRef.current
+    if (!row) return
+    row.scrollBy({ left: direction * Math.max(240, row.clientWidth * 0.7), behavior: 'smooth' })
+  }
 
   const setView = (next: View) =>
     setParams(
@@ -113,7 +142,9 @@ export function OrdersPage() {
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap">
             <OrderStatusBadge status={o.status} />
           </div>
-          <p className="mt-1.5 leading-4 md:hidden text-[0.6875rem] text-muted">{fmtWhen(o.createdAt, now)}</p>
+          <p className="mt-1.5 leading-4 md:hidden text-[0.6875rem] text-muted">
+            {fmtWhen(o.createdAt, now)}
+          </p>
         </div>
       ),
     },
@@ -244,31 +275,60 @@ export function OrdersPage() {
             onClick={() => setView('returns')}
           />
         </div>
-        <ChipRow className="max-w-full">
-          <Chip
-            variant="filter"
-            active={!status}
-            count={s.orders.filter(VIEW_TEST[view]).length}
-            onClick={() => setStatus(null)}
+        <div className="min-w-0 gap-2 flex items-center">
+          {scrollEdges.left && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Scroll status filters left"
+              onClick={() => scrollStatusFilters(-1)}
+            >
+              <ChevronLeft />
+            </Button>
+          )}
+          <ChipRow
+            ref={statusRowRef}
+            onScroll={updateScrollEdges}
+            aria-label="Filter orders by status"
+            className="min-w-0 flex-1"
           >
-            All
-          </Chip>
-          {STATUS_CHIPS.map((st) => {
-            const count = s.orders.filter((o) => VIEW_TEST[view](o) && o.status === st).length
-            if (!count && status !== st) return null
-            return (
-              <Chip
-                key={st}
-                variant="filter"
-                active={status === st}
-                count={count}
-                onClick={() => setStatus(status === st ? null : st)}
-              >
-                {ORDER_STATUS_LABEL[st]}
-              </Chip>
-            )
-          })}
-        </ChipRow>
+            <Chip
+              variant="filter"
+              active={!status}
+              count={s.orders.filter(VIEW_TEST[view]).length}
+              onClick={() => setStatus(null)}
+            >
+              All
+            </Chip>
+            {STATUS_CHIPS.map((st) => {
+              const count = s.orders.filter((o) => VIEW_TEST[view](o) && o.status === st).length
+              if (!count && status !== st) return null
+              return (
+                <Chip
+                  key={st}
+                  variant="filter"
+                  active={status === st}
+                  count={count}
+                  onClick={() => setStatus(status === st ? null : st)}
+                >
+                  {ORDER_STATUS_LABEL[st]}
+                </Chip>
+              )
+            })}
+          </ChipRow>
+          {scrollEdges.right && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Scroll status filters right"
+              onClick={() => scrollStatusFilters(1)}
+            >
+              <ChevronRight />
+            </Button>
+          )}
+        </div>
         <DataTable
           columns={columns}
           rows={rows}

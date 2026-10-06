@@ -6,6 +6,7 @@ import {
   categoryPath,
   compareAtPct,
   isBuyable,
+  modifierAvailable,
   modifiersFor,
   productsIn,
   promoFor,
@@ -40,6 +41,7 @@ export interface ProductDetail {
   setQty: (qty: number) => void
   maxQty: number
   groups: ModifierGroup[]
+  modifierAvailable: (optionId: string) => number | null
   choices: Record<string, string[]>
   /** Picks or drops an add-on option; an empty id clears the group. */
   toggleChoice: (group: ModifierGroup, optionId: string) => void
@@ -48,6 +50,7 @@ export interface ProductDetail {
   unitPrice: number
   lineTotal: number
   discountPct: number | null
+  cartDiscountPct: number | null
   /** A code offer that covers the product, shown as a hint. */
   codeOffer: { code: string; value: number } | null
   specs: { def: AttributeDef; value: string }[]
@@ -69,32 +72,54 @@ export function useProductDetail(product: Product): ProductDetail {
     return n === null || n > 0
   }
   const firstVariant = product.variants.find(inStock) ?? product.variants[0] ?? null
-  const [values, setValues] = useState<Record<string, string>>(() => ({
-    ...(firstVariant?.optionValues ?? {}),
-  }))
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      product.options
+        .filter((option) => option.values.length === 1)
+        .map((option) => [option.name, option.values[0]!]),
+    ),
+  )
   const [qty, setQty] = useState(1)
   const groups = useMemo(() => modifiersFor(catalog, product.id), [catalog, product.id])
+  const optionById = new Map(groups.flatMap((g) => g.options.map((o) => [o.id, o] as const)))
+  const availableForModifier = (optionId: string) => {
+    const option = optionById.get(optionId)
+    return option ? modifierAvailable(catalog, option) : null
+  }
   const [choices, setChoices] = useState<Record<string, string[]>>({})
 
+  const missingOptions = product.options.filter((option) => !values[option.name])
   const variant = product.options.length
-    ? (product.variants.find((v) => fits(v, values)) ?? null)
+    ? missingOptions.length
+      ? null
+      : (product.variants.find((v) => fits(v, values)) ?? null)
     : firstVariant
-  const available = variant ? variantAvailable(catalog, product, variant.id) : 0
+  const available = variant ? variantAvailable(catalog, product, variant.id) : null
   const options: OptionState[] = product.options.map((o) => ({
     name: o.name,
     kind: kindOf(o.name),
     selected: values[o.name] ?? '',
     values: o.values.map((value) => {
       const combo = { ...values, [o.name]: value }
-      const match = product.variants.find((v) => fits(v, combo))
-      return { value, available: !!match && inStock(match), selected: values[o.name] === value }
+      return {
+        value,
+        available: product.variants.some((v) => fits(v, combo) && inStock(v)),
+        selected: values[o.name] === value,
+      }
     }),
   }))
 
   const missing = groups.find((g) => g.required && !choices[g.id]?.length)
-  const maxQty = available === null ? MAX_QTY : Math.max(1, Math.min(MAX_QTY, available))
+  const deltas = groups.flatMap((g) => g.options.filter((o) => choices[g.id]?.includes(o.id)))
+  const modifierLimit = deltas.reduce<number>((left, option) => {
+    const count = modifierAvailable(catalog, option)
+    return count === null ? left : Math.min(left, count)
+  }, MAX_QTY)
+  const maxQty = variant ? Math.max(1, Math.min(MAX_QTY, available ?? MAX_QTY, modifierLimit)) : 1
   let blocker: string | null = null
   if (product.assisted) blocker = 'This product is sold through our sales team.'
+  else if (missingOptions.length)
+    blocker = `Choose ${missingOptions.map((option) => option.name.toLowerCase()).join(' and ')} to continue.`
   else if (!variant) blocker = 'This combination is not made. Choose another option.'
   else if (available !== null && available <= 0)
     blocker = product.options.length
@@ -102,9 +127,11 @@ export function useProductDetail(product: Product): ProductDetail {
       : 'This product is sold out.'
   else if (available !== null && qty > available)
     blocker = `Only ${available} left. Lower the quantity to continue.`
-  else if (missing) blocker = `Choose ${missing.name.toLowerCase()} to continue.`
+  else if (deltas.some((option) => (modifierAvailable(catalog, option) ?? Infinity) < qty)) {
+    const option = deltas.find((o) => (modifierAvailable(catalog, o) ?? Infinity) < qty)!
+    blocker = `Only ${modifierAvailable(catalog, option)} left of ${option.name}. Lower the quantity or choose another option.`
+  } else if (missing) blocker = `Choose ${missing.name.toLowerCase()} to continue.`
 
-  const deltas = groups.flatMap((g) => g.options.filter((o) => choices[g.id]?.includes(o.id)))
   const unitPrice = (variant?.price ?? product.price) + deltas.reduce((n, o) => n + o.priceDelta, 0)
   const promo = promoFor(catalog, product, nowMs())
   const related = useMemo(() => {
@@ -129,6 +156,7 @@ export function useProductDetail(product: Product): ProductDetail {
     setQty,
     maxQty,
     groups,
+    modifierAvailable: availableForModifier,
     choices,
     toggleChoice: (group, optionId) =>
       setChoices((c) => {
@@ -144,6 +172,7 @@ export function useProductDetail(product: Product): ProductDetail {
     unitPrice,
     lineTotal: unitPrice * qty,
     discountPct: compareAtPct(product) ?? (promo?.trigger === 'automatic' ? promo.value : null),
+    cartDiscountPct: promo?.trigger === 'automatic' ? promo.value : null,
     codeOffer: promo && promo.trigger === 'code' ? { code: promo.code, value: promo.value } : null,
     specs: attributesFor(product.categoryId, catalog.attributes, catalog.categories)
       // How to use has its own callout on the page.

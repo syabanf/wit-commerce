@@ -27,6 +27,8 @@ export interface Catalog {
   productMap: Map<string, Product>
   /** Stock per variant over the tenant's warehouses. */
   stock: Map<string, StockSummary>
+  /** Stock per tracked modifier option over the tenant's warehouses. */
+  modifierStock: Map<string, StockSummary>
   modifiers: ModifierGroup[]
   attributes: AttributeDef[]
   promotions: Promotion[]
@@ -55,6 +57,11 @@ export function buildCatalog(state: AppState, tenant: Tenant): Catalog {
     if (!warehouseIds.has(s.warehouseId)) continue
     levels.set(s.variantId, [...(levels.get(s.variantId) ?? []), s])
   }
+  const modifierLevels = new Map<string, AppState['modifierStock']>()
+  for (const level of state.modifierStock) {
+    if (!warehouseIds.has(level.warehouseId)) continue
+    modifierLevels.set(level.optionId, [...(modifierLevels.get(level.optionId) ?? []), level])
+  }
   return {
     tenant,
     categories,
@@ -64,6 +71,7 @@ export function buildCatalog(state: AppState, tenant: Tenant): Catalog {
     products: all.filter((p) => p.status === 'active'),
     productMap: new Map(all.map((p) => [p.id, p])),
     stock: new Map([...levels].map(([id, list]) => [id, sumStock(list)])),
+    modifierStock: new Map([...modifierLevels].map(([id, list]) => [id, sumStock(list)])),
     modifiers: mine(state.modifiers),
     attributes: mine(state.attributes),
     promotions: mine(state.promotions),
@@ -80,11 +88,19 @@ export function buildCatalog(state: AppState, tenant: Tenant): Catalog {
 
 const UNTRACKED = new Set<Product['type']>(['digital', 'service', 'subscription'])
 
-/** Units a shopper can buy of one variant; null means always available (services, digital, no stock row). */
+/** Units a shopper can buy of one variant; services and digital products have no stock limit. */
 export function variantAvailable(catalog: Catalog, product: Product, variantId: string): number | null {
   if (UNTRACKED.has(product.type)) return null
   const summary = catalog.stock.get(variantId)
-  return summary ? Math.max(0, summary.available) : null
+  return Math.max(0, summary?.available ?? 0)
+}
+
+export function modifierAvailable(
+  catalog: Catalog,
+  option: { id: string; stockTracked?: boolean },
+): number | null {
+  if (!option.stockTracked) return null
+  return Math.max(0, catalog.modifierStock.get(option.id)?.available ?? 0)
 }
 
 export function productAvailable(catalog: Catalog, product: Product): number | null {

@@ -16,6 +16,8 @@ import type {
   IsoDate,
   Lead,
   ModifierGroup,
+  ModifierStockLevel,
+  ModifierStockMove,
   PaymentType,
   LeadStage,
   Order,
@@ -41,7 +43,14 @@ import type {
 } from '@rc/types'
 import { ORDER_STATUS_LABEL } from '@rc/types'
 import { DAY, HOUR, toIso, toMs } from './dates'
-import { attributesFor, nextOrderStatus, segmentContext, segmentMembers } from './derive'
+import {
+  attributesFor,
+  modifierDemand,
+  nextOrderStatus,
+  segmentContext,
+  segmentMembers,
+  variantDemand,
+} from './derive'
 import { newId } from './ids'
 import {
   campaignLaunchBlocker,
@@ -73,6 +82,8 @@ export interface AppState {
   warehouses: Warehouse[]
   stock: StockLevel[]
   stockMoves: StockMove[]
+  modifierStock: ModifierStockLevel[]
+  modifierStockMoves: ModifierStockMove[]
   customers: Customer[]
   customerEvents: CustomerEvent[]
   orders: Order[]
@@ -108,11 +119,21 @@ export type AppAction =
   | { type: 'paymentTypes/toggle'; id: string }
   | { type: 'products/setStatus'; id: string; status: ProductStatus }
   | { type: 'stock/adjust'; levelId: string; delta: number; note: string }
+  | { type: 'modifierStock/adjust'; levelId: string; delta: number; note: string }
   | {
       type: 'stock/receive'
       tenantId: string
       productId: string
       variantId: string
+      warehouseId: string
+      qty: number
+      note: string
+    }
+  | {
+      type: 'modifierStock/receive'
+      tenantId: string
+      groupId: string
+      optionId: string
       warehouseId: string
       qty: number
       note: string
@@ -193,27 +214,45 @@ function orderEvent(at: IsoDate, by: string, status: Order['status'] | null, not
 
 /** Puts reserved stock back for every line of an order that has not shipped. */
 function releaseReservation(stock: StockLevel[], order: Order): StockLevel[] {
+  const demand = variantDemand(order)
   return stock.map((s) => {
-    const line = order.lines.find((l) => l.variantId === s.variantId && s.warehouseId === order.warehouseId)
-    return line ? { ...s, reserved: Math.max(0, s.reserved - line.qty) } : s
+    const qty = s.warehouseId === order.warehouseId ? (demand.get(s.variantId) ?? 0) : 0
+    return qty ? { ...s, reserved: Math.max(0, s.reserved - qty) } : s
   })
 }
 
 /** Takes shipped units off the shelf and out of the reservation. */
 function shipStock(stock: StockLevel[], order: Order): StockLevel[] {
+  const demand = variantDemand(order)
   return stock.map((s) => {
-    const line = order.lines.find((l) => l.variantId === s.variantId && s.warehouseId === order.warehouseId)
-    return line
-      ? { ...s, onHand: Math.max(0, s.onHand - line.qty), reserved: Math.max(0, s.reserved - line.qty) }
-      : s
+    const qty = s.warehouseId === order.warehouseId ? (demand.get(s.variantId) ?? 0) : 0
+    return qty ? { ...s, onHand: Math.max(0, s.onHand - qty), reserved: Math.max(0, s.reserved - qty) } : s
+  })
+}
+
+function releaseModifierReservation(stock: ModifierStockLevel[], order: Order): ModifierStockLevel[] {
+  const demand = modifierDemand(order)
+  return stock.map((s) => {
+    const qty = s.warehouseId === order.warehouseId ? (demand.get(s.optionId) ?? 0) : 0
+    return qty ? { ...s, reserved: Math.max(0, s.reserved - qty) } : s
+  })
+}
+
+function shipModifierStock(stock: ModifierStockLevel[], order: Order): ModifierStockLevel[] {
+  const demand = modifierDemand(order)
+  return stock.map((s) => {
+    const qty = s.warehouseId === order.warehouseId ? (demand.get(s.optionId) ?? 0) : 0
+    return qty ? { ...s, onHand: Math.max(0, s.onHand - qty), reserved: Math.max(0, s.reserved - qty) } : s
   })
 }
 
 function advanceOrder(state: AppState, order: Order, by: string, at: IsoDate, trackingNo?: string): AppState {
-  if (orderAdvanceBlocker(order, state.stock)) return state
+  if (orderAdvanceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products)) return state
   const next = nextOrderStatus(order)!
   let stock = state.stock
   let stockMoves = state.stockMoves
+  let modifierStock = state.modifierStock
+  let modifierStockMoves = state.modifierStockMoves
   let customerEvents = state.customerEvents
   let customers = state.customers
   const updated: Order = {
@@ -242,14 +281,39 @@ function advanceOrder(state: AppState, order: Order, by: string, at: IsoDate, tr
   }
   if (next === 'shipped') {
     stock = shipStock(stock, order)
+    modifierStock = shipModifierStock(modifierStock, order)
+    modifierStockMoves = [
+      ...[...modifierDemand(order)].flatMap<ModifierStockMove>(([optionId, qty]) => {
+        const level = modifierStock.find(
+          (s) => s.optionId === optionId && s.warehouseId === order.warehouseId,
+        )
+        return level
+          ? [
+              {
+                id: newId('mmv'),
+                tenantId: order.tenantId,
+                groupId: level.groupId,
+                optionId,
+                warehouseId: order.warehouseId,
+                kind: 'sale',
+                qty: -qty,
+                at,
+                by,
+                note: order.code,
+              },
+            ]
+          : []
+      }),
+      ...modifierStockMoves,
+    ]
     stockMoves = [
-      ...order.lines.map<StockMove>((l) => ({
+      ...[...variantDemand(order)].map<StockMove>(([variantId, qty]) => ({
         id: newId('mv'),
         tenantId: order.tenantId,
-        variantId: l.variantId,
+        variantId,
         warehouseId: order.warehouseId,
         kind: 'sale',
-        qty: -l.qty,
+        qty: -qty,
         at,
         by,
         note: order.code,
@@ -261,6 +325,8 @@ function advanceOrder(state: AppState, order: Order, by: string, at: IsoDate, tr
     ...state,
     stock,
     stockMoves,
+    modifierStock,
+    modifierStockMoves,
     customerEvents,
     customers,
     orders: patch(state.orders, order.id, () => updated),
@@ -377,7 +443,7 @@ export function audienceSize(
 /** Jobs a backend runs on a timer: expire unpaid orders, start and end promotions and scheduled pages. */
 function tick(state: AppState, at: IsoDate): AppState {
   const now = toMs(at)
-  let { stock, orders } = state
+  let { stock, modifierStock, orders } = state
   orders = orders.map((o) => {
     const unpaid =
       (o.status === 'new' || o.status === 'confirmed') &&
@@ -385,6 +451,7 @@ function tick(state: AppState, at: IsoDate): AppState {
       o.paymentMethod !== 'cod'
     if (!unpaid || now - toMs(o.createdAt) < PAYMENT_WINDOW_HOURS * HOUR) return o
     stock = releaseReservation(stock, o)
+    modifierStock = releaseModifierReservation(modifierStock, o)
     return {
       ...o,
       status: 'cancelled',
@@ -412,7 +479,7 @@ function tick(state: AppState, at: IsoDate): AppState {
     if (c.status === 'running' && toMs(c.endAt) < now) return { ...c, status: 'completed' as const }
     return c
   })
-  return { ...state, stock, orders, promotions, pages, campaigns }
+  return { ...state, stock, modifierStock, orders, promotions, pages, campaigns }
 }
 
 export function reduce(state: AppState, { action, meta }: Envelope): AppState {
@@ -479,10 +546,30 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       }
     }
 
-    case 'modifiers/save':
-      return { ...state, modifiers: upsert(state.modifiers, action.group) }
+    case 'modifiers/save': {
+      const stocked = state.modifierStock.filter(
+        (s) => s.groupId === action.group.id && (s.onHand > 0 || s.reserved > 0),
+      )
+      if (stocked.some((s) => !action.group.options.some((o) => o.id === s.optionId && o.stockTracked)))
+        return state
+      return {
+        ...state,
+        modifiers: upsert(state.modifiers, action.group),
+        modifierStock: state.modifierStock.filter(
+          (s) =>
+            s.groupId !== action.group.id ||
+            action.group.options.some((o) => o.id === s.optionId && o.stockTracked),
+        ),
+      }
+    }
     case 'modifiers/remove':
-      return { ...state, modifiers: state.modifiers.filter((m) => m.id !== action.id) }
+      return state.modifierStock.some((s) => s.groupId === action.id && (s.onHand > 0 || s.reserved > 0))
+        ? state
+        : {
+            ...state,
+            modifiers: state.modifiers.filter((m) => m.id !== action.id),
+            modifierStock: state.modifierStock.filter((s) => s.groupId !== action.id),
+          }
 
     case 'collections/save':
       return { ...state, collections: upsert(state.collections, action.collection) }
@@ -536,8 +623,47 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         ],
       }
     }
+    case 'modifierStock/adjust': {
+      const level = state.modifierStock.find((s) => s.id === action.levelId)
+      if (!level || stockAdjustBlocker(level, action.delta)) return state
+      return {
+        ...state,
+        modifierStock: patch(state.modifierStock, level.id, (s) => ({
+          ...s,
+          onHand: s.onHand + action.delta,
+        })),
+        modifierStockMoves: [
+          {
+            id: newId('mmv'),
+            tenantId: level.tenantId,
+            groupId: level.groupId,
+            optionId: level.optionId,
+            warehouseId: level.warehouseId,
+            kind: 'adjustment',
+            qty: action.delta,
+            at,
+            by,
+            note: action.note,
+          },
+          ...state.modifierStockMoves,
+        ],
+      }
+    }
     case 'stock/receive': {
-      if (action.qty <= 0) return state
+      if (
+        !Number.isInteger(action.qty) ||
+        action.qty <= 0 ||
+        !state.products.some(
+          (p) =>
+            p.id === action.productId &&
+            p.tenantId === action.tenantId &&
+            p.variants.some((v) => v.id === action.variantId),
+        ) ||
+        !state.warehouses.some(
+          (w) => w.id === action.warehouseId && w.tenantId === action.tenantId,
+        )
+      )
+        return state
       const existing = state.stock.find(
         (s) => s.variantId === action.variantId && s.warehouseId === action.warehouseId,
       )
@@ -575,6 +701,52 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         ],
       }
     }
+    case 'modifierStock/receive': {
+      const group = state.modifiers.find((g) => g.id === action.groupId && g.tenantId === action.tenantId)
+      if (
+        !Number.isInteger(action.qty) ||
+        action.qty <= 0 ||
+        !group?.options.some((o) => o.id === action.optionId && o.stockTracked) ||
+        !state.warehouses.some((w) => w.id === action.warehouseId && w.tenantId === action.tenantId)
+      )
+        return state
+      const existing = state.modifierStock.find(
+        (s) => s.optionId === action.optionId && s.warehouseId === action.warehouseId,
+      )
+      return {
+        ...state,
+        modifierStock: existing
+          ? patch(state.modifierStock, existing.id, (s) => ({ ...s, onHand: s.onHand + action.qty }))
+          : [
+              ...state.modifierStock,
+              {
+                id: newId('mstk'),
+                tenantId: action.tenantId,
+                groupId: action.groupId,
+                optionId: action.optionId,
+                warehouseId: action.warehouseId,
+                onHand: action.qty,
+                reserved: 0,
+                safety: 5,
+              },
+            ],
+        modifierStockMoves: [
+          {
+            id: newId('mmv'),
+            tenantId: action.tenantId,
+            groupId: action.groupId,
+            optionId: action.optionId,
+            warehouseId: action.warehouseId,
+            kind: 'receipt',
+            qty: action.qty,
+            at,
+            by,
+            note: action.note,
+          },
+          ...state.modifierStockMoves,
+        ],
+      }
+    }
 
     case 'orders/advance': {
       const order = state.orders.find((o) => o.id === action.id)
@@ -587,6 +759,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       return {
         ...state,
         stock: releaseReservation(state.stock, order),
+        modifierStock: releaseModifierReservation(state.modifierStock, order),
         orders: patch(state.orders, order.id, (o) => ({
           ...o,
           status: refund ? 'refunded' : 'cancelled',
@@ -623,7 +796,8 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     }
     case 'orders/place': {
       const { order, customer } = action
-      if (orderPlaceBlocker(order, state.stock)) return state
+      if (orderPlaceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products)) return state
+      const modifierQty = modifierDemand(order)
       const isNew = !!customer && !state.customers.some((c) => c.id === customer.id)
       const paid = order.paymentStatus === 'paid'
       const events: CustomerEvent[] = [
@@ -643,6 +817,10 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         stock: state.stock.map((s) => {
           const qty = order.lines.filter((l) => l.variantId === s.variantId).reduce((n, l) => n + l.qty, 0)
           return qty && s.warehouseId === order.warehouseId ? { ...s, reserved: s.reserved + qty } : s
+        }),
+        modifierStock: state.modifierStock.map((s) => {
+          const qty = s.warehouseId === order.warehouseId ? (modifierQty.get(s.optionId) ?? 0) : 0
+          return qty ? { ...s, reserved: s.reserved + qty } : s
         }),
         // Every promotion the order earned counts one use.
         promotions: state.promotions.map((p) =>

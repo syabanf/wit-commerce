@@ -1,5 +1,5 @@
 import { LOYALTY_TIER_LABEL, PAYMENT_METHOD_LABEL, TEMPLATE_SCOPE_LABEL, type TemplateScope } from '@rc/types'
-import { fmtIdr, metricsFor, plural } from '@rc/fixtures'
+import { categoryTreeIds, fmtIdr, metricsFor, plural } from '@rc/fixtures'
 import { Avatar, Combobox, MultiCombobox } from '@rc/ui'
 import { useMemo } from 'react'
 import { useScoped } from '../state/scoped'
@@ -38,11 +38,25 @@ export function CustomerPicker(p: Single) {
   )
 }
 
-export function ProductPicker({ activeOnly = true, ...p }: Single & { activeOnly?: boolean }) {
-  const { products, categoryName } = useScoped()
+export function ProductPicker({
+  activeOnly = true,
+  categoryId,
+  includeDescendants = false,
+  ...p
+}: Single & { activeOnly?: boolean; categoryId?: string | null; includeDescendants?: boolean }) {
+  const { products, categories, categoryName } = useScoped()
+  const categoryIds = useMemo(
+    () => (categoryId && includeDescendants ? categoryTreeIds(categories, categoryId) : null),
+    [categories, categoryId, includeDescendants],
+  )
   const items = useMemo(
-    () => products.filter((x) => !activeOnly || x.status === 'active'),
-    [products, activeOnly],
+    () =>
+      products.filter(
+        (x) =>
+          (!activeOnly || x.status === 'active') &&
+          (!categoryId || (categoryIds ? categoryIds.has(x.categoryId) : x.categoryId === categoryId)),
+      ),
+    [products, activeOnly, categoryId, categoryIds],
   )
   return (
     <Combobox
@@ -101,6 +115,43 @@ export function VariantPicker({ productId, ...p }: Single & { productId: string 
   )
 }
 
+export function ModifierGroupPicker(p: Single) {
+  const { modifiers } = useScoped()
+  const items = useMemo(() => modifiers.filter((g) => g.options.some((o) => o.stockTracked)), [modifiers])
+  return (
+    <Combobox
+      {...p}
+      items={items}
+      placeholder={p.placeholder ?? 'Select modifier group'}
+      searchPlaceholder="Search modifier groups"
+      getKey={(g) => g.id}
+      getLabel={(g) => g.name}
+      getDescription={(g) =>
+        `${plural(g.options.filter((o) => o.stockTracked).length, 'tracked option')} · On ${plural(g.productIds.length, 'product')}`
+      }
+    />
+  )
+}
+
+export function ModifierOptionPicker({ groupId, ...p }: Single & { groupId: string | null }) {
+  const { modifiers } = useScoped()
+  const items = useMemo(
+    () => modifiers.find((g) => g.id === groupId)?.options.filter((o) => o.stockTracked) ?? [],
+    [modifiers, groupId],
+  )
+  return (
+    <Combobox
+      {...p}
+      items={items}
+      placeholder={p.placeholder ?? 'Select option'}
+      searchPlaceholder="Search options"
+      getKey={(o) => o.id}
+      getLabel={(o) => o.name}
+      getDescription={() => 'Stock tracked per warehouse'}
+    />
+  )
+}
+
 export function CategoryPicker({
   topLevelOnly = false,
   excludeId,
@@ -119,9 +170,10 @@ export function CategoryPicker({
       searchPlaceholder="Search categories"
       getKey={(c) => c.id}
       getLabel={(c) => c.name}
-      getDescription={(c) =>
-        `${c.parentId ? `In ${categoryName(c.parentId)} · ` : ''}${plural(products.filter((x) => x.categoryId === c.id).length, 'product')}`
-      }
+      getDescription={(c) => {
+        const ids = categoryTreeIds(all, c.id)
+        return `${c.parentId ? `In ${categoryName(c.parentId)} · ` : ''}${plural(products.filter((x) => ids.has(x.categoryId)).length, 'product')}`
+      }}
     />
   )
 }

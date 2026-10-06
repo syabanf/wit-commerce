@@ -238,6 +238,7 @@ export function Home({ data }: { data: HomeData }) {
   // Beauty homes show customer quotes once, in the GlowWall.
   const sections = data.sections.filter((s) => s.kind !== 'hero' && !(beauty && s.kind === 'testimonials'))
   const has = (kind: string) => sections.some((s) => s.kind === kind)
+  const hasEditorialProducts = sections.some((s) => s.kind === 'featured_product' || s.kind === 'collection')
   return (
     <div data-template={data.template?.id ?? 'default'}>
       {templateHero ? (
@@ -258,9 +259,11 @@ export function Home({ data }: { data: HomeData }) {
         {beauty ? <IngredientSpotlight Heading={ShowHeading} /> : <UseCases Heading={ShowHeading} />}
         <Collections collections={data.collections} />
         {/* Phones already lead with the best-seller grid in PhoneShop. */}
-        <div className="md:block hidden">
-          <ProductTabs Heading={ShowHeading} />
-        </div>
+        {!hasEditorialProducts && (
+          <div className="md:block hidden">
+            <ProductTabs Heading={ShowHeading} />
+          </div>
+        )}
         {beauty && <ConsultationBand />}
         {beauty && <RewardsLadder Heading={ShowHeading} />}
         <SellersRow Heading={ShowHeading} />

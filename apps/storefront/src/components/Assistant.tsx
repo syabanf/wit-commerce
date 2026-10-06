@@ -189,14 +189,14 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          'right-4 bottom-24 size-14 md:right-6 md:bottom-6 fixed z-40 inline-flex items-center justify-center bg-[var(--sf-text)] text-[color:var(--sf-bg)] shadow-float transition-transform hover:scale-105',
+          'right-4 bottom-24 size-11 md:right-6 md:bottom-6 md:size-14 fixed z-40 inline-flex items-center justify-center bg-[var(--sf-text)] text-[color:var(--sf-bg)] shadow-float transition-transform hover:scale-105',
           hairline ? 'rounded-[var(--sf-pill)]' : 'rounded-full',
           hidden && 'hidden',
         )}
         aria-haspopup="dialog"
         title={`Ask ${tenant.name}`}
       >
-        <Bot className="size-6" aria-hidden="true" />
+        <Bot className="size-5 md:size-6" aria-hidden="true" />
         <span className="sr-only">Ask {tenant.name}</span>
       </button>
       <Drawer

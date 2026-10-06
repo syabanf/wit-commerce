@@ -1,5 +1,5 @@
 import { fmtNumber, plural, stockAdjustBlocker } from '@rc/fixtures'
-import type { StockLevel } from '@rc/types'
+import type { ModifierStockLevel, StockLevel } from '@rc/types'
 import {
   Button,
   Dialog,
@@ -14,7 +14,14 @@ import {
   toast,
 } from '@rc/ui'
 import { type FormEvent, useState } from 'react'
-import { VariantPicker, WarehousePicker } from '../../components/pickers'
+import {
+  CategoryPicker,
+  ModifierGroupPicker,
+  ModifierOptionPicker,
+  ProductPicker,
+  VariantPicker,
+  WarehousePicker,
+} from '../../components/pickers'
 import { useScoped } from '../../state/scoped'
 
 const toQty = (value: string) => value.replace(/[^\d]/g, '')
@@ -35,13 +42,35 @@ export function AdjustDialog({
   )
 }
 
-function AdjustForm({ level, onDone }: { level: StockLevel; onDone: () => void }) {
-  const { maps, productName, dispatch } = useScoped()
+export function AdjustModifierDialog({
+  level,
+  onOpenChange,
+}: {
+  level: ModifierStockLevel | null
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={!!level} onOpenChange={onOpenChange}>
+      <DialogContent size="sm">
+        {level && <AdjustForm level={level} onDone={() => onOpenChange(false)} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AdjustForm({ level, onDone }: { level: StockLevel | ModifierStockLevel; onDone: () => void }) {
+  const { maps, modifiers, productName, dispatch } = useScoped()
   const [direction, setDirection] = useState<'add' | 'remove'>('remove')
   const [qty, setQty] = useState('')
   const [reason, setReason] = useState('')
   const [tried, setTried] = useState(false)
-  const variant = maps.variant.get(level.variantId)
+  const modifier = 'optionId' in level
+  const variant = 'variantId' in level ? maps.variant.get(level.variantId) : undefined
+  const group = modifier ? modifiers.find((g) => g.id === level.groupId) : undefined
+  const option = modifier ? group?.options.find((o) => o.id === level.optionId) : undefined
+  const item = modifier
+    ? `${group?.name ?? 'Modifier'} · ${option?.name ?? 'Removed option'}`
+    : `${productName((level as StockLevel).productId)} · ${variant?.name}`
   const warehouse = maps.warehouse.get(level.warehouseId)
   const amount = Number(qty) || 0
   const delta = direction === 'add' ? amount : -amount
@@ -55,10 +84,14 @@ function AdjustForm({ level, onDone }: { level: StockLevel; onDone: () => void }
     e.preventDefault()
     setTried(true)
     if (errors.qty || errors.reason) return
-    dispatch({ type: 'stock/adjust', levelId: level.id, delta, note: reason.trim() })
+    dispatch(
+      modifier
+        ? { type: 'modifierStock/adjust', levelId: level.id, delta, note: reason.trim() }
+        : { type: 'stock/adjust', levelId: level.id, delta, note: reason.trim() },
+    )
     toast('Stock adjusted', {
       tone: 'success',
-      description: `${variant?.sku ?? 'Variant'} · ${warehouse?.name ?? 'warehouse'} · ${delta > 0 ? '+' : ''}${delta}, on hand now ${fmtNumber(level.onHand + delta)}`,
+      description: `${modifier ? (option?.name ?? 'Modifier') : (variant?.sku ?? 'Variant')} · ${warehouse?.name ?? 'warehouse'} · ${delta > 0 ? '+' : ''}${delta}, on hand now ${fmtNumber(level.onHand + delta)}`,
     })
     onDone()
   }
@@ -66,10 +99,12 @@ function AdjustForm({ level, onDone }: { level: StockLevel; onDone: () => void }
   return (
     <form onSubmit={submit} noValidate>
       <DialogHeader>
-        <DialogTitle>Adjust {variant?.sku ?? 'stock'}</DialogTitle>
+        <DialogTitle>
+          Adjust {modifier ? (option?.name ?? 'modifier stock') : (variant?.sku ?? 'stock')}
+        </DialogTitle>
         <DialogDescription>
-          {productName(level.productId)} · {variant?.name} at {warehouse?.name}. {fmtNumber(level.onHand)} on
-          hand, {fmtNumber(level.reserved)} reserved for open orders.
+          {item} at {warehouse?.name}. {fmtNumber(level.onHand)} on hand, {fmtNumber(level.reserved)} reserved
+          for open orders.
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
@@ -134,28 +169,82 @@ function AdjustForm({ level, onDone }: { level: StockLevel; onDone: () => void }
 export function ReceiveDialog({
   open,
   onOpenChange,
+  initialTarget = 'variant',
+  initialCategoryId,
+  initialProductId,
+  initialVariantId,
+  initialGroupId,
+  initialOptionId,
+  initialWarehouseId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  initialTarget?: 'variant' | 'modifier'
+  initialCategoryId?: string
+  initialProductId?: string
+  initialVariantId?: string
+  initialGroupId?: string
+  initialOptionId?: string
+  initialWarehouseId?: string
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="md">{open && <ReceiveForm onDone={() => onOpenChange(false)} />}</DialogContent>
+      <DialogContent size="md">
+        {open && <ReceiveForm
+            initialTarget={initialTarget}
+            initialCategoryId={initialCategoryId}
+            initialProductId={initialProductId}
+            initialVariantId={initialVariantId}
+            initialGroupId={initialGroupId}
+          initialOptionId={initialOptionId}
+          initialWarehouseId={initialWarehouseId}
+          onDone={() => onOpenChange(false)}
+        />}
+      </DialogContent>
     </Dialog>
   )
 }
 
-function ReceiveForm({ onDone }: { onDone: () => void }) {
-  const { maps, tenantId, productName, dispatch } = useScoped()
-  const [variantId, setVariantId] = useState<string | null>(null)
-  const [warehouseId, setWarehouseId] = useState<string | null>(null)
+function ReceiveForm({
+  initialTarget,
+  initialCategoryId,
+  initialProductId,
+  initialVariantId,
+  initialGroupId,
+  initialOptionId,
+  initialWarehouseId,
+  onDone,
+}: {
+  initialTarget: 'variant' | 'modifier'
+  initialCategoryId?: string
+  initialProductId?: string
+  initialVariantId?: string
+  initialGroupId?: string
+  initialOptionId?: string
+  initialWarehouseId?: string
+  onDone: () => void
+}) {
+  const { maps, modifiers, tenantId, productName, dispatch } = useScoped()
+  const [target, setTarget] = useState(initialTarget)
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId ?? null)
+  const [productId, setProductId] = useState<string | null>(initialProductId ?? null)
+  const [variantId, setVariantId] = useState<string | null>(initialVariantId ?? null)
+  const [groupId, setGroupId] = useState<string | null>(initialGroupId ?? null)
+  const [optionId, setOptionId] = useState<string | null>(initialOptionId ?? null)
+  const [warehouseId, setWarehouseId] = useState<string | null>(initialWarehouseId ?? null)
   const [qty, setQty] = useState('')
   const [note, setNote] = useState('')
   const [tried, setTried] = useState(false)
   const amount = Number(qty) || 0
   const variant = variantId ? maps.variant.get(variantId) : undefined
+  const group = modifiers.find((g) => g.id === groupId)
+  const option = group?.options.find((o) => o.id === optionId && o.stockTracked)
   const errors = {
-    variant: !variant ? 'Choose the variant you received.' : undefined,
+    category: target === 'variant' && !categoryId ? 'Choose a product category.' : undefined,
+    product: target === 'variant' && !productId ? 'Choose the product you received.' : undefined,
+    variant: target === 'variant' && !variant ? 'Choose the variant you received.' : undefined,
+    group: target === 'modifier' && !group ? 'Choose the modifier group.' : undefined,
+    option: target === 'modifier' && !option ? 'Choose the tracked option you received.' : undefined,
     warehouse: !warehouseId ? 'Choose the warehouse it arrived at.' : undefined,
     qty: amount < 1 ? 'Enter a quantity of at least 1.' : undefined,
   }
@@ -164,19 +253,33 @@ function ReceiveForm({ onDone }: { onDone: () => void }) {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setTried(true)
-    if (!variant || !warehouseId || errors.qty) return
-    dispatch({
-      type: 'stock/receive',
-      tenantId,
-      productId: variant.productId,
-      variantId: variant.id,
-      warehouseId,
-      qty: amount,
-      note: note.trim() || 'Stock received',
-    })
+    if (!warehouseId || errors.qty) return
+    if (target === 'variant') {
+      if (!categoryId || !productId || !variant || variant.productId !== productId) return
+      dispatch({
+        type: 'stock/receive',
+        tenantId,
+        productId: variant.productId,
+        variantId: variant.id,
+        warehouseId,
+        qty: amount,
+        note: note.trim() || 'Stock received',
+      })
+    } else {
+      if (!group || !option) return
+      dispatch({
+        type: 'modifierStock/receive',
+        tenantId,
+        groupId: group.id,
+        optionId: option.id,
+        warehouseId,
+        qty: amount,
+        note: note.trim() || 'Modifier stock received',
+      })
+    }
     toast(`${plural(amount, 'unit')} received`, {
       tone: 'success',
-      description: `${productName(variant.productId)} · ${variant.sku} · ${maps.warehouse.get(warehouseId)?.name ?? 'warehouse'}`,
+      description: `${target === 'variant' && variant ? `${productName(variant.productId)} · ${variant.sku}` : `${group?.name} · ${option?.name}`} · ${maps.warehouse.get(warehouseId)?.name ?? 'warehouse'}`,
     })
     onDone()
   }
@@ -186,25 +289,95 @@ function ReceiveForm({ onDone }: { onDone: () => void }) {
       <DialogHeader>
         <DialogTitle>Receive stock</DialogTitle>
         <DialogDescription>
-          Record a delivery from a supplier or another site. The units go on sale as soon as you save.
+          Record a delivery for a product variant or a physical modifier option. The units become available
+          when you save.
         </DialogDescription>
       </DialogHeader>
+      <SegmentedControl
+        className="mb-4 w-full"
+        aria-label="Stock item type"
+        value={target}
+        onChange={(value) => setTarget(value === 'modifier' ? 'modifier' : 'variant')}
+        options={[
+          { value: 'variant', label: 'Product variant' },
+          { value: 'modifier', label: 'Modifier option' },
+        ]}
+      />
       <div className="gap-4 sm:grid-cols-2 grid grid-cols-1">
-        <FormField
-          label="Variant"
-          required
-          htmlFor="receive-variant"
-          error={show(errors.variant)}
-          className="sm:col-span-2"
-        >
-          <VariantPicker
-            id="receive-variant"
-            variant="soft"
-            productId={null}
-            value={variantId}
-            onChange={setVariantId}
-          />
-        </FormField>
+        {target === 'variant' ? (
+          <>
+            <FormField label="Category" required htmlFor="receive-category" error={show(errors.category)}>
+              <CategoryPicker
+                id="receive-category"
+                variant="soft"
+                value={categoryId}
+                onChange={(next) => {
+                  setCategoryId(next)
+                  setProductId(null)
+                  setVariantId(null)
+                }}
+              />
+            </FormField>
+            <FormField label="Product" required htmlFor="receive-product" error={show(errors.product)}>
+              <ProductPicker
+                id="receive-product"
+                variant="soft"
+                categoryId={categoryId}
+                includeDescendants
+                disabled={!categoryId}
+                placeholder={categoryId ? 'Select product' : 'Choose category first'}
+                activeOnly={false}
+                value={productId}
+                onChange={(next) => {
+                  setProductId(next)
+                  setVariantId(null)
+                }}
+              />
+            </FormField>
+            <FormField
+              label="Variant"
+              required
+              htmlFor="receive-variant"
+              error={show(errors.variant)}
+              className="sm:col-span-2"
+            >
+              <VariantPicker
+                id="receive-variant"
+                variant="soft"
+                productId={productId}
+                disabled={!productId}
+                placeholder={productId ? 'Select variant' : 'Choose product first'}
+                value={variantId}
+                onChange={setVariantId}
+              />
+            </FormField>
+          </>
+        ) : (
+          <>
+            <FormField label="Modifier group" required htmlFor="receive-group" error={show(errors.group)}>
+              <ModifierGroupPicker
+                id="receive-group"
+                variant="soft"
+                value={groupId}
+                onChange={(next) => {
+                  setGroupId(next)
+                  setOptionId(null)
+                }}
+              />
+            </FormField>
+            <FormField label="Option" required htmlFor="receive-option" error={show(errors.option)}>
+              <ModifierOptionPicker
+                id="receive-option"
+                variant="soft"
+                groupId={groupId}
+                value={optionId}
+                onChange={setOptionId}
+                disabled={!groupId}
+                placeholder={groupId ? 'Select option' : 'Choose group first'}
+              />
+            </FormField>
+          </>
+        )}
         <FormField label="Warehouse" required htmlFor="receive-warehouse" error={show(errors.warehouse)}>
           <WarehousePicker
             id="receive-warehouse"

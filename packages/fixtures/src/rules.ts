@@ -5,6 +5,8 @@ import type {
   Category,
   Lead,
   LeadStage,
+  ModifierGroup,
+  ModifierStockLevel,
   Order,
   Page,
   Product,
@@ -13,7 +15,7 @@ import type {
   StockLevel,
 } from '@rc/types'
 import { SECTION_KIND_LABEL } from '@rc/types'
-import { nextOrderStatus } from './derive'
+import { modifierDemand, nextOrderStatus, variantDemand } from './derive'
 import { listOf } from './format'
 
 // Blockers return the sentence the UI shows beside a disabled action, or null when the action may run.
@@ -21,15 +23,32 @@ import { listOf } from './format'
 
 const CLOSED = new Set(['completed', 'cancelled', 'returned', 'refunded'])
 
-export function orderAdvanceBlocker(order: Order, stock: readonly StockLevel[]): string | null {
+export function orderAdvanceBlocker(
+  order: Order,
+  stock: readonly StockLevel[],
+  modifierStock: readonly ModifierStockLevel[] = [],
+  modifiers: readonly ModifierGroup[] = [],
+  products: readonly Product[] = [],
+): string | null {
   if (CLOSED.has(order.status)) return 'This order is closed.'
   const next = nextOrderStatus(order)
   if (!next) return 'This order has no next step.'
   if (next === 'packed') {
-    for (const line of order.lines) {
-      const level = stock.find((s) => s.variantId === line.variantId && s.warehouseId === order.warehouseId)
-      if (level && level.onHand < line.qty) {
-        return `Only ${level.onHand} left of a line that needs ${line.qty}. Receive stock or move the order to another warehouse.`
+    for (const [variantId, qty] of variantDemand(order)) {
+      const level = stock.find((s) => s.variantId === variantId && s.warehouseId === order.warehouseId)
+      if (!level && products.some((p) => p.type === 'physical' && p.variants.some((v) => v.id === variantId))) {
+        return 'A product variant has no stock at this warehouse. Receive stock before packing.'
+      }
+      if (level && level.onHand < qty) {
+        return `Only ${level.onHand} left of a line that needs ${qty}. Receive stock or move the order to another warehouse.`
+      }
+    }
+    for (const [optionId, qty] of modifierDemand(order)) {
+      const option = modifiers.flatMap((g) => g.options).find((o) => o.id === optionId)
+      if (!option?.stockTracked) continue
+      const level = modifierStock.find((s) => s.optionId === optionId && s.warehouseId === order.warehouseId)
+      if (!level || level.onHand < qty) {
+        return `Only ${level?.onHand ?? 0} left of ${option.name}; this order needs ${qty}. Receive modifier stock before packing.`
       }
     }
   }
@@ -126,17 +145,33 @@ export function categoryRemoveBlocker(
 }
 
 /** Checks a storefront order before it is placed: every line needs enough sellable stock at its warehouse. */
-export function orderPlaceBlocker(order: Order, stock: readonly StockLevel[]): string | null {
+export function orderPlaceBlocker(
+  order: Order,
+  stock: readonly StockLevel[],
+  modifierStock: readonly ModifierStockLevel[] = [],
+  modifiers: readonly ModifierGroup[] = [],
+  products: readonly Product[] = [],
+): string | null {
   if (!order.lines.length) return 'Your cart is empty.'
-  for (const line of order.lines) {
-    const level = stock.find((s) => s.variantId === line.variantId && s.warehouseId === order.warehouseId)
-    // Untracked items (services, digital) have no stock row.
-    if (level && level.onHand - level.reserved < line.qty) {
+  for (const [variantId, qty] of variantDemand(order)) {
+    const level = stock.find((s) => s.variantId === variantId && s.warehouseId === order.warehouseId)
+    if (!level && products.some((p) => p.type === 'physical' && p.variants.some((v) => v.id === variantId))) {
+      return 'One item has no stock at this warehouse. Remove it or try again after restocking.'
+    }
+    if (level && level.onHand - level.reserved < qty) {
       const left = Math.max(0, level.onHand - level.reserved)
       return left
         ? `Only ${left} left of one item. Lower the quantity to continue.`
         : 'One item just sold out. Remove it to continue.'
     }
+  }
+  for (const [optionId, qty] of modifierDemand(order)) {
+    const option = modifiers.flatMap((g) => g.options).find((o) => o.id === optionId)
+    if (!option?.stockTracked) continue
+    const level = modifierStock.find((s) => s.optionId === optionId && s.warehouseId === order.warehouseId)
+    const left = Math.max(0, (level?.onHand ?? 0) - (level?.reserved ?? 0))
+    if (left < qty)
+      return `${option.name} has only ${left} left. Lower the quantity or choose another option.`
   }
   return null
 }

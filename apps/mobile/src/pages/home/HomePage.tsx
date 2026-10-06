@@ -100,7 +100,7 @@ export function HomePage() {
       </Link>
 
       <Section
-        title="Follow up today"
+        title="Leads to follow up"
         count={openLeads.length}
         action={
           openLeads.length > 0 ? (
