@@ -58,7 +58,6 @@ function AgentPolicyForm({
   const [enabled, setEnabled] = useState(policy.enabled)
   const [negotiation, setNegotiation] = useState(policy.negotiation)
   const [maxPct, setMaxPct] = useState(String(policy.maxAutoDiscountPct))
-  const [approvalAbove, setApprovalAbove] = useState(String(policy.approvalAbove))
   const [kinds, setKinds] = useState<AgentKind[]>(policy.kinds)
   // A payment type switched off since the last save drops out of the list.
   const [paymentTypeIds, setPaymentTypeIds] = useState(
@@ -67,15 +66,10 @@ function AgentPolicyForm({
   const [tried, setTried] = useState(false)
 
   const pct = Number(maxPct)
-  const above = Number(approvalAbove)
   const errors = {
     maxPct:
       negotiation && (maxPct === '' || !Number.isInteger(pct) || pct < 0 || pct > 20)
         ? 'Enter a whole percentage from 0 to 20.'
-        : null,
-    approvalAbove:
-      approvalAbove === '' || above <= 0
-        ? 'Enter the order total above which the shopper must approve, such as 2000000.'
         : null,
     kinds: enabled && !kinds.length ? 'Pick at least one kind of agent, or turn agents off.' : null,
     payment:
@@ -92,7 +86,6 @@ function AgentPolicyForm({
       enabled,
       negotiation,
       maxAutoDiscountPct: negotiation ? pct : 0,
-      approvalAbove: above,
       paymentTypeIds,
       kinds: AGENT_KINDS.filter((k) => kinds.includes(k)),
       updatedAt: nowIso(),
@@ -114,7 +107,7 @@ function AgentPolicyForm({
           label="Accept buying agents"
           hint={
             enabled
-              ? 'Agents with a valid mandate can check out.'
+              ? 'Agents suggest and build carts. The shopper approves every payment.'
               : 'Agents get a polite refusal at checkout.'
           }
           checked={enabled}
@@ -139,21 +132,6 @@ function AgentPolicyForm({
             disabled={!negotiation}
             value={negotiation ? maxPct : '0'}
             onChange={(e) => setMaxPct(digitsOnly(e.target.value))}
-          />
-        </FormField>
-        <FormField
-          label="Ask the shopper above (Rp)"
-          htmlFor="agent-approval"
-          required
-          error={show(errors.approvalAbove)}
-          hint="Bigger orders wait for the shopper's tap, even inside the mandate."
-        >
-          <Input
-            id="agent-approval"
-            inputMode="numeric"
-            inputClassName="tabular-nums"
-            value={approvalAbove}
-            onChange={(e) => setApprovalAbove(digitsOnly(e.target.value))}
           />
         </FormField>
         <ChipField label="Accepted agents" error={show(errors.kinds)} className="sm:col-span-2">

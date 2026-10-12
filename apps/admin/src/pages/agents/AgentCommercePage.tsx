@@ -1,5 +1,5 @@
 import { fmtAgo, fmtIdr, fmtIdrShort, fmtNumber, fmtPercent, fmtWhen, isSold, toMs } from '@rc/fixtures'
-import { AGENT_APPROVAL_LABEL, AGENT_KIND_LABEL, type AgentPolicy } from '@rc/types'
+import { AGENT_KIND_LABEL, type AgentPolicy } from '@rc/types'
 import {
   Badge,
   Banner,
@@ -18,7 +18,7 @@ import {
   StatCard,
   toast,
 } from '@rc/ui'
-import { Bot, HandCoins, Pencil, ShieldCheck, Wallet } from 'lucide-react'
+import { Bot, HandCoins, Pencil, Scale, Wallet } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
@@ -72,8 +72,6 @@ export function AgentCommercePage() {
       agent: agent.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt)),
       revenue,
       share: allRevenue ? revenue / allRevenue : 0,
-      auto: agent.filter((o) => o.agent.approval === 'auto').length,
-      shopper: agent.filter((o) => o.agent.approval === 'shopper').length,
       negotiated: negotiated.length,
       avgNegotiated: negotiated.length ? negotiatedSum / negotiated.length : 0,
       avgNegotiatedPct: negotiatedSubtotal ? negotiatedSum / negotiatedSubtotal : 0,
@@ -121,17 +119,6 @@ export function AgentCommercePage() {
       ),
     },
     {
-      id: 'approval',
-      header: 'Approval',
-      hideBelow: 'sm',
-      sortValue: (o) => o.agent.approval,
-      cell: (o) => (
-        <Badge variant={o.agent.approval === 'auto' ? 'success' : 'info'}>
-          {AGENT_APPROVAL_LABEL[o.agent.approval]}
-        </Badge>
-      ),
-    },
-    {
       id: 'negotiated',
       header: 'Negotiated',
       align: 'right',
@@ -164,7 +151,7 @@ export function AgentCommercePage() {
     toast('Agent policy saved', {
       tone: 'success',
       description: p.enabled
-        ? `Agents on · ${p.negotiation ? `negotiation up to ${p.maxAutoDiscountPct}%` : 'no negotiation'} · shopper approves above ${fmtIdr(p.approvalAbove)}`
+        ? `Agents on · ${p.negotiation ? `negotiation up to ${p.maxAutoDiscountPct}%` : 'no negotiation'} · the shopper approves every order`
         : 'Agents off · they get a polite refusal at checkout',
     })
 
@@ -209,13 +196,12 @@ export function AgentCommercePage() {
             tone="info"
           />
           <StatCard
-            label="Within mandate"
-            value={fmtNumber(d.auto)}
-            unit={`of ${fmtNumber(d.agent.length)}`}
-            hint={`${fmtNumber(d.shopper)} approved by the shopper`}
-            icon={<ShieldCheck />}
+            label="Products compared"
+            value={d.avgCompared.toFixed(1)}
+            unit="per order"
+            hint="Shown to the shopper before they chose"
+            icon={<Scale />}
             tone="success"
-            onClick={() => setFilter('auto')}
           />
           <StatCard
             label="Average negotiated discount"
@@ -319,9 +305,9 @@ export function AgentCommercePage() {
             <CardContent>
               <dl className="gap-3 sm:grid-cols-2 grid grid-cols-1">
                 <Fact
-                  label="Products compared"
-                  value={d.avgCompared.toFixed(1)}
-                  hint="per order, on average"
+                  label="Shopper approval"
+                  value="Every order"
+                  hint="The agent asks before it pays"
                 />
                 <Fact
                   label="Negotiated"
@@ -360,7 +346,7 @@ function PolicyCard({ policy, now, onEdit }: { policy: AgentPolicy; now: number;
       label: 'Negotiation',
       value: policy.negotiation ? `Up to ${policy.maxAutoDiscountPct}% on its own` : 'Off',
     },
-    { label: 'Ask the shopper above', value: fmtIdr(policy.approvalAbove) },
+    { label: 'Shopper approval', value: 'Every order, before payment' },
     {
       label: 'Payment types',
       value: policy.paymentTypeIds.length

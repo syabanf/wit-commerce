@@ -234,11 +234,9 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
         description={
           mode === 'agent' ? (
             <>
-              {agent.settings.limit
-                ? `Pays on its own up to ${fmtIdr(agent.settings.limit)}. `
-                : 'Asks you before it pays. '}
+              Suggests options and pays only when you approve.{' '}
               <Link to={paths.agent(store)} className="font-semibold underline underline-offset-4">
-                Limits and payment
+                Settings
               </Link>
             </>
           ) : (
@@ -360,7 +358,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                     onClick={() => buy(askedFor(m.id)!)}
                     className="min-h-11 gap-2 text-sm font-semibold inline-flex items-center underline underline-offset-4 disabled:opacity-50"
                   >
-                    <Sparkles className="size-4" aria-hidden="true" /> Let my agent buy it
+                    <Sparkles className="size-4" aria-hidden="true" /> Let my agent help me choose
                   </button>
                 )}
                 {m.replies && m.id === lastReplyId && (

@@ -16,20 +16,17 @@ export function agentKindList(kinds: readonly AgentKind[]): string {
   return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : (names[0] ?? 'no agents')
 }
 
-export type ApprovalRule = 'always' | 'under_limit'
-
 /** What the shopper hands the agent: the task and the limits it must stay inside. */
 export interface MandateInput {
   task: string
   kind: AgentKind
   /** Hard ceiling for the order total; null takes the budget from the task, if it names one. */
   budget: number | null
-  approval: ApprovalRule
-  /** With `under_limit`, the agent may pay on its own up to this total. */
-  autoLimit: number
   paymentTypeId: string | null
   /** A product the shopper chose from the agent's shortlist; it goes first. */
   productId?: string | null
+  /** The size, colour or other variant the shopper chose for that product. */
+  variantId?: string | null
   /** Keeps the search to one category, as when the shopper asks for a cheaper one of the same. */
   categoryId?: string | null
   /** The courier the shopper chose; the cheapest paid courier otherwise. */
@@ -85,8 +82,8 @@ export interface AgentPlan {
   shipping: number
   total: number
   overBudget: boolean
-  needsApproval: boolean
-  approvalReason: string
+  /** What the shopper should check before approving, such as a total over budget; empty when nothing stands out. */
+  checkNote: string
   mandates: { intent: Mandate; cart: Mandate | null; payment: Mandate | null }
 }
 
@@ -117,14 +114,15 @@ function wantedOptions(task: string, catalog: Catalog): Record<string, string> {
   return wanted
 }
 
-function pickVariant(catalog: Catalog, product: Product, wanted: Record<string, string>) {
+/** In-stock variants of a product that match the options the shopper named. */
+export function fittingVariants(catalog: Catalog, product: Product, wanted: Record<string, string>) {
   const fits = (v: Variant) =>
     Object.entries(wanted).every(([k, val]) => !(k in v.optionValues) || v.optionValues[k] === val)
   const inStock = (v: Variant) => {
     const n = variantAvailable(catalog, product, v.id)
     return n === null || n > 0
   }
-  return product.variants.find((v) => fits(v) && inStock(v)) ?? null
+  return product.variants.filter((v) => fits(v) && inStock(v))
 }
 
 const words = (p: Product) => `${p.name} ${p.tags.join(' ')} ${p.bestFor} ${p.description}`.toLowerCase()
@@ -255,7 +253,7 @@ export function planAgentRun(
       agent: AGENT_KIND_LABEL[input.kind],
       instruction: input.task,
       constraints: { budget_max: budget, options: wanted, quantity: 1 },
-      approval: input.approval === 'always' ? 'every_order' : { auto_under: input.autoLimit },
+      approval: 'shopper_confirms_every_order',
       expires: new Date(now + 86_400_000).toISOString(),
     },
   }
@@ -275,8 +273,7 @@ export function planAgentRun(
     shipping: 0,
     total: 0,
     overBudget: false,
-    needsApproval: false,
-    approvalReason: '',
+    checkNote: '',
     mandates: { intent: intentMandate, cart: null, payment: null },
   }
   if (!policy?.enabled)
@@ -297,7 +294,8 @@ export function planAgentRun(
   const ranked = preferred ? [preferred, ...found.filter((p) => p.id !== preferred.id)] : found
   const candidates: Candidate[] = []
   for (const p of ranked) {
-    const v = pickVariant(catalog, p, wanted)
+    const fits = fittingVariants(catalog, p, wanted)
+    const v = fits.find((x) => x.id === input.variantId) ?? fits[0] ?? null
     const price = v?.price ?? fromPrice(p)
     let rejected: string | null = null
     if (!v) rejected = `No ${Object.values(wanted).join(' / ') || 'variant'} in stock`
@@ -317,7 +315,6 @@ export function planAgentRun(
       refusal: null,
       scanned,
       candidates,
-      approvalReason: 'Nothing in the store fits the mandate.',
     }
 
   // Price it every way the agent may pay: each open code with each allowed payment type.
@@ -387,16 +384,6 @@ export function planAgentRun(
   const shipping = courierFee(courier, best.totals.freeShipping)
   const total = Math.max(0, best.payable - negotiated + shipping)
   const overBudget = !!budget && total > budget
-  const reasons = [
-    overBudget && `the total with shipping is ${fmtIdr(total - budget!)} over your budget`,
-    input.approval === 'always' && 'you asked to approve every order',
-    input.approval === 'under_limit' &&
-      total > input.autoLimit &&
-      `it is above your ${fmtIdr(input.autoLimit)} auto-pay limit`,
-    total > policy.approvalAbove &&
-      `${catalog.tenant.name} asks shoppers to confirm agent orders above ${fmtIdr(policy.approvalAbove)}`,
-  ].filter(Boolean) as string[]
-
   const cartMandate: Mandate = {
     id: id('cm', `${intentMandate.id}${choice.variant!.id}${total}`),
     type: 'cart_mandate',
@@ -430,7 +417,7 @@ export function planAgentRun(
       method: best.paymentType.name,
       amount: total,
       currency: 'IDR',
-      shopper_present: reasons.length > 0,
+      shopper_present: true,
     },
   }
   return {
@@ -450,8 +437,9 @@ export function planAgentRun(
     shipping,
     total,
     overBudget,
-    needsApproval: reasons.length > 0,
-    approvalReason: reasons.length ? `The agent needs your go-ahead: ${reasons.join(', and ')}.` : '',
+    checkNote: overBudget
+      ? `With shipping, the total is ${fmtIdr(total - budget!)} over your ${fmtIdr(budget!)} budget.`
+      : '',
     mandates: { intent: intentMandate, cart: cartMandate, payment: paymentMandate },
   }
 }

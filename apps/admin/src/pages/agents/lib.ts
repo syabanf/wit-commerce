@@ -1,6 +1,5 @@
 import { DAY, dayKey, fmtDateShort, fmtPercent, startOfDay } from '@rc/fixtures'
 import {
-  AGENT_APPROVAL_LABEL,
   AGENT_KIND_LABEL,
   type AgentKind,
   type AgentPolicy,
@@ -13,12 +12,10 @@ export const AGENT_KINDS = Object.keys(AGENT_KIND_LABEL) as AgentKind[]
 export type AgentOrder = Order & { agent: NonNullable<Order['agent']> }
 export const isAgentOrder = (o: Order): o is AgentOrder => !!o.agent
 
-export type AgentFilter = 'all' | 'auto' | 'shopper' | 'negotiated'
+export type AgentFilter = 'all' | 'negotiated'
 
 export const FILTERS: { value: AgentFilter; label: string; test: (o: AgentOrder) => boolean }[] = [
   { value: 'all', label: 'All', test: () => true },
-  { value: 'auto', label: AGENT_APPROVAL_LABEL.auto, test: (o) => o.agent.approval === 'auto' },
-  { value: 'shopper', label: AGENT_APPROVAL_LABEL.shopper, test: (o) => o.agent.approval === 'shopper' },
   { value: 'negotiated', label: 'Negotiated', test: (o) => o.agent.negotiated > 0 },
 ]
 
@@ -28,7 +25,6 @@ export const defaultPolicy = (tenantId: string): AgentPolicy => ({
   enabled: false,
   negotiation: false,
   maxAutoDiscountPct: 0,
-  approvalAbove: 1_000_000,
   paymentTypeIds: [],
   kinds: [...AGENT_KINDS],
   updatedAt: '',

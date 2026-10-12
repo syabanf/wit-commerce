@@ -613,8 +613,3 @@ export const AGENT_KIND_LABEL: Record<AgentKind, string> = {
 }
 
 /** How an agent order got its go-ahead: inside the mandate's limits, or with the shopper's tap. */
-export type AgentApproval = 'auto' | 'shopper'
-export const AGENT_APPROVAL_LABEL: Record<AgentApproval, string> = {
-  auto: 'Within mandate',
-  shopper: 'Approved by shopper',
-}

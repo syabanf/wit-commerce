@@ -1,5 +1,4 @@
 import type {
-  AgentApproval,
   AgentKind,
   AutomationStatus,
   AutomationStepKind,
@@ -409,7 +408,6 @@ export interface AgentOrderInfo {
   intentMandateId: string
   cartMandateId: string
   paymentMandateId: string
-  approval: AgentApproval
   /** Extra discount the agent negotiated under the store's agent policy, in rupiah. */
   negotiated: number
   /** Products the agent compared before it chose. */
@@ -423,8 +421,6 @@ export interface AgentPolicy {
   /** Agents may ask for an extra discount; the store grants up to this percentage on its own. */
   negotiation: boolean
   maxAutoDiscountPct: number
-  /** Orders above this total need the shopper's approval even inside the mandate. */
-  approvalAbove: number
   /** Payment types an agent may use; empty means every enabled type. */
   paymentTypeIds: string[]
   /** Agent kinds the store accepts. */

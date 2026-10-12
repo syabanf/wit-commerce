@@ -29,15 +29,14 @@ import { Button, ButtonLink, Pill } from './ui'
  */
 export function AgentThread({ compact }: { compact?: boolean }) {
   const { tenant, customer, customers, signIn, store } = useShop()
-  const { items, settings, examples, busy, protocol, say, pick, approve, decline } = useAgentChat()
+  const { items, examples, busy, protocol, say, pick, approve, decline } = useAgentChat()
   const listRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [items])
   const lastReplies = [...items].reverse().find((it) => it.kind === 'bot' && it.replies?.length)?.id
-  const { limit } = settings
   const greeting = customer
-    ? `Hi ${customer.name.split(' ')[0]}, I’m your shopping agent. Tell me what to buy from ${tenant.name} and any limits. I’ll find the best price and ${limit ? `pay on my own up to ${fmtIdr(limit)}` : 'ask you before I pay anything'}.`
+    ? `Hi ${customer.name.split(' ')[0]}, I’m your shopping agent at ${tenant.name}. Tell me what you need and your budget. I’ll suggest options, you choose, and I pay only when you approve.`
     : `Hi, I’m a shopping agent for ${tenant.name} shoppers. Who am I buying for today?`
 
   return (
@@ -286,7 +285,12 @@ function RunCard({
   )
 }
 
-const BEST: Record<Step, string> = { product: 'Best match', shipping: 'Recommended', offer: 'Best price' }
+const BEST: Record<Step, string> = {
+  product: 'Suggested',
+  variant: 'Suggested',
+  shipping: 'Suggested',
+  offer: 'Best price',
+}
 
 /** One question with its options as numbered rows; the shopper taps one, types its number, or lets the agent pick. */
 function ChoiceCard({
@@ -411,7 +415,7 @@ function CartCard({
     [`Shipping, ${plan.courier.label}`, plan.shipping],
   ]
   return (
-    <div className="max-w-xl rounded-2xl overflow-hidden border border-[color:var(--sf-line)] bg-[var(--sf-bg)]">
+    <div className="max-w-xl rounded-2xl @container overflow-hidden border border-[color:var(--sf-line)] bg-[var(--sf-bg)]">
       <div className="p-4">
         <p className="font-bold text-[11px] tracking-[0.16em] text-[color:var(--sf-muted)] uppercase">
           Cart mandate
@@ -447,23 +451,17 @@ function CartCard({
                 className="mt-0.5 size-4 shrink-0 text-[color:var(--sf-primary)]"
                 aria-hidden="true"
               />
-              {plan.approvalReason}
+              {plan.checkNote || 'Nothing is paid until you approve.'}
             </p>
             <div className="mt-3 gap-2 flex flex-wrap">
-              <Button onClick={onApprove}>
+              <Button onClick={onApprove} className="@sm:w-auto w-full">
                 <ShieldCheck aria-hidden="true" /> Approve and pay {fmtIdr(plan.total)}
               </Button>
-              <Button variant="outline" onClick={onDecline}>
+              <Button variant="outline" onClick={onDecline} className="@sm:w-auto w-full">
                 Not now
               </Button>
             </div>
           </>
-        )}
-        {status === 'auto' && (
-          <p className="gap-2 flex items-center">
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> Inside your limits. Paying
-            with {best.paymentType.name}…
-          </p>
         )}
         {status === 'paid' && (
           <p className="gap-2 font-semibold flex items-center">

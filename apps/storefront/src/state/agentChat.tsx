@@ -1,7 +1,15 @@
 import { fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
 import type { AgentPolicy, Customer, Industry, Order, Product } from '@rc/types'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { type AgentPlan, type MandateInput, type Offer, planAgentRun, runSteps } from '../lib/agent'
+import {
+  type AgentPlan,
+  type MandateInput,
+  type Offer,
+  fittingVariants,
+  planAgentRun,
+  runSteps,
+} from '../lib/agent'
+import { variantAvailable } from '../lib/catalog'
 import { buildOrder } from '../lib/checkout'
 import { type ShopValue, useShop } from './shop'
 import { useStore } from './store'
@@ -26,24 +34,14 @@ const EXAMPLES: Record<Industry, string[]> = {
   fnb: ['Coffee beans for a week'],
 }
 
-/** Auto-pay limits the shopper can pick; 0 means the agent always asks. */
-const LIMITS: Record<Industry, number[]> = {
-  sport: [0, 500_000, 1_000_000, 2_000_000],
-  beauty: [0, 200_000, 300_000, 750_000],
-  industrial: [0, 2_500_000, 5_000_000, 25_000_000],
-  fashion: [0, 250_000, 500_000, 1_000_000],
-  electronics: [0, 500_000, 1_500_000, 3_000_000],
-  fnb: [0, 100_000, 200_000, 500_000],
-}
-
 /** Milliseconds between the agent's work steps, slow enough to follow on a demo screen. */
 const STEP_MS = 750
 
-export type CartStatus = 'awaiting' | 'auto' | 'paid' | 'declined' | 'replaced' | 'failed'
+export type CartStatus = 'awaiting' | 'paid' | 'declined' | 'replaced' | 'failed'
 export type CartItem = { id: number; kind: 'cart'; plan: AgentPlan; status: CartStatus; note?: string }
 
 /** The questions the agent asks before it builds the cart, in this order. */
-export type Step = 'product' | 'shipping' | 'offer'
+export type Step = 'product' | 'variant' | 'shipping' | 'offer'
 
 export interface ChoiceOption {
   id: string
@@ -51,7 +49,7 @@ export interface ChoiceOption {
   detail: string
   amount: string
   note?: string
-  /** The option the agent would take on its own. */
+  /** The option the agent suggests. */
   best?: boolean
   product?: Product
   offer?: Offer
@@ -77,7 +75,6 @@ export type Item =
   | { id: number; kind: 'receipt'; order: Order; plan: AgentPlan }
 
 export interface Settings {
-  limit: number
   paymentTypeId: string | null
 }
 
@@ -87,6 +84,7 @@ interface Context {
   budget: number | null
   categoryId: string | null
   productId: string | null
+  variantId: string | null
   courierId: string | null
   offer: Offer | null
   plan: AgentPlan | null
@@ -98,6 +96,7 @@ const fresh = (task: string): Ask => ({
   budget: null,
   categoryId: null,
   productId: null,
+  variantId: null,
   courierId: null,
   offer: null,
 })
@@ -106,12 +105,27 @@ const YES = /^(yes|ya|iya|ok(e|ay)?|approve|setuju|bayar|lanjut|go)\b/i
 const NO = /^(no|tidak|nggak|gak|cancel|batal|decline|jangan|not now)\b/i
 const YOU_PICK =
   /pick for me|you (choose|pick|decide)|terserah|bebas|kamu (pilih|aja)|rekomendasi|recommended/i
+/** Follow-ups on a cart that reopen one question and keep the rest. */
+const CHANGES: [RegExp, Partial<Ask>][] = [
+  [/change (shipping|courier)|ganti (kurir|pengiriman|ongkir)/i, { courierId: null }],
+  [/change (discount|payment)|ganti (diskon|promo|pembayaran)/i, { offer: null }],
+  [
+    /another (size|colou?r|variant)|change (size|colou?r)|ganti (ukuran|warna)/i,
+    { variantId: null, offer: null },
+  ],
+  [
+    /another product|change product|ganti produk|produk lain/i,
+    { productId: null, variantId: null, offer: null },
+  ],
+]
+
+/** "Rated 4.3…" reads as "rated 4.3…" inside a sentence; amounts keep their capital. */
+const lower = (t: string) => (/^Rp/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1))
 
 export interface AgentChat {
   items: Item[]
   settings: Settings
   setSettings: (s: Settings) => void
-  limits: number[]
   examples: string[]
   policy: AgentPolicy | null
   busy: boolean
@@ -128,17 +142,16 @@ const AgentChatContext = createContext<AgentChat | null>(null)
 
 /**
  * One buying-agent conversation per store visit, shared by the store assistant and `/:store/agent`, so a
- * chat started in the drawer carries on on the page. Runs keep stepping and paying while the shopper browses.
- * After the search the shopper picks the product, the courier and the discount; then the cart pays itself
- * inside the auto-pay limit or waits for approval.
+ * chat started in the drawer carries on on the page. The agent never pays on its own: after the search it
+ * suggests and asks for the product, its variant, the courier and the discount, then shows the cart and
+ * pays only when the shopper approves.
  */
 export function AgentChatProvider({ children }: { children: ReactNode }) {
   const { catalog, tenant, customer, send } = useShop()
   const { state } = useStore()
   const policy = state.agentPolicies.find((p) => p.tenantId === tenant.id) ?? null
   const examples = EXAMPLES[tenant.industry]
-  const limits = LIMITS[tenant.industry]
-  const [settings, setSettings] = useState<Settings>({ limit: limits[2]!, paymentTypeId: null })
+  const [settings, setSettings] = useState<Settings>({ paymentTypeId: null })
   const [items, setItems] = useState<Item[]>([])
   const [ctx, setCtx] = useState<Context | null>(null)
   const [running, setRunning] = useState<number | null>(null)
@@ -160,13 +173,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     .find((it): it is ChoiceItem => it.kind === 'choice' && !it.picked && !it.closed)
 
   const planFor = (c: Ask, s: Settings) => {
-    const input: MandateInput = {
-      ...c,
-      kind: 'chat_assistant',
-      approval: s.limit ? 'under_limit' : 'always',
-      autoLimit: s.limit,
-      paymentTypeId: s.paymentTypeId,
-    }
+    const input: MandateInput = { ...c, kind: 'chat_assistant', paymentTypeId: s.paymentTypeId }
     return planAgentRun(input, catalog, policy, customer!, nowMs())
   }
 
@@ -184,81 +191,128 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     setRunning(runId)
   }
 
-  /** Asks the next open question, or builds the cart once product, courier and discount are settled. */
+  const question = (step: Step, text: string, options: ChoiceOption[]): ChoiceItem => ({
+    id: id(),
+    kind: 'choice',
+    step,
+    question: text,
+    options,
+    picked: null,
+  })
+
+  /** Asks the next open question with the agent's suggestion, or shows the cart once all are settled. */
   const advance = (ask: Ask, s: Settings = settings) => {
     let c = ask
     let plan = planFor(c, s)
     // A refinement ("size 43") can rule the chosen product out; then the shopper picks again.
     if (c.productId && plan.choice?.product.id !== c.productId) {
-      c = { ...c, productId: null, offer: null }
+      c = { ...c, productId: null, variantId: null, offer: null }
+      plan = planFor(c, s)
+    }
+    const choice = plan.choice!
+    if (!c.productId) {
+      setCtx({ ...c, plan })
+      const fits = plan.candidates.filter((x) => !x.rejected).slice(0, 4)
+      const why = choice.reasons
+        .filter((r) => !/ in stock| available$/.test(r))
+        .slice(0, 3)
+        .map(lower)
+        .join(', ')
+      return push(
+        question(
+          'product',
+          fits.length === 1
+            ? `One product fits: ${choice.product.name}${why ? `, ${why}` : ''}. Want this one?`
+            : `I found ${fits.length} that fit. I suggest ${choice.product.name}${why ? `: ${why}` : ''}. Which one do you want?`,
+          fits.map((x) => ({
+            id: x.product.id,
+            title: x.product.name,
+            detail: [
+              x.product.options.length ? null : x.variant?.name,
+              x.reasons.find((r) => r.startsWith('Rated')),
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            amount: fmtIdr(x.price),
+            best: x === choice,
+            product: x.product,
+          })),
+        ),
+      )
+    }
+    if (!c.variantId) {
+      const fitting = fittingVariants(catalog, choice.product, plan.wanted)
+      const inBudget = fitting.filter((v) => !plan.budget || v.price <= plan.budget)
+      const variants = inBudget.length ? inBudget : fitting
+      if (variants.length > 1) {
+        setCtx({ ...c, plan })
+        const stock = (v: (typeof variants)[number]) => variantAvailable(catalog, choice.product, v.id)
+        const most = variants.reduce((a, b) => ((stock(b) ?? 0) > (stock(a) ?? 0) ? b : a))
+        const names = choice.product.options.map((o) => o.name.toLowerCase()).join(' and ')
+        return push(
+          question(
+            'variant',
+            `Which ${names || 'option'}? I suggest ${most.name}: it has the most in stock.`,
+            variants.slice(0, 8).map((v) => ({
+              id: v.id,
+              title: v.name,
+              detail: stock(v) === null ? 'Available' : `${stock(v)} in stock`,
+              amount: fmtIdr(v.price),
+              best: v === most,
+            })),
+          ),
+        )
+      }
+      // One variant fits, so there is nothing to ask.
+      c = { ...c, variantId: variants[0]?.id ?? null }
       plan = planFor(c, s)
     }
     setCtx({ ...c, plan })
-    const choice = plan.choice!
-    if (!c.productId) {
-      const fits = plan.candidates.filter((x) => !x.rejected).slice(0, 4)
-      return push({
-        id: id(),
-        kind: 'choice',
-        step: 'product',
-        question:
-          fits.length === 1
-            ? 'One product fits. Shall I buy this one?'
-            : `I found ${fits.length} that fit. Which one do you want?`,
-        picked: null,
-        options: fits.map((x) => ({
-          id: x.product.id,
-          title: x.product.name,
-          detail: [x.variant?.name, x.reasons.find((r) => r.startsWith('Rated'))].filter(Boolean).join(' · '),
-          amount: fmtIdr(x.price),
-          best: x === choice,
-          product: x.product,
-        })),
-      })
+    if (!c.courierId) {
+      const pick = plan.shippingOptions.find((o) => o.courier.id === plan.courier.id)!
+      return push(
+        question(
+          'shipping',
+          `How should it ship to ${customer!.city}? I suggest ${pick.courier.label}: ${pick.fee ? fmtIdr(pick.fee) : 'free for this order'}, ${pick.courier.eta.toLowerCase()}.`,
+          plan.shippingOptions.map((o) => ({
+            id: o.courier.id,
+            title: o.courier.label,
+            detail: o.courier.eta,
+            amount: o.fee ? fmtIdr(o.fee) : 'Free',
+            best: o === pick,
+          })),
+        ),
+      )
     }
-    if (!c.courierId)
-      return push({
-        id: id(),
-        kind: 'choice',
-        step: 'shipping',
-        question: `How should it ship to ${customer!.city}?`,
-        picked: null,
-        options: plan.shippingOptions.map((o) => ({
-          id: o.courier.id,
-          title: o.courier.label,
-          detail: o.courier.eta,
-          amount: o.fee ? fmtIdr(o.fee) : 'Free',
-          best: o.courier.id === plan.courier.id,
-        })),
+    if (!c.offer) {
+      const options = plan.trials.slice(0, 4).map((t, i) => {
+        // Code labels read "RUNMONTH15 · Running Month 15% off": the code goes in the title, its name below.
+        const [coded, automatic] = partition(t.totals.discounts, (d) => d.label.includes(' · '))
+        return {
+          id: `${t.paymentType.id}|${t.code ?? ''}`,
+          title:
+            [...coded.map((d) => d.label.split(' · ')[0]), ...automatic.map((d) => d.label)].join(' + ') ||
+            'No discount',
+          detail: [`Pay with ${t.paymentType.name}`, ...coded.map((d) => d.label.split(' · ')[1])].join(
+            ' · ',
+          ),
+          amount: fmtIdr(t.payable),
+          note: t.totals.discount ? `Saves ${fmtIdr(t.totals.discount)}` : undefined,
+          best: i === 0,
+          offer: { code: t.code, paymentTypeId: t.paymentType.id },
+        }
       })
-    if (!c.offer)
-      return push({
-        id: id(),
-        kind: 'choice',
-        step: 'offer',
-        question:
-          plan.trials.length > 1 && plan.trials[0]!.totals.discount
-            ? 'Which discount should I use?'
-            : 'No discount applies to this one. How should I pay?',
-        picked: null,
-        options: plan.trials.slice(0, 4).map((t, i) => {
-          // Code labels read "RUNMONTH15 · Running Month 15% off": the code goes in the title, its name below.
-          const [coded, automatic] = partition(t.totals.discounts, (d) => d.label.includes(' · '))
-          return {
-            id: `${t.paymentType.id}|${t.code ?? ''}`,
-            title:
-              [...coded.map((d) => d.label.split(' · ')[0]), ...automatic.map((d) => d.label)].join(' + ') ||
-              'No discount',
-            detail: [`Pay with ${t.paymentType.name}`, ...coded.map((d) => d.label.split(' · ')[1])].join(
-              ' · ',
-            ),
-            amount: fmtIdr(t.payable),
-            note: t.totals.discount ? `Saves ${fmtIdr(t.totals.discount)}` : undefined,
-            best: i === 0,
-            offer: { code: t.code, paymentTypeId: t.paymentType.id },
-          }
-        }),
-      })
+      const top = plan.trials[0]!
+      return push(
+        question(
+          'offer',
+          top.totals.discount
+            ? `Which discount should I use? I suggest ${options[0]!.title}: it saves ${fmtIdr(top.totals.discount)}.`
+            : `No discount applies to this one. How should I pay? I suggest ${top.paymentType.name}.`,
+          options,
+        ),
+      )
+    }
     // The new cart retires the one still waiting for an answer, so only the newest can be paid.
     setItems((list) =>
       list.map((it) => (it.kind === 'cart' && it.status === 'awaiting' ? { ...it, status: 'replaced' } : it)),
@@ -268,11 +322,14 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       {
         id: id(),
         kind: 'bot',
-        text: negotiation.amount
-          ? `The store’s agent agreed to ${negotiation.grantedPct}% more off (${fmtIdr(negotiation.amount)}). Here is your cart.`
-          : `${negotiation.note} Here is your cart.`,
+        text: `${
+          negotiation.amount
+            ? `The store’s agent agreed to ${negotiation.grantedPct}% more off (${fmtIdr(negotiation.amount)}).`
+            : negotiation.note
+        } Check the cart below. I pay only when you approve.`,
+        replies: ['Change shipping', 'Change discount', 'Another product'],
       },
-      { id: id(), kind: 'cart', plan, status: plan.needsApproval ? 'awaiting' : 'auto' },
+      { id: id(), kind: 'cart', plan, status: 'awaiting' },
     )
   }
 
@@ -281,17 +338,17 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     if (!ctx || !option || item.picked || item.closed || running !== null) return
     patch(item.id, { picked: optionId })
     if (echo) push({ id: id(), kind: 'me', text: option.title })
-    advance(
-      item.step === 'product'
-        ? { ...ctx, productId: optionId, offer: null }
-        : item.step === 'shipping'
-          ? { ...ctx, courierId: optionId }
-          : { ...ctx, offer: option.offer! },
-    )
+    const answer: Record<Step, Partial<Ask>> = {
+      product: { productId: optionId, variantId: null, offer: null },
+      variant: { variantId: optionId, offer: null },
+      shipping: { courierId: optionId },
+      offer: { offer: option.offer! },
+    }
+    advance({ ...ctx, ...answer[item.step] })
   }
 
   const place = (cart: CartItem) => {
-    if (!customer) return
+    if (!customer || cart.status !== 'awaiting') return
     const placed = placeAgentOrder(cart.plan, catalog, customer, state)
     if (typeof placed === 'string') {
       patch(cart.id, { status: 'failed', note: placed })
@@ -306,7 +363,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       {
         id: id(),
         kind: 'bot',
-        text: 'Done. Anything else I can buy for you?',
+        text: 'Done. Anything else I can find for you?',
         replies: examples.filter((e) => e !== ctx?.task).slice(0, 2),
       },
     )
@@ -327,14 +384,16 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     push({ id: id(), kind: 'me', text: value })
     if (awaiting && YES.test(value)) return place(awaiting)
     if (awaiting && NO.test(value)) return decline(awaiting)
+    const change = ctx?.plan?.choice && CHANGES.find(([re]) => re.test(value))?.[1]
+    if (ctx && change) return advance({ ...ctx, ...change })
     // An open question takes "2", "pick for me" or the option's name as the answer.
     if (asking) {
-      const lower = value.toLowerCase()
+      const typed = value.toLowerCase()
       const answer =
         (/^\d$/.test(value) ? asking.options[Number(value) - 1] : undefined) ??
         (YOU_PICK.test(value) ? (asking.options.find((o) => o.best) ?? asking.options[0]) : undefined) ??
         asking.options.find(
-          (o) => o.title.toLowerCase().includes(lower) || lower.includes(o.title.toLowerCase()),
+          (o) => o.title.toLowerCase().includes(typed) || typed.includes(o.title.toLowerCase()),
         )
       if (answer) return pick(asking, answer.id, false)
     }
@@ -347,6 +406,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
         budget: Math.ceil(ctx.plan.choice.price / 1000) * 1000 - 1000,
         categoryId: ctx.plan.choice.product.categoryId,
         productId: null,
+        variantId: null,
         offer: null,
       })
     }
@@ -354,7 +414,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       const task = /(?:size|ukuran|uk\.?)\s*\d{2}/i.test(ctx.task)
         ? ctx.task.replace(/(?:size|ukuran|uk\.?)\s*\d{2}/i, `size ${size}`)
         : `${ctx.task}, size ${size}`
-      return run({ ...ctx, task, offer: null })
+      return run({ ...ctx, task, variantId: null, offer: null })
     }
     if (ctx && pay) {
       const type = catalog.paymentTypes.find(
@@ -369,7 +429,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     run(fresh(value))
   }
 
-  // Animate the active run, then ask the first open question.
+  // Animate the active run, then ask the first question.
   useEffect(() => {
     if (running === null) return
     const current = items.find((it) => it.id === running)
@@ -394,20 +454,10 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- steps the active run on each tick
   }, [running, items])
 
-  // A cart inside the mandate pays itself a moment after it shows.
-  const autoCart = items.find((it): it is CartItem => it.kind === 'cart' && it.status === 'auto')
-  useEffect(() => {
-    if (!autoCart) return
-    const timer = setTimeout(() => place(autoCart), 1200)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per auto cart
-  }, [autoCart?.id])
-
   const value: AgentChat = {
     items,
     settings,
     setSettings,
-    limits,
     examples,
     policy,
     busy: running !== null,
@@ -472,7 +522,6 @@ function placeAgentOrder(
       intentMandateId: plan.mandates.intent.id,
       cartMandateId: plan.mandates.cart!.id,
       paymentMandateId: plan.mandates.payment!.id,
-      approval: plan.needsApproval ? 'shopper' : 'auto',
       negotiated,
       compared: plan.candidates.length,
     },

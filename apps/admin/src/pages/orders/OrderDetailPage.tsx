@@ -14,7 +14,6 @@ import {
 } from '@rc/fixtures'
 import type { Order, OrderStatus } from '@rc/types'
 import {
-  AGENT_APPROVAL_LABEL,
   AGENT_KIND_LABEL,
   CANCEL_REASON_LABEL,
   CHANNEL_LABEL,
@@ -449,12 +448,8 @@ function AgentMandateCard({ order }: { order: Order }) {
       title: 'Approval',
       body: (
         <p className="text-sm">
-          {AGENT_APPROVAL_LABEL[agent.approval]}
-          <span className="text-muted">
-            {agent.approval === 'auto'
-              ? ': the cart fit the mandate, so the agent went ahead.'
-              : ': the shopper confirmed the cart before payment.'}
-          </span>
+          Approved by the shopper
+          <span className="text-muted">: the shopper chose and confirmed the cart before payment.</span>
         </p>
       ),
     },

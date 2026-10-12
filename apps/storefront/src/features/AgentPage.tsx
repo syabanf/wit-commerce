@@ -1,6 +1,5 @@
 import { fmtIdr, initials } from '@rc/fixtures'
 import type { Customer, Order } from '@rc/types'
-import { cn } from '@rc/ui'
 import { Code2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useId, useRef } from 'react'
 import { Link } from 'react-router'
@@ -11,10 +10,10 @@ import { useTitle } from '../lib/useTitle'
 import { type Settings, useAgentChat } from '../state/agentChat'
 import { useShop } from '../state/shop'
 
-/** `/:store/agent`: the shopper chats with a buying agent that searches, prices, negotiates and pays. */
+/** `/:store/agent`: the shopper chats with a buying agent that suggests, asks, and pays only once the shopper approves. */
 export function AgentPage() {
   const { catalog, tenant, customer, store } = useShop()
-  const { items, settings, setSettings, limits, policy, protocol, setProtocol, orders } = useAgentChat()
+  const { items, settings, setSettings, policy, protocol, setProtocol, orders } = useAgentChat()
   useTitle(`Shop with your agent · ${tenant.name}`)
   const panelRef = useRef<HTMLElement>(null)
 
@@ -32,8 +31,9 @@ export function AgentPage() {
         </p>
         <h1 className="sf-title mt-2">Shop by chatting with your agent</h1>
         <p className="mt-1 max-w-2xl text-sm text-[color:var(--sf-muted)]">
-          Tell it what you need. It searches {tenant.name}, finds the best price, negotiates and pays within
-          your limits. The {tenant.name} assistant on every page talks to the same agent.
+          Tell it what you need. It searches {tenant.name}, suggests products, sizes, couriers and discounts,
+          and lets you choose each one. Nothing is paid until you approve the cart. The {tenant.name}{' '}
+          assistant on every page talks to the same agent.
         </p>
       </header>
 
@@ -52,11 +52,10 @@ export function AgentPage() {
           customer={customer}
           store={store}
           settings={settings}
-          limits={limits}
           onSettings={setSettings}
           policyNote={
             policy?.enabled
-              ? `${tenant.name} accepts ${agentKindList(policy.kinds)}${policy.negotiation ? ` and grants agents up to ${policy.maxAutoDiscountPct}% off` : ''}. It asks you to confirm orders above ${fmtIdr(policy.approvalAbove)}.`
+              ? `${tenant.name} accepts ${agentKindList(policy.kinds)}${policy.negotiation ? ` and grants agents up to ${policy.maxAutoDiscountPct}% off` : ''}. You approve every order before it is paid.`
               : `${tenant.name} does not accept buying agents right now.`
           }
           paymentTypes={catalog.paymentTypes.filter(
@@ -75,7 +74,6 @@ function SidePanel({
   customer,
   store,
   settings,
-  limits,
   onSettings,
   policyNote,
   paymentTypes,
@@ -86,7 +84,6 @@ function SidePanel({
   customer: Customer | null
   store: string
   settings: Settings
-  limits: number[]
   onSettings: (s: Settings) => void
   policyNote: string
   paymentTypes: { id: string; name: string }[]
@@ -111,31 +108,6 @@ function SidePanel({
           </p>
         </div>
       )}
-      <fieldset>
-        <legend className="mb-1.5 text-sm font-semibold">Pays on its own up to</legend>
-        <div className="gap-2 grid grid-cols-2">
-          {limits.map((l) => (
-            <label
-              key={l}
-              className={cn(
-                'min-h-10 px-2 text-xs font-semibold flex cursor-pointer items-center justify-center rounded-[var(--sf-tile-radius)] border text-center',
-                settings.limit === l
-                  ? 'border-[color:var(--sf-text)] bg-[var(--sf-text)] text-[color:var(--sf-bg)]'
-                  : 'border-[color:var(--sf-line)]',
-              )}
-            >
-              <input
-                type="radio"
-                name={`${uid}-limit`}
-                checked={settings.limit === l}
-                onChange={() => onSettings({ ...settings, limit: l })}
-                className="sr-only"
-              />
-              {l ? fmtIdr(l) : 'Always ask me'}
-            </label>
-          ))}
-        </div>
-      </fieldset>
       <div>
         <label htmlFor={`${uid}-pay`} className="mb-1.5 text-sm font-semibold block">
           Pay with
@@ -196,7 +168,7 @@ function SidePanel({
         <summary className="min-h-11 gap-3 text-sm font-semibold flex cursor-pointer list-none items-center justify-between">
           Mandate and settings
           <span className="text-xs font-normal text-[color:var(--sf-muted)] group-open:hidden">
-            {settings.limit ? `Pays on its own up to ${fmtIdr(settings.limit)}` : 'Always asks you'}
+            Asks before it pays
           </span>
         </summary>
         <div className="pt-4">{body}</div>
