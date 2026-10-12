@@ -1,4 +1,5 @@
 dist
+dist-root
 node_modules
 packages/fixtures/data
 pnpm-lock.yaml

@@ -3,8 +3,8 @@ import type { AgentKind, AgentPolicy, Customer, PaymentType, Product, Variant } 
 import { AGENT_KIND_LABEL } from '@rc/types'
 import { SYNONYMS, describeIntent, type Intent, recommend, understand } from './assistant'
 import { type CartTotals, cartTotals } from './cart'
-import { type Catalog, fromPrice, isBuyable, variantAvailable } from './catalog'
-import { type CourierOption, DEFAULT_COURIER, courierFee } from './checkout'
+import { type Catalog, categoryIdsUnder, fromPrice, isBuyable, variantAvailable } from './catalog'
+import { COURIERS, type CourierOption, DEFAULT_COURIER, courierFee } from './checkout'
 
 // Agentic checkout, frontend only: a buying agent reads the shopper's mandate, works the real catalog,
 // stock, promotions and the store's agent policy, and returns every step it took. Pure functions; the
@@ -32,6 +32,20 @@ export interface MandateInput {
   productId?: string | null
   /** Keeps the search to one category, as when the shopper asks for a cheaper one of the same. */
   categoryId?: string | null
+  /** The courier the shopper chose; the cheapest paid courier otherwise. */
+  courierId?: string | null
+  /** The code and payment type the shopper chose; the cheapest combination otherwise. */
+  offer?: Offer | null
+}
+
+export interface Offer {
+  code: string | null
+  paymentTypeId: string
+}
+
+export interface ShippingChoice {
+  courier: CourierOption
+  fee: number
 }
 
 export interface Candidate {
@@ -60,10 +74,12 @@ export interface AgentPlan {
   scanned: number
   candidates: Candidate[]
   choice: Candidate | null
-  /** The cheapest code and payment type the agent found, out of `tried` combinations. */
+  /** The shopper's chosen code and payment type, else the cheapest. */
   best: PriceTrial | null
-  tried: number
-  saved: number
+  /** Every combination that prices the pick, cheapest first, one per code, discounts and price. */
+  trials: PriceTrial[]
+  /** Couriers that reach the shopper's city, with the fee this order pays. */
+  shippingOptions: ShippingChoice[]
   negotiation: { allowed: boolean; askedPct: number; grantedPct: number; amount: number; note: string }
   courier: CourierOption
   shipping: number
@@ -182,7 +198,12 @@ function rankForTask(task: string, intent: Intent, catalog: Catalog, pool: Produ
   const common = new Set(
     wordsOfTask.filter((w) => pool.filter((p) => text(p).includes(w)).length > pool.length / 4),
   )
+  // When the product noun names the category ("running shoes"), a cap that only shares "running" stays out.
+  const categoryName = intent.categoryId ? catalog.categoryMap.get(intent.categoryId)?.name.toLowerCase() : ''
+  const inCategory =
+    head && categoryName?.includes(head) ? categoryIdsUnder(catalog, intent.categoryId!) : null
   const scored = pool
+    .filter((p) => !inCategory || inCategory.has(p.categoryId))
     .map((p) => {
       const name = p.name.toLowerCase()
       const rest = `${p.tags.join(' ')} ${p.bestFor} ${p.description}`.toLowerCase()
@@ -247,8 +268,8 @@ export function planAgentRun(
     candidates: [],
     choice: null,
     best: null,
-    tried: 0,
-    saved: 0,
+    trials: [],
+    shippingOptions: [],
     negotiation: { allowed: false, askedPct: 0, grantedPct: 0, amount: 0, note: '' },
     courier: DEFAULT_COURIER,
     shipping: 0,
@@ -325,18 +346,25 @@ export function planAgentRun(
     qty: 1,
     modifiers: [],
   }
-  let best: PriceTrial | null = null
-  let tried = 0
+  const priced: PriceTrial[] = []
   for (const paymentType of payments)
     for (const code of codes) {
-      tried++
       const totals = cartTotals(catalog, { lines: [line], voucher: code }, null, now, paymentType.id)
       if (code && !totals.appliedCode) continue
-      const payable = totals.subtotal - totals.discount
-      if (!best || payable < best.payable) best = { code, paymentType, totals, payable }
+      priced.push({ code, paymentType, totals, payable: totals.subtotal - totals.discount })
     }
+  // Payment types that price the same way collapse into the first, so each option differs from the rest.
+  const seen = new Set<string>()
+  const trials = priced
+    .sort((a, b) => a.payable - b.payable)
+    .filter((t) => {
+      const key = `${t.code}|${t.totals.discounts.map((d) => d.label).join('+')}|${t.payable}`
+      return !seen.has(key) && seen.add(key)
+    })
+  const best =
+    trials.find((t) => t.code === input.offer?.code && t.paymentType.id === input.offer?.paymentTypeId) ??
+    trials[0]
   if (!best) return { ...empty, refusal: 'No payment type the store allows for agents can take this order.' }
-  const saved = best.totals.discount
 
   const grantedPct = policy.negotiation ? Math.min(ASK_PCT, policy.maxAutoDiscountPct) : 0
   const negotiated = Math.round((best.payable * grantedPct) / 100 / 1000) * 1000
@@ -351,7 +379,11 @@ export function planAgentRun(
         : 'The store agent declined: its agent discount limit is 0%.'
       : `${catalog.tenant.name} does not negotiate with agents. List price stands.`,
   }
-  const courier = DEFAULT_COURIER
+  const shippingOptions = COURIERS.filter((c) => !c.jakartaOnly || customer.city === 'Jakarta').map((c) => ({
+    courier: c,
+    fee: courierFee(c, best.totals.freeShipping),
+  }))
+  const courier = shippingOptions.find((o) => o.courier.id === input.courierId)?.courier ?? DEFAULT_COURIER
   const shipping = courierFee(courier, best.totals.freeShipping)
   const total = Math.max(0, best.payable - negotiated + shipping)
   const overBudget = !!budget && total > budget
@@ -411,8 +443,8 @@ export function planAgentRun(
     candidates,
     choice,
     best,
-    tried,
-    saved,
+    trials,
+    shippingOptions: shippingOptions,
     negotiation,
     courier,
     shipping,
@@ -424,5 +456,5 @@ export function planAgentRun(
   }
 }
 
-/** How many work steps a run shows: understand, check the store, search, then price and negotiate. */
-export const runSteps = (plan: AgentPlan) => (plan.refusal ? 2 : plan.choice && plan.best ? 5 : 3)
+/** How many work steps a run shows: understand, check the store, then search. */
+export const runSteps = (plan: AgentPlan) => (plan.refusal ? 2 : 3)

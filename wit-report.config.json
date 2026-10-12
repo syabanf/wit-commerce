@@ -64,7 +64,7 @@
       ],
       "dist": "apps/storefront/dist",
       "baseUrl": "http://localhost:4375",
-      "start": "pnpm --filter @rc/storefront preview --port 4375 --strictPort",
+      "start": "STOREFRONT_BASE=/ pnpm --filter @rc/storefront exec vite build --outDir dist-root --emptyOutDir && STOREFRONT_BASE=/ pnpm --filter @rc/storefront exec vite preview --outDir dist-root --port 4375 --strictPort",
       "localStorage": {}
     }
   },

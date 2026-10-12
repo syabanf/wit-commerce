@@ -5,19 +5,20 @@ import {
   Bot,
   Check,
   CircleAlert,
-  Handshake,
   LoaderCircle,
   Receipt,
   ScanSearch,
   SendHorizontal,
   ShieldCheck,
+  Sparkles,
   Tag,
+  Truck,
   type LucideIcon,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { type AgentPlan, type Mandate } from '../lib/agent'
 import { paths } from '../lib/paths'
-import { type CartItem, useAgentChat } from '../state/agentChat'
+import { type CartItem, type ChoiceItem, type Step, useAgentChat } from '../state/agentChat'
 import { useShop } from '../state/shop'
 import { ProductImage } from './product'
 import { Button, ButtonLink, Pill } from './ui'
@@ -28,7 +29,7 @@ import { Button, ButtonLink, Pill } from './ui'
  */
 export function AgentThread({ compact }: { compact?: boolean }) {
   const { tenant, customer, customers, signIn, store } = useShop()
-  const { items, settings, examples, busy, protocol, say, approve, decline, choose } = useAgentChat()
+  const { items, settings, examples, busy, protocol, say, pick, approve, decline } = useAgentChat()
   const listRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -78,10 +79,10 @@ export function AgentThread({ compact }: { compact?: boolean }) {
                 <RunCard plan={it.plan} shown={it.shown} tenantName={tenant.name} protocol={protocol} />
               </BotRow>
             )
-          case 'picks':
+          case 'choice':
             return (
               <BotRow key={it.id}>
-                <PicksCard plan={it.plan} onChoose={choose} disabled={busy} />
+                <ChoiceCard item={it} onPick={(optionId) => pick(it, optionId)} disabled={busy} />
               </BotRow>
             )
           case 'cart':
@@ -227,23 +228,8 @@ function runLines(plan: AgentPlan, store: string): RunLine[] {
   if (plan.refusal) return lines
   lines.push({
     icon: ScanSearch,
-    text: `Searched ${plan.scanned} products and kept ${plan.candidates.length}.`,
+    text: `Searched ${plan.scanned} products. ${plan.candidates.filter((c) => !c.rejected).length} fit your request.`,
   })
-  if (!plan.choice || !plan.best) return lines
-  lines.push(
-    {
-      icon: Tag,
-      text: plan.saved
-        ? `Tried ${plan.tried} code and payment combinations. The best saves ${fmtIdr(plan.saved)}.`
-        : `Tried ${plan.tried} code and payment combinations. No offer applies.`,
-    },
-    {
-      icon: Handshake,
-      text: plan.negotiation.amount
-        ? `Negotiated ${plan.negotiation.grantedPct}% more off with the store’s agent: ${fmtIdr(plan.negotiation.amount)}.`
-        : plan.negotiation.note,
-    },
-  )
   return lines
 }
 
@@ -300,77 +286,104 @@ function RunCard({
   )
 }
 
-function PicksCard({
-  plan,
-  onChoose,
+const BEST: Record<Step, string> = { product: 'Best match', shipping: 'Recommended', offer: 'Best price' }
+
+/** One question with its options as numbered rows; the shopper taps one, types its number, or lets the agent pick. */
+function ChoiceCard({
+  item,
+  onPick,
   disabled,
 }: {
-  plan: AgentPlan
-  onChoose: (id: string) => void
+  item: ChoiceItem
+  onPick: (optionId: string) => void
   disabled: boolean
 }) {
-  const choice = plan.choice!
-  const others = plan.candidates.filter((c) => c !== choice).slice(0, 3)
-  const why = choice.reasons.slice(1)
+  const open = !item.picked && !item.closed
+  const shown = item.picked ? item.options.filter((o) => o.id === item.picked) : item.options
+  const best = item.options.find((o) => o.best) ?? item.options[0]
   return (
     <div className="space-y-2">
-      <Bubble>
-        I picked <strong>{choice.product.name}</strong>
-        {choice.variant && Object.keys(choice.variant.optionValues).length
-          ? ` in ${choice.variant.name}`
-          : ''}
-        .{why.length ? ` ${why.join('. ')}.` : ''}
-      </Bubble>
-      <div className="gap-3 p-3 max-w-xl rounded-2xl flex items-center border border-[color:var(--sf-primary)] bg-[var(--sf-bg)]">
-        <ProductImage
-          product={choice.product}
-          size="sm"
-          className="size-16 shrink-0 rounded-[var(--sf-tile-radius)]"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="gap-2 flex items-center">
-            <span className="font-semibold truncate">{choice.product.name}</span>
-            <Pill tone="primary">Pick</Pill>
-          </p>
-          <p className="text-xs text-[color:var(--sf-muted)]">{choice.variant?.name}</p>
-          <p className="sf-price mt-0.5 text-sm font-bold">{fmtIdr(choice.price)}</p>
-        </div>
-      </div>
-      {others.length > 0 && (
-        <div className="max-w-xl">
-          <p className="mb-1.5 text-xs text-[color:var(--sf-muted)]">Also considered</p>
-          <ul className="gap-2 no-scrollbar flex snap-x overflow-x-auto">
-            {others.map((c) => (
-              <li
-                key={c.product.id}
-                className="w-44 p-2 flex shrink-0 snap-start flex-col rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)]"
-              >
-                <ProductImage
-                  product={c.product}
-                  size="sm"
-                  className="aspect-[4/3] rounded-[var(--sf-tile-radius)]"
-                />
-                <p className="mt-2 text-xs font-semibold line-clamp-1">{c.product.name}</p>
-                <p className="sf-price text-xs font-bold">{fmtIdr(c.price)}</p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] text-[color:var(--sf-muted)]">
-                  {c.rejected ?? c.reasons[1] ?? ''}
-                </p>
-                {!c.rejected && (
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onChoose(c.product.id)}
-                    className="pt-2 mt-auto"
-                  >
-                    <span className="min-h-9 text-xs font-semibold flex items-center justify-center rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]">
-                      Buy this instead
-                    </span>
-                  </button>
+      <Bubble>{item.question}</Bubble>
+      <ol className="max-w-xl space-y-2 @container" aria-label={item.question}>
+        {shown.map((o) => {
+          const n = item.options.indexOf(o) + 1
+          const picked = o.id === item.picked
+          return (
+            <li key={o.id}>
+              <button
+                type="button"
+                disabled={!open || disabled}
+                onClick={() => onPick(o.id)}
+                className={cn(
+                  'gap-3 p-3 rounded-2xl flex w-full items-center border text-left transition-colors',
+                  picked
+                    ? 'border-[color:var(--sf-primary)] bg-[var(--sf-bg)]'
+                    : 'border-[color:var(--sf-line)] bg-[var(--sf-bg)] enabled:hover:border-[color:var(--sf-text)]',
+                  item.closed && 'opacity-50',
                 )}
-              </li>
-            ))}
-          </ul>
-        </div>
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'size-6 text-xs font-bold flex shrink-0 items-center justify-center rounded-full',
+                    picked
+                      ? 'bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]'
+                      : 'bg-[var(--sf-soft)]',
+                  )}
+                >
+                  {picked ? <Check className="size-3.5" /> : n}
+                </span>
+                {o.product ? (
+                  <ProductImage
+                    product={o.product}
+                    size="sm"
+                    className="size-12 shrink-0 rounded-[var(--sf-tile-radius)]"
+                  />
+                ) : (
+                  <span className="size-10 flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-soft)]">
+                    {item.step === 'shipping' ? (
+                      <Truck className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Tag className="size-4" aria-hidden="true" />
+                    )}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="gap-2 flex flex-wrap items-center">
+                    <span className="text-sm font-semibold">{o.title}</span>
+                    {o.best && <Pill tone="primary">{BEST[item.step]}</Pill>}
+                  </span>
+                  {o.detail && (
+                    <span className="mt-0.5 text-xs block text-[color:var(--sf-muted)]">{o.detail}</span>
+                  )}
+                  <span className="mt-1 gap-2 @sm:hidden flex items-baseline">
+                    <span className="sf-price text-sm font-bold">{o.amount}</span>
+                    {o.note && <span className="text-[11px] text-[color:var(--sf-primary)]">{o.note}</span>}
+                  </span>
+                </span>
+                <span className="@sm:block hidden shrink-0 text-right">
+                  <span className="sf-price text-sm font-bold block">{o.amount}</span>
+                  {o.note && (
+                    <span className="block text-[11px] text-[color:var(--sf-primary)]">{o.note}</span>
+                  )}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+      {open && best && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onPick(best.id)}
+          className="min-h-10 gap-1.5 px-3.5 text-xs font-semibold inline-flex items-center rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)] disabled:opacity-50"
+        >
+          <Sparkles className="size-3.5" aria-hidden="true" /> Pick for me
+        </button>
+      )}
+      {item.closed && (
+        <p className="text-xs text-[color:var(--sf-muted)]">A newer request replaced this question.</p>
       )}
     </div>
   )

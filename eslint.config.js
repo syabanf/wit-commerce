@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       '**/dist/**',
       '**/dev-dist/**',
+      '**/dist-root/**',
       '**/node_modules/**',
       'packages/fixtures/data/**',
       '**/.turbo/**',
