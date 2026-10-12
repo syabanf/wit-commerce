@@ -14,9 +14,6 @@ export const en = {
     modifiers: 'Modifiers',
     inventory: 'Inventory',
     // Store
-    pages: 'Pages',
-    pageDetail: (id: string) => `Page ${id}`,
-    templates: 'Templates',
     brand: 'Brand',
     domains: 'Domains',
     // Customers

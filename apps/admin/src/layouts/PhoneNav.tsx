@@ -13,6 +13,7 @@ import {
 } from '@rc/ui'
 import type { LucideIcon } from 'lucide-react'
 import {
+  BadgePercent,
   ChartColumn,
   ChevronDown,
   Handshake,
@@ -22,7 +23,6 @@ import {
   LogOut,
   Megaphone,
   Package,
-  PanelsTopLeft,
   Plus,
   Search,
   ShoppingBag,
@@ -55,7 +55,7 @@ const SHORTCUTS: Record<Role, [Shortcut, Shortcut, Shortcut]> = {
   marketing: [
     { label: 'Campaigns', to: '/marketing/campaigns', icon: Megaphone },
     { label: 'Segments', to: '/customers/segments', icon: UsersRound },
-    { label: 'Pages', to: '/store/pages', icon: PanelsTopLeft },
+    { label: 'Promotions', to: '/marketing/promotions', icon: BadgePercent },
   ],
   operations: [ORDERS, { label: 'Products', to: '/commerce/products', icon: Package }, ANALYTICS],
   service: [

@@ -121,21 +121,6 @@
     },
     {
       "app": "admin",
-      "path": "/store/pages",
-      "name": "Halaman storefront"
-    },
-    {
-      "app": "admin",
-      "path": "/store/pages/page-lari-runmonth",
-      "name": "Page builder: Running Month"
-    },
-    {
-      "app": "admin",
-      "path": "/store/templates",
-      "name": "Template library"
-    },
-    {
-      "app": "admin",
       "path": "/store/brand",
       "name": "Brand guideline dan brand lock"
     },

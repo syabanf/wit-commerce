@@ -17,9 +17,7 @@ import {
 } from '@rc/ui'
 import { ArrowRight, Copy, FileCode, Globe, Link2, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { PageStatusBadge } from '../../components/badges'
-import { paths } from '../../components/links'
 import { useScoped } from '../../state/scoped'
 import { DESCRIPTION_MAX, REDIRECTS, TITLE_MAX, dnsRecords, platformHost, primaryHost, seoFlags } from './lib'
 
@@ -30,7 +28,6 @@ const copy = (text: string) => {
 
 export function DomainsPage() {
   const s = useScoped()
-  const navigate = useNavigate()
   const host = primaryHost(s.tenant)
   const live = s.pages.filter((p) => p.status === 'published' || p.status === 'scheduled')
   const flagged = live.filter((p) => seoFlags(p).length).length
@@ -189,7 +186,6 @@ export function DomainsPage() {
               columns={columns}
               rows={live}
               getRowKey={(p) => p.id}
-              onRowClick={(p) => navigate(paths.page(p.id))}
               initialSort={{ id: 'flags', desc: true }}
               pageSize={8}
               empty={

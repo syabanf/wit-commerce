@@ -33,8 +33,8 @@ export const settingsRoutes: RouteObject[] = [
 export const miscRoutes: RouteObject[] = [
   // Shortcut: `/commerce` → default to the orders list.
   { path: 'commerce', element: <Navigate to="/commerce/orders" replace /> },
-  // Shortcut: `/store` → page management start.
-  { path: 'store', element: <Navigate to="/store/pages" replace /> },
+  // Shortcut: `/store` → brand guideline.
+  { path: 'store', element: <Navigate to="/store/brand" replace /> },
   // Shortcut: `/customers` → all‑customers view.
   { path: 'customers', element: <Navigate to="/customers/all" replace /> },
   // Shortcut: `/marketing` → campaign list.

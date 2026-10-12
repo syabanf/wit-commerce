@@ -44,7 +44,7 @@ Dependencies point down. A page composes; it owns no business rules.
 | Group | Sections |
 |---|---|
 | Daily work | Home, Orders, Customers (All customers, Support, Segments, Loyalty) |
-| Sell | Catalog (Products, Categories, Attributes, Modifiers, Inventory), Online store (Pages, Templates, Brand guideline, Domains & SEO) |
+| Sell | Catalog (Products, Categories, Attributes, Modifiers, Inventory), Online store (Brand guideline, Domains & SEO) |
 | Grow | Marketing (Campaigns, Promotions, Automations), Sales network (Leads, Sellers, Performance) |
 | Insights & setup | Analytics, Integrations, Settings |
 
@@ -54,7 +54,7 @@ Dependencies point down. A page composes; it owns no business rules.
 
 - **List page** (this product's one list form, as in MES): `PageHeader` (one-sentence purpose, pill search, primary) → clickable `StatCard` tiles that apply filters → `ChipRow` of `Chip variant="filter"` with counts → `DataTable` on the canvas, no card. Reference: `pages/orders/OrdersPage.tsx`.
 - **Detail page**: action bar (BackButton left; the next lifecycle step as primary, outline secondaries, an outline `MoreHorizontal` ActionMenu) → blocker note card → ink hero card (mono code, title, badges, metric grid) → `Steps` card → KeyValue cards in `lg:grid-cols-2` → related cards → history → dialogs. Reference: `pages/orders/OrderDetailPage.tsx`.
-- **Gallery page** (templates, sellers): PageHeader, StatCards as filters, ChipRow, `grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3` of stretched-link cards.
+- **Gallery page** (sellers): PageHeader, StatCards as filters, ChipRow, `grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3` of stretched-link cards.
 - **Analytics**: PageHeader with a `PillTabs size="sm"` window, KPI tiles, one chart per card, BarList rankings.
 - Section tables on any other page sit in a `Card` under a `CardHeader`.
 
@@ -75,7 +75,7 @@ Dependencies point down. A page composes; it owns no business rules.
 
 ## Storefront pages
 
-Brand teams and sellers pick one of the existing templates; there is no section editor. `pages/setTemplate` and `sellers/setTemplate` rebuild a page's sections from the chosen template and carry headline, text, products and buttons over by section kind (`applyTemplate` in `store.ts`). Each revision stores its template, so a rollback restores both.
+The admin has no Pages or Templates screens. Pages and templates come from the seed, and the storefront renders them. Sellers pick one of the existing templates on their personal store card; there is no section editor. `pages/setTemplate` and `sellers/setTemplate` rebuild a page's sections from the chosen template and carry headline, text, products and buttons over by section kind (`applyTemplate` in `store.ts`). Each revision stores its template, so a rollback restores both.
 
 ## Pricing and variants
 

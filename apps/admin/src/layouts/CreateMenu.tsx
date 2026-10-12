@@ -4,7 +4,6 @@ import {
   Handshake,
   Megaphone,
   Package,
-  PanelsTopLeft,
   UserPlus,
   UserRoundPlus,
   UsersRound,
@@ -68,13 +67,6 @@ export function CreateMenu({
       description: 'Voucher, discount or free shipping',
       icon: <BadgePercent />,
       onSelect: () => navigate('/marketing/promotions?new=1'),
-    },
-    can('store.manage') && {
-      key: 'page',
-      label: 'Page',
-      description: 'Landing or campaign page from a template',
-      icon: <PanelsTopLeft />,
-      onSelect: () => navigate('/store/pages?new=1'),
     },
     can('seller.manage') && {
       key: 'seller',

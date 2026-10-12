@@ -14,11 +14,9 @@ import {
   toast,
 } from '@rc/ui'
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { StorefrontPreview } from '../../components/StorefrontPreview'
 import { LiveStorefront } from '../../components/LiveStorefront'
-import { paths } from '../../components/links'
 import { useScoped } from '../../state/scoped'
 import { storeUrl } from './lib'
 
@@ -199,10 +197,6 @@ export function PersonalStoreCard({ seller }: { seller: Seller }) {
               <>
                 <span>·</span>
                 <span>{PAGE_STATUS_LABEL[page.status]}</span>
-                <span>·</span>
-                <Link to={paths.page(page.id)} className="font-semibold text-foreground hover:text-accent">
-                  Edit content
-                </Link>
               </>
             ) : (
               <span>· No page yet. The preview fills the template with the seller profile.</span>

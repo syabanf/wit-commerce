@@ -7,7 +7,6 @@ export const paths = {
   order: (id: string) => `/commerce/orders/${id}`,
   product: (id: string) => `/commerce/products/${id}`,
   newProduct: '/commerce/products/new',
-  page: (id: string) => `/store/pages/${id}`,
   customer: (id: string) => `/customers/all/${id}`,
   segment: (id: string) => `/customers/segments/${id}`,
   newSegment: '/customers/segments/new',

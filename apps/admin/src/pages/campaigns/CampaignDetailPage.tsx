@@ -48,6 +48,7 @@ import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
 import { CustomerLink, OrderLink, paths } from '../../components/links'
+import { storefrontUrl } from '../../lib/storefront'
 import { useNow, useScoped } from '../../state/scoped'
 import { CampaignDialog } from './CampaignDialog'
 import { HeroMetric } from '../../components/HeroMetric'
@@ -371,9 +372,14 @@ export function CampaignDetailPage() {
                 <dt className="text-xs text-muted">Landing page</dt>
                 <dd>
                   {page ? (
-                    <Link to={paths.page(page.id)} className="hover:text-accent">
+                    <a
+                      href={storefrontUrl(s.tenant.subdomain, `/preview/${page.id}`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-accent"
+                    >
                       {page.title} <span className="text-xs font-mono text-muted">/{page.slug}</span>
-                    </Link>
+                    </a>
                   ) : (
                     'None'
                   )}

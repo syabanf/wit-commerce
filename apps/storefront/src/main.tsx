@@ -6,7 +6,8 @@ import './index.css'
 import { routes } from './router'
 import { AppStateProvider } from './state/store'
 
-const router = createBrowserRouter(routes)
+// `vite build --base /shop/` serves the store under /shop (production); dev serves it at the root.
+const router = createBrowserRouter(routes, { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

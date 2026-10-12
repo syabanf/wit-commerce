@@ -1,4 +1,4 @@
-import { LEAD_STAGE_LABEL, ORDER_STATUS_LABEL, PAGE_STATUS_LABEL, CAMPAIGN_STATUS_LABEL } from '@rc/types'
+import { LEAD_STAGE_LABEL, ORDER_STATUS_LABEL, CAMPAIGN_STATUS_LABEL } from '@rc/types'
 import { fmtIdr } from '@rc/fixtures'
 import { Input, cn } from '@rc/ui'
 import { Search } from 'lucide-react'
@@ -78,17 +78,6 @@ function searchAll(s: Scoped, query: string): { group: string; hits: Hit[] }[] {
           label: c.name,
           hint: CAMPAIGN_STATUS_LABEL[c.status],
           to: paths.campaign(c.id),
-        })),
-    },
-    {
-      group: 'Pages',
-      hits: s.pages
-        .filter((p) => match(p.title, p.slug))
-        .map((p) => ({
-          id: p.id,
-          label: p.title,
-          hint: `${p.slug} · ${PAGE_STATUS_LABEL[p.status]}`,
-          to: paths.page(p.id),
         })),
     },
     {
