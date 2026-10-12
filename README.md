@@ -68,5 +68,5 @@ WIT red accent on a near-black ink. Tenant storefront colours are data (`Tenant.
 The admin runs at https://commerce.reddie.id and the storefront at https://commerce.reddie.id/shop.
 
 - Admin: build with `VITE_STOREFRONT_URL=https://commerce.reddie.id/shop pnpm --filter @rc/admin build`.
-- Storefront: build with `VITE_ADMIN_ORIGINS=https://commerce.reddie.id pnpm --filter @rc/storefront build:shop`. The router takes its basename from Vite's `--base`, so every link stays under `/shop`.
+- Storefront: build with `VITE_ADMIN_ORIGINS=https://commerce.reddie.id pnpm --filter @rc/storefront build`. Every build (`pnpm build`, `turbo run build` or `vite build` in `apps/storefront`) uses base `/shop/`, and the router takes its basename from it, so every link stays under `/shop`. `STOREFRONT_BASE=/` builds the store for the root; `pnpm --filter @rc/storefront preview` serves the build at http://localhost:4375/shop/.
 - The web server returns the storefront's `index.html` for every `/shop/*` path that is not a file, and the admin's `index.html` for every other path.

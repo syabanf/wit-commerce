@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite --port 5375 --strictPort",
     "build": "vite build",
-    "build:shop": "vite build --base /shop/",
     "preview": "vite preview --port 4375",
     "typecheck": "tsc --noEmit"
   },
