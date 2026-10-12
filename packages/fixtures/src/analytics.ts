@@ -170,7 +170,7 @@ export function monthlyRevenue(orders: readonly Order[], months: number, now = n
 }
 
 export function channelMix(orders: readonly Order[]): Record<Channel, number> {
-  const mix: Record<Channel, number> = { web: 0, personal_store: 0, whatsapp: 0, marketplace: 0, pos: 0 }
+  const mix: Record<Channel, number> = { web: 0, personal_store: 0, whatsapp: 0, marketplace: 0, pos: 0, agent: 0 }
   for (const o of orders) if (isSold(o)) mix[o.channel] += o.total - o.refundedAmount
   return mix
 }

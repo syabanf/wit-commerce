@@ -1,6 +1,6 @@
 import { fmtDateTime, fmtIdr } from '@rc/fixtures'
-import { CHANNEL_LABEL, COURIER_LABEL, PAYMENT_STATUS_LABEL } from '@rc/types'
-import { CircleCheck } from 'lucide-react'
+import { AGENT_KIND_LABEL, CHANNEL_LABEL, COURIER_LABEL, PAYMENT_STATUS_LABEL } from '@rc/types'
+import { Bot, CircleCheck } from 'lucide-react'
 import { useParams } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
 import { NotFound } from '../components/NotFound'
@@ -42,6 +42,12 @@ export function OrderPage() {
         </p>
         <div className="mt-4 gap-2 flex flex-wrap justify-center">
           <Pill tone={paid ? 'primary' : 'accent'}>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</Pill>
+          {order.agent && (
+            <Pill tone="dark">
+              <Bot className="size-3" aria-hidden="true" /> Placed by your{' '}
+              {AGENT_KIND_LABEL[order.agent.kind].toLowerCase()}
+            </Pill>
+          )}
           <Pill>{payment?.name ?? order.paymentMethod}</Pill>
           <Pill>{COURIER_LABEL[order.courier]}</Pill>
           <Pill>{CHANNEL_LABEL[order.channel]}</Pill>

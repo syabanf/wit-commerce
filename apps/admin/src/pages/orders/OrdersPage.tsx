@@ -2,6 +2,7 @@ import { HOUR, fmtIdr, fmtWhen, nowMs, plural, toMs, unitCount } from '@rc/fixtu
 import type { Order, OrderStatus } from '@rc/types'
 import { CHANNEL_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
 import {
+  Badge,
   Banner,
   Button,
   Chip,
@@ -137,7 +138,10 @@ export function OrdersPage() {
       sortValue: (o) => o.code,
       cell: (o) => (
         <div className="min-w-0">
-          <p className="text-xs font-semibold font-mono">{o.code}</p>
+          <p className="gap-1.5 flex items-center">
+            <span className="text-xs font-semibold font-mono">{o.code}</span>
+            {o.agent && <Badge variant="info">Agent</Badge>}
+          </p>
           <p className="text-sm truncate">{s.customerName(o.customerId)}</p>
           <div className="mt-1.5 gap-1.5 sm:hidden flex flex-wrap">
             <OrderStatusBadge status={o.status} />

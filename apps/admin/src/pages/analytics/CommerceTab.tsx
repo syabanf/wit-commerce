@@ -16,13 +16,14 @@ import { useScoped } from '../../state/scoped'
 import { ChartCard } from './ChartCard'
 import { changeHint, revenueByCategory, soldInWindow, visitorsPerDay, windowStart } from './lib'
 
-const CHANNEL_ORDER: Channel[] = ['web', 'personal_store', 'marketplace', 'whatsapp', 'pos']
+const CHANNEL_ORDER: Channel[] = ['web', 'personal_store', 'agent', 'marketplace', 'whatsapp', 'pos']
 const CHANNEL_COLOR: Record<Channel, string> = {
   web: 'var(--color-ink)',
   personal_store: 'var(--color-info)',
   marketplace: 'var(--color-accent)',
   whatsapp: 'var(--color-warning)',
   pos: 'var(--color-success)',
+  agent: 'var(--color-chart-muted)',
 }
 
 export function CommerceTab({ days, today }: { days: number; today: number }) {

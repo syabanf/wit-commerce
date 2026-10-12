@@ -1,5 +1,6 @@
 import { Outlet, type RouteObject, ScrollRestoration } from 'react-router'
 import { AccountPage } from './features/AccountPage'
+import { AgentPage } from './features/AgentPage'
 import { BrandChooserPage } from './features/BrandChooserPage'
 import {
   CartPage,
@@ -47,6 +48,7 @@ export const routes: RouteObject[] = [
           { path: 'order/:orderId', element: <OrderPage /> },
           { path: 'account', element: <AccountPage /> },
           { path: 'wishlist', element: <WishlistPage /> },
+          { path: 'agent', element: <AgentPage /> },
           { path: 'preview/:pageId', element: <PagePreviewPage /> },
           { path: ':sellerSlug', element: <PersonalStorePage /> },
           { path: '*', element: <StoreNotFoundPage /> },

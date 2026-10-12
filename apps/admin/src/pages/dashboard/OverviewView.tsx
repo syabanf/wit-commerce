@@ -53,6 +53,7 @@ const CHANNEL_COLOR: Record<Channel, string> = {
   whatsapp: 'var(--color-info)',
   marketplace: 'var(--color-warning)',
   pos: 'var(--color-chart-muted)',
+  agent: 'var(--color-success)',
 }
 const CHANNEL_DOT: Record<Channel, string> = {
   web: 'bg-ink',
@@ -60,6 +61,7 @@ const CHANNEL_DOT: Record<Channel, string> = {
   whatsapp: 'bg-info',
   marketplace: 'bg-warning',
   pos: 'bg-chart-muted',
+  agent: 'bg-success',
 }
 
 export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queues: Queue[] }) {

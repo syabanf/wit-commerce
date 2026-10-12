@@ -39,6 +39,9 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
         <button type="button" onClick={onCategories} aria-expanded={menuOpen} className={link(menuOpen)}>
           Categories
         </button>
+        <Link to={paths.agent(store)} className={link(pathname.endsWith('/agent'))}>
+          Agent
+        </Link>
         {/* Tablets keep Shop and Categories; the rest returns from lg up so the bar never overflows. */}
         <Link to={`${paths.home(store)}#testimonials`} className={cn(link(false), 'lg:inline-flex hidden')}>
           Testimonials
@@ -140,6 +143,9 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
         </Link>
         <Link to={paths.search(store, '', { sort: 'new' })} className="min-h-11 inline-flex items-center">
           New arrivals
+        </Link>
+        <Link to={paths.agent(store)} className="min-h-11 inline-flex items-center">
+          Agent
         </Link>
         {popularCategories(catalog).map((c) => (
           <Link key={c.id} to={paths.category(store, c.id)} className="min-h-11 inline-flex items-center">

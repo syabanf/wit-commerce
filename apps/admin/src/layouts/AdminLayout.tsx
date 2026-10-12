@@ -1,59 +1,61 @@
 // apps/admin/src/layouts/AdminLayout.tsx
-import { Banner, cn, useMediaQuery } from '@rc/ui';
-import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react';
-import { NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router';
-import { usePersistentState } from '../lib/storage';
-import { useStore } from '../state/store';
-import { Header } from './Header';
-import { leafFor, sectionFor } from './nav';
-import { PhoneNav } from './PhoneNav';
-import { SideRail } from './SideRail';
-import { useNavCounts } from './useNavCounts';
-import Spinner from '@rc/ui/Spinner';
-import { useFocusOnNavigate } from '../hooks/useFocusOnNavigate';
+import { Banner, Spinner, cn, useMediaQuery } from '@rc/ui'
+import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react'
+import { NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router'
+import { usePersistentState } from '../lib/storage'
+import { useStore } from '../state/store'
+import { Header } from './Header'
+import { leafFor, sectionFor } from './nav'
+import { PhoneNav } from './PhoneNav'
+import { SideRail } from './SideRail'
+import { useNavCounts } from './useNavCounts'
+import { useFocusOnNavigate } from '../hooks/useFocusOnNavigate'
+import type { RouteHandle } from '../routes/page'
 
 // Scroll position store used across history entries
-const scrollTops = new Map<string, number>();
+const scrollTops = new Map<string, number>()
 
 export function AdminLayout() {
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
-  const [expandedPref, setExpandedPref] = usePersistentState('rc.admin.rail', true);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const { key, pathname } = useLocation();
-  const navigationType = useNavigationType();
-  const mainRef = useRef<HTMLElement>(null);
-  const entryKey = useRef(key);
-  const expanded = expandedPref && isDesktop;
-  const { storageError } = useStore();
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const [expandedPref, setExpandedPref] = usePersistentState('rc.admin.rail', true)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const { key, pathname } = useLocation()
+  const navigationType = useNavigationType()
+  const mainRef = useRef<HTMLElement>(null)
+  const entryKey = useRef(key)
+  const expanded = expandedPref && isDesktop
+  const { storageError } = useStore()
 
   // ---- Scroll‑position handling (unchanged) ----
   useEffect(() => {
-    const main = mainRef.current;
-    if (!main) return;
-    const save = () => scrollTops.set(entryKey.current, main.scrollTop);
-    main.addEventListener('scroll', save, { passive: true });
-    return () => main.removeEventListener('scroll', save);
-  }, []);
+    const main = mainRef.current
+    if (!main) return
+    const save = () => scrollTops.set(entryKey.current, main.scrollTop)
+    main.addEventListener('scroll', save, { passive: true })
+    return () => main.removeEventListener('scroll', save)
+  }, [])
 
   // ---- Restore scroll on POP / reset on PUSH ----
   useLayoutEffect(() => {
-    entryKey.current = key;
-  }, [key]);
+    entryKey.current = key
+  }, [key])
 
   useLayoutEffect(() => {
     mainRef.current?.scrollTo({
-      top: navigationType === 'POP' ? scrollTops.get(key) ?? 0 : 0,
-    });
-  }, [pathname, navigationType]);
+      top: navigationType === 'POP' ? (scrollTops.get(key) ?? 0) : 0,
+    })
+    // Only a page change moves the scroll box; a search-param replace on the same page keeps it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
 
   // ---- Focus management after navigation ----
-  useFocusOnNavigate();
+  useFocusOnNavigate()
 
   // ---- Breadcrumb extraction (expects `breadcrumb` in route.handle) ----
-  const matches = useMatches();
-  const breadcrumb = matches
-    .filter((m) => (m.handle as any)?.breadcrumb)
-    .pop()?.handle?.breadcrumb;
+  const matches = useMatches()
+  const crumbMatch = matches.findLast((m) => (m.handle as RouteHandle | undefined)?.breadcrumb)
+  const crumb = (crumbMatch?.handle as RouteHandle | undefined)?.breadcrumb
+  const breadcrumb = typeof crumb === 'function' ? crumb({ params: crumbMatch!.params }) : crumb
 
   return (
     <div className="gap-4 p-3 lg:p-4 print:bg-white print:p-0 relative flex h-dvh overflow-clip bg-surface print:block print:h-auto print:overflow-visible">
@@ -98,8 +100,8 @@ export function AdminLayout() {
 
           {/* Breadcrumb (if defined) */}
           {breadcrumb && (
-            <nav aria-label="breadcrumb" className="mb-2">
-              {typeof breadcrumb === 'function' ? breadcrumb() : breadcrumb}
+            <nav aria-label="Breadcrumb" className="mb-2 text-xs font-medium text-muted">
+              {breadcrumb}
             </nav>
           )}
 
@@ -112,21 +114,21 @@ export function AdminLayout() {
 
       <PhoneNav moreOpen={moreOpen} onMoreChange={setMoreOpen} />
     </div>
-  );
+  )
 }
 
 /** Pill tabs across the pages of the current section, on its list pages, while the rail is collapsed. */
 function SectionTabs() {
-  const { pathname } = useLocation();
-  const counts = useNavCounts();
-  const section = sectionFor(pathname);
-  const leaf = leafFor(pathname);
-  if (!section.items || !leaf || pathname !== leaf.to) return null;
+  const { pathname } = useLocation()
+  const counts = useNavCounts()
+  const section = sectionFor(pathname)
+  const leaf = leafFor(pathname)
+  if (!section.items || !leaf || pathname !== leaf.to) return null
   return (
     <nav aria-label={`${section.label} pages`} className="mb-4 no-scrollbar flex max-w-full overflow-x-auto">
       <div className="gap-1 p-1 inline-flex shrink-0 rounded-full bg-card shadow-card">
         {section.items.map((item) => {
-          const count = item.badge ? counts[item.badge] : 0;
+          const count = item.badge ? counts[item.badge] : 0
           return (
             <NavLink
               key={item.to}
@@ -154,16 +156,16 @@ function SectionTabs() {
                 </>
               )}
             </NavLink>
-          );
+          )
         })}
       </div>
     </nav>
-  );
+  )
 }
 
-// Export the glow constant as before – keep unchanged
+// Every stop mixes the accent token, so the glow follows a palette change.
 const GLOW = [
-  'radial-gradient(38% 34% at 72% 22%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 70%)',
-  'radial-gradient(28% 30% at 92% 48%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 70%)',
-  'radial-gradient(34% 30% at 55% 8%, color-mix(in srgb, var(--color-accent-soft) 55%, transparent), transparent 72%)',
-].join(', ');
+  'radial-gradient(38% 34% at 72% 22%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 70%)', // wit-allow: ambient canvas glow, layouts.md
+  'radial-gradient(28% 30% at 92% 48%, color-mix(in srgb, var(--color-accent) 6%, transparent), transparent 70%)', // wit-allow: ambient canvas glow, layouts.md
+  'radial-gradient(34% 30% at 55% 8%, color-mix(in srgb, var(--color-accent-soft) 55%, transparent), transparent 72%)', // wit-allow: ambient canvas glow, layouts.md
+].join(', ')

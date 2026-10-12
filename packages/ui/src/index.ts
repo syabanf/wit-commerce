@@ -98,6 +98,7 @@ export {
 } from './components/dropdown-menu'
 export { ActionMenu, type ActionMenuItem, type ActionMenuProps } from './components/action-menu'
 export { Toaster, toast, type ToastOptions } from './components/toast'
+export { Spinner } from './components/Spinner'
 
 // shell
 export {

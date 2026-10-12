@@ -14,6 +14,8 @@ import {
 } from '@rc/fixtures'
 import type { Order, OrderStatus } from '@rc/types'
 import {
+  AGENT_APPROVAL_LABEL,
+  AGENT_KIND_LABEL,
   CANCEL_REASON_LABEL,
   CHANNEL_LABEL,
   COURIER_LABEL,
@@ -281,6 +283,8 @@ export function OrderDetailPage() {
             </CardContent>
           </Card>
 
+          {order.agent && <AgentMandateCard order={order} />}
+
           <Card>
             <CardHeader>
               <CardTitle>Timeline</CardTitle>
@@ -402,6 +406,100 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-muted">{label}</dt>
       <dd className="tabular-nums">{value}</dd>
     </div>
+  )
+}
+
+/** The mandate chain an agent order carries: intent, cart, approval and payment. */
+function AgentMandateCard({ order }: { order: Order }) {
+  const s = useScoped()
+  const agent = order.agent
+  if (!agent) return null
+  const payment = order.paymentTypeId ? s.maps.paymentType.get(order.paymentTypeId)?.name : undefined
+  const steps: { key: string; title: string; id?: string; body: ReactNode }[] = [
+    {
+      key: 'intent',
+      title: 'Intent mandate',
+      id: agent.intentMandateId,
+      body: (
+        <>
+          <p className="text-sm">&ldquo;{agent.intent}&rdquo;</p>
+          <p className="text-xs text-muted">
+            Given to a {AGENT_KIND_LABEL[agent.kind].toLowerCase()}, which compared{' '}
+            {plural(agent.compared, 'product')}.
+          </p>
+        </>
+      ),
+    },
+    {
+      key: 'cart',
+      title: 'Cart mandate',
+      id: agent.cartMandateId,
+      body: (
+        <p className="text-sm">
+          {plural(unitCount(order.lines), 'item')} · {fmtIdr(order.subtotal)}
+          <span className="text-muted">
+            {' '}
+            · {agent.negotiated ? `${fmtIdr(agent.negotiated)} negotiated off` : 'no negotiation'}
+          </span>
+        </p>
+      ),
+    },
+    {
+      key: 'approval',
+      title: 'Approval',
+      body: (
+        <p className="text-sm">
+          {AGENT_APPROVAL_LABEL[agent.approval]}
+          <span className="text-muted">
+            {agent.approval === 'auto'
+              ? ': the cart fit the mandate, so the agent went ahead.'
+              : ': the shopper confirmed the cart before payment.'}
+          </span>
+        </p>
+      ),
+    },
+    {
+      key: 'payment',
+      title: 'Payment mandate',
+      id: agent.paymentMandateId,
+      body: (
+        <p className="text-sm">
+          {payment ?? PAYMENT_METHOD_LABEL[order.paymentMethod]} · {fmtIdr(order.total)}
+        </p>
+      ),
+    },
+  ]
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Placed by an AI agent</CardTitle>
+        <p className="text-sm text-muted">The mandates the agent carried from the shopper to checkout.</p>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-4">
+          {steps.map((step, i) => (
+            <li key={step.key} className="gap-3 relative flex">
+              {i < steps.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className="top-7 -bottom-4 absolute left-[0.6875rem] w-px bg-border"
+                />
+              )}
+              <span className="size-6 font-bold flex shrink-0 items-center justify-center rounded-full bg-ink text-[0.6875rem] text-on-ink tabular-nums">
+                {i + 1}
+              </span>
+              <div className="min-w-0 space-y-0.5 flex-1">
+                <p className="gap-x-2 flex flex-wrap items-baseline">
+                  <span className="text-sm font-semibold">{step.title}</span>
+                  {step.id && <span className="text-xs font-mono break-all text-muted">{step.id}</span>}
+                </p>
+                {step.body}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   )
 }
 

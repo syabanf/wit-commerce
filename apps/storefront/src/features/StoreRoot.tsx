@@ -7,6 +7,7 @@ import { EMBED } from '../lib/embed'
 import { usePersisted } from '../lib/storage'
 import { useIsPhone } from '../lib/useIsPhone'
 import { useTitle } from '../lib/useTitle'
+import { AgentChatProvider } from '../state/agentChat'
 import { ShopProvider, useShop } from '../state/shop'
 import { useStore } from '../state/store'
 import { DemoBar } from '../components/DemoBar'
@@ -42,9 +43,9 @@ function ThemedStore() {
   const { pathname } = useLocation()
   const isPhone = useIsPhone()
   const [introSeen] = usePersisted<boolean>('local', `rc.storefront.intro.${tenant.id}`, false)
-  // Keep the launcher off forms and totals, and off Theme 2's first-visit intro on phones.
+  // Keep the launcher off forms, totals and the agent chat, and off Theme 2's first-visit intro on phones.
   const quiet =
-    /\/(cart|checkout|account|order)(\/|$)/.test(pathname) ||
+    /\/(cart|checkout|account|order|agent)(\/|$)/.test(pathname) ||
     (isPhone && /\/p\/[^/]+/.test(pathname)) ||
     (theme.id === 'theme2' && isPhone && !introSeen && pathname === `/${tenant.subdomain}`)
   return (
@@ -66,7 +67,9 @@ export function StoreRoot() {
   if (!tenant) return <UnknownStore />
   return (
     <ShopProvider key={tenant.id} tenant={tenant}>
-      <ThemedStore />
+      <AgentChatProvider>
+        <ThemedStore />
+      </AgentChatProvider>
     </ShopProvider>
   )
 }

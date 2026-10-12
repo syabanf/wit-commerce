@@ -2,6 +2,7 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./json.d.ts" />
 import type { AppState } from './store'
+import agentPolicies from '../data/agent-policies.json'
 import attributes from '../data/attributes.json'
 import automations from '../data/automations.json'
 import campaigns from '../data/campaigns.json'
@@ -92,6 +93,7 @@ const seed = {
   automations,
   promotions,
   paymentTypes,
+  agentPolicies,
   integrations,
   integrationLogs,
   traffic,

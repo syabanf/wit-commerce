@@ -1,7 +1,7 @@
 import type { AppState } from './store'
 import { seedState } from './data'
 
-const STORAGE_VERSION = 9
+const STORAGE_VERSION = 10
 
 type StoredState = { version: number; state: AppState }
 

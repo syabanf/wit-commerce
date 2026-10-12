@@ -1,21 +1,22 @@
-import { cn } from '@rc/ui';
-import { useEffect, useState } from 'react';
+import { cn } from '../lib/cn'
+import { useEffect, useState } from 'react'
 
 /**
  * Simple, theme‑aware spinner.
  * Uses Tailwind utilities that already exist in the UI package.
  */
-export default function Spinner() {
-  const [show, setShow] = useState(false);
+export function Spinner() {
+  const [show, setShow] = useState(false)
   useEffect(() => {
-    const id = setTimeout(() => setShow(true), 100);
-    return () => clearTimeout(id);
-  }, []);
+    const id = setTimeout(() => setShow(true), 100)
+    return () => clearTimeout(id)
+  }, [])
 
-  if (!show) return null;
+  if (!show) return null
   return (
     <div
-      className={cn('flex items-center justify-center py-8', 'text-primary')}
+      className={cn('py-8 flex items-center justify-center', 'text-muted')}
+      role="status"
       aria-label="Loading"
     >
       <svg
@@ -31,5 +32,5 @@ export default function Spinner() {
         <path d="M4 12a8 8 0 018-8" className="opacity-75" />
       </svg>
     </div>
-  );
+  )
 }

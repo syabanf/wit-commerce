@@ -26,6 +26,7 @@ export const paths = {
   collection: (store: string, slug: string) => `/${store}/collections/${slug}`,
   account: (store: string) => `/${store}/account`,
   wishlist: (store: string) => `/${store}/wishlist`,
+  agent: (store: string) => `/${store}/agent`,
   seller: (store: string, slug: string) => `/${store}/${slug}`,
 }
 
@@ -41,6 +42,7 @@ export const RESERVED_SEGMENTS = new Set([
   'wishlist',
   'collections',
   'preview',
+  'agent',
 ])
 
 /** "6281210002001" from "+62 812 1000 2001", for wa.me links. */

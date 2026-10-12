@@ -1,4 +1,6 @@
 import type {
+  AgentApproval,
+  AgentKind,
   AutomationStatus,
   AutomationStepKind,
   AttributeType,
@@ -395,6 +397,39 @@ export interface Order {
   cancelReason: CancelReason | null
   refundedAmount: number
   events: OrderEvent[]
+  /** Set when a buying agent placed the order for the customer. */
+  agent?: AgentOrderInfo
+}
+
+/** The mandate chain behind an agent order: what the shopper asked for and how the agent closed it. */
+export interface AgentOrderInfo {
+  kind: AgentKind
+  /** The shopper's instruction, as given to the agent. */
+  intent: string
+  intentMandateId: string
+  cartMandateId: string
+  paymentMandateId: string
+  approval: AgentApproval
+  /** Extra discount the agent negotiated under the store's agent policy, in rupiah. */
+  negotiated: number
+  /** Products the agent compared before it chose. */
+  compared: number
+}
+
+/** A store's rules for buying agents. */
+export interface AgentPolicy {
+  tenantId: string
+  enabled: boolean
+  /** Agents may ask for an extra discount; the store grants up to this percentage on its own. */
+  negotiation: boolean
+  maxAutoDiscountPct: number
+  /** Orders above this total need the shopper's approval even inside the mandate. */
+  approvalAbove: number
+  /** Payment types an agent may use; empty means every enabled type. */
+  paymentTypeIds: string[]
+  /** Agent kinds the store accepts. */
+  kinds: AgentKind[]
+  updatedAt: IsoDate
 }
 
 // --- customers and CRM ---
@@ -618,6 +653,8 @@ export interface TrafficDay {
   pageViews: number
   carts: number
   checkouts: number
+  /** Sessions opened by buying agents rather than people. */
+  agentVisits?: number
 }
 
 /** A search the storefront could not answer, for zero-result analytics. */

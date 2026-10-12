@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { categories, collections, popularity, products } from './seed/catalog.ts'
+import { addAgentVisits, buildAgentPolicies, markAgentOrders } from './seed/agents.ts'
 import { attributes, fillAttributes, modifiers } from './seed/catalog-setup.ts'
 import { buildCommerce } from './seed/commerce.ts'
 import {
@@ -33,6 +34,9 @@ const commerce = buildCommerce(tenants, sellers)
 const tickets = buildTickets(commerce.orders, commerce.events)
 const campaigns = buildCampaigns(commerce.orders, commerce.customers, commerce.events)
 finishGrowth(commerce.orders)
+const agentPolicies = buildAgentPolicies(paymentTypes)
+markAgentOrders(commerce.orders, agentPolicies, products)
+addAgentVisits(commerce.traffic)
 const pages = buildPages(sellers)
 for (const p of pages) {
   if (p.sellerId)
@@ -67,6 +71,7 @@ const files: Record<string, unknown> = {
   automations,
   promotions,
   'payment-types': paymentTypes,
+  'agent-policies': agentPolicies,
   integrations,
   'integration-logs': integrationLogs,
   traffic: commerce.traffic,

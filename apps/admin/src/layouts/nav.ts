@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BadgePercent,
   Blocks,
+  Bot,
   Boxes,
   CreditCard,
   ReceiptText,
@@ -74,6 +75,13 @@ export const NAV: NavSection[] = [
     label: 'Payment history',
     icon: ReceiptText,
     to: '/commerce/payments',
+    group: 'Selling',
+  },
+  {
+    id: 'agents',
+    label: 'AI agents',
+    icon: Bot,
+    to: '/commerce/agents',
     group: 'Selling',
   },
   {

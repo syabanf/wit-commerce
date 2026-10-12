@@ -143,3 +143,19 @@
   background-image: var(--sf-grain);
   background-attachment: fixed;
 }
+
+/* The agent chat: fills the screen between the sticky store header and the phone tab bar. */
+@utility sf-chat {
+  --sf-chat-top: 1rem;
+  --sf-chat-bottom: 5.25rem;
+  height: calc(100dvh - var(--sf-chat-top) - var(--sf-chat-bottom));
+  scroll-margin-top: var(--sf-chat-top);
+  [data-theme='theme2'] & {
+    --sf-chat-top: 7rem;
+    --sf-chat-bottom: 4.5rem;
+  }
+  @media (min-width: 768px) {
+    --sf-chat-top: calc(var(--sf-sticky-top) + 0.5rem);
+    --sf-chat-bottom: 1.5rem;
+  }
+}

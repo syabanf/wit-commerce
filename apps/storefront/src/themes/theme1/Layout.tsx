@@ -283,6 +283,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { label: 'New arrivals', to: paths.search(store, '', { sort: 'new' }) },
     { label: 'Best sellers', to: paths.search(store, '', { sort: 'best' }) },
     { label: 'Gift ideas', to: paths.search(store, '', { gifts: true }) },
+    { label: 'Shop with an agent', to: paths.agent(store) },
   ]
   return (
     <>

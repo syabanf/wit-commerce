@@ -1,4 +1,5 @@
 import type {
+  AgentPolicy,
   AttributeDef,
   Automation,
   AutomationStatus,
@@ -94,6 +95,7 @@ export interface AppState {
   automations: Automation[]
   promotions: Promotion[]
   paymentTypes: PaymentType[]
+  agentPolicies: AgentPolicy[]
   integrations: Integration[]
   integrationLogs: IntegrationLog[]
   traffic: TrafficDay[]
@@ -117,6 +119,7 @@ export type AppAction =
   | { type: 'collections/remove'; id: string }
   | { type: 'paymentTypes/save'; paymentType: PaymentType }
   | { type: 'paymentTypes/toggle'; id: string }
+  | { type: 'agentPolicy/save'; policy: AgentPolicy }
   | { type: 'products/setStatus'; id: string; status: ProductStatus }
   | { type: 'stock/adjust'; levelId: string; delta: number; note: string }
   | { type: 'modifierStock/adjust'; levelId: string; delta: number; note: string }
@@ -576,6 +579,10 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     case 'collections/remove':
       return { ...state, collections: state.collections.filter((c) => c.id !== action.id) }
 
+    case 'agentPolicy/save': {
+      const others = state.agentPolicies.filter((p) => p.tenantId !== action.policy.tenantId)
+      return { ...state, agentPolicies: [...others, action.policy] }
+    }
     case 'paymentTypes/save':
       return { ...state, paymentTypes: upsert(state.paymentTypes, action.paymentType) }
     case 'paymentTypes/toggle': {

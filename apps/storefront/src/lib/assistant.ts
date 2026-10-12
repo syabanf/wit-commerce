@@ -63,7 +63,7 @@ export function parseBudget(text: string): number | null {
 // --- words ---
 
 /** Indonesian (and a few English) words mapped to the catalog's English vocabulary. */
-const SYNONYMS: Record<string, string[]> = {
+export const SYNONYMS: Record<string, string[]> = {
   sepatu: ['shoe'],
   lari: ['running'],
   run: ['running'],

@@ -5,6 +5,7 @@ export const en = {
     orders: 'Orders',
     orderDetail: (id: string) => `Order ${id}`,
     payments: 'Payments',
+    agents: 'AI agents',
     products: 'Products',
     productDetail: (id: string) => `Product ${id}`,
     collections: 'Collections',
@@ -43,9 +44,11 @@ export const en = {
     tenants: 'Tenants',
     newTenant: 'New Tenant',
     apps: 'Apps',
+    analytics: 'Analytics',
+    integrations: 'Integrations',
   },
   navigation: {
     dashboard: 'Dashboard',
     // add other navigation labels as needed
   },
-};
+}

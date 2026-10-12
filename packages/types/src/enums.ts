@@ -311,13 +311,14 @@ export const COURIER_LABEL: Record<Courier, string> = {
   pickup: 'Store pickup',
 }
 
-export type Channel = 'web' | 'personal_store' | 'whatsapp' | 'marketplace' | 'pos'
+export type Channel = 'web' | 'personal_store' | 'whatsapp' | 'marketplace' | 'pos' | 'agent'
 export const CHANNEL_LABEL: Record<Channel, string> = {
   web: 'Website',
   personal_store: 'Personal store',
   whatsapp: 'WhatsApp',
   marketplace: 'Marketplace',
   pos: 'Offline store',
+  agent: 'AI agent',
 }
 
 export type CancelReason =
@@ -601,3 +602,19 @@ export type WebhookEvent =
   | 'customer.updated'
   | 'product.updated'
   | 'inventory.updated'
+
+/** Who sent a buying agent: the shopper's chat assistant, a browser agent, a wallet, or a company's buyer bot. */
+export type AgentKind = 'chat_assistant' | 'browser_agent' | 'wallet_agent' | 'procurement_agent'
+export const AGENT_KIND_LABEL: Record<AgentKind, string> = {
+  chat_assistant: 'Chat assistant',
+  browser_agent: 'Browser agent',
+  wallet_agent: 'Wallet agent',
+  procurement_agent: 'Procurement agent',
+}
+
+/** How an agent order got its go-ahead: inside the mandate's limits, or with the shopper's tap. */
+export type AgentApproval = 'auto' | 'shopper'
+export const AGENT_APPROVAL_LABEL: Record<AgentApproval, string> = {
+  auto: 'Within mandate',
+  shopper: 'Approved by shopper',
+}

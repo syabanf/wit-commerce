@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
+  Sparkles,
   Store,
 } from 'lucide-react'
 import { Link } from 'react-router'
@@ -53,6 +54,12 @@ const FLOWS: { icon: LucideIcon; title: string; text: string; to: string }[] = [
     title: 'Personal store',
     text: "Fahmi's page at /lari/fahmi; orders from it count for him.",
     to: '/lari/fahmi',
+  },
+  {
+    icon: Sparkles,
+    title: 'Agentic checkout',
+    text: 'An AI agent buys running shoes under a mandate, negotiates and asks before paying.',
+    to: '/lari/agent',
   },
   {
     icon: Bot,

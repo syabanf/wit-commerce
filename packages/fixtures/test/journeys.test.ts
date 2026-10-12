@@ -591,3 +591,39 @@ describe('pricing engine', () => {
     assert.ok(shoe.variants.some((v) => v.name === '42 / Navy' && v.optionValues.Colour === 'Navy'))
   })
 })
+
+describe('agentic commerce', () => {
+  const state = seedState()
+
+  it('seeds an agent policy per tenant and agent orders with a full mandate chain', () => {
+    assert.deepEqual(state.agentPolicies.map((p) => p.tenantId).sort(), state.tenants.map((t) => t.id).sort())
+    const agentOrders = state.orders.filter((o) => o.channel === 'agent')
+    assert.ok(agentOrders.length > 0)
+    for (const o of agentOrders) {
+      assert.ok(o.agent, `${o.code} has no agent info`)
+      assert.match(o.agent.intentMandateId, /^im_/)
+      assert.match(o.agent.cartMandateId, /^cm_/)
+      assert.match(o.agent.paymentMandateId, /^pm_/)
+      const policy = state.agentPolicies.find((p) => p.tenantId === o.tenantId)!
+      if (o.total > policy.approvalAbove) assert.equal(o.agent.approval, 'shopper')
+      const negotiated = o.discountLines?.find((d) => d.promotionId === 'agent-negotiation')?.amount ?? 0
+      assert.equal(negotiated, o.agent.negotiated)
+    }
+  })
+
+  it('replaces a tenant agent policy on save and leaves other tenants alone', () => {
+    const lari = state.agentPolicies.find((p) => p.tenantId === 'ten-lari')!
+    const next = run(state, {
+      type: 'agentPolicy/save',
+      policy: { ...lari, enabled: false, maxAutoDiscountPct: 8 },
+    })
+    assert.equal(next.agentPolicies.length, state.agentPolicies.length)
+    const saved = next.agentPolicies.find((p) => p.tenantId === 'ten-lari')!
+    assert.equal(saved.enabled, false)
+    assert.equal(saved.maxAutoDiscountPct, 8)
+    assert.deepEqual(
+      next.agentPolicies.find((p) => p.tenantId === 'ten-aruna'),
+      state.agentPolicies.find((p) => p.tenantId === 'ten-aruna'),
+    )
+  })
+})

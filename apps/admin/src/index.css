@@ -10,3 +10,8 @@
     font-size: 13px;
   }
 }
+
+/* Headings take focus after navigation for screen readers (useFocusOnNavigate); no ring for that. */
+:is(h1, h2)[tabindex='-1']:focus {
+  outline: none;
+}
