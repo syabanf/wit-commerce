@@ -49,6 +49,8 @@ type (
 		Token     string      `json:"token"`
 		ExpiresAt string      `json:"expiresAt"`
 		User      domain.User `json:"user"`
+		// Sellers are the user's active seller profiles, for the seller app.
+		Sellers []domain.Seller `json:"sellers"`
 	}
 	attributesInput struct {
 		Attributes map[string]string `json:"attributes"`
@@ -103,6 +105,10 @@ type (
 
 var routeDocs = map[string]routeDoc{
 	"POST /auth/login":                         {body: loginInput{}, response: loginResponse{}},
+	"POST /auth/password":                      {body: changePasswordInput{}},
+	"POST /shop/{store}/login":                 {body: loginInput{}, response: shopperResponse{}},
+	"POST /shop/{store}/register":              {body: registerInput{}, response: shopperResponse{}},
+	"POST /shop/{store}/password":              {body: changePasswordInput{}},
 	"POST /tenants":                            {body: domain.Tenant{}},
 	"PUT /tenants/{id}/brand":                  {body: domain.BrandConfig{}},
 	"PUT /tenants/{id}/agent-policy":           {body: domain.AgentPolicy{}},
@@ -181,13 +187,16 @@ var hiddenRoutes = map[string]bool{
 
 // publicRoutes need no token.
 var publicRoutes = map[string]bool{
-	"GET /health":                true,
-	"POST /auth/login":           true,
-	"GET /shop":                  true,
-	"POST /shop/{store}/ai/chat": true,
-	"POST /shop/{store}/price":   true,
-	"POST /shop/{store}/orders":  true,
-	"POST /shop/{store}/leads":   true,
+	"GET /health":                 true,
+	"POST /auth/login":            true,
+	"POST /shop/{store}/login":    true,
+	"POST /shop/{store}/register": true,
+	"POST /shop/{store}/password": true,
+	"GET /shop":                   true,
+	"POST /shop/{store}/ai/chat":  true,
+	"POST /shop/{store}/price":    true,
+	"POST /shop/{store}/orders":   true,
+	"POST /shop/{store}/leads":    true,
 }
 
 var pathParam = regexp.MustCompile(`\{([a-zA-Z]+)\}`)

@@ -2,6 +2,7 @@ import { SELLER_KIND_LABEL } from '@rc/types'
 import {
   Avatar,
   Button,
+  ChangePasswordDialog,
   ConfirmDialog,
   KeyValue,
   Sheet,
@@ -10,10 +11,12 @@ import {
   SheetTitle,
   toast,
 } from '@rc/ui'
-import { LogOut, RotateCcw } from 'lucide-react'
+import { ApiError } from '@rc/api'
+import { KeyRound, LogOut, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
+import { HTTP, api } from '../lib/api'
 import { paths } from '../lib/paths'
 import { fmtRate } from '../lib/seller'
 import { useSellerScope } from '../state/scope'
@@ -31,6 +34,17 @@ export function ProfileSheet({
   const { reset, storageError } = useStore()
   const navigate = useNavigate()
   const [confirmReset, setConfirmReset] = useState(false)
+  const [changing, setChanging] = useState(false)
+
+  const changePassword = async (current: string, next: string) => {
+    try {
+      await api.changePassword(current, next)
+      toast('Password changed', { tone: 'success' })
+      return null
+    } catch (err) {
+      return err instanceof ApiError ? err.message : 'The server did not answer. Try again in a moment.'
+    }
+  }
 
   const leave = () => {
     onOpenChange(false)
@@ -68,6 +82,12 @@ export function ProfileSheet({
             ]}
           />
           <div className="space-y-2 px-5 pt-4">
+            {HTTP && (
+              <Button variant="outline" size="lg" className="w-full" onClick={() => setChanging(true)}>
+                <KeyRound />
+                Change password
+              </Button>
+            )}
             <Button variant="outline" size="lg" className="w-full" onClick={leave}>
               <LogOut />
               Sign out
@@ -91,6 +111,7 @@ export function ProfileSheet({
           </div>
         </SheetContent>
       </Sheet>
+      <ChangePasswordDialog open={changing} onOpenChange={setChanging} onChange={changePassword} />
       <ConfirmDialog
         open={confirmReset}
         onOpenChange={setConfirmReset}

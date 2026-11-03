@@ -1,14 +1,15 @@
 import { fmtDate, fmtIdr, initials } from '@rc/fixtures'
 import { LIFECYCLE_STAGE_LABEL, LOYALTY_TIER_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
 import { Package } from 'lucide-react'
-import { type FormEvent, useId, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { type ChangeEvent, type FormEvent, useId, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
+import { HTTP } from '../lib/api'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
 
-/** Sign in by email (demo customers, no password) and see points and orders. */
+/** Sign in and see points and orders. The demo without an API signs in by email alone. */
 export function AccountPage() {
   const { customer, customers, orders, signIn, signOut, store, tenant } = useShop()
   const id = useId()
@@ -52,35 +53,40 @@ export function AccountPage() {
   if (!customer)
     return (
       <div className="max-w-md space-y-6 md:pt-12 mx-auto">
-        <h1 className="sf-display text-3xl font-bold">{joining ? `Join ${tenant.name}` : 'Sign in'}</h1>
-        {joining && (
+        {!HTTP && (
+          <h1 className="sf-display text-3xl font-bold">{joining ? `Join ${tenant.name}` : 'Sign in'}</h1>
+        )}
+        {HTTP && <AccountForm joining={joining} />}
+        {!HTTP && joining && (
           <p className="text-[color:var(--sf-muted)]">
             Your member account is created with your first order, and you earn points from day one. Already
             shop with us? Sign in below.
           </p>
         )}
-        <form onSubmit={submit} noValidate className="sf-card space-y-4 p-6">
-          <Field
-            id={id}
-            label="Email"
-            error={error}
-            hint="Use the email you shop with. This demo store has no passwords."
-          >
-            <input
+        {!HTTP && (
+          <form onSubmit={submit} noValidate className="sf-card space-y-4 p-6">
+            <Field
               id={id}
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
-              {...describedBy(id, error, 'hint')}
-            />
-          </Field>
-          <Button type="submit" size="lg" full>
-            Sign in
-          </Button>
-        </form>
+              label="Email"
+              error={error}
+              hint="Use the email you shop with. This demo store has no passwords."
+            >
+              <input
+                id={id}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                {...describedBy(id, error, 'hint')}
+              />
+            </Field>
+            <Button type="submit" size="lg" full>
+              Sign in
+            </Button>
+          </form>
+        )}
         {demo.length > 0 && (
           <section className="sf-card p-6" aria-labelledby="demo-h">
             <h2 id="demo-h" className="text-sm font-bold">
@@ -138,6 +144,7 @@ export function AccountPage() {
           Sign out
         </Button>
       </section>
+      {HTTP && <PasswordCard />}
       <section className="sf-card p-6" aria-labelledby="orders-h">
         <h2 id="orders-h" className="sf-display mb-3 text-xl font-bold">
           Your orders
@@ -172,5 +179,175 @@ export function AccountPage() {
         )}
       </section>
     </div>
+  )
+}
+
+/** A next path from the URL, kept inside this site. */
+const safeNext = (next: string | null) => (next?.startsWith('/') && !next.startsWith('//') ? next : null)
+
+/** API mode: sign in or create an account with a password. */
+function AccountForm({ joining }: { joining: boolean }) {
+  const { signInWithPassword, register, store, tenant } = useShop()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const id = useId()
+  const [creating, setCreating] = useState(joining)
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if ((creating && !form.name.trim()) || !form.email.trim() || !form.password) {
+      setError(creating ? 'Enter your name, email and password.' : 'Enter your email and password.')
+      return
+    }
+    setBusy(true)
+    const failed = creating ? await register(form) : await signInWithPassword(form.email, form.password)
+    setBusy(false)
+    setError(failed)
+    if (!failed) navigate(safeNext(params.get('next')) ?? paths.account(store), { replace: true })
+  }
+
+  return (
+    <>
+      <h1 className="sf-display text-3xl font-bold">{creating ? `Join ${tenant.name}` : 'Sign in'}</h1>
+      <form onSubmit={(e) => void submit(e)} noValidate className="sf-card space-y-4 p-6">
+        {creating && (
+          <Field id={`${id}-name`} label="Full name">
+            <input
+              id={`${id}-name`}
+              autoComplete="name"
+              value={form.name}
+              onChange={set('name')}
+              className={inputClass}
+            />
+          </Field>
+        )}
+        <Field id={`${id}-email`} label="Email">
+          <input
+            id={`${id}-email`}
+            type="email"
+            inputMode="email"
+            autoComplete={creating ? 'email' : 'username'}
+            value={form.email}
+            onChange={set('email')}
+            className={inputClass}
+          />
+        </Field>
+        {creating && (
+          <Field id={`${id}-phone`} label="Phone">
+            <input
+              id={`${id}-phone`}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={form.phone}
+              onChange={set('phone')}
+              className={inputClass}
+            />
+          </Field>
+        )}
+        <Field
+          id={`${id}-password`}
+          label="Password"
+          error={error}
+          hint={creating ? '10 or more characters.' : 'Forgot it? Contact the store to get back in.'}
+        >
+          <input
+            id={`${id}-password`}
+            type="password"
+            autoComplete={creating ? 'new-password' : 'current-password'}
+            value={form.password}
+            onChange={set('password')}
+            className={inputClass}
+            {...describedBy(`${id}-password`, error, 'hint')}
+          />
+        </Field>
+        <Button type="submit" size="lg" full disabled={busy}>
+          {creating ? 'Create account' : 'Sign in'}
+        </Button>
+        <button
+          type="button"
+          onClick={() => {
+            setCreating((c) => !c)
+            setError(null)
+          }}
+          className="min-h-11 text-sm font-semibold w-full underline underline-offset-4"
+        >
+          {creating ? 'I already have an account' : 'Create an account'}
+        </button>
+      </form>
+    </>
+  )
+}
+
+/** API mode: a guest from checkout sets a first password here; a member changes theirs. */
+function PasswordCard() {
+  const { hasPassword, setPassword } = useShop()
+  const id = useId()
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaved(false)
+    if (next.length < 10) return setError('Use a password of 10 or more characters.')
+    setBusy(true)
+    const failed = await setPassword(current, next)
+    setBusy(false)
+    setError(failed)
+    if (!failed) {
+      setSaved(true)
+      setCurrent('')
+      setNext('')
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} noValidate className="sf-card space-y-4 p-6">
+      <h2 className="sf-display text-xl font-bold">{hasPassword ? 'Change password' : 'Set a password'}</h2>
+      {!hasPassword && (
+        <p className="text-sm text-[color:var(--sf-muted)]">
+          Set one to sign in on other devices and see your orders.
+        </p>
+      )}
+      {hasPassword && (
+        <Field id={`${id}-current`} label="Current password">
+          <input
+            id={`${id}-current`}
+            type="password"
+            autoComplete="current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+      )}
+      <Field id={`${id}-new`} label="New password" error={error} hint="10 or more characters.">
+        <input
+          id={`${id}-new`}
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          className={inputClass}
+          {...describedBy(`${id}-new`, error, 'hint')}
+        />
+      </Field>
+      {saved && (
+        <p role="status" className="text-sm font-semibold">
+          Password saved.
+        </p>
+      )}
+      <Button type="submit" variant="outline" disabled={busy}>
+        Save password
+      </Button>
+    </form>
   )
 }

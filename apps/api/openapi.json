@@ -2634,6 +2634,21 @@
         ],
         "type": "object"
       },
+      "changePasswordInput": {
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object"
+      },
       "enabledInput": {
         "properties": {
           "enabled": {
@@ -2681,6 +2696,12 @@
           "expiresAt": {
             "type": "string"
           },
+          "sellers": {
+            "items": {
+              "$ref": "#/components/schemas/Seller"
+            },
+            "type": "array"
+          },
           "token": {
             "type": "string"
           },
@@ -2690,6 +2711,7 @@
         },
         "required": [
           "expiresAt",
+          "sellers",
           "token",
           "user"
         ],
@@ -2793,6 +2815,29 @@
         ],
         "type": "object"
       },
+      "registerInput": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "password",
+          "phone"
+        ],
+        "type": "object"
+      },
       "rollbackInput": {
         "properties": {
           "revisionId": {
@@ -2812,6 +2857,25 @@
         },
         "required": [
           "at"
+        ],
+        "type": "object"
+      },
+      "shopperResponse": {
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer",
+          "expiresAt",
+          "token"
         ],
         "type": "object"
       },
@@ -3351,6 +3415,93 @@
           }
         ],
         "summary": "The signed-in user",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
+    "/auth/password": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postAuthPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/changePasswordInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Change the signed-in user's password",
         "tags": [
           "Platform"
         ]
@@ -10793,6 +10944,78 @@
         "x-action": "leads/save"
       }
     },
+    "/shop/{store}/login": {
+      "post": {
+        "operationId": "postShopStoreLogin",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/loginInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/shopperResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Email and password → shopper token",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
     "/shop/{store}/orders": {
       "post": {
         "operationId": "postShopStoreOrders",
@@ -10866,6 +11089,78 @@
         "x-action": "orders/place"
       }
     },
+    "/shop/{store}/password": {
+      "post": {
+        "operationId": "postShopStorePassword",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/changePasswordInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Set or change the signed-in shopper's password",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
     "/shop/{store}/price": {
       "post": {
         "operationId": "postShopStorePrice",
@@ -10933,6 +11228,78 @@
         },
         "security": [],
         "summary": "Price a cart with the store's promotions",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
+    "/shop/{store}/register": {
+      "post": {
+        "operationId": "postShopStoreRegister",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/registerInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/shopperResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Create a shopper account",
         "tags": [
           "Storefront"
         ]

@@ -22,6 +22,7 @@ import { paths } from '../lib/paths'
 import { type CartItem, type ChoiceItem, type Step, useAgentChat } from '../state/agentChat'
 import { useShop } from '../state/shop'
 import { ProductImage } from './product'
+import { useLocation } from 'react-router'
 import { Button, ButtonLink, Pill } from './ui'
 
 /**
@@ -30,6 +31,7 @@ import { Button, ButtonLink, Pill } from './ui'
  */
 export function AgentThread({ compact }: { compact?: boolean }) {
   const { tenant, customer, customers, signIn, store, orders } = useShop()
+  const { pathname } = useLocation()
   const { items, examples, busy, thinking, protocol, say, pick, approve, decline } = useAgentChat()
   const listRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -38,7 +40,7 @@ export function AgentThread({ compact }: { compact?: boolean }) {
   const lastReplies = [...items].reverse().find((it) => it.kind === 'bot' && it.replies?.length)?.id
   const greeting = customer
     ? `Hi ${customer.name.split(' ')[0]}, I’m your shopping agent at ${tenant.name}. Tell me what you need and your budget. I’ll suggest options, you choose, and I pay only when you approve.`
-    : `Hi, I’m a shopping agent for ${tenant.name} shoppers. Who am I buying for today?`
+    : `Hi, I’m a shopping agent for ${tenant.name} shoppers. ${customers.length ? 'Who am I buying for today?' : 'Sign in so I can buy for you.'}`
 
   return (
     <div ref={listRef} className={cn('space-y-4', !compact && 'p-4 md:p-6')} aria-live="polite">
@@ -50,6 +52,7 @@ export function AgentThread({ compact }: { compact?: boolean }) {
           <ShopperPicker
             options={customers.filter((c) => c.tenantId === tenant.id).slice(0, 3)}
             onPick={signIn}
+            signInTo={`${paths.account(store)}?next=${encodeURIComponent(pathname)}`}
           />
         )}
       </BotRow>
@@ -536,7 +539,16 @@ function MandateBlock({ mandate, inverse }: { mandate: Mandate; inverse?: boolea
   )
 }
 
-function ShopperPicker({ options, onPick }: { options: Customer[]; onPick: (id: string) => void }) {
+function ShopperPicker({
+  options,
+  onPick,
+  signInTo,
+}: {
+  options: Customer[]
+  onPick: (id: string) => void
+  signInTo: string
+}) {
+  if (!options.length) return <ButtonLink to={signInTo}>Sign in to start</ButtonLink>
   return (
     <div className="gap-2 flex flex-wrap">
       {options.map((c) => (

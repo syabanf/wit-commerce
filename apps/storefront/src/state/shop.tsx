@@ -3,6 +3,7 @@ import type { AppAction } from '@rc/fixtures'
 import type { Customer, Order, Seller, Tenant } from '@rc/types'
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
+import { ApiError, type ShopperResponse } from '@rc/api'
 import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
 import { type Catalog, buildCatalog } from '../lib/catalog'
 import { usePersisted } from '../lib/storage'
@@ -19,6 +20,19 @@ export interface ShopValue {
   customer: Customer | null
   /** Signs in as a customer; the API answers with their account and orders. */
   signIn: (customerId: string) => Promise<void>
+  /** API mode: signs in with a password. Resolves to an error sentence, or null when in. */
+  signInWithPassword: (email: string, password: string) => Promise<string | null>
+  /** API mode: creates an account and signs in. Resolves to an error sentence, or null when in. */
+  register: (input: {
+    name: string
+    email: string
+    phone: string
+    password: string
+  }) => Promise<string | null>
+  /** API mode: whether the signed-in shopper can sign in on another device. */
+  hasPassword: boolean
+  /** API mode: sets or changes the password. Resolves to an error sentence, or null when done. */
+  setPassword: (currentPassword: string, newPassword: string) => Promise<string | null>
   signOut: () => void
   /** The seller this visit came through (personal store or ?ref=). */
   referral: Seller | null
@@ -33,6 +47,9 @@ export interface ShopValue {
 const ShopContext = createContext<ShopValue | null>(null)
 
 /** The app clock, refreshed every `ms`, for countdowns and promotion windows. */
+const failure = (err: unknown) =>
+  err instanceof ApiError ? err.message : 'The store did not answer. Try again in a moment.'
+
 export function useNow(ms = 60_000) {
   const [now, setNow] = useState(nowMs)
   useEffect(() => {
@@ -79,14 +96,16 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
   const cart = useCartStore(tenant.id)
 
   const customer = customers.find((c) => c.id === customerId) ?? null
+  const [hasPassword, setHasPassword] = useState(false)
   // API mode: a stored shopper token restores the account and its orders after a reload.
   useEffect(() => {
     if (!HTTP || !customerId || !shopperToken(tenant.id).get()) return
     let cancelled = false
     api.shop
       .me(tenant.subdomain)
-      .then(({ customer: me, orders: mine }) => {
+      .then(({ customer: me, orders: mine, hasPassword: stored }) => {
         if (cancelled) return
+        setHasPassword(stored)
         merge({
           customers: [...state.customers.filter((c) => c.id !== me.id), me],
           orders: [...state.orders.filter((o) => o.customerId !== me.id), ...mine],
@@ -109,6 +128,17 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
 
   const value = useMemo<ShopValue>(() => {
     const ids = Array.isArray(wishIds) ? wishIds : []
+    const enterAccount = async (request: () => Promise<ShopperResponse>) => {
+      try {
+        const { token, customer: me } = await request()
+        shopperToken(tenant.id).set(token)
+        merge({ customers: [...state.customers.filter((c) => c.id !== me.id), me] })
+        setCustomerId(me.id)
+        return null
+      } catch (err) {
+        return failure(err)
+      }
+    }
     return {
       catalog,
       tenant,
@@ -122,6 +152,19 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
           shopperToken(tenant.id).set(token)
         }
         setCustomerId(id)
+      },
+      signInWithPassword: (email, password) =>
+        enterAccount(() => api.shop.login(tenant.subdomain, email, password)),
+      register: (input) => enterAccount(() => api.shop.register(tenant.subdomain, input)),
+      hasPassword,
+      setPassword: async (currentPassword, newPassword) => {
+        try {
+          await api.shop.setPassword(tenant.subdomain, currentPassword, newPassword)
+          setHasPassword(true)
+          return null
+        } catch (err) {
+          return failure(err)
+        }
       },
       signOut: () => {
         if (HTTP) shopperToken(tenant.id).set(null)
@@ -151,6 +194,9 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     customers,
     customer,
     setCustomerId,
+    hasPassword,
+    merge,
+    state.customers,
     referral,
     setReferral,
     wishIds,

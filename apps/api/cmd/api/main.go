@@ -2,6 +2,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"flag"
@@ -90,6 +91,7 @@ func main() {
 	reset := flag.Bool("reset", false, "empty every table and load the seed again")
 	exit := flag.Bool("exit", false, "stop after migrating and seeding, without serving")
 	spec := flag.Bool("openapi", false, "print the OpenAPI document and stop; needs no database")
+	admin := flag.Bool("set-admin", false, "create or reset the platform admin in ADMIN_EMAIL, ADMIN_NAME and ADMIN_PASSWORD, then stop")
 	flag.Parse()
 	loadDotEnv(".env")
 	if *spec {
@@ -97,7 +99,7 @@ func main() {
 		return
 	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	if err := run(context.Background(), log, *reset, *exit); err != nil {
+	if err := run(context.Background(), log, *reset, *exit || *admin, *admin); err != nil {
 		log.Error("api stopped", "err", err)
 		os.Exit(1)
 	}
@@ -116,7 +118,7 @@ func openVault(cfg config, log *slog.Logger) (*auth.Vault, error) {
 	return auth.DeriveVault(cfg.jwtSecret)
 }
 
-func run(ctx context.Context, log *slog.Logger, reset, exit bool) error {
+func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -157,6 +159,16 @@ func run(ctx context.Context, log *slog.Logger, reset, exit bool) error {
 	anchor, err := db.Anchor(ctx)
 	if err != nil {
 		return err
+	}
+	if admin {
+		email, password := os.Getenv("ADMIN_EMAIL"), os.Getenv("ADMIN_PASSWORD")
+		if email == "" || len(password) < 10 {
+			return errors.New("set ADMIN_EMAIL and an ADMIN_PASSWORD of 10 or more characters")
+		}
+		if err := seed.EnsureAdmin(ctx, db, email, cmp.Or(os.Getenv("ADMIN_NAME"), "Platform admin"), password); err != nil {
+			return err
+		}
+		log.Info("platform admin ready", "email", email)
 	}
 	if exit {
 		return nil

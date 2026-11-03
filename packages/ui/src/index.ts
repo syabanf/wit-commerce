@@ -95,6 +95,7 @@ export {
   type SheetContentProps,
 } from './components/sheet'
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog'
+export { ChangePasswordDialog, type ChangePasswordDialogProps } from './components/change-password-dialog'
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverClose, PopoverContent } from './components/popover'
 export { TooltipProvider, Tooltip, type TooltipProps } from './components/tooltip'
 export {

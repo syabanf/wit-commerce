@@ -298,6 +298,8 @@ export interface LoginResponse {
   token: string
   expiresAt: string
   user: User
+  /** The user's active seller profiles, for the seller app. */
+  sellers: Seller[]
 }
 
 export interface DemoAccounts {
@@ -450,6 +452,7 @@ export interface AIChatAnswer {
 export interface MeResponse {
   customer: Customer
   orders: Order[]
+  hasPassword: boolean
 }
 
 /** Builds the client. Every method throws ApiError on a non-2xx answer. */
@@ -466,6 +469,7 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     })
+    if (res.status === 204) return undefined as T
     if (res.ok) return (await res.json()) as T
     let problem: ApiProblem = { status: res.status, code: 'HTTP_' + res.status, detail: res.statusText }
     try {
@@ -499,6 +503,8 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     login: (email: string, password: string) =>
       call<LoginResponse>('POST', '/auth/login', { email, password }),
     me: () => call<{ user: User }>('GET', '/auth/me'),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      call<void>('POST', '/auth/password', { currentPassword, newPassword }),
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
     state: () => call<StateResponse>('GET', '/state'),
     /** Sends an action; the answer is the delta it produced. */
@@ -544,6 +550,12 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
         call<{ customers: Customer[] }>('GET', `/shop/${store}/demo-customers`),
       signIn: (store: string, customerId: string) =>
         call<ShopperResponse>('POST', `/shop/${store}/sign-in`, { customerId }),
+      login: (store: string, email: string, password: string) =>
+        call<ShopperResponse>('POST', `/shop/${store}/login`, { email, password }),
+      register: (store: string, input: { name: string; email: string; phone: string; password: string }) =>
+        call<ShopperResponse>('POST', `/shop/${store}/register`, input),
+      setPassword: (store: string, currentPassword: string, newPassword: string) =>
+        call<void>('POST', `/shop/${store}/password`, { currentPassword, newPassword }),
       me: (store: string) => call<MeResponse>('GET', `/shop/${store}/me`),
       ai: (store: string, input: AIChatInput) => call<AIChatAnswer>('POST', `/shop/${store}/ai/chat`, input),
     },

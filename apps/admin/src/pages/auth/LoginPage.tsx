@@ -62,14 +62,14 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-dvh bg-surface" />
 
-  const enter = async (candidate: User, pass: string) => {
+  const enter = async (candidate: User | null, address: string, pass: string) => {
     if (!HTTP) {
-      signIn(candidate.id)
+      if (candidate) signIn(candidate.id)
       navigate(from, { replace: true })
       return
     }
     setBusy(true)
-    const failed = await signInWithPassword(candidate.email, pass)
+    const failed = await signInWithPassword(address, pass)
     setBusy(false)
     if (failed) setError(failed)
     else navigate(from, { replace: true })
@@ -77,16 +77,14 @@ export function LoginPage() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    const match = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
-    if (!match || !password) {
+    const match = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase()) ?? null
+    if (HTTP ? !email.trim() || !password : !match) {
       setError(
-        HTTP
-          ? 'Enter a demo account email and the demo password.'
-          : 'Use one of the demo accounts below. Any password works.',
+        HTTP ? 'Enter your email and password.' : 'Use one of the demo accounts below. Any password works.',
       )
       return
     }
-    void enter(match, password)
+    void enter(match, email, password)
   }
 
   const tenantNames = (ids: string[]) =>
@@ -132,16 +130,22 @@ export function LoginPage() {
               ))}
             </div>
           </div>
-          <p className="text-xs text-on-ink-muted">
-            Demo data: Lari Running Co., Aruna Beauty and Teknika Industrial, Monday 5 October 2026.
-          </p>
+          {users.length > 0 && (
+            <p className="text-xs text-on-ink-muted">
+              Demo data: Lari Running Co., Aruna Beauty and Teknika Industrial, Monday 5 October 2026.
+            </p>
+          )}
         </Card>
 
         <Card className="p-6 sm:p-8">
           <h2 className="text-3xl font-bold tracking-tight">
             Sign in<span className="text-accent">.</span>
           </h2>
-          <p className="mt-1 text-sm text-muted">Pick a demo account to see the console from that role.</p>
+          <p className="mt-1 text-sm text-muted">
+            {users.length
+              ? 'Pick a demo account to see the console from that role.'
+              : 'Use your work email and password.'}
+          </p>
 
           {offline && (
             <Banner tone="danger" title="We cannot reach the server" className="mt-6">
@@ -161,7 +165,7 @@ export function LoginPage() {
                 autoComplete="username"
                 leftIcon={<Mail />}
                 inputClassName="h-12"
-                placeholder="andi@lari.co.id"
+                placeholder={users.length ? 'andi@lari.co.id' : 'you@company.com'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -173,7 +177,7 @@ export function LoginPage() {
                 autoComplete="current-password"
                 leftIcon={<Lock />}
                 inputClassName="h-12"
-                placeholder={HTTP ? 'The demo password' : 'Any password'}
+                placeholder={!HTTP ? 'Any password' : users.length ? 'The demo password' : 'Your password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -184,28 +188,32 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="mb-2 mt-8 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
-            Demo accounts
-          </p>
-          <div className="gap-2 sm:grid-cols-2 grid grid-cols-1">
-            {users.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                disabled={busy}
-                onClick={() => void enter(u, DEMO_PASSWORD)}
-                className="gap-3 rounded-2xl p-3 flex items-center bg-surface-2 text-left transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none active:scale-[0.98]"
-              >
-                <Avatar name={u.name} color={u.color} size="md" />
-                <span className="min-w-0">
-                  <span className="text-sm font-semibold block truncate">{u.name}</span>
-                  <span className="text-xs block truncate text-muted">
-                    {ROLE_LABEL[u.role]} · {tenantNames(u.tenantIds)}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
+          {users.length > 0 && (
+            <>
+              <p className="mb-2 mt-8 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
+                Demo accounts
+              </p>
+              <div className="gap-2 sm:grid-cols-2 grid grid-cols-1">
+                {users.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void enter(u, u.email, DEMO_PASSWORD)}
+                    className="gap-3 rounded-2xl p-3 flex items-center bg-surface-2 text-left transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none active:scale-[0.98]"
+                  >
+                    <Avatar name={u.name} color={u.color} size="md" />
+                    <span className="min-w-0">
+                      <span className="text-sm font-semibold block truncate">{u.name}</span>
+                      <span className="text-xs block truncate text-muted">
+                        {ROLE_LABEL[u.role]} · {tenantNames(u.tenantIds)}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </Card>
       </div>
     </div>

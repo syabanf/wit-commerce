@@ -25,6 +25,7 @@ import { useNavigate } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
 import { ProductImage } from '../components/product'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
+import { HTTP } from '../lib/api'
 import { cartTotals } from '../lib/cart'
 import {
   DEMO_PAYMENT_NOTE,
@@ -412,14 +413,18 @@ export function CheckoutPage() {
                   checked={mode === 'guest'}
                   onChange={() => setMode('guest')}
                   title="Create an account with this order"
-                  note="Track orders and earn points. No password needed."
+                  note={
+                    HTTP
+                      ? 'Track orders and earn points. Set a password afterward.'
+                      : 'Track orders and earn points. No password needed.'
+                  }
                 />
                 <Choice
                   name="mode"
                   checked={mode === 'account'}
                   onChange={() => setMode('account')}
                   title="I have an account"
-                  note="Find it by the email you shop with."
+                  note={HTTP ? 'Sign in, and your cart stays here.' : 'Find it by the email you shop with.'}
                 />
               </fieldset>
               {mode === 'guest' ? (
@@ -442,61 +447,80 @@ export function CheckoutPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <Field id={`${uid}-lookup`} label="Account email" error={errors.lookup}>
-                    <div className="gap-2 flex">
-                      <input
-                        id={`${uid}-lookup`}
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        value={lookup}
-                        onChange={(e) => setLookup(e.target.value)}
-                        className={inputClass}
-                        {...describedBy(`${uid}-lookup`, errors.lookup)}
-                      />
-                      <Button variant="dark" onClick={() => findAccount(lookup)}>
-                        Find
-                      </Button>
-                    </div>
-                  </Field>
-                  {account ? (
-                    <p
-                      role="status"
-                      className="gap-3 p-4 text-sm flex items-center rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]"
-                    >
-                      <Check
-                        className="size-5 shrink-0 text-[color:var(--sf-primary-text)]"
-                        aria-hidden="true"
-                      />
-                      <span>
-                        Checking out as <strong>{account.name}</strong>, {LOYALTY_TIER_LABEL[account.tier]}{' '}
-                        member with {account.points} points.
-                      </span>
-                    </p>
-                  ) : (
-                    demo.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-sm text-[color:var(--sf-muted)]">
-                          Demo accounts for this store:
+                  {HTTP && !account ? (
+                    <>
+                      <ButtonLink
+                        to={`${paths.account(store)}?next=${encodeURIComponent(paths.checkout(store))}`}
+                      >
+                        Sign in to your account
+                      </ButtonLink>
+                      {errors.lookup && (
+                        <p role="alert" className="text-sm font-semibold text-danger">
+                          {errors.lookup}
                         </p>
-                        <ul className="gap-2 flex flex-wrap">
-                          {demo.map((c) => (
-                            <li key={c.id}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setLookup(c.email)
-                                  findAccount(c.email)
-                                }}
-                              >
-                                {c.name} · {LOYALTY_TIER_LABEL[c.tier]}
-                              </Button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {!HTTP && (
+                        <Field id={`${uid}-lookup`} label="Account email" error={errors.lookup}>
+                          <div className="gap-2 flex">
+                            <input
+                              id={`${uid}-lookup`}
+                              type="email"
+                              inputMode="email"
+                              autoComplete="email"
+                              value={lookup}
+                              onChange={(e) => setLookup(e.target.value)}
+                              className={inputClass}
+                              {...describedBy(`${uid}-lookup`, errors.lookup)}
+                            />
+                            <Button variant="dark" onClick={() => findAccount(lookup)}>
+                              Find
+                            </Button>
+                          </div>
+                        </Field>
+                      )}
+                      {account ? (
+                        <p
+                          role="status"
+                          className="gap-3 p-4 text-sm flex items-center rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]"
+                        >
+                          <Check
+                            className="size-5 shrink-0 text-[color:var(--sf-primary-text)]"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            Checking out as <strong>{account.name}</strong>,{' '}
+                            {LOYALTY_TIER_LABEL[account.tier]} member with {account.points} points.
+                          </span>
+                        </p>
+                      ) : (
+                        demo.length > 0 && (
+                          <div>
+                            <p className="mb-2 text-sm text-[color:var(--sf-muted)]">
+                              Demo accounts for this store:
+                            </p>
+                            <ul className="gap-2 flex flex-wrap">
+                              {demo.map((c) => (
+                                <li key={c.id}>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setLookup(c.email)
+                                      findAccount(c.email)
+                                    }}
+                                  >
+                                    {c.name} · {LOYALTY_TIER_LABEL[c.tier]}
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    </>
                   )}
                 </div>
               )}

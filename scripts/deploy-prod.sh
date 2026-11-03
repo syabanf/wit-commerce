@@ -4,8 +4,9 @@
 #
 #   ./scripts/deploy-prod.sh
 #
-# Run it again to deploy a new version. The first run asks for the Ollama key and generates the other
-# secrets into .env.production (mode 600, ignored by git). To rotate the key:
+# Run it again to deploy a new version. The first run asks for the Ollama key and the platform admin's
+# email, generates the other secrets into .env.production (mode 600, ignored by git), and prints the
+# admin's first password once. To rotate the key:
 #
 #   read -rs OLLAMA_API_KEY && export OLLAMA_API_KEY && ./scripts/deploy-prod.sh
 #
@@ -15,6 +16,9 @@
 #   API_PORT      8090, on 127.0.0.1 only
 #   ENV_FILE      .env.production
 #   COMPOSE_NAME  commerce-prod
+#   ADMIN_EMAIL   the platform admin's email, instead of asking
+#   RESET_ADMIN=1 print a new password for the platform admin
+#   DEMO_LOGIN=true  open the demo accounts to everyone; for a public demo only
 #   SKIP_PULL=1   deploy this checkout as it is
 #   SKIP_WEB=1    deploy only Postgres and the API
 set -euo pipefail
@@ -68,6 +72,7 @@ prepare_secrets() {
     [ -n "$OLLAMA_API_KEY" ] || fail "the Ollama key is empty"
     store OLLAMA_API_KEY "$OLLAMA_API_KEY"
   fi
+  [ -n "$(stored DEMO_LOGIN)" ] || store DEMO_LOGIN "${DEMO_LOGIN:-false}"
   # Docker Compose reads the file itself, so these must not stay in this shell's environment.
   unset OLLAMA_API_KEY
   echo "Back up CREDENTIALS_KEY: connector secrets cannot be read without it."
@@ -88,6 +93,22 @@ start_api() {
   echo "API healthy on 127.0.0.1:$API_PORT"
 }
 
+prepare_admin() {
+  [ -z "$(stored ADMIN_EMAIL)" ] || [ -n "${RESET_ADMIN:-}" ] || return 0
+  step "Platform admin"
+  local email password
+  email="${ADMIN_EMAIL:-$(stored ADMIN_EMAIL)}"
+  if [ -z "$email" ]; then
+    [ -t 0 ] || fail "set ADMIN_EMAIL, there is no terminal to ask on"
+    read -rp 'Platform admin email: ' email
+  fi
+  password="$(openssl rand -base64 18)"
+  ADMIN_EMAIL="$email" ADMIN_PASSWORD="$password" \
+    compose exec -T -e ADMIN_EMAIL -e ADMIN_PASSWORD api /app/api -set-admin >/dev/null
+  store ADMIN_EMAIL "$email"
+  printf 'Sign in as %s with this password, then change it from the account menu:\n%s\n' "$email" "$password"
+}
+
 check_ai() {
   step "The model answers"
   local answer
@@ -106,8 +127,10 @@ publish_web() {
   need pnpm
   need rsync
   pnpm install --frozen-lockfile
-  # The demo login buttons send this password, so it ships in the admin's JavaScript by design.
-  VITE_API_URL=/api VITE_STOREFRONT_URL="$PUBLIC_URL/shop" VITE_DEMO_PASSWORD="$(stored DEMO_PASSWORD)" \
+  # Demo login buttons send this password, so it ships in the JavaScript only when demo login is on.
+  local demo_password=''
+  [ "$(stored DEMO_LOGIN)" != true ] || demo_password="$(stored DEMO_PASSWORD)"
+  VITE_API_URL=/api VITE_STOREFRONT_URL="$PUBLIC_URL/shop" VITE_DEMO_PASSWORD="$demo_password" \
     pnpm --filter @rc/admin build
   VITE_API_URL=/api VITE_ADMIN_ORIGINS="$PUBLIC_URL" pnpm --filter @rc/storefront build
   sudo_if_needed mkdir -p "$WEB_ROOT/shop"
@@ -193,6 +216,7 @@ if [ -z "${SKIP_PULL:-}" ]; then
 fi
 prepare_secrets
 start_api
+prepare_admin
 check_ai
 if [ -z "${SKIP_WEB:-}" ]; then
   publish_web

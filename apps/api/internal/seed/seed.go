@@ -11,10 +11,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"errors"
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
+	"strings"
 )
 
 // Files maps each collection to its JSON file in the data directory.
@@ -112,6 +115,36 @@ func Load(ctx context.Context, db *store.DB, dir, demoPassword string) error {
 			}
 		}
 		return nil
+	})
+}
+
+// EnsureAdmin creates a platform admin, or resets the password of the account with that email. It
+// is how a deployment with demo sign-in off gets its first account.
+func EnsureAdmin(ctx context.Context, db *store.DB, email, name, password string) error {
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		return err
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	admin := domain.User{ID: ids.New("usr"), Name: name, Email: email, Title: "Platform admin", Role: "platform_admin", TenantIDs: []string{}, Color: "#4c5a78"}
+	doc, err := json.Marshal(admin)
+	if err != nil {
+		return err
+	}
+	return pgx.BeginFunc(ctx, db.Pool, func(tx pgx.Tx) error {
+		var id string
+		err := tx.QueryRow(ctx, `select id from users where email = $1`, email).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			id = admin.ID
+			if _, err := tx.Exec(ctx, `insert into users (id, data) values ($1, $2)`, id, doc); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `insert into credentials (user_id, password_hash) values ($1, $2)
+			on conflict (user_id) do update set password_hash = excluded.password_hash, updated_at = now()`, id, hash)
+		return err
 	})
 }
 

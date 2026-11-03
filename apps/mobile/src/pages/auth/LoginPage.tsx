@@ -1,8 +1,8 @@
 import type { Seller, Tenant, User } from '@rc/types'
 import { ApiError } from '@rc/api'
-import { Avatar, Banner, Button, Kicker, toast } from '@rc/ui'
+import { Avatar, Banner, Button, FormField, Input, Kicker, toast } from '@rc/ui'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { profilesOf, useAuth } from '../../auth/auth'
 import { DEMO_PASSWORD, HTTP, api } from '../../lib/api'
@@ -35,10 +35,16 @@ function useAccounts(): { users: User[]; sellers: Seller[]; tenants: Tenant[]; o
 
 export function LoginPage() {
   const state = useAccounts()
-  const { user, loading, signIn, expired } = useAuth()
+  const { user, loading, signIn, expired, checkPassword, openProfile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [picking, setPicking] = useState<User | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  // Signed in with a password and holding more than one brand: the profiles wait for a choice.
+  const [profiles, setProfiles] = useState<{ token: string; sellers: Seller[] } | null>(null)
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-dvh bg-surface" />
 
@@ -57,6 +63,24 @@ export function LoginPage() {
       description: `Signed in to your ${tenantName(seller.tenantId)} store.`,
     })
     navigate(from, { replace: true })
+  }
+
+  const open = (seller: Seller, token: string) => {
+    openProfile(seller, token)
+    navigate(from, { replace: true })
+  }
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!email.trim() || !password) return setError('Enter your email and password.')
+    setBusy(true)
+    const result = await checkPassword(email, password)
+    setBusy(false)
+    if ('error' in result) return setError(result.error)
+    if (!result.sellers.length) return setError('This account has no active seller profile.')
+    setError('')
+    if (result.sellers.length === 1) open(result.sellers[0]!, result.token)
+    else setProfiles(result)
   }
 
   const choose = (u: User) => {
@@ -94,7 +118,25 @@ export function LoginPage() {
         </div>
       </div>
 
-      {picking ? (
+      {profiles ? (
+        <>
+          <h1 className="mt-10 text-3xl font-bold tracking-tight">
+            Pick a store<span className="text-accent">.</span>
+          </h1>
+          <div className="mt-8 space-y-2">
+            {profiles.sellers.map((s) => (
+              <button key={s.id} type="button" className={rowClass} onClick={() => open(s, profiles.token)}>
+                <Avatar name={s.name} color={s.color} size="md" />
+                <span className="min-w-0 flex-1">
+                  <span className="text-sm font-semibold block truncate">/{s.slug}</span>
+                  <span className="text-xs block truncate font-mono text-muted">{s.code}</span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted" />
+              </button>
+            ))}
+          </div>
+        </>
+      ) : picking ? (
         <>
           <h1 className="mt-10 text-3xl font-bold tracking-tight">
             Pick a brand<span className="text-accent">.</span>
@@ -127,7 +169,9 @@ export function LoginPage() {
             Sign in<span className="text-accent">.</span>
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Pick a demo seller to open their store, leads and customers.
+            {sellers.length
+              ? 'Pick a demo seller to open their store, leads and customers.'
+              : 'Use your seller email and password.'}
           </p>
           {state.offline && (
             <Banner tone="danger" title="We cannot reach the server" className="mt-6">
@@ -139,32 +183,63 @@ export function LoginPage() {
               Sign in again to continue where you left off.
             </Banner>
           )}
-          <section className="mt-8">
-            <Kicker className="mb-2">Demo sellers</Kicker>
-            <div className="space-y-2">
-              {sellers.map((u) => {
-                const brands = profilesOf(state.sellers, u.id).map((s) => tenantName(s.tenantId))
-                return (
-                  <button key={u.id} type="button" className={rowClass} onClick={() => choose(u)}>
-                    <Avatar name={u.name} color={u.color} size="md" />
-                    <span className="min-w-0 flex-1">
-                      <span className="text-sm font-semibold block truncate">{u.name}</span>
-                      <span className="text-xs block truncate text-muted">
-                        {u.title} · {brands.length > 1 ? `${brands.length} brands` : brands[0]}
+          {HTTP && (
+            <form onSubmit={(e) => void submit(e)} noValidate className="mt-6 gap-4 grid grid-cols-1">
+              <FormField label="Email" htmlFor="login-email" error={error || undefined}>
+                <Input
+                  id="login-email"
+                  type="email"
+                  autoComplete="username"
+                  inputClassName="h-12"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </FormField>
+              <FormField label="Password" htmlFor="login-password">
+                <Input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  inputClassName="h-12"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </FormField>
+              <Button type="submit" size="lg" className="w-full" loading={busy}>
+                Sign in
+              </Button>
+            </form>
+          )}
+          {sellers.length > 0 && (
+            <section className="mt-8">
+              <Kicker className="mb-2">Demo sellers</Kicker>
+              <div className="space-y-2">
+                {sellers.map((u) => {
+                  const brands = profilesOf(state.sellers, u.id).map((s) => tenantName(s.tenantId))
+                  return (
+                    <button key={u.id} type="button" className={rowClass} onClick={() => choose(u)}>
+                      <Avatar name={u.name} color={u.color} size="md" />
+                      <span className="min-w-0 flex-1">
+                        <span className="text-sm font-semibold block truncate">{u.name}</span>
+                        <span className="text-xs block truncate text-muted">
+                          {u.title} · {brands.length > 1 ? `${brands.length} brands` : brands[0]}
+                        </span>
                       </span>
-                    </span>
-                    <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted" />
-                  </button>
-                )
-              })}
-            </div>
-          </section>
+                      <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted" />
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )}
         </>
       )}
-      <p className="mt-8 text-xs text-muted">
-        {HTTP ? 'Demo accounts share one password.' : 'Demo accounts, no password.'} Data as of Monday 5
-        October 2026, 09:41 WIB.
-      </p>
+      {sellers.length > 0 && (
+        <p className="mt-8 text-xs text-muted">
+          {HTTP ? 'Demo accounts share one password.' : 'Demo accounts, no password.'} Data as of Monday 5
+          October 2026, 09:41 WIB.
+        </p>
+      )}
     </div>
   )
 }

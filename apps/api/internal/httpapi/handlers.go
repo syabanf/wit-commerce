@@ -85,23 +85,35 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
+	if !s.signInAllowed(w, r, in.Email) {
+		return
+	}
 	u, hash, err := s.userByEmail(r.Context(), in.Email)
-	if err != nil || !auth.CheckPassword(hash, in.Password) {
+	known := err == nil
+	if !known {
+		hash = decoyHash()
+	}
+	if !auth.CheckPassword(hash, in.Password) || !known {
 		// A constant answer for unknown emails and wrong passwords.
 		writeProblem(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "That email and password do not match.")
 		return
 	}
-	s.issueUser(w, u)
+	s.issueUser(r.Context(), w, u)
 }
 
-func (s *Server) issueUser(w http.ResponseWriter, u domain.User) {
+func (s *Server) issueUser(ctx context.Context, w http.ResponseWriter, u domain.User) {
 	p := auth.Principal{Kind: auth.KindUser, ID: u.ID, Role: u.Role, TenantIDs: u.TenantIDs}
 	token, exp, err := s.Signer.Sign(p, time.Now())
 	if err != nil {
 		writeProblem(w, http.StatusInternalServerError, "INTERNAL", "Could not sign the token.")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"token": token, "expiresAt": exp.UTC().Format(time.RFC3339), "user": u})
+	sellers, err := s.sellersOf(ctx, u.ID)
+	if err != nil {
+		writeProblem(w, http.StatusInternalServerError, "INTERNAL", "Could not read the seller profiles.")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"token": token, "expiresAt": exp.UTC().Format(time.RFC3339), "user": u, "sellers": sellers})
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
@@ -404,7 +416,12 @@ func (s *Server) shopMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sort.Slice(orders, func(i, j int) bool { return orders[i].CreatedAt > orders[j].CreatedAt })
-	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders})
+	var hasPassword bool
+	if err := s.DB.Pool.QueryRow(r.Context(), `select exists (select 1 from customer_credentials where customer_id = $1)`, p.ID).Scan(&hasPassword); err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "hasPassword": hasPassword})
 }
 
 func (s *Server) shopPrice(w http.ResponseWriter, r *http.Request) {
@@ -475,6 +492,13 @@ func (s *Server) shopPlaceOrder(w http.ResponseWriter, r *http.Request) {
 	if p.ID == "guest" && in.Customer == nil {
 		writeProblem(w, http.StatusUnauthorized, "UNAUTHENTICATED", "Sign in, or check out as a new customer.")
 		return
+	}
+	// The token below goes to whoever names this id, so a guest may only name a new one.
+	if p.ID == "guest" {
+		if _, err := store.Get[domain.Customer](r.Context(), s.DB.Pool, "customers", in.Customer.ID); err == nil {
+			writeProblem(w, http.StatusConflict, "ACCOUNT_EXISTS", "This customer already exists. Sign in to order for them.")
+			return
+		}
 	}
 	d, err := s.svc.PlaceOrder(r.Context(), service.Meta{P: p, At: s.Clock.NowIso()}, in.Order, in.Customer)
 	if err != nil {

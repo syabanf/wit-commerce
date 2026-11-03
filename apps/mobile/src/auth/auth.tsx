@@ -25,6 +25,13 @@ interface AuthValue {
    * needs neither. Resolves to an error sentence, or null when in.
    */
   signIn: (seller: Seller, credentials?: { email: string; password: string }) => Promise<string | null>
+  /** API mode: checks a password; the caller opens one of the returned profiles with the token. */
+  checkPassword: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string } | { token: string; sellers: Seller[] }>
+  /** API mode: opens a seller profile with the token from checkPassword. */
+  openProfile: (seller: Seller, token: string) => void
   /** The API dropped the token while this browser still held a session. */
   expired: boolean
   signOut: () => void
@@ -77,6 +84,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         persist({ userId: s.userId, tenantId: s.tenantId, sellerId: s.id })
         return null
+      },
+      checkPassword: async (email, password) => {
+        try {
+          const { token: issued, sellers } = await api.login(email, password)
+          return { token: issued, sellers }
+        } catch (err) {
+          return {
+            error:
+              err instanceof ApiError
+                ? err.message
+                : 'The sign-in service did not answer. Try again in a moment.',
+          }
+        }
+      },
+      openProfile: (s, issued) => {
+        persist({ userId: s.userId ?? '', tenantId: s.tenantId, sellerId: s.id })
+        tokenStore.set(issued)
       },
       signOut: () => {
         persist(null)

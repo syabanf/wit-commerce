@@ -1,9 +1,12 @@
 import { fmtDate, fmtWeekday } from '@rc/fixtures'
 import { ROLE_LABEL } from '@rc/types'
-import { ActionMenu, Avatar, Button } from '@rc/ui'
-import { Check, Hash, LogOut, Menu, Plus, Search, Store, UserRoundCog } from 'lucide-react'
+import { ActionMenu, Avatar, Button, ChangePasswordDialog, type ActionMenuItem, toast } from '@rc/ui'
+import { Check, Hash, KeyRound, LogOut, Menu, Plus, Search, Store, UserRoundCog } from 'lucide-react'
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { ApiError } from '@rc/api'
 import { useAuth } from '../auth/auth'
+import { HTTP, api } from '../lib/api'
 import { storefrontUrl } from '../lib/storefront'
 import { useNow } from '../state/scoped'
 import { CreateMenu } from './CreateMenu'
@@ -95,53 +98,70 @@ export function Header({
 function UserMenu({ showCodes, onShowCodes }: { showCodes: boolean; onShowCodes: (show: boolean) => void }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [changing, setChanging] = useState(false)
   if (!user) return null
+  const changePassword = async (current: string, next: string) => {
+    try {
+      await api.changePassword(current, next)
+      toast('Password changed', { tone: 'success' })
+      return null
+    } catch (err) {
+      return err instanceof ApiError ? err.message : 'The server did not answer. Try again in a moment.'
+    }
+  }
+  const passwordItem: ActionMenuItem[] = HTTP
+    ? [{ key: 'password', label: 'Change password', icon: <KeyRound />, onSelect: () => setChanging(true) }]
+    : []
   const leave = () => {
     signOut()
     navigate('/login')
   }
   return (
-    <ActionMenu
-      title={`${user.name} · ${ROLE_LABEL[user.role]}`}
-      trigger={
-        <button
-          type="button"
-          aria-label={`Account: ${user.name}`}
-          className="h-11 gap-2.5 p-1.5 xl:pr-4 flex items-center rounded-full bg-card shadow-card transition-colors hover:bg-surface-2"
-        >
-          <Avatar name={user.name} color={user.color} size="sm" />
-          <span className="min-w-0 xl:block hidden text-left">
-            <span className="text-sm font-semibold leading-tight block max-w-[10rem] truncate">
-              {user.name}
+    <>
+      <ChangePasswordDialog open={changing} onOpenChange={setChanging} onChange={changePassword} />
+      <ActionMenu
+        title={`${user.name} · ${ROLE_LABEL[user.role]}`}
+        trigger={
+          <button
+            type="button"
+            aria-label={`Account: ${user.name}`}
+            className="h-11 gap-2.5 p-1.5 xl:pr-4 flex items-center rounded-full bg-card shadow-card transition-colors hover:bg-surface-2"
+          >
+            <Avatar name={user.name} color={user.color} size="sm" />
+            <span className="min-w-0 xl:block hidden text-left">
+              <span className="text-sm font-semibold leading-tight block max-w-[10rem] truncate">
+                {user.name}
+              </span>
+              <span className="block max-w-[10rem] truncate text-[0.6875rem] text-muted">
+                {ROLE_LABEL[user.role]}
+              </span>
             </span>
-            <span className="block max-w-[10rem] truncate text-[0.6875rem] text-muted">
-              {ROLE_LABEL[user.role]}
-            </span>
-          </span>
-        </button>
-      }
-      items={[
-        {
-          key: 'codes',
-          label: (
-            <span className="gap-2 flex items-center justify-between">
-              Show transaction codes
-              {showCodes && <Check className="size-4 text-accent" aria-label="On" />}
-            </span>
-          ),
-          description: 'Beside each page in the menu and the header',
-          icon: <Hash />,
-          onSelect: () => onShowCodes(!showCodes),
-        },
-        {
-          key: 'switch',
-          label: 'Switch demo user',
-          description: 'Try another role',
-          icon: <UserRoundCog />,
-          onSelect: leave,
-        },
-        { key: 'out', label: 'Sign out', icon: <LogOut />, onSelect: leave },
-      ]}
-    />
+          </button>
+        }
+        items={[
+          {
+            key: 'codes',
+            label: (
+              <span className="gap-2 flex items-center justify-between">
+                Show transaction codes
+                {showCodes && <Check className="size-4 text-accent" aria-label="On" />}
+              </span>
+            ),
+            description: 'Beside each page in the menu and the header',
+            icon: <Hash />,
+            onSelect: () => onShowCodes(!showCodes),
+          },
+          ...passwordItem,
+          {
+            key: 'switch',
+            label: 'Switch user',
+            description: 'Sign in with another account',
+            icon: <UserRoundCog />,
+            onSelect: leave,
+          },
+          { key: 'out', label: 'Sign out', icon: <LogOut />, onSelect: leave },
+        ]}
+      />
+    </>
   )
 }

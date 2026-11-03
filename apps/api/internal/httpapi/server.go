@@ -45,16 +45,17 @@ type Options struct {
 // Server holds the dependencies handlers read.
 type Server struct {
 	Options
-	svc                *service.Service
-	handler            http.Handler
-	limiter            *keyLimiter
-	aiClients, aiTotal *keyLimiter
-	spec               []byte
+	svc                         *service.Service
+	handler                     http.Handler
+	limiter                     *keyLimiter
+	aiClients, aiTotal          *keyLimiter
+	signInClients, signInEmails *keyLimiter
+	spec                        []byte
 }
 
 // New builds the server and its handler chain.
 func New(o Options) *Server {
-	s := &Server{Options: o, svc: &service.Service{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}, limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal)}
+	s := &Server{Options: o, svc: &service.Service{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}, limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail)}
 	mux := http.NewServeMux()
 	s.routes(mux)
 	s.handler = s.requestID(s.cors(s.recover(s.logRequests(mux))))
