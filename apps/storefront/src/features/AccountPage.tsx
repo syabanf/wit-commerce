@@ -1,10 +1,11 @@
 import { fmtDate, fmtIdr, initials } from '@rc/fixtures'
 import { LIFECYCLE_STAGE_LABEL, LOYALTY_TIER_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
 import { Package } from 'lucide-react'
-import { type ChangeEvent, type FormEvent, useId, useMemo, useState } from 'react'
+import { ApiError } from '@rc/api'
+import { type ChangeEvent, type FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
-import { HTTP } from '../lib/api'
+import { HTTP, api } from '../lib/api'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
@@ -15,7 +16,8 @@ export function AccountPage() {
   const id = useId()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const joining = useSearchParams()[0].get('join') === '1'
+  const [params] = useSearchParams()
+  const joining = params.get('join') === '1'
   useTitle(`${customer ? 'Your account' : 'Sign in'} · ${tenant.name}`)
   const demo = useMemo(
     () =>
@@ -50,12 +52,16 @@ export function AccountPage() {
     signIn(match.id)
   }
 
+  const resetToken = HTTP ? params.get('reset') : null
+  if (resetToken) return <ResetForm token={resetToken} />
+
   if (!customer)
     return (
       <div className="max-w-md space-y-6 md:pt-12 mx-auto">
         {!HTTP && (
           <h1 className="sf-display text-3xl font-bold">{joining ? `Join ${tenant.name}` : 'Sign in'}</h1>
         )}
+        {HTTP && <VerifyNotice />}
         {HTTP && <AccountForm joining={joining} />}
         {!HTTP && joining && (
           <p className="text-[color:var(--sf-muted)]">
@@ -144,6 +150,8 @@ export function AccountPage() {
           Sign out
         </Button>
       </section>
+      {HTTP && <VerifyNotice />}
+      {HTTP && <ConfirmEmailCard />}
       {HTTP && <PasswordCard />}
       <section className="sf-card p-6" aria-labelledby="orders-h">
         <h2 id="orders-h" className="sf-display mb-3 text-xl font-bold">
@@ -254,7 +262,7 @@ function AccountForm({ joining }: { joining: boolean }) {
           id={`${id}-password`}
           label="Password"
           error={error}
-          hint={creating ? '10 or more characters.' : 'Forgot it? Contact the store to get back in.'}
+          hint={creating ? '10 or more characters.' : undefined}
         >
           <input
             id={`${id}-password`}
@@ -269,6 +277,7 @@ function AccountForm({ joining }: { joining: boolean }) {
         <Button type="submit" size="lg" full disabled={busy}>
           {creating ? 'Create account' : 'Sign in'}
         </Button>
+        {!creating && <ForgotButton email={form.email} />}
         <button
           type="button"
           onClick={() => {
@@ -349,5 +358,147 @@ function PasswordCard() {
         Save password
       </Button>
     </form>
+  )
+}
+
+const messageOf = (err: unknown) =>
+  err instanceof ApiError ? err.message : 'The store did not answer. Try again in a moment.'
+
+/** Emails a link to the address typed above it. */
+function ForgotButton({ email }: { email: string }) {
+  const { store } = useShop()
+  const [note, setNote] = useState<string | null>(null)
+
+  const send = async () => {
+    if (!email.trim()) return setNote('Enter your email above, and we will send a link to it.')
+    try {
+      const { message } = await api.shop.forgotPassword(store, email)
+      setNote(message)
+    } catch (err) {
+      setNote(messageOf(err))
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void send()}
+        className="min-h-11 text-sm font-semibold w-full underline underline-offset-4"
+      >
+        Forgot your password?
+      </button>
+      {note && (
+        <p role="status" className="text-sm text-center">
+          {note}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Sets a new password with the token from an email link. */
+function ResetForm({ token }: { token: string }) {
+  const { store } = useShop()
+  const navigate = useNavigate()
+  const id = useId()
+  const [next, setNext] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (next.length < 10) return setError('Use a password of 10 or more characters.')
+    setBusy(true)
+    setError(null)
+    try {
+      await api.shop.resetPassword(store, token, next)
+      navigate(paths.account(store), { replace: true })
+    } catch (err) {
+      setError(messageOf(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="max-w-md space-y-6 md:pt-12 mx-auto">
+      <h1 className="sf-display text-3xl font-bold">Choose a new password</h1>
+      <form onSubmit={(e) => void submit(e)} noValidate className="sf-card space-y-4 p-6">
+        <Field id={id} label="New password" error={error} hint="10 or more characters.">
+          <input
+            id={id}
+            type="password"
+            autoComplete="new-password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            className={inputClass}
+            {...describedBy(id, error, 'hint')}
+          />
+        </Field>
+        <Button type="submit" size="lg" full disabled={busy}>
+          Save password
+        </Button>
+      </form>
+    </div>
+  )
+}
+
+/** Spends a confirmation link from the URL once and says how it went. */
+function VerifyNotice() {
+  const { store, reloadAccount } = useShop()
+  const [params, setParams] = useSearchParams()
+  const token = params.get('verify')
+  const spent = useRef(false)
+  const [note, setNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token || spent.current) return
+    spent.current = true
+    setParams({}, { replace: true })
+    api.shop
+      .verifyEmail(store, token)
+      .then(() => {
+        setNote('Your email is confirmed. Earlier guest orders with this email are in your account now.')
+        reloadAccount()
+      })
+      .catch((err: unknown) => setNote(messageOf(err)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- spends the link once
+  }, [token])
+
+  if (!note) return null
+  return (
+    <p role="status" className="sf-card p-4 text-sm font-semibold">
+      {note}
+    </p>
+  )
+}
+
+/** Offers a confirmation link until the inbox is proven. */
+function ConfirmEmailCard() {
+  const { customer, emailOn, emailVerified, store } = useShop()
+  const [note, setNote] = useState<string | null>(null)
+  if (!emailOn || emailVerified || !customer) return null
+
+  const send = async () => {
+    try {
+      await api.shop.sendVerifyEmail(store)
+      setNote(`We sent a link to ${customer.email}.`)
+    } catch (err) {
+      setNote(messageOf(err))
+    }
+  }
+
+  return (
+    <section className="sf-card gap-4 p-6 flex flex-wrap items-center justify-between">
+      <div className="min-w-0 flex-1">
+        <h2 className="text-sm font-bold">Confirm your email</h2>
+        <p role="status" className="text-sm text-[color:var(--sf-muted)]">
+          {note ?? 'Confirming brings your earlier guest orders into this account.'}
+        </p>
+      </div>
+      <Button variant="outline" onClick={() => void send()}>
+        Send link
+      </Button>
+    </section>
   )
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
+	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
@@ -33,6 +34,10 @@ type Options struct {
 	AllowInternalWebhooks bool
 	// AI understands shoppers' messages; nil turns it off and the storefront uses its own parser.
 	AI *ai.Client
+	// Mail sends password and verification links; nil turns those flows off.
+	Mail *mail.Client
+	// PublicURL is the site's address, for links in email.
+	PublicURL string
 	// TrustProxy reads the client address from X-Forwarded-For; set it only behind a proxy.
 	TrustProxy bool
 	Hub        *events.Hub
@@ -47,17 +52,17 @@ type Options struct {
 // Server holds the dependencies handlers read.
 type Server struct {
 	Options
-	svc                         *service.Service
-	handler                     http.Handler
-	limiter                     *keyLimiter
-	aiClients, aiTotal          *keyLimiter
-	signInClients, signInEmails *keyLimiter
-	spec                        []byte
+	svc                                     *service.Service
+	handler                                 http.Handler
+	limiter                                 *keyLimiter
+	aiClients, aiTotal                      *keyLimiter
+	signInClients, signInEmails, mailEmails *keyLimiter
+	spec                                    []byte
 }
 
 // New builds the server and its handler chain.
 func New(o Options) *Server {
-	s := &Server{Options: o, svc: &service.Service{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}, limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail)}
+	s := &Server{Options: o, svc: &service.Service{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}, limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
 	mux := http.NewServeMux()
 	s.routes(mux)
 	s.handler = s.requestID(s.cors(s.recover(s.logRequests(mux))))

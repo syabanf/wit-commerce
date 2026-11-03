@@ -17,6 +17,8 @@
 #   ENV_FILE      .env.production
 #   COMPOSE_NAME  commerce-prod
 #   ADMIN_EMAIL   the platform admin's email, instead of asking
+#   RESEND_API_KEY  the key for password and confirmation emails, instead of asking
+#   EMAIL_FROM    the sender, on a domain verified in Resend; Commerce OS <noreply@your-domain> by default
 #   RESET_ADMIN=1 print a new password for the platform admin
 #   DEMO_LOGIN=true  open the demo accounts to everyone; for a public demo only
 #   SKIP_PULL=1   deploy this checkout as it is
@@ -37,7 +39,7 @@ API="http://127.0.0.1:$API_PORT/api/v1"
 step() { printf '\n==> %s\n' "$1"; }
 fail() { printf 'Failed: %s\n' "$1" >&2; exit 1; }
 need() { command -v "$1" >/dev/null || fail "$1 is not installed on this machine"; }
-compose() { docker compose -p "$COMPOSE_NAME" --env-file "$ENV_FILE" -f docker-compose.prod.yml "$@"; }
+compose() { env -u PUBLIC_URL -u EMAIL_FROM -u DEMO_LOGIN docker compose -p "$COMPOSE_NAME" --env-file "$ENV_FILE" -f docker-compose.prod.yml "$@"; }
 sudo_if_needed() { if [ "$(id -u)" = 0 ] || [ -w "$WEB_ROOT" ]; then "$@"; else sudo "$@"; fi; }
 
 # Reads one value from the env file.
@@ -72,9 +74,20 @@ prepare_secrets() {
     [ -n "$OLLAMA_API_KEY" ] || fail "the Ollama key is empty"
     store OLLAMA_API_KEY "$OLLAMA_API_KEY"
   fi
+  if [ -n "${RESEND_API_KEY:-}" ]; then
+    store RESEND_API_KEY "$RESEND_API_KEY"
+  elif [ -z "$(stored RESEND_API_KEY)" ] && [ -t 0 ]; then
+    read -rsp 'Resend API key (hidden, Enter to skip email for now): ' RESEND_API_KEY
+    echo
+    [ -z "$RESEND_API_KEY" ] || store RESEND_API_KEY "$RESEND_API_KEY"
+  fi
+  unset RESEND_API_KEY
+  store PUBLIC_URL "$PUBLIC_URL"
+  [ -n "$(stored EMAIL_FROM)" ] || store EMAIL_FROM "${EMAIL_FROM:-Commerce OS <noreply@$DOMAIN>}"
   [ -n "$(stored DEMO_LOGIN)" ] || store DEMO_LOGIN "${DEMO_LOGIN:-false}"
   # Docker Compose reads the file itself, so these must not stay in this shell's environment.
   unset OLLAMA_API_KEY
+  [ -n "$(stored RESEND_API_KEY)" ] || echo "Email is off: nobody can reset a password by email until RESEND_API_KEY is set."
   echo "Back up CREDENTIALS_KEY: connector secrets cannot be read without it."
 }
 

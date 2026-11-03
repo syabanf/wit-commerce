@@ -31,6 +31,9 @@ services:
       DEMO_LOGIN: ${DEMO_LOGIN:-false}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:?run scripts/deploy-prod.sh}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-v4.1-flash}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      PUBLIC_URL: ${PUBLIC_URL:-}
       TRUST_PROXY: 'true'
       PORT: '8090'
     # Only the web server on this machine reaches the API.

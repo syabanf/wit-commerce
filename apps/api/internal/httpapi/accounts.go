@@ -210,6 +210,7 @@ func (s *Server) shopRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.publish(d)
+	s.sendVerifyEmail(r.Context(), tenant, customer)
 	s.issueShopper(w, customer)
 }
 

@@ -30,6 +30,7 @@ import {
   BriefcaseBusiness,
   Ellipsis,
   KeyRound,
+  Mail,
   Pencil,
   Plus,
   UserX,
@@ -113,10 +114,21 @@ export function UsersPage() {
       })
     }
   }
+  // With email on the person gets a link and the admin sees no password.
+  const report = (result: IssuedStaff) => {
+    mergeUser(result.user)
+    if (result.temporaryPassword) setIssued(result)
+    else if (result.emailSent) toast('Email sent', { tone: 'success', description: result.user.email })
+    else
+      toast('The email did not go out', {
+        tone: 'danger',
+        description: `Check the email setup, then try ${result.user.name} again from their actions.`,
+      })
+  }
   const confirmed = () =>
     pending &&
     act(async () => {
-      if (pending.kind === 'reset') setIssued(await api.staff.resetPassword(pending.user.id))
+      if (pending.kind === 'reset') report(await api.staff.resetPassword(pending.user.id))
       else {
         const { user } = await api.staff.setDisabled(pending.user.id, !pending.user.disabled)
         mergeUser(user)
@@ -130,6 +142,8 @@ export function UsersPage() {
   const roleBadge = (u: User) =>
     u.disabled ? (
       <Badge variant="muted">Disabled</Badge>
+    ) : u.invited ? (
+      <Badge variant="info">Invited</Badge>
     ) : (
       <Badge variant={ROLE_BADGE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
     )
@@ -197,10 +211,21 @@ export function UsersPage() {
                   }
                   items={[
                     { key: 'edit', label: 'Edit', icon: <Pencil />, onSelect: () => setEditing(u) },
+                    ...(u.invited && !u.disabled
+                      ? [
+                          {
+                            key: 'invite',
+                            label: 'Send invitation again',
+                            description: 'The earlier link stops working',
+                            icon: <Mail />,
+                            onSelect: () => void act(async () => report(await api.staff.invite(u.id))),
+                          },
+                        ]
+                      : []),
                     {
                       key: 'reset',
                       label: 'Reset password',
-                      description: 'Signs them out everywhere',
+                      description: 'Signs them out everywhere and emails a link',
                       icon: <KeyRound />,
                       onSelect: () => setPending({ kind: 'reset', user: u }),
                     },
@@ -320,14 +345,14 @@ export function UsersPage() {
         <StaffDialog
           person={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
-          onIssued={setIssued}
+          onIssued={report}
         />
       )}
       {issued && (
         <SecretDialog
           title={`Temporary password for ${issued.user.name}`}
-          description={`Give this to ${issued.user.email} in person or over a private channel. It shows only now. Ask them to change it from the account menu after signing in.`}
-          secret={issued.temporaryPassword}
+          description={`Email is not set up, so give this to ${issued.user.email} over a private channel. It shows only now. Ask them to change it after signing in.`}
+          secret={issued.temporaryPassword ?? ''}
           onClose={() => setIssued(null)}
         />
       )}
@@ -342,7 +367,7 @@ export function UsersPage() {
           }
           description={
             pending.kind === 'reset'
-              ? 'Their current password stops working and they sign out everywhere. You get a temporary one to pass on.'
+              ? 'Their current password stops working and they sign out everywhere. They get a link by email to choose a new one.'
               : pending.user.disabled
                 ? 'They can sign in again with their current password.'
                 : 'They sign out everywhere and cannot sign in until an admin enables the account.'

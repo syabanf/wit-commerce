@@ -105,11 +105,17 @@ type (
 
 var routeDocs = map[string]routeDoc{
 	"POST /auth/login":                         {body: loginInput{}, response: loginResponse{}},
+	"POST /auth/forgot":                        {body: forgotInput{}},
+	"POST /auth/reset":                         {body: resetInput{}},
+	"POST /shop/{store}/forgot":                {body: forgotInput{}},
+	"POST /shop/{store}/reset":                 {body: resetInput{}},
+	"POST /shop/{store}/verify":                {body: verifyInput{}},
 	"POST /auth/password":                      {body: changePasswordInput{}, response: tokenResponse{}},
 	"POST /users":                              {body: staffInput{}, response: issuedStaffResponse{}},
 	"PUT /users/{id}":                          {body: staffInput{}, response: staffResponse{}},
 	"POST /users/{id}/status":                  {body: staffStatusInput{}, response: staffResponse{}},
 	"POST /users/{id}/reset-password":          {response: issuedStaffResponse{}},
+	"POST /users/{id}/invite":                  {response: issuedStaffResponse{}},
 	"POST /shop/{store}/login":                 {body: loginInput{}, response: shopperResponse{}},
 	"POST /shop/{store}/register":              {body: registerInput{}, response: shopperResponse{}},
 	"POST /shop/{store}/password":              {body: changePasswordInput{}, response: tokenResponse{}},
@@ -191,16 +197,22 @@ var hiddenRoutes = map[string]bool{
 
 // publicRoutes need no token.
 var publicRoutes = map[string]bool{
-	"GET /health":                 true,
-	"POST /auth/login":            true,
-	"POST /shop/{store}/login":    true,
-	"POST /shop/{store}/register": true,
-	"POST /shop/{store}/password": true,
-	"GET /shop":                   true,
-	"POST /shop/{store}/ai/chat":  true,
-	"POST /shop/{store}/price":    true,
-	"POST /shop/{store}/orders":   true,
-	"POST /shop/{store}/leads":    true,
+	"GET /health":                     true,
+	"POST /auth/login":                true,
+	"POST /shop/{store}/login":        true,
+	"POST /auth/forgot":               true,
+	"POST /auth/reset":                true,
+	"POST /shop/{store}/forgot":       true,
+	"POST /shop/{store}/reset":        true,
+	"POST /shop/{store}/verify":       true,
+	"POST /shop/{store}/verify-email": true,
+	"POST /shop/{store}/register":     true,
+	"POST /shop/{store}/password":     true,
+	"GET /shop":                       true,
+	"POST /shop/{store}/ai/chat":      true,
+	"POST /shop/{store}/price":        true,
+	"POST /shop/{store}/orders":       true,
+	"POST /shop/{store}/leads":        true,
 }
 
 var pathParam = regexp.MustCompile(`\{([a-zA-Z]+)\}`)

@@ -31,6 +31,11 @@ export interface ShopValue {
   }) => Promise<string | null>
   /** API mode: whether the signed-in shopper can sign in on another device. */
   hasPassword: boolean
+  /** API mode: the shopper's inbox is proven, and this deployment can send a link to prove it. */
+  emailVerified: boolean
+  emailOn: boolean
+  /** API mode: reads the account and its orders again. */
+  reloadAccount: () => void
   /** API mode: sets or changes the password. Resolves to an error sentence, or null when done. */
   setPassword: (currentPassword: string, newPassword: string) => Promise<string | null>
   signOut: () => void
@@ -97,20 +102,27 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
 
   const customer = customers.find((c) => c.id === customerId) ?? null
   const [hasPassword, setHasPassword] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [emailOn, setEmailOn] = useState(false)
+  const [accountVersion, setAccountVersion] = useState(0)
   // API mode: a stored shopper token restores the account and its orders after a reload.
   useEffect(() => {
     if (!HTTP || !customerId || !shopperToken(tenant.id).get()) return
     let cancelled = false
     api.shop
       .me(tenant.subdomain)
-      .then(({ customer: me, orders: mine, hasPassword: stored }) => {
-        if (cancelled) return
-        setHasPassword(stored)
-        merge({
-          customers: [...state.customers.filter((c) => c.id !== me.id), me],
-          orders: [...state.orders.filter((o) => o.customerId !== me.id), ...mine],
-        })
-      })
+      .then(
+        ({ customer: me, orders: mine, hasPassword: stored, emailVerified: proven, emailOn: canSend }) => {
+          if (cancelled) return
+          setHasPassword(stored)
+          setEmailVerified(proven)
+          setEmailOn(canSend)
+          merge({
+            customers: [...state.customers.filter((c) => c.id !== me.id), me],
+            orders: [...state.orders.filter((o) => o.customerId !== me.id), ...mine],
+          })
+        },
+      )
       .catch(() => {
         shopperToken(tenant.id).set(null)
         setCustomerId(null)
@@ -119,7 +131,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per signed-in shopper
-  }, [customerId, tenant.id])
+  }, [customerId, tenant.id, accountVersion])
   const referral = catalog.sellers.find((s) => s.id === referralId && s.status === 'active') ?? null
   const totals = useMemo(
     () => cartTotals(catalog, cart.cart, referral?.id ?? null, now),
@@ -157,6 +169,9 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
         enterAccount(() => api.shop.login(tenant.subdomain, email, password)),
       register: (input) => enterAccount(() => api.shop.register(tenant.subdomain, input)),
       hasPassword,
+      emailVerified,
+      emailOn,
+      reloadAccount: () => setAccountVersion((v) => v + 1),
       setPassword: async (currentPassword, newPassword) => {
         try {
           const { token } = await api.shop.setPassword(tenant.subdomain, currentPassword, newPassword)
@@ -196,6 +211,8 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     customer,
     setCustomerId,
     hasPassword,
+    emailVerified,
+    emailOn,
     merge,
     state.customers,
     referral,

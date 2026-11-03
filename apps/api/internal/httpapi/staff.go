@@ -36,10 +36,12 @@ type staffResponse struct {
 	User domain.User `json:"user"`
 }
 
-// issuedStaffResponse carries a password the server shows this one time.
+// issuedStaffResponse says how the person gets in: a link by email, or, with email off, a password
+// the server shows this one time. With email on the admin never sees a password.
 type issuedStaffResponse struct {
 	User              domain.User `json:"user"`
-	TemporaryPassword string      `json:"temporaryPassword"`
+	TemporaryPassword string      `json:"temporaryPassword,omitempty"`
+	EmailSent         bool        `json:"emailSent"`
 }
 
 // staffError is a refusal with the status it answers with.
@@ -101,6 +103,8 @@ func temporaryPassword() (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
+
+func (s *Server) emailReady() bool { return s.Mail != nil && s.PublicURL != "" }
 
 func (s *Server) writeStaffError(w http.ResponseWriter, r *http.Request, err error) {
 	var refused staffError
@@ -187,7 +191,7 @@ func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	u := domain.User{ID: ids.New("usr"), Name: in.Name, Email: email, Title: in.Title, Role: in.Role, TenantIDs: in.TenantIDs, Color: "#4c5a78"}
+	u := domain.User{ID: ids.New("usr"), Name: in.Name, Email: email, Title: in.Title, Role: in.Role, TenantIDs: in.TenantIDs, Color: "#4c5a78", Invited: s.emailReady()}
 	err = pgx.BeginFunc(r.Context(), s.DB.Pool, func(tx pgx.Tx) error {
 		var taken bool
 		if err := tx.QueryRow(r.Context(), `select exists (select 1 from users where email = $1)`, email).Scan(&taken); err != nil {
@@ -207,6 +211,10 @@ func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logStaffChange(r, "create", u.ID)
+	if s.emailReady() {
+		writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, EmailSent: s.mailInvite(r.Context(), u)})
+		return
+	}
 	writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, TemporaryPassword: password})
 }
 
@@ -302,5 +310,33 @@ func (s *Server) resetStaffPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logStaffChange(r, "reset-password", id)
+	if s.emailReady() {
+		writeJSON(w, http.StatusOK, issuedStaffResponse{User: saved, EmailSent: s.mailAdminReset(r.Context(), saved)})
+		return
+	}
 	writeJSON(w, http.StatusOK, issuedStaffResponse{User: saved, TemporaryPassword: password})
+}
+
+// inviteStaff sends a pending invitation again; the earlier link stops working.
+func (s *Server) inviteStaff(w http.ResponseWriter, r *http.Request) {
+	p, _ := auth.From(r.Context())
+	if !s.emailOn(w) {
+		return
+	}
+	id := r.PathValue("id")
+	u, err := store.Get[domain.User](r.Context(), s.DB.Pool, "users", id)
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "NOT_FOUND", "That person does not exist.")
+		return
+	}
+	if !mayManage(p, u.Role, u.TenantIDs) {
+		s.writeStaffError(w, r, errStaffForbidden)
+		return
+	}
+	if !u.Invited || u.Disabled {
+		writeProblem(w, http.StatusConflict, "NOT_INVITED", "This person has no pending invitation.")
+		return
+	}
+	s.logStaffChange(r, "invite", id)
+	writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, EmailSent: s.mailInvite(r.Context(), u)})
 }

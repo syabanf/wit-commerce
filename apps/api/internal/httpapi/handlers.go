@@ -417,12 +417,13 @@ func (s *Server) shopMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sort.Slice(orders, func(i, j int) bool { return orders[i].CreatedAt > orders[j].CreatedAt })
-	var hasPassword bool
-	if err := s.DB.Pool.QueryRow(r.Context(), `select exists (select 1 from customer_credentials where customer_id = $1)`, p.ID).Scan(&hasPassword); err != nil {
+	var hasPassword, verified bool
+	if err := s.DB.Pool.QueryRow(r.Context(), `select count(*) > 0, coalesce(bool_or(email_verified_at is not null), false)
+		from customer_credentials where customer_id = $1`, p.ID).Scan(&hasPassword, &verified); err != nil {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "hasPassword": hasPassword})
+	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "hasPassword": hasPassword, "emailVerified": verified, "emailOn": s.Mail != nil && s.PublicURL != ""})
 }
 
 func (s *Server) shopPrice(w http.ResponseWriter, r *http.Request) {

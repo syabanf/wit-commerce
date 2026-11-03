@@ -22,6 +22,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/httpapi"
+	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
 	"github.com/syabanf/wit-commerce/apps/api/internal/seed"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -178,6 +179,8 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		DB: db, Clock: clock.New(anchor), Signer: signer, Vault: vault,
 		Outbound: service.OutboundClient(allowInternal), AllowInternalWebhooks: allowInternal,
 		AI:         ai.New(os.Getenv("OLLAMA_URL"), os.Getenv("OLLAMA_API_KEY"), os.Getenv("OLLAMA_MODEL")),
+		Mail:       mail.New(os.Getenv("RESEND_URL"), os.Getenv("RESEND_API_KEY"), os.Getenv("EMAIL_FROM")),
+		PublicURL:  strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
 		TrustProxy: os.Getenv("TRUST_PROXY") == "true", Hub: events.New(), Log: log, Version: Version,
 		DemoLogin: cfg.demoLogin, AllowedOrigins: cfg.allowedOrigins,
 	})

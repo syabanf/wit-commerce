@@ -4,7 +4,7 @@ import { ApiError } from '@rc/api'
 import { Avatar, Banner, Button, Card, FormField, Input } from '@rc/ui'
 import { ArrowRight, Lock, Mail, Palette, ShoppingBag, UsersRound } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { LogoMark } from '../../layouts/LogoMark'
 import { DEMO_PASSWORD, HTTP, api } from '../../lib/api'
@@ -187,6 +187,14 @@ export function LoginPage() {
               <ArrowRight />
             </Button>
           </form>
+          {HTTP && (
+            <Link
+              to="/reset-password"
+              className="mt-3 text-sm font-semibold min-h-11 inline-flex items-center underline"
+            >
+              Forgot your password?
+            </Link>
+          )}
 
           {users.length > 0 && (
             <>

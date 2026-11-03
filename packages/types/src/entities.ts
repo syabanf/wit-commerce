@@ -102,6 +102,8 @@ export interface User {
   color: string
   /** Disabled accounts cannot sign in. */
   disabled?: boolean
+  /** Added by an admin, and has not yet chosen a password from their invitation. */
+  invited?: boolean
 }
 
 /** A person who sells for a tenant through a personal storefront (sales, agent, reseller, affiliate). */

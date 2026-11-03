@@ -83,6 +83,20 @@ export function LoginPage() {
     else setProfiles(result)
   }
 
+  const forgot = async () => {
+    if (!email.trim()) return setError('Enter your email first, and we will send a link to it.')
+    setError('')
+    try {
+      await api.forgotPassword(email)
+      toast('Check your inbox', {
+        tone: 'success',
+        description: 'If this email has an account, a link is on its way.',
+      })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'The server did not answer. Try again in a moment.')
+    }
+  }
+
   const choose = (u: User) => {
     const profiles = profilesOf(state.sellers, u.id)
     if (profiles.length === 1) void enter(profiles[0]!)
@@ -207,6 +221,15 @@ export function LoginPage() {
               </FormField>
               <Button type="submit" size="lg" className="w-full" loading={busy}>
                 Sign in
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                className="w-full"
+                onClick={() => void forgot()}
+              >
+                Forgot your password?
               </Button>
             </form>
           )}

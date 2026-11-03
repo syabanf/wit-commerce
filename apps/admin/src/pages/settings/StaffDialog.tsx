@@ -81,7 +81,7 @@ export function StaffDialog({
                 label="Work email"
                 htmlFor="staff-email"
                 required
-                hint="They sign in with this. It cannot change later."
+                hint="We email them an invitation to choose a password. It cannot change later."
               >
                 <Input
                   id="staff-email"

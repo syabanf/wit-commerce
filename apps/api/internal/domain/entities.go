@@ -69,6 +69,8 @@ type User struct {
 	Color     string   `json:"color"`
 	// Disabled accounts cannot sign in, and their tokens stop working at once.
 	Disabled bool `json:"disabled,omitempty"`
+	// Invited stays true until the person chooses a password from their invitation.
+	Invited bool `json:"invited,omitempty"`
 }
 
 type Seller struct {

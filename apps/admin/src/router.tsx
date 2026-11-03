@@ -3,6 +3,7 @@ import { RequireAuth } from './auth/auth'
 import { t } from './i18n'
 import { AdminLayout } from './layouts/AdminLayout'
 import { LoginPage } from './pages/auth/LoginPage'
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { commerceRoutes } from './routes/commerceRoutes'
 import { customersRoutes } from './routes/customersRoutes'
 import { marketingRoutes } from './routes/marketingRoutes'
@@ -13,6 +14,7 @@ import { storeRoutes } from './routes/storeRoutes'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     path: '/',
     element: (

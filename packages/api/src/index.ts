@@ -320,10 +320,11 @@ export interface StaffInput {
   tenantIds: string[]
 }
 
-/** A staff member with a password the server shows this one time. */
+/** How a staff member gets in: a link by email, or with email off a password shown this one time. */
 export interface IssuedStaff {
   user: User
-  temporaryPassword: string
+  temporaryPassword?: string
+  emailSent: boolean
 }
 
 export interface ShopperResponse {
@@ -466,6 +467,9 @@ export interface MeResponse {
   customer: Customer
   orders: Order[]
   hasPassword: boolean
+  emailVerified: boolean
+  /** Whether this deployment can send email. */
+  emailOn: boolean
 }
 
 /** Builds the client. Every method throws ApiError on a non-2xx answer. */
@@ -518,12 +522,16 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     me: () => call<{ user: User }>('GET', '/auth/me'),
     changePassword: (currentPassword: string, newPassword: string) =>
       call<{ token: string }>('POST', '/auth/password', { currentPassword, newPassword }),
+    forgotPassword: (email: string) => call<{ message: string }>('POST', '/auth/forgot', { email }),
+    resetPassword: (token: string, newPassword: string) =>
+      call<void>('POST', '/auth/reset', { token, newPassword }),
     staff: {
       create: (input: StaffInput & { email: string }) => call<IssuedStaff>('POST', '/users', input),
       update: (id: string, input: StaffInput) => call<{ user: User }>('PUT', `/users/${id}`, input),
       setDisabled: (id: string, disabled: boolean) =>
         call<{ user: User }>('POST', `/users/${id}/status`, { disabled }),
       resetPassword: (id: string) => call<IssuedStaff>('POST', `/users/${id}/reset-password`),
+      invite: (id: string) => call<IssuedStaff>('POST', `/users/${id}/invite`),
     },
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
     state: () => call<StateResponse>('GET', '/state'),
@@ -576,6 +584,12 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
         call<ShopperResponse>('POST', `/shop/${store}/register`, input),
       setPassword: (store: string, currentPassword: string, newPassword: string) =>
         call<{ token: string }>('POST', `/shop/${store}/password`, { currentPassword, newPassword }),
+      forgotPassword: (store: string, email: string) =>
+        call<{ message: string }>('POST', `/shop/${store}/forgot`, { email }),
+      resetPassword: (store: string, token: string, newPassword: string) =>
+        call<void>('POST', `/shop/${store}/reset`, { token, newPassword }),
+      sendVerifyEmail: (store: string) => call<{ message: string }>('POST', `/shop/${store}/verify-email`),
+      verifyEmail: (store: string, token: string) => call<void>('POST', `/shop/${store}/verify`, { token }),
       me: (store: string) => call<MeResponse>('GET', `/shop/${store}/me`),
       ai: (store: string, input: AIChatInput) => call<AIChatAnswer>('POST', `/shop/${store}/ai/chat`, input),
     },

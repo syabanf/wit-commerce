@@ -27,7 +27,7 @@ func TestSpecIsValidOpenAPI(t *testing.T) {
 }
 
 // Routes that act on the id in the URL alone take no body; every other write documents one.
-var noBody = regexp.MustCompile(`/(toggle|publish|unpublish|launch|pause|resolve|sync|rotate|revoke|test|retry)$|/onboarding/\{step\}$|/reset-password$`)
+var noBody = regexp.MustCompile(`/(toggle|publish|unpublish|launch|pause|resolve|sync|rotate|revoke|test|retry)$|/onboarding/\{step\}$|/reset-password$|/invite$|/verify-email$`)
 
 func TestEveryWriteDocumentsItsBody(t *testing.T) {
 	var doc struct {
