@@ -1,9 +1,13 @@
 import { ROLE_PERMISSIONS, ROLE_SUMMARY } from '@rc/fixtures'
+import { ApiError, type IssuedStaff } from '@rc/api'
 import { ROLE_LABEL, type Role, type User } from '@rc/types'
 import {
+  ActionMenu,
   Avatar,
   AvatarStack,
   Badge,
+  Button,
+  ConfirmDialog,
   type BadgeProps,
   Card,
   CardDescription,
@@ -20,9 +24,15 @@ import {
   cn,
   countBy,
   matchesQuery,
+  toast,
 } from '@rc/ui'
 import {
   BriefcaseBusiness,
+  Ellipsis,
+  KeyRound,
+  Pencil,
+  Plus,
+  UserX,
   Check,
   Headset,
   Lock,
@@ -32,10 +42,15 @@ import {
   ShieldCheck,
   Store,
 } from 'lucide-react'
-import { Fragment, type ReactNode, useMemo } from 'react'
+import { Fragment, type ReactNode, useMemo, useState } from 'react'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { PERMISSION_COUNT, PERMISSION_GROUPS, PERMISSION_LABEL, ROLES } from './lib'
+import { useAuth } from '../../auth/auth'
+import { HTTP, api } from '../../lib/api'
+import { useStore } from '../../state/store'
+import { SecretDialog } from '../integrations/SecretDialog'
+import { StaffDialog } from './StaffDialog'
 
 const ROLE_ICON: Record<Role, ReactNode> = {
   platform_admin: <ShieldCheck />,
@@ -57,6 +72,13 @@ const ROLE_BADGE: Record<Role, BadgeProps['variant']> = {
 
 export function UsersPage() {
   const s = useScoped()
+  const { can } = useAuth()
+  const { mergeUser } = useStore()
+  // Staff changes need the server: the demo without an API stays read only.
+  const manage = HTTP && can('user.manage')
+  const [editing, setEditing] = useState<User | 'new' | null>(null)
+  const [issued, setIssued] = useState<IssuedStaff | null>(null)
+  const [pending, setPending] = useState<{ kind: 'reset' | 'status'; user: User } | null>(null)
   const table = useTableHistory()
   const [query, setQuery] = useHistoryState('users.q', '')
   const [role, setRole] = useHistoryState<Role | null>('users.role', null)
@@ -76,6 +98,42 @@ export function UsersPage() {
     [s.users],
   )
 
+  // The server's rule: a platform admin manages anyone, others only people wholly within their brands.
+  const mayManage = (u: User) =>
+    u.id !== s.user.id &&
+    (s.user.role === 'platform_admin' ||
+      (u.role !== 'platform_admin' && u.tenantIds.every((id) => s.user.tenantIds.includes(id))))
+  const act = async (run: () => Promise<void>) => {
+    try {
+      await run()
+    } catch (err) {
+      toast('The change was not saved', {
+        tone: 'danger',
+        description: err instanceof ApiError ? err.message : 'The server did not answer.',
+      })
+    }
+  }
+  const confirmed = () =>
+    pending &&
+    act(async () => {
+      if (pending.kind === 'reset') setIssued(await api.staff.resetPassword(pending.user.id))
+      else {
+        const { user } = await api.staff.setDisabled(pending.user.id, !pending.user.disabled)
+        mergeUser(user)
+        toast(user.disabled ? 'Account disabled' : 'Account enabled', {
+          tone: 'success',
+          description: user.name,
+        })
+      }
+    }).finally(() => setPending(null))
+
+  const roleBadge = (u: User) =>
+    u.disabled ? (
+      <Badge variant="muted">Disabled</Badge>
+    ) : (
+      <Badge variant={ROLE_BADGE[u.role]}>{ROLE_LABEL[u.role]}</Badge>
+    )
+
   const columns: Column<User>[] = [
     {
       id: 'name',
@@ -90,6 +148,7 @@ export function UsersPage() {
               {u.id === s.user.id && <span className="ml-1.5 text-xs font-normal text-muted">You</span>}
             </p>
             <p className="text-xs truncate text-muted">{u.email}</p>
+            <div className="mt-1 md:hidden">{roleBadge(u)}</div>
           </div>
         </div>
       ),
@@ -104,8 +163,9 @@ export function UsersPage() {
     {
       id: 'role',
       header: 'Role',
+      hideBelow: 'md',
       sortValue: (u) => ROLE_LABEL[u.role],
-      cell: (u) => <Badge variant={ROLE_BADGE[u.role]}>{ROLE_LABEL[u.role]}</Badge>,
+      cell: roleBadge,
     },
     {
       id: 'brands',
@@ -116,17 +176,62 @@ export function UsersPage() {
           <span className="text-sm text-muted">Every brand</span>
         ) : (
           <span className="text-sm">
-            {u.tenantIds.map((id) => tenantName.get(id) ?? 'Removed brand').join(', ')}
+            {u.tenantIds.map((id) => tenantName.get(id) ?? 'Another brand').join(', ')}
           </span>
         ),
     },
+    ...(manage
+      ? [
+          {
+            id: 'actions',
+            header: 'Actions',
+            align: 'right',
+            cell: (u: User) =>
+              mayManage(u) ? (
+                <ActionMenu
+                  title={u.name}
+                  trigger={
+                    <Button variant="ghost" size="icon" aria-label={`Actions for ${u.name}`}>
+                      <Ellipsis />
+                    </Button>
+                  }
+                  items={[
+                    { key: 'edit', label: 'Edit', icon: <Pencil />, onSelect: () => setEditing(u) },
+                    {
+                      key: 'reset',
+                      label: 'Reset password',
+                      description: 'Signs them out everywhere',
+                      icon: <KeyRound />,
+                      onSelect: () => setPending({ kind: 'reset', user: u }),
+                    },
+                    {
+                      key: 'status',
+                      label: u.disabled ? 'Enable account' : 'Disable account',
+                      icon: <UserX />,
+                      destructive: !u.disabled,
+                      onSelect: () => setPending({ kind: 'status', user: u }),
+                    },
+                  ]}
+                />
+              ) : null,
+          } satisfies Column<User>,
+        ]
+      : []),
   ]
 
   return (
     <>
       <PageHeader
         title="Users & roles"
-        description={`Who can sign in to ${s.tenant.name} and what each role may do. Read only for now: inviting and editing users comes in a later release.`}
+        description={`Who can sign in to ${s.tenant.name} and what each role may do.${manage ? '' : ' An admin adds staff and resets passwords.'}`}
+        actions={
+          manage ? (
+            <Button onClick={() => setEditing('new')}>
+              <Plus />
+              Add staff
+            </Button>
+          ) : undefined
+        }
       />
       <div className="space-y-4">
         <Card>
@@ -211,6 +316,48 @@ export function UsersPage() {
 
         <PermissionMatrix currentRole={s.user.role} />
       </div>
+      {editing && (
+        <StaffDialog
+          person={editing === 'new' ? null : editing}
+          onClose={() => setEditing(null)}
+          onIssued={setIssued}
+        />
+      )}
+      {issued && (
+        <SecretDialog
+          title={`Temporary password for ${issued.user.name}`}
+          description={`Give this to ${issued.user.email} in person or over a private channel. It shows only now. Ask them to change it from the account menu after signing in.`}
+          secret={issued.temporaryPassword}
+          onClose={() => setIssued(null)}
+        />
+      )}
+      {pending && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setPending(null)}
+          title={
+            pending.kind === 'reset'
+              ? `Reset the password of ${pending.user.name}?`
+              : `${pending.user.disabled ? 'Enable' : 'Disable'} ${pending.user.name}?`
+          }
+          description={
+            pending.kind === 'reset'
+              ? 'Their current password stops working and they sign out everywhere. You get a temporary one to pass on.'
+              : pending.user.disabled
+                ? 'They can sign in again with their current password.'
+                : 'They sign out everywhere and cannot sign in until an admin enables the account.'
+          }
+          confirmLabel={
+            pending.kind === 'reset'
+              ? 'Reset password'
+              : pending.user.disabled
+                ? 'Enable account'
+                : 'Disable account'
+          }
+          destructive={!(pending.kind === 'status' && pending.user.disabled)}
+          onConfirm={() => void confirmed()}
+        />
+      )}
     </>
   )
 }

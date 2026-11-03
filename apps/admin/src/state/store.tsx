@@ -1,3 +1,4 @@
+import type { User } from '@rc/types'
 import { ApiError, applyDelta, emptyState, mergeState } from '@rc/api'
 import {
   type AppState,
@@ -29,6 +30,8 @@ interface StoreValue {
   storageError: boolean
   /** False while the API loads the dataset for a signed-in user. */
   ready: boolean
+  /** API mode: lays a staff row the server answered with over the state. */
+  mergeUser: (user: User) => void
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -58,7 +61,10 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(tick, 60_000)
     return () => clearInterval(timer)
   }, [])
-  const value = useMemo(() => ({ state, send, storageError, ready: true }), [state, storageError])
+  const value = useMemo(
+    () => ({ state, send, storageError, ready: true, mergeUser: () => undefined }),
+    [state, storageError],
+  )
   return <StoreContext value={value}>{children}</StoreContext>
 }
 
@@ -117,7 +123,14 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
       })
   }, [])
 
-  const value = useMemo(() => ({ state, send, storageError: false, ready }), [state, send, ready])
+  const mergeUser = useCallback(
+    (user: User) => setState((s) => ({ ...s, users: [...s.users.filter((u) => u.id !== user.id), user] })),
+    [],
+  )
+  const value = useMemo(
+    () => ({ state, send, storageError: false, ready, mergeUser }),
+    [state, send, ready, mergeUser],
+  )
   return <StoreContext value={value}>{children}</StoreContext>
 }
 

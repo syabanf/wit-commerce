@@ -38,6 +38,8 @@ type Principal struct {
 	TenantID string `json:"tenantId,omitempty"`
 	// API keys act only within these scopes.
 	Scopes []string `json:"scopes,omitempty"`
+	// IssuedAt is when the token was signed, to compare with the account's revocation time.
+	IssuedAt int64 `json:"-"`
 }
 
 // System is the principal server jobs run as.
@@ -127,6 +129,7 @@ func (s *Signer) Verify(token string, now time.Time) (Principal, error) {
 	if c.Kind != KindUser && c.Kind != KindCustomer {
 		return Principal{}, errors.New("this kind of token is not accepted")
 	}
+	c.Principal.IssuedAt = c.Iat
 	return c.Principal, nil
 }
 

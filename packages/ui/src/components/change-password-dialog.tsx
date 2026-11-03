@@ -47,7 +47,7 @@ function PasswordForm({
     <form onSubmit={(e) => void submit(e)} noValidate>
       <DialogHeader>
         <DialogTitle>Change password</DialogTitle>
-        <DialogDescription>Other devices stay signed in for up to 12 hours.</DialogDescription>
+        <DialogDescription>Your other devices sign out.</DialogDescription>
       </DialogHeader>
       <div className="mt-4 gap-4 grid grid-cols-1">
         <FormField label="Current password" htmlFor="password-current">

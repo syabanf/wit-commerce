@@ -14,10 +14,12 @@ import { copyText } from './lib'
 /** Shows a new secret, the one time the server hands it out. */
 export function SecretDialog({
   title,
+  description = 'This is the only time it shows. If you lose it, rotate it.',
   secret,
   onClose,
 }: {
   title: string
+  description?: string
   secret: string
   onClose: () => void
 }) {
@@ -26,7 +28,7 @@ export function SecretDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>This is the only time it shows. If you lose it, rotate it.</DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="gap-2 flex items-center">
           <Input

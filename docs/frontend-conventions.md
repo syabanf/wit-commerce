@@ -41,6 +41,7 @@ Dependencies point down. A page composes; it owns no business rules.
 - Webhooks: `tx.enqueue` writes deliveries in the action's own transaction, from the rows it wrote (`rowEvents`) and `t.emit` for what a row cannot say (`order.paid`). A timer sends them through `OutboundClient`, which refuses internal IPs at connect time. A new event goes in `WebhookEvents`.
 - AI: `POST /shop/{store}/ai/chat` asks the model what a message means. `checkAIAnswer` keeps only known actions and real ids, and `aiActions` must never hold one that pays: approval stays an exact "ya" or the button. Customer records never go in the prompt.
 - Sign-in: `POST /auth/login` for staff and `POST /shop/{store}/login` or `/register` for shoppers, capped per client and per email. A guest may only name a new customer id when ordering, since the receipt carries a token for it. Registering never attaches a guest's earlier orders, because no email check proves the inbox yet.
+- Staff: `mayManage` in `staff.go` is the one rule, mirrored in `UsersPage`. A platform admin manages anyone; others only people wholly within their brands. `Server.current` re-reads the account on every request, so tokens carry identity and the database holds the role.
 - Never return a secret except from create and rotate (`writeSecret`, `Cache-Control: no-store`). Connector values stay behind `service.ConnectorValues`, which no route calls.
 
 ## Routes and shared components

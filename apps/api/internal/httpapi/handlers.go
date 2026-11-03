@@ -89,7 +89,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u, hash, err := s.userByEmail(r.Context(), in.Email)
-	known := err == nil
+	known := err == nil && !u.Disabled
 	if !known {
 		hash = decoyHash()
 	}
@@ -193,7 +193,8 @@ func (s *Server) loadState(ctx context.Context, tenantIDs []string, collections 
 		var err error
 		switch c {
 		case "users":
-			rows, err = store.Raw(ctx, s.DB.Pool, c, "")
+			// Colleagues and platform admins; staff of other brands stay out of this browser.
+			rows, err = store.Raw(ctx, s.DB.Pool, c, "data->'tenantIds' ?| $1 or data->>'role' = 'platform_admin'", tenantIDs)
 		case "tenants":
 			rows, err = store.Raw(ctx, s.DB.Pool, c, "id = any($1)", tenantIDs)
 		case "templates":

@@ -12,9 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ai"
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
+	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -249,6 +251,29 @@ func (s *Server) principal(r *http.Request) (auth.Principal, bool) {
 	if err != nil {
 		return auth.Principal{}, false
 	}
+	return s.current(r.Context(), p)
+}
+
+// current checks a token against the account as it stands now, so a disabled person, a new role or
+// a changed password takes effect on the next request and not when the token expires.
+func (s *Server) current(ctx context.Context, p auth.Principal) (auth.Principal, bool) {
+	var validFrom int64
+	if p.Kind == auth.KindCustomer {
+		err := s.DB.Pool.QueryRow(ctx, `select extract(epoch from tokens_valid_from)::bigint from customer_credentials where customer_id = $1`, p.ID).Scan(&validFrom)
+		// A guest from checkout has no credential row to revoke.
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return auth.Principal{}, false
+		}
+		return p, p.IssuedAt >= validFrom
+	}
+	var u domain.User
+	var raw []byte
+	err := s.DB.Pool.QueryRow(ctx, `select u.data, coalesce(extract(epoch from c.tokens_valid_from)::bigint, 0)
+		from users u left join credentials c on c.user_id = u.id where u.id = $1`, p.ID).Scan(&raw, &validFrom)
+	if err != nil || json.Unmarshal(raw, &u) != nil || u.Disabled || p.IssuedAt < validFrom {
+		return auth.Principal{}, false
+	}
+	p.Role, p.TenantIDs = u.Role, u.TenantIDs
 	return p, true
 }
 

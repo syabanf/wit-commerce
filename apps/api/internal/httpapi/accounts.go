@@ -31,6 +31,11 @@ type changePasswordInput struct {
 	NewPassword     string `json:"newPassword"`
 }
 
+// tokenResponse replaces the caller's token after a password change ended their other sessions.
+type tokenResponse struct {
+	Token string `json:"token"`
+}
+
 type registerInput struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
@@ -112,11 +117,19 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	if _, err := s.DB.Pool.Exec(r.Context(), `update credentials set password_hash = $2, updated_at = now() where user_id = $1`, p.ID, next); err != nil {
+	now := time.Now()
+	if _, err := s.DB.Pool.Exec(r.Context(), `update credentials set password_hash = $2, tokens_valid_from = $3, updated_at = now() where user_id = $1`,
+		p.ID, next, now.Truncate(time.Second)); err != nil {
 		s.writeError(w, r, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	// Other sessions end here; this one continues on a new token.
+	token, _, err := s.Signer.Sign(auth.Principal{Kind: p.Kind, ID: p.ID, Role: p.Role, TenantIDs: p.TenantIDs}, now)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, tokenResponse{Token: token})
 }
 
 func (s *Server) issueShopper(w http.ResponseWriter, customer domain.Customer) {
@@ -248,10 +261,17 @@ func (s *Server) shopPassword(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	if _, err := s.DB.Pool.Exec(r.Context(), `insert into customer_credentials (customer_id, password_hash) values ($1, $2)
-		on conflict (customer_id) do update set password_hash = excluded.password_hash, updated_at = now()`, p.ID, next); err != nil {
+	now := time.Now()
+	if _, err := s.DB.Pool.Exec(r.Context(), `insert into customer_credentials (customer_id, password_hash, tokens_valid_from) values ($1, $2, $3)
+		on conflict (customer_id) do update set password_hash = excluded.password_hash,
+		tokens_valid_from = excluded.tokens_valid_from, updated_at = now()`, p.ID, next, now.Truncate(time.Second)); err != nil {
 		s.writeError(w, r, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	token, _, err := s.Signer.Sign(auth.Principal{Kind: auth.KindCustomer, ID: p.ID, TenantID: tenant.ID}, now)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, tokenResponse{Token: token})
 }

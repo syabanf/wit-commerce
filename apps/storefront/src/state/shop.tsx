@@ -159,7 +159,8 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
       hasPassword,
       setPassword: async (currentPassword, newPassword) => {
         try {
-          await api.shop.setPassword(tenant.subdomain, currentPassword, newPassword)
+          const { token } = await api.shop.setPassword(tenant.subdomain, currentPassword, newPassword)
+          shopperToken(tenant.id).set(token)
           setHasPassword(true)
           return null
         } catch (err) {

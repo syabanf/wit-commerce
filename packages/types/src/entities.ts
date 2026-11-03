@@ -100,6 +100,8 @@ export interface User {
   role: Role
   tenantIds: string[]
   color: string
+  /** Disabled accounts cannot sign in. */
+  disabled?: boolean
 }
 
 /** A person who sells for a tenant through a personal storefront (sales, agent, reseller, affiliate). */

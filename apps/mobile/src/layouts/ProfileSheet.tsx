@@ -16,7 +16,7 @@ import { KeyRound, LogOut, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
-import { HTTP, api } from '../lib/api'
+import { HTTP, api, tokenStore } from '../lib/api'
 import { paths } from '../lib/paths'
 import { fmtRate } from '../lib/seller'
 import { useSellerScope } from '../state/scope'
@@ -38,7 +38,8 @@ export function ProfileSheet({
 
   const changePassword = async (current: string, next: string) => {
     try {
-      await api.changePassword(current, next)
+      const { token } = await api.changePassword(current, next)
+      tokenStore.set(token)
       toast('Password changed', { tone: 'success' })
       return null
     } catch (err) {

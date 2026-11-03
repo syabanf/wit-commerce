@@ -17,6 +17,7 @@ export type Permission =
   | 'promotion.manage'
   | 'seller.manage'
   | 'integration.manage'
+  | 'user.manage'
   | 'analytics.view'
 
 const ALL: Permission[] = [
@@ -36,6 +37,7 @@ const ALL: Permission[] = [
   'promotion.manage',
   'seller.manage',
   'integration.manage',
+  'user.manage',
   'analytics.view',
 ]
 

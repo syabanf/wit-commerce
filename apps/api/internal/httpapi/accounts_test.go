@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 )
@@ -58,7 +59,7 @@ func TestShopperRegistersSignsInAndChangesPassword(t *testing.T) {
 	}
 	e.expect(401, "POST", "/shop/lari/password", created.Token, map[string]string{"newPassword": "another long password"})
 	e.expect(422, "POST", "/shop/lari/password", created.Token, map[string]string{"currentPassword": shopPassword, "newPassword": "short"})
-	e.expect(204, "POST", "/shop/lari/password", created.Token, map[string]string{"currentPassword": shopPassword, "newPassword": "another long password"})
+	e.expect(200, "POST", "/shop/lari/password", created.Token, map[string]string{"currentPassword": shopPassword, "newPassword": "another long password"})
 	e.expect(200, "POST", "/shop/lari/login", "", map[string]string{"email": "rina@example.com", "password": "another long password"})
 }
 
@@ -94,7 +95,16 @@ func TestUserChangesPassword(t *testing.T) {
 	e.expect(401, "POST", "/auth/password", "", map[string]string{"currentPassword": password, "newPassword": "another long password"})
 	e.expect(401, "POST", "/auth/password", token, map[string]string{"currentPassword": "nope", "newPassword": "another long password"})
 	e.expect(422, "POST", "/auth/password", token, map[string]string{"currentPassword": password, "newPassword": "short"})
-	e.expect(204, "POST", "/auth/password", token, map[string]string{"currentPassword": password, "newPassword": "another long password"})
+	var changed struct {
+		Token string `json:"token"`
+	}
+	future := time.Now().Add(2 * time.Second)
+	time.Sleep(time.Until(future.Truncate(time.Second)))
+	if code := e.call("POST", "/auth/password", token, map[string]string{"currentPassword": password, "newPassword": "another long password"}, &changed); code != 200 {
+		t.Fatalf("change: %d", code)
+	}
+	e.expect(401, "GET", "/auth/me", token, nil)
+	e.expect(200, "GET", "/auth/me", changed.Token, nil)
 	e.expect(401, "POST", "/auth/login", "", map[string]string{"email": "maya@lari.co.id", "password": password})
 	e.expect(200, "POST", "/auth/login", "", map[string]string{"email": "maya@lari.co.id", "password": "another long password"})
 }

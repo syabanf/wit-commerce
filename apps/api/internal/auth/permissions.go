@@ -5,7 +5,7 @@ package auth
 var all = []string{
 	"tenant.manage", "brand.manage", "store.manage", "product.manage", "inventory.manage", "order.fulfil",
 	"order.refund", "customer.manage", "segment.manage", "lead.manage", "ticket.manage", "campaign.manage",
-	"automation.manage", "promotion.manage", "seller.manage", "integration.manage", "analytics.view",
+	"automation.manage", "promotion.manage", "seller.manage", "integration.manage", "user.manage", "analytics.view",
 }
 
 var rolePermissions = map[string][]string{
@@ -16,6 +16,12 @@ var rolePermissions = map[string][]string{
 	"operations": {"product.manage", "inventory.manage", "order.fulfil", "order.refund", "analytics.view"},
 	"service":    {"customer.manage", "ticket.manage", "order.refund", "lead.manage"},
 	"sales":      {"lead.manage", "customer.manage"},
+}
+
+// ValidRole reports whether a role exists.
+func ValidRole(role string) bool {
+	_, ok := rolePermissions[role]
+	return ok
 }
 
 func without(list []string, drop string) []string {

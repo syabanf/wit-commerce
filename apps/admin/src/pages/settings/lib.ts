@@ -23,6 +23,7 @@ export const PERMISSION_LABEL: Record<Permission, string> = {
   'analytics.view': 'Open analytics',
   'integration.manage': 'Connect and sync integrations',
   'tenant.manage': 'Create and set up tenants',
+  'user.manage': 'Add staff and reset their passwords',
 }
 
 export const PERMISSION_GROUPS: { area: string; permissions: Permission[] }[] = [
@@ -39,7 +40,7 @@ export const PERMISSION_GROUPS: { area: string; permissions: Permission[] }[] = 
       'analytics.view',
     ],
   },
-  { area: 'Platform', permissions: ['integration.manage', 'tenant.manage'] },
+  { area: 'Platform', permissions: ['integration.manage', 'user.manage', 'tenant.manage'] },
 ]
 
 export const PERMISSION_COUNT = ROLE_PERMISSIONS.platform_admin.length

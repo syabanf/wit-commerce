@@ -32,7 +32,8 @@ var Scopes = []Scope{
 }
 
 // scopeOfPermission is the scope an API key needs for a console permission. Permissions left out
-// (tenant.manage, integration.manage) stay with signed-in people: a key cannot mint keys.
+// (tenant.manage, integration.manage, user.manage) stay with signed-in people: a key cannot mint
+// keys or create staff.
 var scopeOfPermission = map[string]string{
 	"product.manage":    "catalog:write",
 	"inventory.manage":  "inventory:write",

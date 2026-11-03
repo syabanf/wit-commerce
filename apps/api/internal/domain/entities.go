@@ -67,6 +67,8 @@ type User struct {
 	Role      string   `json:"role"`
 	TenantIDs []string `json:"tenantIds"`
 	Color     string   `json:"color"`
+	// Disabled accounts cannot sign in, and their tokens stop working at once.
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 type Seller struct {

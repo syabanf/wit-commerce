@@ -313,6 +313,19 @@ export interface StateResponse {
   now: string
 }
 
+export interface StaffInput {
+  name: string
+  title: string
+  role: User['role']
+  tenantIds: string[]
+}
+
+/** A staff member with a password the server shows this one time. */
+export interface IssuedStaff {
+  user: User
+  temporaryPassword: string
+}
+
 export interface ShopperResponse {
   token: string
   expiresAt: string
@@ -504,7 +517,14 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       call<LoginResponse>('POST', '/auth/login', { email, password }),
     me: () => call<{ user: User }>('GET', '/auth/me'),
     changePassword: (currentPassword: string, newPassword: string) =>
-      call<void>('POST', '/auth/password', { currentPassword, newPassword }),
+      call<{ token: string }>('POST', '/auth/password', { currentPassword, newPassword }),
+    staff: {
+      create: (input: StaffInput & { email: string }) => call<IssuedStaff>('POST', '/users', input),
+      update: (id: string, input: StaffInput) => call<{ user: User }>('PUT', `/users/${id}`, input),
+      setDisabled: (id: string, disabled: boolean) =>
+        call<{ user: User }>('POST', `/users/${id}/status`, { disabled }),
+      resetPassword: (id: string) => call<IssuedStaff>('POST', `/users/${id}/reset-password`),
+    },
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
     state: () => call<StateResponse>('GET', '/state'),
     /** Sends an action; the answer is the delta it produced. */
@@ -555,7 +575,7 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       register: (store: string, input: { name: string; email: string; phone: string; password: string }) =>
         call<ShopperResponse>('POST', `/shop/${store}/register`, input),
       setPassword: (store: string, currentPassword: string, newPassword: string) =>
-        call<void>('POST', `/shop/${store}/password`, { currentPassword, newPassword }),
+        call<{ token: string }>('POST', `/shop/${store}/password`, { currentPassword, newPassword }),
       me: (store: string) => call<MeResponse>('GET', `/shop/${store}/me`),
       ai: (store: string, input: AIChatInput) => call<AIChatAnswer>('POST', `/shop/${store}/ai/chat`, input),
     },

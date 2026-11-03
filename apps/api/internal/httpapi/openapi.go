@@ -105,10 +105,14 @@ type (
 
 var routeDocs = map[string]routeDoc{
 	"POST /auth/login":                         {body: loginInput{}, response: loginResponse{}},
-	"POST /auth/password":                      {body: changePasswordInput{}},
+	"POST /auth/password":                      {body: changePasswordInput{}, response: tokenResponse{}},
+	"POST /users":                              {body: staffInput{}, response: issuedStaffResponse{}},
+	"PUT /users/{id}":                          {body: staffInput{}, response: staffResponse{}},
+	"POST /users/{id}/status":                  {body: staffStatusInput{}, response: staffResponse{}},
+	"POST /users/{id}/reset-password":          {response: issuedStaffResponse{}},
 	"POST /shop/{store}/login":                 {body: loginInput{}, response: shopperResponse{}},
 	"POST /shop/{store}/register":              {body: registerInput{}, response: shopperResponse{}},
-	"POST /shop/{store}/password":              {body: changePasswordInput{}},
+	"POST /shop/{store}/password":              {body: changePasswordInput{}, response: tokenResponse{}},
 	"POST /tenants":                            {body: domain.Tenant{}},
 	"PUT /tenants/{id}/brand":                  {body: domain.BrandConfig{}},
 	"PUT /tenants/{id}/agent-policy":           {body: domain.AgentPolicy{}},
@@ -307,7 +311,7 @@ func tagOf(path string) string {
 		return "Integrations"
 	case "shop":
 		return "Storefront"
-	case "auth", "health":
+	case "auth", "health", "users":
 		return "Platform"
 	}
 	panic("openapi: no tag for " + path)

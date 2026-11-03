@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { ApiError } from '@rc/api'
 import { useAuth } from '../auth/auth'
-import { HTTP, api } from '../lib/api'
+import { HTTP, api, tokenStore } from '../lib/api'
 import { storefrontUrl } from '../lib/storefront'
 import { useNow } from '../state/scoped'
 import { CreateMenu } from './CreateMenu'
@@ -102,7 +102,8 @@ function UserMenu({ showCodes, onShowCodes }: { showCodes: boolean; onShowCodes:
   if (!user) return null
   const changePassword = async (current: string, next: string) => {
     try {
-      await api.changePassword(current, next)
+      const { token } = await api.changePassword(current, next)
+      tokenStore.set(token)
       toast('Password changed', { tone: 'success' })
       return null
     } catch (err) {
