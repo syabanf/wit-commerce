@@ -22,6 +22,15 @@ interface Case {
   removes: Partial<Record<Collection, string[]>>
 }
 
+// newId mints from the clock and Math.random. Pinning both here keeps this file the same on every
+// run, so CI can compare it with the committed copy.
+let randomState = 1
+Math.random = () => {
+  randomState = (randomState * 48271) % 2147483647
+  return randomState / 2147483647
+}
+Date.now = () => toMs(FIXTURE_NOW)
+
 const at = (hours = 0) => toIso(toMs(FIXTURE_NOW) + hours * HOUR)
 const idOf = (collection: Collection, row: unknown) =>
   collection === 'agentPolicies' ? (row as { tenantId: string }).tenantId : (row as { id: string }).id

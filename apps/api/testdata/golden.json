@@ -3506,7 +3506,7 @@
     ],
     "stockMoves": [
      {
-      "id": "mv-szgjeo922e",
+      "id": "mv-7sdc0011r5",
       "tenantId": "ten-lari",
       "variantId": "var-lr-101-1",
       "warehouseId": "wh-lari-sby",
@@ -3561,7 +3561,7 @@
     ],
     "stockMoves": [
      {
-      "id": "mv-szgvn10x9i",
+      "id": "mv-7sdc3279v1",
       "tenantId": "ten-lari",
       "variantId": "var-lr-101-1",
       "warehouseId": "wh-lari-sby",
@@ -3591,7 +3591,7 @@
    "upserts": {
     "stock": [
      {
-      "id": "stk-szh2lf1kff",
+      "id": "stk-7sdclncpgg",
       "tenantId": "ten-lari",
       "productId": "prd-lr-128",
       "variantId": "var-lr-128-1",
@@ -3603,7 +3603,7 @@
     ],
     "stockMoves": [
      {
-      "id": "mv-szh2niq5ti",
+      "id": "mv-7sdcw3j0ke",
       "tenantId": "ten-lari",
       "variantId": "var-lr-128-1",
       "warehouseId": "wh-lari-ckr",
@@ -3642,7 +3642,7 @@
     ],
     "modifierStockMoves": [
      {
-      "id": "mmv-szh7mt4z0n",
+      "id": "mmv-7sdcyugxvu",
       "tenantId": "ten-lari",
       "groupId": "mod-lari-laces",
       "optionId": "mod-lari-laces-o1",
@@ -3685,7 +3685,7 @@
     ],
     "modifierStockMoves": [
      {
-      "id": "mmv-szhd4chfcx",
+      "id": "mmv-7sdc6tu5z4",
       "tenantId": "ten-lari",
       "groupId": "mod-lari-laces",
       "optionId": "mod-lari-laces-o1",
@@ -3766,7 +3766,7 @@
     ],
     "customerEvents": [
      {
-      "id": "ev-szhk9lis3p",
+      "id": "ev-7sdcijepmt",
       "tenantId": "ten-lari",
       "customerId": "cus-lari-0235",
       "kind": "checkout_started",
@@ -3943,7 +3943,7 @@
     ],
     "customerEvents": [
      {
-      "id": "ev-szhqo0y701",
+      "id": "ev-7sdcebth98",
       "tenantId": "ten-lari",
       "customerId": "cus-golden",
       "kind": "purchase",
@@ -3955,7 +3955,7 @@
       "by": "storefront"
      },
      {
-      "id": "ev-szhq6soieh",
+      "id": "ev-7sdc9gq5eg",
       "tenantId": "ten-lari",
       "customerId": "cus-golden",
       "kind": "checkout_started",
@@ -3967,7 +3967,7 @@
       "by": "storefront"
      },
      {
-      "id": "ev-szhq6t4mup",
+      "id": "ev-7sdcqrlber",
       "tenantId": "ten-lari",
       "customerId": "cus-golden",
       "kind": "registered",
@@ -4106,7 +4106,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4161,7 +4161,7 @@
     ],
     "customerEvents": [
      {
-      "id": "ev-szi21wfp58",
+      "id": "ev-7sdckykib5",
       "tenantId": "ten-lari",
       "customerId": "cus-lari-0235",
       "kind": "purchase",
@@ -4208,14 +4208,14 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4279,21 +4279,21 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szi88l1kfc",
+        "id": "oev-7sdct5753q",
         "at": "2026-10-06T20:41:00+07:00",
         "by": "usr-budi",
         "status": "processing",
         "note": "Processing"
        },
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4357,28 +4357,28 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szier7o9xf",
+        "id": "oev-7sdclb4k9h",
         "at": "2026-10-06T21:41:00+07:00",
         "by": "usr-budi",
         "status": "packed",
         "note": "Packed"
        },
        {
-        "id": "oev-szi88l1kfc",
+        "id": "oev-7sdct5753q",
         "at": "2026-10-06T20:41:00+07:00",
         "by": "usr-budi",
         "status": "processing",
         "note": "Processing"
        },
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4422,7 +4422,7 @@
     ],
     "stockMoves": [
      {
-      "id": "mv-szika6fse1",
+      "id": "mv-7sdcvk48bt",
       "tenantId": "ten-lari",
       "variantId": "var-lr-118-1",
       "warehouseId": "wh-lari-ckr",
@@ -4468,35 +4468,35 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szik9by6m5",
+        "id": "oev-7sdcif6gl9",
         "at": "2026-10-06T22:41:00+07:00",
         "by": "usr-budi",
         "status": "shipped",
         "note": "Tracking GOLD123"
        },
        {
-        "id": "oev-szier7o9xf",
+        "id": "oev-7sdclb4k9h",
         "at": "2026-10-06T21:41:00+07:00",
         "by": "usr-budi",
         "status": "packed",
         "note": "Packed"
        },
        {
-        "id": "oev-szi88l1kfc",
+        "id": "oev-7sdct5753q",
         "at": "2026-10-06T20:41:00+07:00",
         "by": "usr-budi",
         "status": "processing",
         "note": "Processing"
        },
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4561,42 +4561,42 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-sziq7yn5g2",
+        "id": "oev-7sdcztmnxe",
         "at": "2026-10-06T23:41:00+07:00",
         "by": "usr-budi",
         "status": null,
         "note": "Golden note"
        },
        {
-        "id": "oev-szik9by6m5",
+        "id": "oev-7sdcif6gl9",
         "at": "2026-10-06T22:41:00+07:00",
         "by": "usr-budi",
         "status": "shipped",
         "note": "Tracking GOLD123"
        },
        {
-        "id": "oev-szier7o9xf",
+        "id": "oev-7sdclb4k9h",
         "at": "2026-10-06T21:41:00+07:00",
         "by": "usr-budi",
         "status": "packed",
         "note": "Packed"
        },
        {
-        "id": "oev-szi88l1kfc",
+        "id": "oev-7sdct5753q",
         "at": "2026-10-06T20:41:00+07:00",
         "by": "usr-budi",
         "status": "processing",
         "note": "Processing"
        },
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4675,49 +4675,49 @@
       "refundedAmount": 1000,
       "events": [
        {
-        "id": "oev-szj2lukv0v",
+        "id": "oev-7sdcq564ui",
         "at": "2026-10-07T01:41:00+07:00",
         "by": "usr-budi",
         "status": null,
         "note": "Refunded 1000 · Golden goodwill"
        },
        {
-        "id": "oev-sziq7yn5g2",
+        "id": "oev-7sdcztmnxe",
         "at": "2026-10-06T23:41:00+07:00",
         "by": "usr-budi",
         "status": null,
         "note": "Golden note"
        },
        {
-        "id": "oev-szik9by6m5",
+        "id": "oev-7sdcif6gl9",
         "at": "2026-10-06T22:41:00+07:00",
         "by": "usr-budi",
         "status": "shipped",
         "note": "Tracking GOLD123"
        },
        {
-        "id": "oev-szier7o9xf",
+        "id": "oev-7sdclb4k9h",
         "at": "2026-10-06T21:41:00+07:00",
         "by": "usr-budi",
         "status": "packed",
         "note": "Packed"
        },
        {
-        "id": "oev-szi88l1kfc",
+        "id": "oev-7sdct5753q",
         "at": "2026-10-06T20:41:00+07:00",
         "by": "usr-budi",
         "status": "processing",
         "note": "Processing"
        },
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4783,56 +4783,56 @@
       "refundedAmount": 276000,
       "events": [
        {
-        "id": "oev-szj8y0ef89",
+        "id": "oev-7sdcysq7ws",
         "at": "2026-10-07T02:41:00+07:00",
         "by": "usr-budi",
         "status": "refunded",
         "note": "Refunded 275000"
        },
        {
-        "id": "oev-szj2lukv0v",
+        "id": "oev-7sdcq564ui",
         "at": "2026-10-07T01:41:00+07:00",
         "by": "usr-budi",
         "status": null,
         "note": "Refunded 1000 · Golden goodwill"
        },
        {
-        "id": "oev-sziq7yn5g2",
+        "id": "oev-7sdcztmnxe",
         "at": "2026-10-06T23:41:00+07:00",
         "by": "usr-budi",
         "status": null,
         "note": "Golden note"
        },
        {
-        "id": "oev-szik9by6m5",
+        "id": "oev-7sdcif6gl9",
         "at": "2026-10-06T22:41:00+07:00",
         "by": "usr-budi",
         "status": "shipped",
         "note": "Tracking GOLD123"
        },
        {
-        "id": "oev-szier7o9xf",
+        "id": "oev-7sdclb4k9h",
         "at": "2026-10-06T21:41:00+07:00",
         "by": "usr-budi",
         "status": "packed",
         "note": "Packed"
        },
        {
-        "id": "oev-szi88l1kfc",
+        "id": "oev-7sdct5753q",
         "at": "2026-10-06T20:41:00+07:00",
         "by": "usr-budi",
         "status": "processing",
         "note": "Processing"
        },
        {
-        "id": "oev-szi2edoqvb",
+        "id": "oev-7sdck69jw1",
         "at": "2026-10-06T19:41:00+07:00",
         "by": "usr-budi",
         "status": "paid",
         "note": "Paid"
        },
        {
-        "id": "oev-szhws5tyo0",
+        "id": "oev-7sdc381xv7",
         "at": "2026-10-06T18:41:00+07:00",
         "by": "usr-budi",
         "status": "confirmed",
@@ -4910,7 +4910,7 @@
       "refundedAmount": 276000,
       "events": [
        {
-        "id": "oev-szjeo03bya",
+        "id": "oev-7sdcap1lt4",
         "at": "2026-10-07T03:41:00+07:00",
         "by": "usr-budi",
         "status": "cancelled",
@@ -5002,7 +5002,7 @@
     ],
     "customerEvents": [
      {
-      "id": "ev-szjkvt8vgz",
+      "id": "ev-7sdcfc5tsb",
       "tenantId": "ten-lari",
       "customerId": "cus-lari-0235",
       "kind": "checkout_started",
@@ -5120,7 +5120,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szjrivko70",
+        "id": "oev-7sdcwdqypn",
         "at": "2026-10-07T05:41:00+07:00",
         "by": "usr-budi",
         "status": "cancelled",
@@ -5206,7 +5206,7 @@
     ],
     "customerEvents": [
      {
-      "id": "ev-szjxhyxnh3",
+      "id": "ev-7sdcniab3x",
       "tenantId": "ten-lari",
       "customerId": "cus-lari-0235",
       "kind": "checkout_started",
@@ -5339,7 +5339,7 @@
    "upserts": {
     "customerEvents": [
      {
-      "id": "ev-szk9judiwv",
+      "id": "ev-7sdcwgdzet",
       "tenantId": "ten-lari",
       "customerId": "cus-lari-0235",
       "kind": "note",
@@ -5393,7 +5393,7 @@
     ],
     "customerEvents": [
      {
-      "id": "ev-szkftcfmgu",
+      "id": "ev-7sdcym5ae7",
       "tenantId": "ten-lari",
       "customerId": "cus-lari-0235",
       "kind": "points_earned",
@@ -6256,7 +6256,7 @@
       "scheduledAt": null,
       "revisions": [
        {
-        "id": "rev-sznbhx1nc4",
+        "id": "rev-7sdc5xguh6",
         "at": "2026-10-08T02:41:00+07:00",
         "by": "usr-maya",
         "note": "Golden edit",
@@ -6715,7 +6715,7 @@
       "scheduledAt": null,
       "revisions": [
        {
-        "id": "rev-szngexwa48",
+        "id": "rev-7sdcuvy99g",
         "at": "2026-10-08T03:41:00+07:00",
         "by": "usr-maya",
         "note": "Switched to Premium Editorial",
@@ -6793,7 +6793,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-sznbhx1nc4",
+        "id": "rev-7sdc5xguh6",
         "at": "2026-10-08T02:41:00+07:00",
         "by": "usr-maya",
         "note": "Golden edit",
@@ -7251,7 +7251,7 @@
       "scheduledAt": null,
       "revisions": [
        {
-        "id": "rev-szngexwa48",
+        "id": "rev-7sdcuvy99g",
         "at": "2026-10-08T03:41:00+07:00",
         "by": "usr-maya",
         "note": "Switched to Premium Editorial",
@@ -7329,7 +7329,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-sznbhx1nc4",
+        "id": "rev-7sdc5xguh6",
         "at": "2026-10-08T02:41:00+07:00",
         "by": "usr-maya",
         "note": "Golden edit",
@@ -7788,7 +7788,7 @@
       "scheduledAt": "2026-10-10T05:41:00+07:00",
       "revisions": [
        {
-        "id": "rev-szngexwa48",
+        "id": "rev-7sdcuvy99g",
         "at": "2026-10-08T03:41:00+07:00",
         "by": "usr-maya",
         "note": "Switched to Premium Editorial",
@@ -7866,7 +7866,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-sznbhx1nc4",
+        "id": "rev-7sdc5xguh6",
         "at": "2026-10-08T02:41:00+07:00",
         "by": "usr-maya",
         "note": "Golden edit",
@@ -8324,7 +8324,7 @@
       "scheduledAt": null,
       "revisions": [
        {
-        "id": "rev-sznz8riyks",
+        "id": "rev-7sdcwn9qn3",
         "at": "2026-10-08T06:41:00+07:00",
         "by": "usr-maya",
         "note": "Published",
@@ -8402,7 +8402,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-szngexwa48",
+        "id": "rev-7sdcuvy99g",
         "at": "2026-10-08T03:41:00+07:00",
         "by": "usr-maya",
         "note": "Switched to Premium Editorial",
@@ -8480,7 +8480,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-sznbhx1nc4",
+        "id": "rev-7sdc5xguh6",
         "at": "2026-10-08T02:41:00+07:00",
         "by": "usr-maya",
         "note": "Golden edit",
@@ -8949,7 +8949,7 @@
       "scheduledAt": null,
       "revisions": [
        {
-        "id": "rev-szo5u6vm4d",
+        "id": "rev-7sdcal230v",
         "at": "2026-10-08T07:41:00+07:00",
         "by": "usr-maya",
         "note": "Rolled back to published",
@@ -9037,7 +9037,7 @@
         "templateId": "tpl-minimal"
        },
        {
-        "id": "rev-sznz8riyks",
+        "id": "rev-7sdcwn9qn3",
         "at": "2026-10-08T06:41:00+07:00",
         "by": "usr-maya",
         "note": "Published",
@@ -9115,7 +9115,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-szngexwa48",
+        "id": "rev-7sdcuvy99g",
         "at": "2026-10-08T03:41:00+07:00",
         "by": "usr-maya",
         "note": "Switched to Premium Editorial",
@@ -9193,7 +9193,7 @@
         "templateId": "tpl-editorial"
        },
        {
-        "id": "rev-sznbhx1nc4",
+        "id": "rev-7sdc5xguh6",
         "at": "2026-10-08T02:41:00+07:00",
         "by": "usr-maya",
         "note": "Golden edit",
@@ -10121,7 +10121,7 @@
       "scheduledAt": null,
       "revisions": [
        {
-        "id": "rev-szon873c2l",
+        "id": "rev-7sdcxpddq2",
         "at": "2026-10-08T10:41:00+07:00",
         "by": "usr-andi",
         "note": "Created from template",
@@ -10627,7 +10627,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szph4afxwd",
+        "id": "oev-7sdcexdno2",
         "at": "2026-10-09T21:41:00+07:00",
         "by": "system",
         "status": "cancelled",
@@ -10688,7 +10688,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szph0vx8af",
+        "id": "oev-7sdcb3rcv0",
         "at": "2026-10-09T21:41:00+07:00",
         "by": "system",
         "status": "cancelled",
@@ -10746,7 +10746,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szphezi73z",
+        "id": "oev-7sdcijaud1",
         "at": "2026-10-09T21:41:00+07:00",
         "by": "system",
         "status": "cancelled",
@@ -10795,7 +10795,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szphv1c04r",
+        "id": "oev-7sdce8h659",
         "at": "2026-10-09T21:41:00+07:00",
         "by": "system",
         "status": "cancelled",
@@ -10844,7 +10844,7 @@
       "refundedAmount": 0,
       "events": [
        {
-        "id": "oev-szphukwqol",
+        "id": "oev-7sdcsfk6qi",
         "at": "2026-10-09T21:41:00+07:00",
         "by": "system",
         "status": "cancelled",
