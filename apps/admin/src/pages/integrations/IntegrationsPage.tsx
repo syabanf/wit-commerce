@@ -6,29 +6,32 @@ import {
   Banner,
   Button,
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
   type Column,
-  ConfirmDialog,
+  Combobox,
   DataTable,
   EmptyState,
-  FormField,
+  FilterChips,
   IconTile,
-  Input,
+  NativeSelect,
+  NoMatch,
   PageHeader,
   PillTabs,
   Switch,
+  TableFilters,
   cn,
+  countBy,
+  matchesQuery,
   toast,
 } from '@rc/ui'
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Building2,
-  Copy,
   CreditCard,
+  KeyRound,
   MessageCircle,
   RefreshCw,
   Store,
@@ -38,9 +41,11 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { HEALTH_TONE, HealthBadge } from '../../components/badges'
+import { HTTP } from '../../lib/api'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
-import { CATEGORY_ORDER, SYNC_DELAY_MS, WEBHOOK_EVENTS, apiBaseUrl } from './lib'
+import { ConnectorDialog } from './ConnectorDialog'
+import { CATEGORY_ORDER, SYNC_DELAY_MS } from './lib'
 
 const CATEGORY_ICON: Record<IntegrationCategory, ReactNode> = {
   payment: <CreditCard />,
@@ -51,6 +56,17 @@ const CATEGORY_ICON: Record<IntegrationCategory, ReactNode> = {
 }
 
 type Filter = IntegrationCategory | 'all'
+
+type LogResult = 'failed' | 'ok'
+const resultOf = (l: IntegrationLog): LogResult => (l.ok ? 'ok' : 'failed')
+const LOG_RESULTS: { value: LogResult; label: string }[] = [
+  { value: 'failed', label: 'Failed' },
+  { value: 'ok', label: 'Succeeded' },
+]
+const DIRECTION_OPTIONS = [
+  { value: 'inbound', label: 'Inbound' },
+  { value: 'outbound', label: 'Outbound' },
+]
 
 export function IntegrationsPage() {
   const s = useScoped()
@@ -75,6 +91,39 @@ export function IntegrationsPage() {
     () => [...s.integrationLogs].sort((a, b) => toMs(b.at) - toMs(a.at)),
     [s.integrationLogs],
   )
+
+  const [logQuery, setLogQuery] = useHistoryState('log.q', '')
+  const [logResult, setLogResult] = useHistoryState<LogResult | null>('log.result', null)
+  const [logDirection, setLogDirection] = useHistoryState<IntegrationLog['direction'] | ''>(
+    'log.direction',
+    '',
+  )
+  const [logIntegrationId, setLogIntegrationId] = useHistoryState<string | null>('log.integration', null)
+  const logBase = useMemo(
+    () =>
+      logs.filter(
+        (l) =>
+          (!logDirection || l.direction === logDirection) &&
+          (!logIntegrationId || l.integrationId === logIntegrationId) &&
+          matchesQuery(
+            logQuery,
+            s.maps.integration.get(l.integrationId)?.provider,
+            l.event,
+            l.path,
+            l.summary,
+          ),
+      ),
+    [logs, logDirection, logIntegrationId, logQuery, s.maps.integration],
+  )
+  const logRows = logResult ? logBase.filter((l) => resultOf(l) === logResult) : logBase
+  const logPickers = (logDirection ? 1 : 0) + (logIntegrationId ? 1 : 0)
+  const logFilters = logPickers + (logQuery.trim() ? 1 : 0) + (logResult ? 1 : 0)
+  const clearLogFilters = () => {
+    setLogQuery('')
+    setLogResult(null)
+    setLogDirection('')
+    setLogIntegrationId(null)
+  }
 
   useEffect(() => {
     if (!focusId) return
@@ -227,25 +276,71 @@ export function IntegrationsPage() {
               Requests between Commerce OS and connected systems, newest first.
             </CardDescription>
           </CardHeader>
+          <TableFilters
+            query={logQuery}
+            onQueryChange={setLogQuery}
+            searchPlaceholder="Provider, event, path or summary"
+            searchLabel="Search the request log"
+            shown={logRows.length}
+            total={logs.length}
+            activeCount={logFilters}
+            onClear={clearLogFilters}
+            activePickers={logPickers}
+            chips={
+              <FilterChips
+                options={LOG_RESULTS}
+                value={logResult}
+                onChange={setLogResult}
+                counts={countBy(logBase, resultOf)}
+                total={logBase.length}
+              />
+            }
+            pickers={
+              <>
+                <NativeSelect
+                  variant="inline"
+                  aria-label="Filter by direction"
+                  placeholder="Any direction"
+                  options={DIRECTION_OPTIONS}
+                  value={logDirection}
+                  onChange={(e) => setLogDirection(e.target.value as IntegrationLog['direction'] | '')}
+                />
+                <Combobox
+                  variant="inline"
+                  clearable
+                  aria-label="Filter by provider"
+                  placeholder="Any provider"
+                  items={integrations}
+                  getKey={(i) => i.id}
+                  getLabel={(i) => i.provider}
+                  value={logIntegrationId}
+                  onChange={setLogIntegrationId}
+                />
+              </>
+            }
+          />
           <DataTable
             columns={columns}
-            rows={logs}
+            rows={logRows}
             getRowKey={(l) => l.id}
             pageSize={10}
             initialSort={{ id: 'at', desc: true }}
             rowClassName={(l) => (l.ok ? undefined : 'bg-accent-soft/40')}
+            resetPageKey={`${logQuery}|${logResult}|${logDirection}|${logIntegrationId}`}
             empty={
-              <EmptyState
-                compact
-                title="No requests yet"
-                description="Lines appear as connected systems send and receive events."
-              />
+              logFilters ? (
+                <NoMatch title="No requests match" onClear={clearLogFilters} />
+              ) : (
+                <EmptyState
+                  compact
+                  title="No requests yet"
+                  description="Lines appear as connected systems send and receive events."
+                />
+              )
             }
             {...table}
           />
         </Card>
-
-        <DeveloperCard manage={manage} />
       </div>
     </>
   )
@@ -268,6 +363,7 @@ function ConnectionCard({
   onToggle: () => void
   onSync: () => void
 }) {
+  const [editing, setEditing] = useState(false)
   return (
     <Card id={`integration-${i.id}`} className={cn('p-5 flex flex-col', focused && 'ring-2 ring-accent')}>
       <div className="gap-3 flex items-start justify-between">
@@ -328,6 +424,16 @@ function ConnectionCard({
             <Button
               variant="outline"
               size="sm"
+              disabled={!HTTP}
+              title={HTTP ? undefined : 'Connector credentials need the API. Set VITE_API_URL.'}
+              onClick={() => setEditing(true)}
+            >
+              <KeyRound />
+              Credentials
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               loading={syncing}
               disabled={!i.enabled}
               title={i.enabled ? undefined : `Turn ${i.provider} on to sync it.`}
@@ -339,102 +445,7 @@ function ConnectionCard({
           </div>
         </div>
       )}
-    </Card>
-  )
-}
-
-function DeveloperCard({ manage }: { manage: boolean }) {
-  const { tenant } = useScoped()
-  const [rotating, setRotating] = useState(false)
-  const baseUrl = apiBaseUrl(tenant)
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(baseUrl)
-      toast('Copied the API base URL', { description: baseUrl })
-    } catch {
-      toast('Could not copy the URL', {
-        tone: 'danger',
-        description: 'Select the address and copy it by hand.',
-      })
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Developer access</CardTitle>
-        <CardDescription>
-          REST API and webhooks for systems this console does not connect out of the box.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="gap-4 lg:grid-cols-2 grid grid-cols-1">
-          <FormField label="REST base URL" hint="Send the API key as a bearer token on every request.">
-            <div className="gap-2 flex items-center">
-              <Input
-                readOnly
-                value={baseUrl}
-                inputClassName="bg-surface font-mono text-xs"
-                onFocus={(e) => e.currentTarget.select()}
-              />
-              <Button variant="outline" size="icon" aria-label="Copy the base URL" onClick={copy}>
-                <Copy />
-              </Button>
-            </div>
-          </FormField>
-          <FormField
-            label="API key"
-            hint="A key is stored. It is shown once, when it is created, and never comes back to this page."
-          >
-            <div className="gap-2 flex flex-wrap items-center">
-              <Input
-                type="password"
-                value=""
-                readOnly
-                placeholder="••••••••••••••••"
-                aria-readonly="true"
-                className="min-w-0 flex-1"
-              />
-              {manage && (
-                <Button variant="outline" onClick={() => setRotating(true)}>
-                  Rotate key
-                </Button>
-              )}
-            </div>
-          </FormField>
-        </div>
-        <div>
-          <p className="text-sm font-medium">Webhook events</p>
-          <p className="mt-0.5 text-xs text-muted">
-            Subscribe an endpoint to any of these events. Each delivery is signed and retried for 24 hours.
-          </p>
-          <ul className="mt-3 gap-2 flex flex-wrap">
-            {WEBHOOK_EVENTS.map((e) => (
-              <li
-                key={e}
-                className="h-8 px-3 text-xs font-semibold inline-flex items-center rounded-full bg-surface-2 font-mono"
-              >
-                {e}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </CardContent>
-      <ConfirmDialog
-        open={rotating}
-        onOpenChange={setRotating}
-        title={`Rotate the ${tenant.code} API key?`}
-        description="The current key stops working at once. Systems that use it fail until you paste the new key into them."
-        confirmLabel="Rotate key"
-        destructive
-        onConfirm={() => {
-          setRotating(false)
-          toast('API key rotated', {
-            description: `${tenant.name} · the new key was emailed to the tenant admins.`,
-          })
-        }}
-      />
+      {editing && <ConnectorDialog integration={i} onClose={() => setEditing(false)} />}
     </Card>
   )
 }

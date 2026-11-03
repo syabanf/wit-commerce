@@ -99,7 +99,13 @@ export function useScoped() {
       maps,
       /** "Andi Pratama", "System" for jobs, "Unassigned" for null. */
       userName: (id: string | null | undefined) =>
-        id === 'system' ? 'System' : id ? (maps.user.get(id)?.name ?? 'Unknown') : 'Unassigned',
+        id === 'system'
+          ? 'System'
+          : id?.startsWith('cred-')
+            ? 'API credential'
+            : id
+              ? (maps.user.get(id)?.name ?? 'Unknown')
+              : 'Unassigned',
       productName: (id: string | null | undefined) =>
         id ? (maps.product.get(id)?.name ?? 'Removed product') : 'None',
       categoryName: (id: string | null | undefined) =>

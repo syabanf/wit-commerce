@@ -15,7 +15,12 @@
     "lint": "eslint .",
     "test": "tsx --test packages/fixtures/test/*.test.ts",
     "format": "prettier --write .",
-    "gen:fixtures": "tsx scripts/generate-fixtures.ts"
+    "gen:fixtures": "tsx scripts/generate-fixtures.ts",
+    "dev:api": "pnpm --filter @rc/server dev",
+    "test:api": "pnpm --filter @rc/server test",
+    "gen:golden": "tsx scripts/api-golden.ts",
+    "db:up": "docker compose up -d postgres",
+    "gen:openapi": "cd apps/api && go run ./cmd/api -openapi > openapi.json"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

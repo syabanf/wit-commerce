@@ -6,3 +6,6 @@ dist-root
 *.log
 .DS_Store
 reports/pengembangan/
+.env
+.env.local
+.env.production

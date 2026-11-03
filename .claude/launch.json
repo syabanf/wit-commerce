@@ -30,6 +30,70 @@
         "dev"
       ],
       "port": 5375
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "go",
+      "runtimeArgs": [
+        "run",
+        "./cmd/api"
+      ],
+      "cwd": "apps/api",
+      "port": 8787,
+      "env": {
+        "DATABASE_URL": "postgres://commerce:commerce@localhost:5433/commerce?sslmode=disable",
+        "JWT_SECRET": "local-dev-secret-change-me-please-0123456789",
+        "ALLOWED_ORIGINS": "http://localhost:5373,http://localhost:5374,http://localhost:5375,http://localhost:5376",
+        "WEBHOOK_ALLOW_INTERNAL": "true"
+      }
+    },
+    {
+      "name": "admin-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@rc/admin",
+        "exec",
+        "vite",
+        "--port",
+        "5373",
+        "--strictPort",
+        "--mode",
+        "api"
+      ],
+      "port": 5373
+    },
+    {
+      "name": "mobile-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@rc/mobile",
+        "exec",
+        "vite",
+        "--port",
+        "5374",
+        "--strictPort",
+        "--mode",
+        "api"
+      ],
+      "port": 5374
+    },
+    {
+      "name": "storefront-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@rc/storefront",
+        "exec",
+        "vite",
+        "--port",
+        "5375",
+        "--strictPort",
+        "--mode",
+        "api"
+      ],
+      "port": 5375
     }
   ]
 }

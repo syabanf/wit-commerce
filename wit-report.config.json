@@ -17,6 +17,10 @@
       "cmd": "pnpm test"
     },
     {
+      "name": "Tes API (Go)",
+      "cmd": "TEST_DATABASE_URL=postgres://commerce:commerce@localhost:5433/commerce_test?sslmode=disable pnpm test:api"
+    },
+    {
       "name": "Build",
       "cmd": "pnpm build"
     }
@@ -218,6 +222,11 @@
       "app": "admin",
       "path": "/integrations",
       "name": "Integration hub"
+    },
+    {
+      "app": "admin",
+      "path": "/integrations/credentials",
+      "name": "API credentials dan akses developer"
     },
     {
       "app": "admin",

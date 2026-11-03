@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '../lib/cn'
 import { IconTile, type Tone } from './icon-tile'
+import { CountUp } from './motion'
 
 export type StatCardProps = {
   label: ReactNode
@@ -32,7 +33,7 @@ export function StatCard({
           <div className="font-semibold text-[0.8125rem] text-body/80">{label}</div>
           <div className="mt-1.5 gap-1 flex items-start">
             <span className="font-extrabold truncate text-[1.75rem] leading-[1.15] tracking-[-0.5px]">
-              {value}
+              {typeof value === 'number' && Number.isInteger(value) ? <CountUp value={value} /> : value}
             </span>
             {unit !== undefined && (
               <span className="pt-1.5 text-sm font-semibold shrink-0 text-muted">{unit}</span>
@@ -48,13 +49,20 @@ export function StatCard({
 
   const classes = cn('flex flex-col rounded-card bg-card p-5 text-left shadow-card', className)
 
-  if (!onClick) return <div className={classes}>{body}</div>
+  if (!onClick)
+    return (
+      <div data-motion="rise" className={classes}>
+        {body}
+      </div>
+    )
   return (
     <button
       type="button"
+      data-motion="rise"
       onClick={onClick}
       className={cn(
-        'w-full transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none active:scale-[0.98]',
+        // A fine pointer lifts the tile 4px; touch keeps the press scale only.
+        '[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 w-full transition-[color,background-color,translate,scale] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none active:scale-[0.98]',
         classes,
       )}
     >

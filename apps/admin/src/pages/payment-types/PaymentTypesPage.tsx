@@ -6,24 +6,47 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  ChipRow,
   type Column,
   DataTable,
   EmptyState,
+  FilterChips,
+  Input,
+  NoMatch,
   PageHeader,
   StatCard,
   Switch,
+  countBy,
+  matchesQuery,
   toast,
 } from '@rc/ui'
-import { ArrowDown, ArrowUp, CreditCard, Landmark, Pencil, Plus, Receipt, TicketPercent } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  CreditCard,
+  Landmark,
+  Pencil,
+  Plus,
+  Receipt,
+  Search,
+  TicketPercent,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { PromotionStatusBadge } from '../../components/badges'
 import { paths } from '../../components/links'
-import { useTableHistory } from '../../lib/history-state'
+import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { PaymentTypeDialog } from './PaymentTypeDialog'
 import { SAMPLE_ORDER, feeLabel, limitsLabel } from './lib'
+
+type OnState = 'on' | 'off'
+const onState = (t: PaymentType): OnState => (t.enabled ? 'on' : 'off')
+const ON_STATES: { value: OnState; label: string }[] = [
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+]
 
 export function PaymentTypesPage() {
   const s = useScoped()
@@ -35,6 +58,18 @@ export function PaymentTypesPage() {
   const table = useTableHistory()
 
   const types = s.paymentTypes
+  const [query, setQuery] = useHistoryState('types.q', '')
+  const [state, setState] = useHistoryState<OnState | null>('types.state', null)
+  const searched = useMemo(
+    () => types.filter((t) => matchesQuery(query, t.name, t.provider, PAYMENT_METHOD_LABEL[t.method])),
+    [types, query],
+  )
+  const rows = state ? searched.filter((t) => onState(t) === state) : searched
+  const activeCount = (query.trim() ? 1 : 0) + (state ? 1 : 0)
+  const clear = () => {
+    setQuery('')
+    setState(null)
+  }
   const paymentName = (id: string) => s.maps.paymentType.get(id)?.name ?? 'a removed payment type'
   const offers = useMemo(
     () => s.promotions.filter((p) => p.paymentTypeIds.length > 0 && p.status !== 'expired'),
@@ -93,7 +128,8 @@ export function PaymentTypesPage() {
   }
 
   const columns: Column<PaymentType>[] = [
-    ...(manage
+    // The arrows move a type within the full checkout order, so they only show on the unfiltered list.
+    ...(manage && !activeCount
       ? [
           {
             id: '_order',
@@ -219,12 +255,24 @@ export function PaymentTypesPage() {
         title="Payment types"
         description="The ways shoppers can pay at checkout, with each gateway's fee and limits."
         actions={
-          manage && (
-            <Button onClick={() => openDialog(null)}>
-              <Plus />
-              New payment type
-            </Button>
-          )
+          <>
+            <Input
+              variant="pill"
+              type="search"
+              aria-label="Search payment types"
+              leftIcon={<Search />}
+              placeholder="Search name, provider or method"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="min-w-0 sm:w-72 sm:flex-none flex-1"
+            />
+            {manage && (
+              <Button onClick={() => openDialog(null)}>
+                <Plus />
+                New payment type
+              </Button>
+            )}
+          </>
         }
       />
       <div className="space-y-4">
@@ -267,23 +315,39 @@ export function PaymentTypesPage() {
             tone={offers.length ? 'success' : 'default'}
           />
         </div>
+        <ChipRow className="max-w-full">
+          <FilterChips
+            variant="filter"
+            options={ON_STATES}
+            value={state}
+            onChange={setState}
+            counts={countBy(searched, onState)}
+            total={searched.length}
+          />
+        </ChipRow>
         <DataTable
           columns={columns}
-          rows={types}
+          rows={rows}
           getRowKey={(t) => t.id}
           onRowClick={manage ? openDialog : undefined}
           pageSize={0}
           empty={
-            <EmptyState
-              compact
-              title="No payment types yet"
-              description="Add at least one so shoppers can check out."
-            />
+            activeCount ? (
+              <NoMatch title="No payment types match" onClear={clear} />
+            ) : (
+              <EmptyState
+                compact
+                title="No payment types yet"
+                description="Add at least one so shoppers can check out."
+              />
+            )
           }
           {...table}
         />
         <p className="text-xs text-muted">
-          Shoppers see the payment types in this order. Use the arrows to move one up or down.
+          {activeCount && manage
+            ? 'Clear the filters to change the order shoppers see.'
+            : 'Shoppers see the payment types in this order. Use the arrows to move one up or down.'}
         </p>
 
         <Card>

@@ -23,6 +23,7 @@ import {
   PageHeader,
   StatCard,
   cn,
+  matchesQuery,
   toast,
 } from '@rc/ui'
 import { CalendarClock, MousePointerClick, Plus, Rocket, Search, Wallet } from 'lucide-react'
@@ -87,14 +88,12 @@ export function CampaignsPage() {
     }
   }, [s.orders, s.campaigns, now])
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return s.campaigns.filter((c) => {
-      if (status && c.status !== status) return false
-      if (!q) return true
-      return `${c.code} ${c.name} ${c.goal} ${s.segmentName(c.segmentId)}`.toLowerCase().includes(q)
-    })
-  }, [s, query, status])
+  // Search first, so the status chip counts reflect it.
+  const searched = useMemo(
+    () => s.campaigns.filter((c) => matchesQuery(query, c.code, c.name, c.goal, s.segmentName(c.segmentId))),
+    [s, query],
+  )
+  const rows = status ? searched.filter((c) => c.status === status) : searched
 
   const columns: Column<Campaign>[] = [
     {
@@ -286,11 +285,11 @@ export function CampaignsPage() {
           />
         </div>
         <ChipRow className="max-w-full">
-          <Chip variant="filter" active={!status} count={s.campaigns.length} onClick={() => setStatus(null)}>
+          <Chip variant="filter" active={!status} count={searched.length} onClick={() => setStatus(null)}>
             All
           </Chip>
           {STATUSES.map((st) => {
-            const count = s.campaigns.filter((c) => c.status === st).length
+            const count = searched.filter((c) => c.status === st).length
             if (!count && status !== st) return null
             return (
               <Chip

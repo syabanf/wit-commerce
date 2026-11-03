@@ -116,7 +116,7 @@ export function SideRail({
                   label={item.label}
                   badge={item.badge ? counts[item.badge] : 0}
                 >
-                  <NavLink to={item.to} />
+                  <NavLink to={item.to} end={item.to === '/integrations'} />
                 </RailItem>
               ))}
           </Fragment>

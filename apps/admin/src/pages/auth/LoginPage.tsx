@@ -1,10 +1,12 @@
+import type { Tenant, User } from '@rc/types'
 import { ROLE_LABEL } from '@rc/types'
 import { Avatar, Button, Card, FormField, Input } from '@rc/ui'
 import { ArrowRight, Lock, Mail, Palette, ShoppingBag, UsersRound } from 'lucide-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { LogoMark } from '../../layouts/LogoMark'
+import { DEMO_PASSWORD, HTTP, api } from '../../lib/api'
 import { useStore } from '../../state/store'
 
 const PILLARS = [
@@ -28,34 +30,61 @@ const PILLARS = [
 const GLOW =
   'radial-gradient(40% 40% at 70% 30%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%)' // wit-allow: ambient canvas glow, layouts.md
 
-export function LoginPage() {
+/** The accounts the page offers: the dataset's users, or the API's demo list before anyone signs in. */
+function useAccounts(): { users: User[]; tenants: Tenant[] } {
   const { state } = useStore()
-  const { user, signIn } = useAuth()
+  const [remote, setRemote] = useState<{ users: User[]; tenants: Tenant[] } | null>(null)
+  useEffect(() => {
+    if (!HTTP) return
+    api
+      .demoAccounts()
+      .then(({ users, tenants }) => setRemote({ users, tenants }))
+      .catch(() => setRemote({ users: [], tenants: [] }))
+  }, [])
+  return HTTP ? (remote ?? { users: [], tenants: [] }) : state
+}
+
+export function LoginPage() {
+  const { users, tenants } = useAccounts()
+  const { user, loading, signIn, signInWithPassword } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   const from = (location.state as { from?: string } | null)?.from ?? '/'
-  if (user) return <Navigate to={from} replace />
+  if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-dvh bg-surface" />
 
-  const enter = (userId: string) => {
-    signIn(userId)
-    navigate(from, { replace: true })
+  const enter = async (candidate: User, pass: string) => {
+    if (!HTTP) {
+      signIn(candidate.id)
+      navigate(from, { replace: true })
+      return
+    }
+    setBusy(true)
+    const failed = await signInWithPassword(candidate.email, pass)
+    setBusy(false)
+    if (failed) setError(failed)
+    else navigate(from, { replace: true })
   }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    const match = state.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
+    const match = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())
     if (!match || !password) {
-      setError('Use one of the demo accounts below. Any password works.')
+      setError(
+        HTTP
+          ? 'Enter a demo account email and the demo password.'
+          : 'Use one of the demo accounts below. Any password works.',
+      )
       return
     }
-    enter(match.id)
+    void enter(match, password)
   }
 
   const tenantNames = (ids: string[]) =>
-    ids.length > 1 ? `${ids.length} brands` : (state.tenants.find((t) => t.id === ids[0])?.name ?? '')
+    ids.length > 1 ? `${ids.length} brands` : (tenants.find((t) => t.id === ids[0])?.name ?? '')
 
   return (
     <div className="px-4 py-8 sm:py-12 relative min-h-dvh overflow-hidden bg-surface">
@@ -128,12 +157,12 @@ export function LoginPage() {
                 autoComplete="current-password"
                 leftIcon={<Lock />}
                 inputClassName="h-12"
-                placeholder="Any password"
+                placeholder={HTTP ? 'The demo password' : 'Any password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </FormField>
-            <Button type="submit" size="lg" className="w-full">
+            <Button type="submit" size="lg" className="w-full" loading={busy}>
               Sign in
               <ArrowRight />
             </Button>
@@ -143,11 +172,12 @@ export function LoginPage() {
             Demo accounts
           </p>
           <div className="gap-2 sm:grid-cols-2 grid grid-cols-1">
-            {state.users.map((u) => (
+            {users.map((u) => (
               <button
                 key={u.id}
                 type="button"
-                onClick={() => enter(u.id)}
+                disabled={busy}
+                onClick={() => void enter(u, DEMO_PASSWORD)}
                 className="gap-3 rounded-2xl p-3 flex items-center bg-surface-2 text-left transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none active:scale-[0.98]"
               >
                 <Avatar name={u.name} color={u.color} size="md" />

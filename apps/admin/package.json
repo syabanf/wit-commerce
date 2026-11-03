@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@rc/api": "workspace:*",
     "@rc/fixtures": "workspace:*",
     "@rc/tailwind-config": "workspace:*",
     "@rc/types": "workspace:*",

@@ -15,9 +15,9 @@ import { CAMPAIGN_SPECS } from './growth-specs.ts'
 import { NOW, isoDaysAgo } from './master.ts'
 import { rng } from './rng.ts'
 
-const seg = (s: Omit<Segment, 'createdAt'> & { daysAgo?: number }): Segment => ({
+const seg = ({ daysAgo, ...s }: Omit<Segment, 'createdAt'> & { daysAgo?: number }): Segment => ({
   ...s,
-  createdAt: isoDaysAgo(s.daysAgo ?? 180),
+  createdAt: isoDaysAgo(daysAgo ?? 180),
 })
 
 export const segments: Segment[] = [

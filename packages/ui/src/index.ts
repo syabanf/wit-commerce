@@ -4,6 +4,9 @@ export { AVATAR_PALETTE } from './lib/palette'
 export { useMediaQuery, useIsPhone } from './lib/use-media-query'
 export { useElementSize } from './lib/use-element-size'
 export { useLazyList, type LazyList } from './lib/use-lazy-list'
+export { matchesQuery, countBy } from './lib/table-filter'
+export { prefersReducedMotion } from './lib/motion'
+export { Entrance, CountUp, useMagnetic } from './components/motion'
 export { LazySentinel, type LazySentinelProps } from './components/lazy-sentinel'
 
 // primitives
@@ -47,6 +50,13 @@ export { SignaturePad, type SignaturePadProps } from './components/signature-pad
 // navigation and filters
 export { PillTabs, UnderlineTabs, SegmentedTabs, type TabItem, type TabsProps } from './components/tabs'
 export { Chip, ChipRow, type ChipProps } from './components/chip'
+export {
+  TableFilters,
+  FilterChips,
+  NoMatch,
+  type TableFiltersProps,
+  type FilterChipsProps,
+} from './components/table-filters'
 export { Steps, type StepsProps, type StepState } from './components/steps'
 
 // data display

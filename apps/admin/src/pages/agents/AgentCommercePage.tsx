@@ -10,12 +10,14 @@ import {
   CardHeader,
   CardTitle,
   Chip,
-  ChipRow,
   type Column,
   DataTable,
   EmptyState,
+  NoMatch,
   PageHeader,
   StatCard,
+  TableFilters,
+  matchesQuery,
   toast,
 } from '@rc/ui'
 import { Bot, HandCoins, Pencil, Scale, Wallet } from 'lucide-react'
@@ -85,8 +87,17 @@ export function AgentCommercePage() {
     }
   }, [s.orders, s.traffic, now])
 
+  const [query, setQuery] = useHistoryState('agentQuery', '')
+  const searched = d.agent.filter((o) =>
+    matchesQuery(query, o.code, s.customerName(o.customerId), o.agent.intent, AGENT_KIND_LABEL[o.agent.kind]),
+  )
   const test = FILTERS.find((f) => f.value === filter)?.test ?? (() => true)
-  const rows = d.agent.filter(test)
+  const rows = searched.filter(test)
+  const activeCount = (query.trim() ? 1 : 0) + (filter === 'all' ? 0 : 1)
+  const clear = () => {
+    setQuery('')
+    setFilter('all')
+  }
 
   const columns: Column<AgentOrder>[] = [
     {
@@ -236,38 +247,45 @@ export function AgentCommercePage() {
             <CardTitle>Agent orders</CardTitle>
             <p className="text-sm text-muted">Placed by buying agents in the last {DAYS} days.</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <ChipRow aria-label="Filter agent orders">
-              {FILTERS.map((f) => (
-                <Chip
-                  key={f.value}
-                  variant="filter"
-                  active={filter === f.value}
-                  count={d.agent.filter(f.test).length}
-                  onClick={() => setFilter(f.value)}
-                >
-                  {f.label}
-                </Chip>
-              ))}
-            </ChipRow>
+          <TableFilters
+            query={query}
+            onQueryChange={setQuery}
+            searchPlaceholder="Order, customer or intent"
+            searchLabel="Search agent orders"
+            shown={rows.length}
+            total={d.agent.length}
+            activeCount={activeCount}
+            onClear={clear}
+            chips={FILTERS.map((f) => (
+              <Chip
+                key={f.value}
+                active={filter === f.value}
+                count={searched.filter(f.test).length}
+                onClick={() => setFilter(filter === f.value ? 'all' : f.value)}
+              >
+                {f.label}
+              </Chip>
+            ))}
+          />
+          <CardContent>
             <DataTable
               columns={columns}
               rows={rows}
               getRowKey={(o) => o.id}
               onRowClick={(o) => navigate(paths.order(o.id))}
-              resetPageKey={filter}
+              resetPageKey={`${query}|${filter}`}
               pageSize={10}
               initialSort={{ id: 'placed', desc: true }}
               empty={
-                <EmptyState
-                  compact
-                  title={d.agent.length ? 'No agent orders match' : 'No agent orders yet'}
-                  description={
-                    d.agent.length
-                      ? 'Pick All to see every agent order.'
-                      : 'Orders a buying agent places for a shopper appear here.'
-                  }
-                />
+                activeCount ? (
+                  <NoMatch title="No agent orders match" onClear={clear} />
+                ) : (
+                  <EmptyState
+                    compact
+                    title="No agent orders yet"
+                    description="Orders a buying agent places for a shopper appear here."
+                  />
+                )
               }
               {...table}
             />

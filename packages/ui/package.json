@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
@@ -11,6 +13,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "gsap": "^3.15.0",
     "lucide-react": "^1.47.0",
     "radix-ui": "^1.6.7",
     "tailwind-merge": "^3.7.0"

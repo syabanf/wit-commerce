@@ -1,0 +1,12 @@
+{
+  "name": "@rc/server",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "go run ./cmd/api",
+    "build": "go build -o dist/api ./cmd/api",
+    "typecheck": "go vet ./...",
+    "test": "go test -p 1 ./...",
+    "reset": "go run ./cmd/api -reset -exit"
+  }
+}

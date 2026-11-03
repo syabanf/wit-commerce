@@ -1,8 +1,9 @@
-import { Children, isValidElement, type ComponentProps, type ReactNode } from 'react'
+import { Children, isValidElement, type ComponentProps, type ReactNode, useCallback } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { LoaderCircle } from 'lucide-react'
 import { Slot } from 'radix-ui'
 import { cn } from '../lib/cn'
+import { useMagnetic } from './motion'
 
 export const buttonVariants = cva(
   'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0',
@@ -56,18 +57,40 @@ export function Button({
   loading = false,
   disabled,
   children,
+  ref,
   ...props
 }: ButtonProps) {
   const classes = cn(buttonVariants({ variant, size }), className)
+  // The primary call to action follows a fine pointer; small buttons in rows and toolbars stay put.
+  const magneticRef = useMagnetic((variant ?? 'primary') === 'primary' && size !== 'sm' && !asChild)
+  const setRef = useCallback(
+    (el: HTMLButtonElement | null) => {
+      const release = magneticRef(el)
+      if (typeof ref === 'function') ref(el)
+      else if (ref) ref.current = el
+      return () => {
+        release?.()
+        if (typeof ref === 'function') ref(null)
+        else if (ref) ref.current = null
+      }
+    },
+    [ref, magneticRef],
+  )
   if (asChild) {
     return (
-      <Slot.Root className={classes} {...props}>
+      <Slot.Root ref={ref} className={classes} {...props}>
         {children}
       </Slot.Root>
     )
   }
   return (
-    <button className={classes} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
+    <button
+      ref={setRef}
+      className={classes}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
       {loading ? withSpinner(children) : children}
     </button>
   )

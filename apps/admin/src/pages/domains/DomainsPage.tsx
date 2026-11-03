@@ -11,13 +11,19 @@ import {
   type Column,
   DataTable,
   EmptyState,
+  FilterChips,
   IconTile,
+  NoMatch,
   PageHeader,
+  TableFilters,
+  countBy,
+  matchesQuery,
   toast,
 } from '@rc/ui'
 import { ArrowRight, Copy, FileCode, Globe, Link2, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { PageStatusBadge } from '../../components/badges'
+import { useHistoryState } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { DESCRIPTION_MAX, REDIRECTS, TITLE_MAX, dnsRecords, platformHost, primaryHost, seoFlags } from './lib'
 
@@ -26,11 +32,27 @@ const copy = (text: string) => {
   toast('Link copied', { tone: 'success', description: text })
 }
 
+type Health = 'attention' | 'passing'
+const healthOf = (p: Page): Health => (seoFlags(p).length ? 'attention' : 'passing')
+const HEALTH: { value: Health; label: string }[] = [
+  { value: 'attention', label: 'Needs attention' },
+  { value: 'passing', label: 'Passing' },
+]
+
 export function DomainsPage() {
   const s = useScoped()
   const host = primaryHost(s.tenant)
   const live = s.pages.filter((p) => p.status === 'published' || p.status === 'scheduled')
   const flagged = live.filter((p) => seoFlags(p).length).length
+  const [query, setQuery] = useHistoryState('seo.q', '')
+  const [health, setHealth] = useHistoryState<Health | null>('seo.health', null)
+  const searched = live.filter((p) => matchesQuery(query, p.title, p.slug, p.seo.title))
+  const rows = health ? searched.filter((p) => healthOf(p) === health) : searched
+  const activeCount = (query.trim() ? 1 : 0) + (health ? 1 : 0)
+  const clear = () => {
+    setQuery('')
+    setHealth(null)
+  }
   const redirects = REDIRECTS[s.tenantId] ?? []
 
   const length = (value: string, max: number) => {
@@ -181,19 +203,43 @@ export function DomainsPage() {
               characters and descriptions in {DESCRIPTION_MAX}.
             </CardDescription>
           </CardHeader>
+          <TableFilters
+            query={query}
+            onQueryChange={setQuery}
+            searchPlaceholder="Page, address or meta title"
+            searchLabel="Search live pages"
+            shown={rows.length}
+            total={live.length}
+            activeCount={activeCount}
+            onClear={clear}
+            chips={
+              <FilterChips
+                options={HEALTH}
+                value={health}
+                onChange={setHealth}
+                counts={countBy(searched, healthOf)}
+                total={searched.length}
+              />
+            }
+          />
           <CardContent>
             <DataTable
               columns={columns}
-              rows={live}
+              rows={rows}
               getRowKey={(p) => p.id}
               initialSort={{ id: 'flags', desc: true }}
               pageSize={8}
+              resetPageKey={`${query}|${health}`}
               empty={
-                <EmptyState
-                  compact
-                  title="No live pages yet"
-                  description="Published and scheduled pages are checked here."
-                />
+                activeCount ? (
+                  <NoMatch title="No live pages match" onClear={clear} />
+                ) : (
+                  <EmptyState
+                    compact
+                    title="No live pages yet"
+                    description="Published and scheduled pages are checked here."
+                  />
+                )
               }
             />
           </CardContent>

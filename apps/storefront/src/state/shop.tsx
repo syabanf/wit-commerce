@@ -3,6 +3,7 @@ import type { AppAction } from '@rc/fixtures'
 import type { Customer, Order, Seller, Tenant } from '@rc/types'
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
+import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
 import { type Catalog, buildCatalog } from '../lib/catalog'
 import { usePersisted } from '../lib/storage'
 import { useStore } from './store'
@@ -16,7 +17,8 @@ export interface ShopValue {
   customers: Customer[]
   /** The signed-in demo customer on this device. */
   customer: Customer | null
-  signIn: (customerId: string) => void
+  /** Signs in as a customer; the API answers with their account and orders. */
+  signIn: (customerId: string) => Promise<void>
   signOut: () => void
   /** The seller this visit came through (personal store or ?ref=). */
   referral: Seller | null
@@ -24,7 +26,8 @@ export interface ShopValue {
   wishlist: { ids: string[]; has: (id: string) => boolean; toggle: (id: string) => boolean }
   cart: CartApi
   totals: CartTotals
-  send: (action: AppAction) => void
+  /** Dispatches a store action; in API mode it resolves once the server answered, or rejects. */
+  send: (action: AppAction) => Promise<void>
 }
 
 const ShopContext = createContext<ShopValue | null>(null)
@@ -41,8 +44,18 @@ export function useNow(ms = 60_000) {
 
 /** One tenant's storefront: catalog, cart, wishlist, referral and the signed-in customer. */
 export function ShopProvider({ tenant, children }: { tenant: Tenant; children: ReactNode }) {
-  const { state, send } = useStore()
+  const { state, send, loadStore, merge } = useStore()
   const now = useNow()
+  // API mode: this store's dataset and event stream, and the token requests carry.
+  useEffect(() => {
+    if (!HTTP) return
+    setCurrentTenant(tenant.id)
+    const stop = loadStore(tenant.subdomain, tenant.id)
+    return () => {
+      stop()
+      setCurrentTenant(null)
+    }
+  }, [tenant.id, tenant.subdomain, loadStore])
   const catalog = useMemo(() => buildCatalog(state, tenant), [state, tenant])
   const orders = useMemo(
     () => state.orders.filter((o) => o.tenantId === tenant.id),
@@ -66,6 +79,28 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
   const cart = useCartStore(tenant.id)
 
   const customer = customers.find((c) => c.id === customerId) ?? null
+  // API mode: a stored shopper token restores the account and its orders after a reload.
+  useEffect(() => {
+    if (!HTTP || !customerId || !shopperToken(tenant.id).get()) return
+    let cancelled = false
+    api.shop
+      .me(tenant.subdomain)
+      .then(({ customer: me, orders: mine }) => {
+        if (cancelled) return
+        merge({
+          customers: [...state.customers.filter((c) => c.id !== me.id), me],
+          orders: [...state.orders.filter((o) => o.customerId !== me.id), ...mine],
+        })
+      })
+      .catch(() => {
+        shopperToken(tenant.id).set(null)
+        setCustomerId(null)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per signed-in shopper
+  }, [customerId, tenant.id])
   const referral = catalog.sellers.find((s) => s.id === referralId && s.status === 'active') ?? null
   const totals = useMemo(
     () => cartTotals(catalog, cart.cart, referral?.id ?? null, now),
@@ -81,8 +116,17 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
       orders,
       customers,
       customer,
-      signIn: (id) => setCustomerId(id),
-      signOut: () => setCustomerId(null),
+      signIn: async (id) => {
+        if (HTTP && !shopperToken(tenant.id).get()) {
+          const { token } = await api.shop.signIn(tenant.subdomain, id)
+          shopperToken(tenant.id).set(token)
+        }
+        setCustomerId(id)
+      },
+      signOut: () => {
+        if (HTTP) shopperToken(tenant.id).set(null)
+        setCustomerId(null)
+      },
       referral,
       setReferral,
       wishlist: {

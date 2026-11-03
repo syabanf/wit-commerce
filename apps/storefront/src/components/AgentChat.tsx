@@ -28,12 +28,12 @@ import { Button, ButtonLink, Pill } from './ui'
  * mandate and the receipt. `compact` drops the padding for the store assistant's drawer.
  */
 export function AgentThread({ compact }: { compact?: boolean }) {
-  const { tenant, customer, customers, signIn, store } = useShop()
-  const { items, examples, busy, protocol, say, pick, approve, decline } = useAgentChat()
+  const { tenant, customer, customers, signIn, store, orders } = useShop()
+  const { items, examples, busy, thinking, protocol, say, pick, approve, decline } = useAgentChat()
   const listRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [items])
+  }, [items, thinking])
   const lastReplies = [...items].reverse().find((it) => it.kind === 'bot' && it.replies?.length)?.id
   const greeting = customer
     ? `Hi ${customer.name.split(' ')[0]}, I’m your shopping agent at ${tenant.name}. Tell me what you need and your budget. I’ll suggest options, you choose, and I pay only when you approve.`
@@ -98,11 +98,22 @@ export function AgentThread({ compact }: { compact?: boolean }) {
           case 'receipt':
             return (
               <BotRow key={it.id}>
-                <ReceiptCard order={it.order} plan={it.plan} store={store} protocol={protocol} />
+                {/* The server may assign another code than the one built locally; show the stored row. */}
+                <ReceiptCard
+                  order={orders.find((o) => o.id === it.order.id) ?? it.order}
+                  plan={it.plan}
+                  store={store}
+                  protocol={protocol}
+                />
               </BotRow>
             )
         }
       })}
+      {thinking && (
+        <BotRow>
+          <Bubble>Reading your message…</Bubble>
+        </BotRow>
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
 import type { AgentPolicy, Customer, Industry, Order, Product } from '@rc/types'
+import type { AIChatAnswer } from '@rc/api'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import {
   type AgentPlan,
@@ -10,6 +11,7 @@ import {
   runSteps,
 } from '../lib/agent'
 import { variantAvailable } from '../lib/catalog'
+import { HTTP, api } from '../lib/api'
 import { buildOrder } from '../lib/checkout'
 import { type ShopValue, useShop } from './shop'
 import { useStore } from './store'
@@ -119,6 +121,14 @@ const CHANGES: [RegExp, Partial<Ask>][] = [
   ],
 ]
 
+const NOTHING_OPEN = 'Tell me what you need first, and I will find it.'
+/** Model actions that reopen one question, the same as the buttons under the cart. */
+const CHANGE_OF: Partial<Record<AIChatAnswer['action'], Partial<Ask>>> = {
+  change_shipping: { courierId: null },
+  change_discount: { offer: null },
+  another_product: { productId: null, variantId: null, offer: null },
+}
+
 /** "Rated 4.3…" reads as "rated 4.3…" inside a sentence; amounts keep their capital. */
 const lower = (t: string) => (/^Rp/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1))
 
@@ -129,6 +139,8 @@ export interface AgentChat {
   examples: string[]
   policy: AgentPolicy | null
   busy: boolean
+  /** The model is reading the last message. */
+  thinking: boolean
   protocol: boolean
   setProtocol: (on: boolean) => void
   orders: Order[]
@@ -155,6 +167,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Item[]>([])
   const [ctx, setCtx] = useState<Context | null>(null)
   const [running, setRunning] = useState<number | null>(null)
+  const [thinking, setThinking] = useState(false)
   const [protocol, setProtocol] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
   const nextId = useRef(1)
@@ -355,7 +368,10 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       push({ id: id(), kind: 'bot', text: `I could not place it: ${placed}` })
       return
     }
-    send({ type: 'orders/place', order: placed, customer: null })
+    send({ type: 'orders/place', order: placed, customer: null }).catch((err: Error) => {
+      patch(cart.id, { status: 'failed', note: err.message })
+      push({ id: id(), kind: 'bot', text: `I could not place it: ${err.message}` })
+    })
     setOrders((list) => [placed, ...list])
     patch(cart.id, { status: 'paid' })
     push(
@@ -378,9 +394,46 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  /** Runs a refinement of the last search ("cheaper", "size 43", "pay with OVO"); false when it is none. */
+  const dispatch = (value: string): boolean => {
+    const size = /(?:size|ukuran|uk\.?)\s*(\d{2})\b/i.exec(value)?.[1]
+    const pay = /^(?:pay|bayar)\s*(?:with|pakai|pake|dengan|via)?\s*(.+)$/i.exec(value)?.[1]
+    if (ctx?.plan?.choice && /cheaper|lebih murah|murahan|less expensive/i.test(value)) {
+      push({ id: id(), kind: 'bot', text: `Looking for something under ${fmtIdr(ctx.plan.choice.price)}.` })
+      run({
+        ...ctx,
+        budget: Math.ceil(ctx.plan.choice.price / 1000) * 1000 - 1000,
+        categoryId: ctx.plan.choice.product.categoryId,
+        productId: null,
+        variantId: null,
+        offer: null,
+      })
+      return true
+    }
+    if (ctx && size && value.length < 24) {
+      const task = /(?:size|ukuran|uk\.?)\s*\d{2}/i.test(ctx.task)
+        ? ctx.task.replace(/(?:size|ukuran|uk\.?)\s*\d{2}/i, `size ${size}`)
+        : `${ctx.task}, size ${size}`
+      run({ ...ctx, task, variantId: null, offer: null })
+      return true
+    }
+    if (ctx && pay) {
+      const type = catalog.paymentTypes.find(
+        (t) => t.enabled && t.name.toLowerCase().includes(pay.trim().toLowerCase()),
+      )
+      if (type) {
+        setSettings((s) => ({ ...s, paymentTypeId: type.id }))
+        push({ id: id(), kind: 'bot', text: `Okay, I will pay with ${type.name}.` })
+        run({ ...ctx, offer: null }, { paymentTypeId: type.id })
+        return true
+      }
+    }
+    return false
+  }
+
   const say = (text: string) => {
     const value = text.trim()
-    if (!value || running !== null) return
+    if (!value || running !== null || thinking) return
     push({ id: id(), kind: 'me', text: value })
     if (awaiting && YES.test(value)) return place(awaiting)
     if (awaiting && NO.test(value)) return decline(awaiting)
@@ -397,36 +450,59 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
         )
       if (answer) return pick(asking, answer.id, false)
     }
-    const size = /(?:size|ukuran|uk\.?)\s*(\d{2})\b/i.exec(value)?.[1]
-    const pay = /^(?:pay|bayar)\s*(?:with|pakai|pake|dengan|via)?\s*(.+)$/i.exec(value)?.[1]
-    if (ctx?.plan?.choice && /cheaper|lebih murah|murahan|less expensive/i.test(value)) {
-      push({ id: id(), kind: 'bot', text: `Looking for something under ${fmtIdr(ctx.plan.choice.price)}.` })
-      return run({
-        ...ctx,
-        budget: Math.ceil(ctx.plan.choice.price / 1000) * 1000 - 1000,
-        categoryId: ctx.plan.choice.product.categoryId,
-        productId: null,
-        variantId: null,
-        offer: null,
+    if (dispatch(value)) return
+    if (!HTTP) return run(fresh(value))
+    void interpret(value)
+  }
+
+  /** Free text goes to the model; if it cannot answer, the words go to the search as they are. */
+  const interpret = async (value: string) => {
+    setThinking(true)
+    try {
+      const answer = await api.shop.ai(tenant.subdomain, {
+        mode: 'agent',
+        message: value,
+        task: ctx?.task,
+        question: asking?.question,
+        // The prices let it answer "the cheapest one" with the right row.
+        options: asking?.options.map((o) => ({
+          id: o.id,
+          title: [o.title, o.detail, o.amount, o.note].filter(Boolean).join(' · '),
+        })),
+        history: items.flatMap((it) =>
+          it.kind === 'me' || it.kind === 'bot' ? [{ from: it.kind, text: it.text }] : [],
+        ),
       })
-    }
-    if (ctx && size && value.length < 24) {
-      const task = /(?:size|ukuran|uk\.?)\s*\d{2}/i.test(ctx.task)
-        ? ctx.task.replace(/(?:size|ukuran|uk\.?)\s*\d{2}/i, `size ${size}`)
-        : `${ctx.task}, size ${size}`
-      return run({ ...ctx, task, variantId: null, offer: null })
-    }
-    if (ctx && pay) {
-      const type = catalog.paymentTypes.find(
-        (t) => t.enabled && t.name.toLowerCase().includes(pay.trim().toLowerCase()),
-      )
-      if (type) {
-        setSettings((s) => ({ ...s, paymentTypeId: type.id }))
-        push({ id: id(), kind: 'bot', text: `Okay, I will pay with ${type.name}.` })
-        return run({ ...ctx, offer: null }, { paymentTypeId: type.id })
+      const reply = (text: string) => push({ id: id(), kind: 'bot', text })
+      const change = CHANGE_OF[answer.action]
+      switch (answer.action) {
+        case 'search':
+          return run(fresh(answer.task))
+        case 'choose':
+          return asking ? pick(asking, answer.optionId, false) : undefined
+        case 'pick_for_me': {
+          const best = asking?.options.find((o) => o.best) ?? asking?.options[0]
+          return asking && best ? pick(asking, best.id, false) : reply(answer.reply || NOTHING_OPEN)
+        }
+        case 'decline':
+          return awaiting ? decline(awaiting) : reply(answer.reply || NOTHING_OPEN)
+        case 'cheaper':
+          return dispatch('cheaper') || reply(answer.reply || NOTHING_OPEN)
+        case 'size':
+          return dispatch(`size ${answer.size}`) || reply(answer.reply || NOTHING_OPEN)
+        case 'pay_with':
+          return dispatch(`pay with ${answer.payment}`) || reply(answer.reply || NOTHING_OPEN)
+        case 'answer':
+          return reply(answer.reply || 'I did not catch that. What would you like me to find?')
+        default:
+          if (ctx && change) return advance({ ...ctx, ...change })
+          return reply(answer.reply || NOTHING_OPEN)
       }
+    } catch {
+      run(fresh(value))
+    } finally {
+      setThinking(false)
     }
-    run(fresh(value))
   }
 
   // Animate the active run, then ask the first question.
@@ -460,7 +536,8 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     setSettings,
     examples,
     policy,
-    busy: running !== null,
+    busy: running !== null || thinking,
+    thinking,
     protocol,
     setProtocol,
     orders,

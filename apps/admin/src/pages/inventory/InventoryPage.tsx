@@ -6,6 +6,7 @@ import type {
   Product,
   StockLevel,
   StockMove,
+  StockMoveKind,
 } from '@rc/types'
 import { STOCK_MOVE_KIND_LABEL } from '@rc/types'
 import {
@@ -20,9 +21,14 @@ import {
   type Column,
   DataTable,
   EmptyState,
+  FilterChips,
   Input,
+  NoMatch,
   PageHeader,
   StatCard,
+  TableFilters,
+  countBy,
+  matchesQuery,
 } from '@rc/ui'
 import { Boxes, PackageMinus, PackagePlus, PackageX, Search, ShoppingBag } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -92,6 +98,11 @@ const matchesView = (view: View, data: Rollup) =>
 
 type ProductRollup = { product: Product; summary: Rollup }
 type CategoryRollup = { category: Category; productCount: number; summary: Rollup }
+
+const MOVE_KINDS = (Object.keys(STOCK_MOVE_KIND_LABEL) as StockMoveKind[]).map((value) => ({
+  value,
+  label: STOCK_MOVE_KIND_LABEL[value],
+}))
 
 export function InventoryPage() {
   const s = useScoped()
@@ -270,6 +281,49 @@ export function InventoryPage() {
     () => [...s.modifierStockMoves].sort((a, b) => toMs(b.at) - toMs(a.at)),
     [s.modifierStockMoves],
   )
+
+  // The moves card filters on its own: search and kind, shared by the variant and modifier tables.
+  const [moveQuery, setMoveQuery] = useHistoryState('moves.q', '')
+  const [moveKind, setMoveKind] = useHistoryState<StockMoveKind | null>('moves.kind', null)
+  const warehouseName = useMemo(() => new Map(s.warehouses.map((w) => [w.id, w.name])), [s.warehouses])
+  const searchedMoves = useMemo(
+    () =>
+      moves.filter((m) => {
+        const variant = s.maps.variant.get(m.variantId)
+        return matchesQuery(
+          moveQuery,
+          variant && s.productName(variant.productId),
+          variant?.sku,
+          warehouseName.get(m.warehouseId),
+          s.userName(m.by),
+          m.note,
+        )
+      }),
+    [moves, moveQuery, s, warehouseName],
+  )
+  const searchedModifierMoves = useMemo(
+    () =>
+      modifierMoves.filter((m) => {
+        const group = s.modifiers.find((g) => g.id === m.groupId)
+        return matchesQuery(
+          moveQuery,
+          group?.name,
+          group?.options.find((o) => o.id === m.optionId)?.name,
+          warehouseName.get(m.warehouseId),
+          s.userName(m.by),
+          m.note,
+        )
+      }),
+    [modifierMoves, moveQuery, s, warehouseName],
+  )
+  const ofMoveKind = <T extends { kind: StockMoveKind }>(list: T[]) =>
+    moveKind ? list.filter((m) => m.kind === moveKind) : list
+  const moveBase: { kind: StockMoveKind }[] = perspective === 'modifier' ? searchedModifierMoves : searchedMoves
+  const moveFilters = (moveQuery.trim() ? 1 : 0) + (moveKind ? 1 : 0)
+  const clearMoveFilters = () => {
+    setMoveQuery('')
+    setMoveKind(null)
+  }
 
   const columns: Column<StockRow>[] = [
     {
@@ -996,33 +1050,62 @@ export function InventoryPage() {
                 : 'Receipts, adjustments, sales and returns, newest first.'}
             </p>
           </CardHeader>
+          <TableFilters
+            query={moveQuery}
+            onQueryChange={setMoveQuery}
+            searchPlaceholder="Product, SKU, warehouse or note"
+            searchLabel="Search stock moves"
+            shown={ofMoveKind(moveBase).length}
+            total={perspective === 'modifier' ? modifierMoves.length : moves.length}
+            activeCount={moveFilters}
+            onClear={clearMoveFilters}
+            chips={
+              <FilterChips
+                options={MOVE_KINDS}
+                value={moveKind}
+                onChange={setMoveKind}
+                counts={countBy(moveBase, (m) => m.kind)}
+                total={moveBase.length}
+              />
+            }
+          />
           <CardContent>
             {perspective === 'modifier' ? (
               <DataTable
                 columns={modifierMoveColumns}
-                rows={modifierMoves}
+                rows={ofMoveKind(searchedModifierMoves)}
                 getRowKey={(m) => m.id}
                 pageSize={8}
+                resetPageKey={`${moveQuery}|${moveKind}`}
                 empty={
-                  <EmptyState
-                    compact
-                    title="No modifier stock moves yet"
-                    description="Receipts and adjustments appear here as your team records them."
-                  />
+                  moveFilters ? (
+                    <NoMatch title="No modifier stock moves match" onClear={clearMoveFilters} />
+                  ) : (
+                    <EmptyState
+                      compact
+                      title="No modifier stock moves yet"
+                      description="Receipts and adjustments appear here as your team records them."
+                    />
+                  )
                 }
               />
             ) : (
               <DataTable
                 columns={moveColumns}
-                rows={moves}
+                rows={ofMoveKind(searchedMoves)}
                 getRowKey={(m) => m.id}
                 pageSize={8}
+                resetPageKey={`${moveQuery}|${moveKind}`}
                 empty={
-                  <EmptyState
-                    compact
-                    title="No stock moves yet"
-                    description="Receipts and adjustments show here as your team records them."
-                  />
+                  moveFilters ? (
+                    <NoMatch title="No stock moves match" onClear={clearMoveFilters} />
+                  ) : (
+                    <EmptyState
+                      compact
+                      title="No stock moves yet"
+                      description="Receipts and adjustments show here as your team records them."
+                    />
+                  )
                 }
               />
             )}

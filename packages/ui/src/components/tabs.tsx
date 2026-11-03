@@ -1,5 +1,6 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import { type KeyboardEvent, type ReactNode, useLayoutEffect, useRef } from 'react'
 import { cn } from '../lib/cn'
+import { stretchPill } from '../lib/motion'
 import { rovingIndex } from '../lib/roving'
 
 export type TabItem = {
@@ -21,10 +22,10 @@ export type TabsProps = {
 type Variant = 'pill' | 'underline' | 'segmented'
 
 const listClasses: Record<Variant, string> = {
-  pill: 'no-scrollbar inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-card p-1 shadow-card',
+  pill: 'no-scrollbar relative inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-card p-1 shadow-card',
   // An inset shadow draws the baseline so the active underline is not clipped by the scroll box.
   underline: 'no-scrollbar flex w-full overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)]',
-  segmented: 'flex w-full gap-1 rounded-full bg-card p-1 shadow-card',
+  segmented: 'relative flex w-full gap-1 rounded-full bg-card p-1 shadow-card',
 }
 
 const tabSizes: Record<Variant, Record<'sm' | 'md', string>> = {
@@ -33,13 +34,13 @@ const tabSizes: Record<Variant, Record<'sm' | 'md', string>> = {
   segmented: { sm: 'h-8 px-2 text-xs', md: 'h-10 px-2 text-xs' },
 }
 
-// Active styling keys off data-state (and data-urgent for the segmented variant).
+// Active styling keys off data-state. Pill and segmented tabs sit above the moving ink pill (see stretchPill).
 const tabClasses: Record<Variant, string> = {
-  pill: 'rounded-full text-muted data-[state=inactive]:hover:text-foreground data-[state=active]:bg-ink data-[state=active]:text-on-ink',
+  pill: 'relative rounded-full text-muted data-[state=inactive]:hover:text-foreground data-[state=active]:text-on-ink',
   underline:
     'border-b-2 border-transparent text-muted focus-visible:ring-inset data-[state=inactive]:hover:text-foreground data-[state=active]:border-accent data-[state=active]:text-foreground',
   segmented:
-    'min-w-0 flex-1 shrink rounded-full text-muted data-[state=inactive]:hover:text-foreground data-[state=active]:bg-ink data-[state=active]:text-on-ink data-[urgent=true]:data-[state=active]:bg-accent data-[urgent=true]:data-[state=active]:text-white',
+    'relative min-w-0 flex-1 shrink rounded-full text-muted data-[state=inactive]:hover:text-foreground data-[state=active]:text-on-ink data-[urgent=true]:data-[state=active]:text-white',
 }
 
 const countClasses: Record<Variant, string> = {
@@ -60,6 +61,22 @@ function TabList({
 }: TabsProps & { variant: Variant; urgentValue?: string }) {
   const selectedIndex = items.findIndex((item) => item.value === value)
   const focusIndex = selectedIndex >= 0 ? selectedIndex : items.findIndex((item) => !item.disabled)
+  const listRef = useRef<HTMLDivElement>(null)
+  const pillRef = useRef<HTMLSpanElement>(null)
+
+  // The ink pill stretches to the new tab on a change and jumps into place when the track resizes.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const pill = pillRef.current
+    if (!list || !pill) return
+    const place = (animate: boolean) =>
+      stretchPill(pill, list, list.querySelector<HTMLElement>('[role="tab"][data-state="active"]'), animate)
+    place(true)
+    let first = true
+    const observer = new ResizeObserver(() => (first ? (first = false) : place(false)))
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [value, items.length])
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const next = rovingIndex(event.key, selectedIndex, items.length, (i) => !items[i]?.disabled)
@@ -73,11 +90,24 @@ function TabList({
   return (
     <div className={cn('min-w-0 relative', variant === 'pill' ? 'w-fit max-w-full' : 'w-full', className)}>
       <div
+        ref={listRef}
         role="tablist"
         aria-orientation="horizontal"
         onKeyDown={onKeyDown}
         className={cn(listClasses[variant], variant !== 'segmented' && 'pr-6')}
       >
+        {variant !== 'underline' && (
+          <span
+            ref={pillRef}
+            aria-hidden="true"
+            className={cn(
+              'top-0 left-0 pointer-events-none absolute h-full opacity-0',
+              urgentValue !== undefined && items[selectedIndex]?.value === urgentValue
+                ? 'bg-accent'
+                : 'bg-ink',
+            )}
+          />
+        )}
         {items.map((item, index) => {
           const selected = index === selectedIndex
           return (

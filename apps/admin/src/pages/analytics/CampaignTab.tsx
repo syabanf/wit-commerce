@@ -1,5 +1,6 @@
 import { DAY, fmtIdrShort, fmtNumber, fmtPercent } from '@rc/fixtures'
-import type { Campaign } from '@rc/types'
+import type { Campaign, CampaignStatus } from '@rc/types'
+import { CAMPAIGN_STATUS_LABEL } from '@rc/types'
 import {
   BarList,
   Card,
@@ -9,16 +10,27 @@ import {
   type Column,
   DataTable,
   EmptyState,
+  FilterChips,
+  NoMatch,
   StatCard,
+  TableFilters,
+  countBy,
+  matchesQuery,
 } from '@rc/ui'
 import { Megaphone, ShoppingBag, TicketPercent, TrendingUp } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { CampaignStatusBadge } from '../../components/badges'
 import { paths } from '../../components/links'
+import { useHistoryState } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { ChartCard } from './ChartCard'
 import { campaignsInWindow, fmtSignedPercent, roi, windowStart } from './lib'
+
+const STATUSES = (Object.keys(CAMPAIGN_STATUS_LABEL) as CampaignStatus[]).map((value) => ({
+  value,
+  label: CAMPAIGN_STATUS_LABEL[value],
+}))
 
 export function CampaignTab({ days, today }: { days: number; today: number }) {
   const s = useScoped()
@@ -31,6 +43,15 @@ export function CampaignTab({ days, today }: { days: number; today: number }) {
       ),
     [s.campaigns, days, today],
   )
+  const [query, setQuery] = useHistoryState('campaigns.q', '')
+  const [status, setStatus] = useHistoryState<CampaignStatus | null>('campaigns.status', null)
+  const searched = campaigns.filter((c) => matchesQuery(query, c.code, c.name))
+  const rows = status ? searched.filter((c) => c.status === status) : searched
+  const activeCount = (query.trim() ? 1 : 0) + (status ? 1 : 0)
+  const clear = () => {
+    setQuery('')
+    setStatus(null)
+  }
   const promotions = useMemo(
     () => s.promotions.filter((p) => p.used > 0).sort((a, b) => b.used - a.used),
     [s.promotions],
@@ -217,19 +238,43 @@ export function CampaignTab({ days, today }: { days: number; today: number }) {
             Funnel counts and attributed revenue per campaign. ROI is revenue minus budget, over budget.
           </CardDescription>
         </CardHeader>
+        <TableFilters
+          query={query}
+          onQueryChange={setQuery}
+          searchPlaceholder="Campaign name or code"
+          searchLabel="Search campaigns"
+          shown={rows.length}
+          total={campaigns.length}
+          activeCount={activeCount}
+          onClear={clear}
+          chips={
+            <FilterChips
+              options={STATUSES}
+              value={status}
+              onChange={setStatus}
+              counts={countBy(searched, (c) => c.status)}
+              total={searched.length}
+            />
+          }
+        />
         <DataTable
           columns={columns}
-          rows={campaigns}
+          rows={rows}
           getRowKey={(c) => c.id}
           onRowClick={(c) => navigate(paths.campaign(c.id))}
           initialSort={{ id: 'revenue', desc: true }}
           pageSize={10}
+          resetPageKey={`${query}|${status}`}
           empty={
-            <EmptyState
-              compact
-              title="No campaigns in this window"
-              description="Pick a longer window to include earlier campaigns."
-            />
+            activeCount ? (
+              <NoMatch title="No campaigns match" onClear={clear} />
+            ) : (
+              <EmptyState
+                compact
+                title="No campaigns in this window"
+                description="Pick a longer window to include earlier campaigns."
+              />
+            )
           }
         />
       </Card>

@@ -8,7 +8,7 @@ import { useStore } from '../state/store'
 import { Button, Field, describedBy, inputClass } from './ui'
 import { firstName } from '../lib/paths'
 
-type Errors = Partial<Record<'name' | 'company' | 'phone', string>>
+type Errors = Partial<Record<'name' | 'company' | 'phone' | 'note', string>>
 
 /** Talk to sales: saves a new lead for the sales team, attributed to the referring seller. */
 export function TalkToSalesForm({ product, onDone }: { product: Product | null; onDone?: () => void }) {
@@ -60,7 +60,8 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
         lostReason: null,
       },
     })
-    setSentCode(code)
+      .then(() => setSentCode(code))
+      .catch((err: Error) => setErrors({ note: err.message }))
   }
 
   if (sentCode)
@@ -122,13 +123,14 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
         id={`${uid}-note`}
         label="What do you need?"
         hint="Quantity, timeline or site details help us prepare."
+        error={errors.note}
         className="sm:col-span-2"
       >
         <textarea
           {...field('note')}
           rows={3}
           className={`${inputClass} py-3 h-auto`}
-          {...describedBy(`${uid}-note`, null, 'hint')}
+          {...describedBy(`${uid}-note`, errors.note, 'hint')}
         />
       </Field>
       <div className="sm:col-span-2">

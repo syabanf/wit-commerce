@@ -18,6 +18,7 @@ import {
   Globe,
   Handshake,
   Headset,
+  KeyRound,
   LayoutGrid,
   Megaphone,
   Network,
@@ -160,7 +161,17 @@ export const NAV: NavSection[] = [
     ],
   },
   { id: 'analytics', label: 'Analytics', icon: ChartColumn, to: '/analytics', group: 'Insights & setup' },
-  { id: 'integrations', label: 'Integrations', icon: Plug, to: '/integrations', group: 'Insights & setup' },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: Plug,
+    to: '/integrations',
+    group: 'Insights & setup',
+    items: [
+      { to: '/integrations', label: 'Connections', icon: Plug },
+      { to: '/integrations/credentials', label: 'API credentials', icon: KeyRound },
+    ],
+  },
   {
     id: 'settings',
     label: 'Settings',

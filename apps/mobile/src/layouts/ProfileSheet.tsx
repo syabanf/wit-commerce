@@ -39,7 +39,7 @@ export function ProfileSheet({
   }
 
   const resetDemo = () => {
-    reset()
+    reset?.()
     setConfirmReset(false)
     onOpenChange(false)
     toast('Demo data reset', { description: 'Leads, customers, notes and your store are back to the seed.' })
@@ -72,15 +72,17 @@ export function ProfileSheet({
               <LogOut />
               Sign out
             </Button>
-            <Button
-              variant="ghost"
-              size="lg"
-              className="w-full text-accent"
-              onClick={() => setConfirmReset(true)}
-            >
-              <RotateCcw />
-              Reset demo data
-            </Button>
+            {reset && (
+              <Button
+                variant="ghost"
+                size="lg"
+                className="w-full text-accent"
+                onClick={() => setConfirmReset(true)}
+              >
+                <RotateCcw />
+                Reset demo data
+              </Button>
+            )}
             {storageError && (
               <p className="pt-1 text-xs text-center text-muted">
                 This phone is not saving changes. They last until you reload.

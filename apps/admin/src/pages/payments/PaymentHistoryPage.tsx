@@ -9,8 +9,11 @@ import {
   DataTable,
   EmptyState,
   Input,
+  NativeSelect,
   PageHeader,
   StatCard,
+  countBy,
+  matchesQuery,
 } from '@rc/ui'
 import { CircleAlert, CreditCard, ReceiptText, RotateCcw, Search } from 'lucide-react'
 import { useMemo } from 'react'
@@ -28,6 +31,8 @@ const summaryFormat = new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 1,
 })
 const fmtSummary = (value: number) => summaryFormat.format(value)
+
+const METHOD_OPTIONS = Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => ({ value, label }))
 
 export function PaymentHistoryPage() {
   const s = useScoped()
@@ -55,16 +60,20 @@ export function PaymentHistoryPage() {
     }
   }, [s.orders])
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return s.orders
-      .filter((o) => {
-        if (status && o.paymentStatus !== status) return false
-        if (method && o.paymentMethod !== method) return false
-        return !q || `${o.code} ${s.customerName(o.customerId)}`.toLowerCase().includes(q)
-      })
-      .sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt))
-  }, [s, query, status, method])
+  // Search and method first, so the status chip counts reflect them.
+  const base = useMemo(
+    () =>
+      s.orders
+        .filter(
+          (o) =>
+            (!method || o.paymentMethod === method) &&
+            matchesQuery(query, o.code, s.customerName(o.customerId)),
+        )
+        .sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt)),
+    [s, query, method],
+  )
+  const rows = status ? base.filter((o) => o.paymentStatus === status) : base
+  const statusCounts = countBy(base, (o) => o.paymentStatus)
 
   const columns: Column<Order>[] = [
     {
@@ -183,7 +192,7 @@ export function PaymentHistoryPage() {
         </div>
         <div className="gap-3 flex flex-wrap items-center">
           <ChipRow aria-label="Filter payments by status" className="min-w-0 flex-1">
-            <Chip variant="filter" active={!status} count={s.orders.length} onClick={() => setStatus(null)}>
+            <Chip variant="filter" active={!status} count={base.length} onClick={() => setStatus(null)}>
               All
             </Chip>
             {STATUSES.map((item) => (
@@ -191,26 +200,21 @@ export function PaymentHistoryPage() {
                 key={item}
                 variant="filter"
                 active={status === item}
-                count={stats[item]}
+                count={statusCounts[item] ?? 0}
                 onClick={() => setStatus(status === item ? null : item)}
               >
                 {PAYMENT_STATUS_LABEL[item]}
               </Chip>
             ))}
           </ChipRow>
-          <select
-            aria-label="Filter payment method"
+          <NativeSelect
+            variant="inline"
+            aria-label="Filter by payment method"
+            placeholder="Any method"
+            options={METHOD_OPTIONS}
             value={method}
             onChange={(e) => setMethod(e.target.value as PaymentMethod | '')}
-            className="h-10 rounded-xl px-3 text-sm max-w-full border border-border bg-card text-body"
-          >
-            <option value="">All methods</option>
-            {Object.entries(PAYMENT_METHOD_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          />
         </div>
         <DataTable
           columns={columns}

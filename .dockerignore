@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/dist-root
+**/.turbo
+**/.env
+**/.env.local
+output
+tmp
+reports
+**/.env.production

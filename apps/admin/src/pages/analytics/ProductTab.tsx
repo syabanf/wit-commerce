@@ -11,19 +11,32 @@ import {
   type Column,
   DataTable,
   EmptyState,
+  FilterChips,
+  NoMatch,
   ProgressBar,
   StatCard,
+  TableFilters,
+  countBy,
+  matchesQuery,
 } from '@rc/ui'
 import { Boxes, PackageMinus, SearchX, TrendingUp } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { paths } from '../../components/links'
+import { useHistoryState } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { ChartCard } from './ChartCard'
 import { viewsWithoutSales } from './lib'
 
 // Terms that return this many results or fewer count as weak answers.
 const LOW_RESULTS = 3
+
+type Yield = 'none' | 'few'
+const yieldOf = (t: SearchTerm): Yield => (t.results === 0 ? 'none' : 'few')
+const YIELDS: { value: Yield; label: string }[] = [
+  { value: 'none', label: 'No results' },
+  { value: 'few', label: `1 to ${LOW_RESULTS} results` },
+]
 const EMPTY_STOCK = { onHand: 0, reserved: 0, available: 0, safety: 0 }
 
 export function ProductTab({ days, today }: { days: number; today: number }) {
@@ -62,6 +75,15 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
         .sort((a, b) => a.results - b.results || b.count30d - a.count30d),
     [s.searchTerms],
   )
+  const [termQuery, setTermQuery] = useHistoryState('terms.q', '')
+  const [yieldFilter, setYieldFilter] = useHistoryState<Yield | null>('terms.yield', null)
+  const searchedTerms = searches.filter((t) => matchesQuery(termQuery, t.term))
+  const termRows = yieldFilter ? searchedTerms.filter((t) => yieldOf(t) === yieldFilter) : searchedTerms
+  const termFilters = (termQuery.trim() ? 1 : 0) + (yieldFilter ? 1 : 0)
+  const clearTermFilters = () => {
+    setTermQuery('')
+    setYieldFilter(null)
+  }
   const zero = searches.filter((t) => t.results === 0)
   const worst = zero.reduce<SearchTerm | null>(
     (best, t) => (!best || t.count30d > best.count30d ? t : best),
@@ -253,18 +275,42 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
             {worst.term}”. It was searched {plural(worst.count30d, 'time')} and found nothing.
           </p>
         )}
+        <TableFilters
+          query={termQuery}
+          onQueryChange={setTermQuery}
+          searchPlaceholder="Search term"
+          searchLabel="Search the search terms"
+          shown={termRows.length}
+          total={searches.length}
+          activeCount={termFilters}
+          onClear={clearTermFilters}
+          chips={
+            <FilterChips
+              options={YIELDS}
+              value={yieldFilter}
+              onChange={setYieldFilter}
+              counts={countBy(searchedTerms, yieldOf)}
+              total={searchedTerms.length}
+            />
+          }
+        />
         <DataTable
           columns={searchColumns}
-          rows={searches}
+          rows={termRows}
           getRowKey={(t) => t.id}
           pageSize={8}
+          resetPageKey={`${termQuery}|${yieldFilter}`}
           rowClassName={(t) => (t.results === 0 ? 'bg-accent-soft/40' : undefined)}
           empty={
-            <EmptyState
-              compact
-              title="Search answers every query"
-              description="Terms appear here when shoppers search and find little."
-            />
+            termFilters ? (
+              <NoMatch title="No search terms match" onClear={clearTermFilters} />
+            ) : (
+              <EmptyState
+                compact
+                title="Search answers every query"
+                description="Terms appear here when shoppers search and find little."
+              />
+            )
           }
         />
       </Card>

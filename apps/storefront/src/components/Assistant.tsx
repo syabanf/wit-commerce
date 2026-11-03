@@ -16,6 +16,7 @@ import {
   recommend,
 } from '../lib/assistant'
 import { fromPrice, popularCategories, productsIn, quickAddable } from '../lib/catalog'
+import { HTTP, api } from '../lib/api'
 import { favouriteOf } from '../lib/checkout'
 import { paths } from '../lib/paths'
 import { usePersisted } from '../lib/storage'
@@ -68,6 +69,8 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
   const listRef = useRef<HTMLDivElement>(null)
   const inputId = useId()
   const quickAdd = useQuickAdd()
+  /** The message the model is reading. */
+  const [pending, setPending] = useState<string | null>(null)
   const agent = useAgentChat()
   // A link inside the drawer (View order, a product) closes it.
   const { pathname } = useLocation()
@@ -95,7 +98,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
 
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [messages.length, open])
+  }, [messages.length, open, pending])
 
   const answer = (intent: Intent | null, startId: number): { replies: Message[]; picks: string[] } => {
     if (!intent) return { replies: [greeting(startId)], picks: [] }
@@ -166,6 +169,8 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
   }
 
   const ask = (label: string, action: ReplyAction) => {
+    // A quick reply tapped while the model reads would be overwritten by its answer.
+    if (pending !== null) return
     const base = Math.max(0, ...messages.map((m) => m.id)) + 1
     const lastPicks = convo.lastPicks.map((id) => catalog.productMap.get(id)).filter((p): p is Product => !!p)
     const intent = applyReply(convo.intent, action, catalog, lastPicks)
@@ -183,7 +188,35 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
     if (!value) return
     setText('')
     if (BUY.test(value) && customer && !agent.busy) return buy(value)
-    ask(value, { kind: 'text', text: value })
+    if (!HTTP) return ask(value, { kind: 'text', text: value })
+    void askModel(value)
+  }
+
+  /** The model answers from the catalog; if it cannot, the built-in reader takes the message. */
+  const askModel = async (value: string) => {
+    setPending(value)
+    try {
+      const reply = await api.shop.ai(store, {
+        mode: 'ask',
+        message: value,
+        history: messages.map((m) => ({ from: m.from, text: m.text })),
+      })
+      if (!reply.reply) throw new Error('empty answer')
+      const base = Math.max(0, ...messages.map((m) => m.id)) + 1
+      setConvo({
+        messages: [
+          ...messages,
+          { id: base, from: 'me' as const, text: value },
+          { id: base + 1, from: 'bot' as const, text: reply.reply, productIds: reply.productIds },
+        ].slice(-40),
+        intent: convo.intent,
+        lastPicks: reply.productIds,
+      })
+    } catch {
+      ask(value, { kind: 'text', text: value })
+    } finally {
+      setPending(null)
+    }
   }
 
   const hairline = look === 'hairline'
@@ -264,6 +297,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                 type="submit"
                 variant={hairline ? 'dark' : 'primary'}
                 aria-label="Send"
+                disabled={pending !== null}
                 className="w-12 px-0"
               >
                 <SendHorizontal aria-hidden="true" />
@@ -377,6 +411,12 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                 )}
               </div>
             ))}
+            {pending !== null && (
+              <div className="space-y-3">
+                <p className={bubble('me')}>{pending}</p>
+                <p className={bubble('bot')}>Reading your message…</p>
+              </div>
+            )}
           </div>
         )}
       </Drawer>

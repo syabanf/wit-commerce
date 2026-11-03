@@ -20,7 +20,6 @@ import {
   CardHeader,
   CardTitle,
   type Column,
-  DataTable,
   EmptyState,
   Steps,
   type StepsProps,
@@ -28,11 +27,12 @@ import {
 } from '@rc/ui'
 import { Coins, Copy, MessageSquarePlus, MoreHorizontal, Pencil } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
-import { OrderLink, paths } from '../../components/links'
+import { FilteredOrderTable } from '../../components/FilteredOrderTable'
+import { OrderLink } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
 import { tierMinimum } from '../loyalty/lib'
 import { AddPointsDialog } from './AddPointsDialog'
@@ -76,7 +76,6 @@ export function CustomerDetailPage() {
   const { id } = useParams()
   const s = useScoped()
   const { can } = useAuth()
-  const navigate = useNavigate()
   const now = useNow(60_000)
   const [pending, setPending] = useState<Pending>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -278,13 +277,11 @@ export function CustomerDetailPage() {
               </p>
             </CardHeader>
             {orders.length > 0 && (
-              <DataTable
+              <FilteredOrderTable
+                name="customer.orders"
                 className="px-1 pb-3"
                 columns={columns}
-                rows={orders}
-                pageSize={8}
-                getRowKey={(o) => o.id}
-                onRowClick={(o) => navigate(paths.order(o.id))}
+                orders={orders}
                 initialSort={{ id: 'placed', desc: true }}
               />
             )}

@@ -365,9 +365,12 @@ export function CheckoutPage() {
       return
     }
     send({ type: 'orders/place', order, customer: created })
-    signIn(order.customerId)
-    cart.clear()
-    navigate(paths.order(store, order.id), { replace: true })
+      .then(() => signIn(order.customerId))
+      .then(() => {
+        cart.clear()
+        navigate(paths.order(store, order.id), { replace: true })
+      })
+      .catch((err: Error) => setPlaceError(err.message))
   }
 
   const field = (key: keyof typeof contact) => ({

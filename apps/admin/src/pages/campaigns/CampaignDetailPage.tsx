@@ -33,7 +33,6 @@ import {
   CardHeader,
   CardTitle,
   type Column,
-  DataTable,
   EmptyState,
   Kicker,
   ProgressBar,
@@ -47,6 +46,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
+import { FilteredOrderTable } from '../../components/FilteredOrderTable'
 import { CustomerLink, OrderLink, paths } from '../../components/links'
 import { storefrontUrl } from '../../lib/storefront'
 import { useNow, useScoped } from '../../state/scoped'
@@ -409,13 +409,11 @@ export function CampaignDetailPage() {
           <CardTitle>Attributed orders</CardTitle>
           <CardDescription>Orders placed from a link in this campaign, or with its voucher.</CardDescription>
         </CardHeader>
-        <DataTable
+        <FilteredOrderTable
+          name="campaign.orders"
           columns={orderColumns}
-          rows={orders}
-          getRowKey={(o) => o.id}
-          onRowClick={(o) => navigate(paths.order(o.id))}
+          orders={orders}
           initialSort={{ id: 'date', desc: true }}
-          pageSize={8}
           empty={
             <EmptyState
               compact

@@ -11,6 +11,7 @@ import {
   PageHeader,
   StatCard,
   Switch,
+  matchesQuery,
   toast,
 } from '@rc/ui'
 import { CirclePause, Search, UsersRound, Wallet, Workflow } from 'lucide-react'
@@ -46,19 +47,16 @@ export function AutomationsPage() {
     }
   }, [s.automations])
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return s.automations.filter((a) => {
-      if (filter === 'active' && !isOn(a)) return false
-      if (filter === 'off' && isOn(a)) return false
-      return (
-        !q ||
-        `${a.name} ${a.description} ${AUTOMATION_TRIGGER_LABEL[a.trigger]} ${a.triggerDetail}`
-          .toLowerCase()
-          .includes(q)
-      )
-    })
-  }, [s.automations, query, filter])
+  // Search first, so the chip counts reflect it.
+  const searched = useMemo(
+    () =>
+      s.automations.filter((a) =>
+        matchesQuery(query, a.name, a.description, AUTOMATION_TRIGGER_LABEL[a.trigger], a.triggerDetail),
+      ),
+    [s.automations, query],
+  )
+  const activeCount = searched.filter(isOn).length
+  const rows = filter ? searched.filter((a) => isOn(a) === (filter === 'active')) : searched
 
   const setStatus = (a: Automation, on: boolean) => {
     s.dispatch({ type: 'automations/setStatus', id: a.id, status: on ? 'active' : 'paused' })
@@ -230,18 +228,13 @@ export function AutomationsPage() {
           />
         </div>
         <ChipRow className="max-w-full">
-          <Chip
-            variant="filter"
-            active={!filter}
-            count={s.automations.length}
-            onClick={() => setFilter(null)}
-          >
+          <Chip variant="filter" active={!filter} count={searched.length} onClick={() => setFilter(null)}>
             All
           </Chip>
           <Chip
             variant="filter"
             active={filter === 'active'}
-            count={stats.active}
+            count={activeCount}
             onClick={() => setFilter(filter === 'active' ? null : 'active')}
           >
             Active
@@ -249,7 +242,7 @@ export function AutomationsPage() {
           <Chip
             variant="filter"
             active={filter === 'off'}
-            count={stats.off}
+            count={searched.length - activeCount}
             onClick={() => setFilter(filter === 'off' ? null : 'off')}
           >
             Paused or draft

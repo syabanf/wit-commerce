@@ -1,5 +1,5 @@
 // apps/admin/src/layouts/AdminLayout.tsx
-import { Banner, Spinner, cn, useMediaQuery } from '@rc/ui'
+import { Banner, Entrance, Spinner, cn, useMediaQuery } from '@rc/ui'
 import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router'
 import { usePersistentState } from '../lib/storage'
@@ -107,7 +107,9 @@ export function AdminLayout() {
 
           {/* Lazy‑loaded pages – generic spinner fallback */}
           <Suspense fallback={<Spinner />}>
-            <Outlet />
+            <Entrance key={pathname}>
+              <Outlet />
+            </Entrance>
           </Suspense>
         </main>
       </div>
@@ -133,6 +135,7 @@ function SectionTabs() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === '/integrations'}
               className={({ isActive }) =>
                 cn(
                   'h-9 gap-2 px-4 text-sm font-semibold inline-flex items-center rounded-full whitespace-nowrap transition-colors',

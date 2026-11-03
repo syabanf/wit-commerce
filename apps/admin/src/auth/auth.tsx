@@ -1,7 +1,9 @@
+import { ApiError } from '@rc/api'
 import { type Permission, can } from '@rc/fixtures'
 import type { Tenant, User } from '@rc/types'
-import { type ReactNode, createContext, useContext, useMemo, useState } from 'react'
+import { type ReactNode, createContext, useContext, useMemo, useState, useSyncExternalStore } from 'react'
 import { Navigate, useLocation } from 'react-router'
+import { HTTP, api, tokenStore } from '../lib/api'
 import { readStorage, writeStorage } from '../lib/storage'
 import { useStore } from '../state/store'
 
@@ -16,7 +18,12 @@ interface AuthValue {
   user: User | null
   tenant: Tenant | null
   tenants: Tenant[]
+  /** True while a signed-in session waits for the API to load its data. */
+  loading: boolean
+  /** Local mode: sign in as a demo user by id. */
   signIn: (userId: string) => void
+  /** API mode: sign in with email and password; resolves to an error sentence, or null when in. */
+  signInWithPassword: (email: string, password: string) => Promise<string | null>
   signOut: () => void
   switchTenant: (tenantId: string) => void
   can: (permission: Permission) => boolean
@@ -25,11 +32,13 @@ interface AuthValue {
 const AuthContext = createContext<AuthValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { state } = useStore()
+  const { state, ready } = useStore()
+  const token = useSyncExternalStore(tokenStore.subscribe, tokenStore.get, tokenStore.get)
   const [session, setSession] = useState<Session | null>(() => readStorage<Session | null>(SESSION_KEY, null))
 
   const value = useMemo<AuthValue>(() => {
-    const user = session ? (state.users.find((u) => u.id === session.userId) ?? null) : null
+    const signedIn = HTTP ? !!token && !!session : !!session
+    const user = signedIn && session ? (state.users.find((u) => u.id === session.userId) ?? null) : null
     const tenants = user
       ? state.tenants.filter((t) => user.role === 'platform_admin' || user.tenantIds.includes(t.id))
       : []
@@ -42,15 +51,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       tenant,
       tenants,
+      loading: HTTP && !!token && !ready,
       signIn: (userId) => {
         const u = state.users.find((x) => x.id === userId)
         if (u) persist({ userId, tenantId: u.tenantIds[0]! })
       },
-      signOut: () => persist(null),
+      signInWithPassword: async (email, password) => {
+        try {
+          const { token: issued, user: u } = await api.login(email, password)
+          persist({ userId: u.id, tenantId: u.tenantIds[0] ?? '' })
+          tokenStore.set(issued)
+          return null
+        } catch (err) {
+          if (err instanceof ApiError) return err.message
+          return 'The sign-in service did not answer. Check that the API is running.'
+        }
+      },
+      signOut: () => {
+        persist(null)
+        if (HTTP) tokenStore.set(null)
+      },
       switchTenant: (tenantId) => session && persist({ ...session, tenantId }),
       can: (permission) => !!user && can(user.role, permission),
     }
-  }, [session, state.users, state.tenants])
+  }, [session, token, ready, state.users, state.tenants])
 
   return <AuthContext value={value}>{children}</AuthContext>
 }
@@ -62,8 +86,9 @@ export function useAuth() {
 }
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user, tenant } = useAuth()
+  const { user, tenant, loading } = useAuth()
   const location = useLocation()
+  if (loading) return <div className="h-dvh bg-surface" />
   if (!user || !tenant) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   return children
 }

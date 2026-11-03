@@ -202,6 +202,7 @@ export function DataTable<T>({
               visible.map((row) => (
                 <tr
                   key={getRowKey(row)}
+                  data-motion="row"
                   data-clickable={onRowClick ? 'true' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={

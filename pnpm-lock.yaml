@@ -50,6 +50,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@rc/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@rc/fixtures':
         specifier: workspace:*
         version: link:../../packages/fixtures
@@ -103,8 +106,13 @@ importers:
         specifier: ^7.3.6
         version: 7.3.6(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.15)
 
+  apps/api: {}
+
   apps/mobile:
     dependencies:
+      '@rc/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@rc/fixtures':
         specifier: workspace:*
         version: link:../../packages/fixtures
@@ -163,6 +171,9 @@ importers:
 
   apps/storefront:
     dependencies:
+      '@rc/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@rc/fixtures':
         specifier: workspace:*
         version: link:../../packages/fixtures
@@ -216,6 +227,22 @@ importers:
         specifier: ^7.3.6
         version: 7.3.6(@types/node@26.6.4)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.15)
 
+  packages/api:
+    dependencies:
+      '@rc/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
+      '@rc/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@rc/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+
   packages/fixtures:
     dependencies:
       '@rc/types':
@@ -257,6 +284,9 @@ importers:
       cmdk:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      gsap:
+        specifier: ^3.15.0
+        version: 3.15.0
       lucide-react:
         specifier: ^1.47.0
         version: 1.52.0(@types/react@19.3.0)(react@19.3.0)
@@ -2600,6 +2630,9 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  gsap@3.15.0:
+    resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
   has-bigints@1.1.0:
     resolution: {integrity: sha512-R3pbpkcIqv2Pm3dUwgjclDRVmWpTJW2DcMzcIhEXEx1oh/CEMObMm3KLmRJOdvhM7o4uQBnwr8pzRK2sJWIqfg==}
@@ -6167,6 +6200,8 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  gsap@3.15.0: {}
 
   has-bigints@1.1.0: {}
 

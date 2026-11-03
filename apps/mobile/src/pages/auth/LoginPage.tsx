@@ -1,29 +1,49 @@
-import type { Seller, User } from '@rc/types'
+import type { Seller, Tenant, User } from '@rc/types'
 import { Avatar, Button, Kicker, toast } from '@rc/ui'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { profilesOf, useAuth } from '../../auth/auth'
+import { DEMO_PASSWORD, HTTP, api } from '../../lib/api'
 import { firstName } from '../../lib/seller'
 import { useStore } from '../../state/store'
 
 const rowClass =
   'flex min-h-12 w-full items-center gap-3 rounded-[20px] bg-card p-3 text-left shadow-card transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-[0.98]'
 
-export function LoginPage() {
+/** The accounts the page offers: the dataset's, or the API's demo list before anyone signs in. */
+function useAccounts(): { users: User[]; sellers: Seller[]; tenants: Tenant[] } {
   const { state } = useStore()
-  const { user, signIn } = useAuth()
+  const [remote, setRemote] = useState<{ users: User[]; sellers: Seller[]; tenants: Tenant[] } | null>(null)
+  useEffect(() => {
+    if (!HTTP) return
+    api
+      .demoAccounts()
+      .then(({ users, sellers, tenants }) => setRemote({ users, sellers, tenants }))
+      .catch(() => setRemote({ users: [], sellers: [], tenants: [] }))
+  }, [])
+  return HTTP ? (remote ?? { users: [], sellers: [], tenants: [] }) : state
+}
+
+export function LoginPage() {
+  const state = useAccounts()
+  const { user, loading, signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [picking, setPicking] = useState<User | null>(null)
   const from = (location.state as { from?: string } | null)?.from ?? '/'
-  if (user) return <Navigate to={from} replace />
+  if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-dvh bg-surface" />
 
   const sellers = state.users.filter((u) => u.role === 'sales' && profilesOf(state.sellers, u.id).length > 0)
   const tenantName = (id: string) => state.tenants.find((t) => t.id === id)?.name ?? 'Unknown brand'
 
-  const enter = (seller: Seller) => {
-    signIn(seller)
+  const enter = async (seller: Seller) => {
+    const email = state.users.find((u) => u.id === seller.userId)?.email ?? ''
+    const failed = await signIn(seller, { email, password: DEMO_PASSWORD })
+    if (failed) {
+      toast('Could not sign in', { tone: 'danger', description: failed })
+      return
+    }
     toast(`Welcome, ${firstName(seller.name)}`, {
       tone: 'success',
       description: `Signed in to your ${tenantName(seller.tenantId)} store.`,
@@ -33,7 +53,7 @@ export function LoginPage() {
 
   const choose = (u: User) => {
     const profiles = profilesOf(state.sellers, u.id)
-    if (profiles.length === 1) enter(profiles[0]!)
+    if (profiles.length === 1) void enter(profiles[0]!)
     else setPicking(u)
   }
 
@@ -76,7 +96,7 @@ export function LoginPage() {
           </p>
           <div className="mt-8 space-y-2">
             {profilesOf(state.sellers, picking.id).map((s) => (
-              <button key={s.id} type="button" className={rowClass} onClick={() => enter(s)}>
+              <button key={s.id} type="button" className={rowClass} onClick={() => void enter(s)}>
                 <Avatar name={tenantName(s.tenantId)} color={s.color} size="md" />
                 <span className="min-w-0 flex-1">
                   <span className="text-sm font-semibold block truncate">{tenantName(s.tenantId)}</span>
@@ -124,7 +144,8 @@ export function LoginPage() {
         </>
       )}
       <p className="mt-8 text-xs text-muted">
-        Demo accounts, no password. Data as of Monday 5 October 2026, 09:41 WIB.
+        {HTTP ? 'Demo accounts share one password.' : 'Demo accounts, no password.'} Data as of Monday 5
+        October 2026, 09:41 WIB.
       </p>
     </div>
   )

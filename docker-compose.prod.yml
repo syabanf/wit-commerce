@@ -1,0 +1,41 @@
+# Production stack, started by scripts/deploy-prod.sh. Values come from .env.production, which git ignores.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: commerce
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/deploy-prod.sh}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U commerce -d commerce']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://commerce:${POSTGRES_PASSWORD}@postgres:5432/commerce?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?run scripts/deploy-prod.sh}
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:?run scripts/deploy-prod.sh}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?run scripts/deploy-prod.sh}
+      DEMO_LOGIN: ${DEMO_LOGIN:-true}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:?run scripts/deploy-prod.sh}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-v4.1-flash}
+      TRUST_PROXY: 'true'
+      PORT: '8090'
+    # Only the web server on this machine reaches the API.
+    ports:
+      - '127.0.0.1:${API_PORT:-8090}:8090'
+
+volumes:
+  pgdata:

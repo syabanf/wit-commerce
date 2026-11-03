@@ -27,6 +27,21 @@ Dependencies point down. A page composes; it owns no business rules.
 - The app clock starts at `FIXTURE_NOW` (Monday 5 October 2026, 09:41 WIB) and ticks. `useNow()` re-renders "x ago" labels.
 - `system/tick` runs every minute: unpaid orders cancel after 24 hours, promotions, campaigns and scheduled pages start and end on time.
 
+## Backend API (`apps/api`, Go)
+
+- The API is the system of record when an app is built with `VITE_API_URL`; otherwise the app runs on the bundled seed and the local reducer, as before. Each app's `lib/api.ts` holds the switch (`HTTP`), the client and the token store; `AppStateProvider` picks `ApiStateProvider` or `LocalStateProvider`. Pages do not know which one is running: `useScoped()`, `dispatch` and `send` keep their signatures.
+- One request per action: `actionRequest()` in `packages/api` maps every `entity/verb` to its method and path (`orders/advance` → `POST /api/v1/orders/{id}/advance`). The answer is a `Delta` (`upserts` and `removes` per collection), which `applyDelta()` lays over the state; the same delta reaches every other client through `GET /api/v1/events` (server-sent events), so the console, the seller app and the storefront see each other's changes.
+- Rules live once more in Go: `internal/rules` ports `rules.ts`, `derive.ts` and `pricing.ts` word for word, and `internal/service` ports every reducer case as one transaction. A refusal returns `409` with the sentence the UI shows; the apps toast it. `scripts/api-golden.ts` records the reducer's deltas and `internal/service/parity_test.go` proves the Go service writes the same rows. When a rule changes, change it in both places and regenerate the golden file.
+- Storage: one Postgres table per collection, each row the entity as a JSON document plus generated columns for filters (`tenant_id`, `status`, `code`). Nested aggregates (variants, order lines, page sections) stay inside the document. Stock rows lock (`for update`) inside the transaction that changes them.
+- Auth: `POST /api/v1/auth/login` returns a bearer token (HS256, 12 hours) carrying the role and tenant ids; every handler checks the role's permission (the same table as `permissions.ts`) and the service checks the row's tenant. Storefront shoppers get a customer token per store (`/shop/{store}/sign-in` in demo mode, or with the receipt of a guest checkout); the public `/shop/{store}/state` carries no customers or orders.
+- The server runs `system/tick` every minute and stamps `at` and `by` itself; apps in API mode skip the local tick and take the clock from the server (`syncClock`).
+- `GET /api/v1/routes` lists every endpoint with its action and permission; `GET /api/v1/health` reports the database and the open streams.
+- OpenAPI: `internal/httpapi/openapi.go` builds the document from the route table and the Go types (`routeDocs` adds bodies). A new write needs a `routeDocs` entry, or `openapi_test.go` fails; then run `pnpm gen:openapi`.
+- API keys: a console permission maps to a scope in `auth.ScopeFor`. A permission without a scope (`tenant.manage`, `integration.manage`) stays with people, so a key can never manage keys. `store.Put` refuses to change a row's tenant, so a save cannot take another tenant's record.
+- Webhooks: `tx.enqueue` writes deliveries in the action's own transaction, from the rows it wrote (`rowEvents`) and `t.emit` for what a row cannot say (`order.paid`). A timer sends them through `OutboundClient`, which refuses internal IPs at connect time. A new event goes in `WebhookEvents`.
+- AI: `POST /shop/{store}/ai/chat` asks the model what a message means. `checkAIAnswer` keeps only known actions and real ids, and `aiActions` must never hold one that pays: approval stays an exact "ya" or the button. Customer records never go in the prompt.
+- Never return a secret except from create and rotate (`writeSecret`, `Cache-Control: no-store`). Connector values stay behind `service.ConnectorValues`, which no route calls.
+
 ## Routes and shared components
 
 - Every record has its own route, built through `paths.*` in `components/links.tsx`. `new` as the id creates (`/commerce/products/new`, `/customers/segments/new`). Lists that open a create dialog read `?new=1` and drop it once the dialog closes.

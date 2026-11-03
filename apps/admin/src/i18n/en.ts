@@ -43,6 +43,7 @@ export const en = {
     apps: 'Apps',
     analytics: 'Analytics',
     integrations: 'Integrations',
+    credentials: 'API credentials',
   },
   navigation: {
     dashboard: 'Dashboard',

@@ -21,9 +21,14 @@ import {
   DataTable,
   Donut,
   EmptyState,
+  FilterChips,
+  NoMatch,
   PageHeader,
   PillTabs,
   StatCard,
+  TableFilters,
+  countBy,
+  matchesQuery,
 } from '@rc/ui'
 import { HandCoins, PieChart, ShoppingBag, Wallet } from 'lucide-react'
 import { useMemo } from 'react'
@@ -53,6 +58,8 @@ export function PerformancePage() {
   const now = useNow(60_000)
   const [range, setRange] = useHistoryState<Window>('window', '30')
   const table = useTableHistory()
+  const [query, setQuery] = useHistoryState('sellers.q', '')
+  const [kind, setKind] = useHistoryState<SellerKind | null>('sellers.kind', null)
   const days = Number(range)
 
   const rows = useMemo<Row[]>(() => {
@@ -81,6 +88,14 @@ export function PerformancePage() {
   const leaders = rows.filter((r) => r.revenue > 0).sort((a, b) => b.revenue - a.revenue)
   const example = leaders[0]?.seller ?? s.sellers.find((x) => x.status === 'active')
   const exampleSlug = example?.slug ?? 'fahmi'
+
+  const searched = rows.filter((r) => matchesQuery(query, r.seller.name, r.seller.slug))
+  const tableRows = kind ? searched.filter((r) => r.seller.kind === kind) : searched
+  const activeCount = (query.trim() ? 1 : 0) + (kind ? 1 : 0)
+  const clear = () => {
+    setQuery('')
+    setKind(null)
+  }
 
   const columns: Column<Row>[] = [
     {
@@ -261,19 +276,43 @@ export function PerformancePage() {
               header to sort.
             </CardDescription>
           </CardHeader>
+          <TableFilters
+            query={query}
+            onQueryChange={setQuery}
+            searchPlaceholder="Seller name or store"
+            searchLabel="Search sellers"
+            shown={tableRows.length}
+            total={rows.length}
+            activeCount={activeCount}
+            onClear={clear}
+            chips={
+              <FilterChips
+                options={KINDS.map((k) => ({ value: k, label: SELLER_KIND_LABEL[k] }))}
+                value={kind}
+                onChange={setKind}
+                counts={countBy(searched, (r) => r.seller.kind)}
+                total={searched.length}
+              />
+            }
+          />
           <DataTable
             columns={columns}
-            rows={rows}
+            rows={tableRows}
             getRowKey={(r) => r.seller.id}
             onRowClick={(r) => navigate(paths.seller(r.seller.id))}
             initialSort={{ id: 'revenue', desc: true }}
             pageSize={15}
+            resetPageKey={`${query}|${kind}`}
             empty={
-              <EmptyState
-                compact
-                title="No sellers yet"
-                description="Invite sellers to give them a personal store and track what they sell."
-              />
+              activeCount ? (
+                <NoMatch title="No sellers match" onClear={clear} />
+              ) : (
+                <EmptyState
+                  compact
+                  title="No sellers yet"
+                  description="Invite sellers to give them a personal store and track what they sell."
+                />
+              )
             }
             {...table}
           />

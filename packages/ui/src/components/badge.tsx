@@ -44,6 +44,7 @@ export function CountBadge({ count, tone = 'accent', className }: CountBadgeProp
   if (!(count > 0)) return null
   return (
     <span
+      data-motion="pop"
       className={cn(
         'px-1 font-bold inline-flex h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full text-[0.625rem] leading-none tabular-nums ring-2',
         tone === 'accent' ? 'text-white bg-accent-strong ring-card' : 'bg-white text-ink ring-ink',

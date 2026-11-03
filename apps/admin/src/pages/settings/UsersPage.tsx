@@ -12,9 +12,14 @@ import {
   type Column,
   DataTable,
   EmptyState,
+  FilterChips,
   IconTile,
+  NoMatch,
   PageHeader,
+  TableFilters,
   cn,
+  countBy,
+  matchesQuery,
 } from '@rc/ui'
 import {
   BriefcaseBusiness,
@@ -28,7 +33,7 @@ import {
   Store,
 } from 'lucide-react'
 import { Fragment, type ReactNode, useMemo } from 'react'
-import { useTableHistory } from '../../lib/history-state'
+import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { PERMISSION_COUNT, PERMISSION_GROUPS, PERMISSION_LABEL, ROLES } from './lib'
 
@@ -53,6 +58,18 @@ const ROLE_BADGE: Record<Role, BadgeProps['variant']> = {
 export function UsersPage() {
   const s = useScoped()
   const table = useTableHistory()
+  const [query, setQuery] = useHistoryState('users.q', '')
+  const [role, setRole] = useHistoryState<Role | null>('users.role', null)
+  const searched = useMemo(
+    () => s.users.filter((u) => matchesQuery(query, u.name, u.email, u.title)),
+    [s.users, query],
+  )
+  const rows = role ? searched.filter((u) => u.role === role) : searched
+  const activeCount = (query.trim() ? 1 : 0) + (role ? 1 : 0)
+  const clear = () => {
+    setQuery('')
+    setRole(null)
+  }
   const tenantName = useMemo(() => new Map(s.state.tenants.map((t) => [t.id, t.name])), [s.state.tenants])
   const members = useMemo(
     () => new Map(ROLES.map((r) => [r, s.users.filter((u) => u.role === r)])),
@@ -119,17 +136,41 @@ export function UsersPage() {
               People with access to {s.tenant.name}, platform admins included.
             </CardDescription>
           </CardHeader>
+          <TableFilters
+            query={query}
+            onQueryChange={setQuery}
+            searchPlaceholder="Name, email or title"
+            searchLabel="Search users"
+            shown={rows.length}
+            total={s.users.length}
+            activeCount={activeCount}
+            onClear={clear}
+            chips={
+              <FilterChips
+                options={ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+                value={role}
+                onChange={setRole}
+                counts={countBy(searched, (u) => u.role)}
+                total={searched.length}
+              />
+            }
+          />
           <DataTable
             columns={columns}
-            rows={s.users}
+            rows={rows}
             getRowKey={(u) => u.id}
             initialSort={{ id: 'name' }}
+            resetPageKey={`${query}|${role}`}
             empty={
-              <EmptyState
-                compact
-                title="No users yet"
-                description="Users appear here once a platform admin adds them to this brand."
-              />
+              activeCount ? (
+                <NoMatch title="No users match" onClear={clear} />
+              ) : (
+                <EmptyState
+                  compact
+                  title="No users yet"
+                  description="Users appear here once a platform admin adds them to this brand."
+                />
+              )
             }
             {...table}
           />

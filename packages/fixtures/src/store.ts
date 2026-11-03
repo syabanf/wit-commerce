@@ -250,7 +250,8 @@ function shipModifierStock(stock: ModifierStockLevel[], order: Order): ModifierS
 }
 
 function advanceOrder(state: AppState, order: Order, by: string, at: IsoDate, trackingNo?: string): AppState {
-  if (orderAdvanceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products)) return state
+  if (orderAdvanceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products))
+    return state
   const next = nextOrderStatus(order)!
   let stock = state.stock
   let stockMoves = state.stockMoves
@@ -597,9 +598,12 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     case 'products/setStatus': {
       const product = state.products.find((p) => p.id === action.id)
       if (!product) return state
+      // Only the product's own tenant defines its attributes; a global attribute of another brand
+      // must not block activation here.
+      const defs = state.attributes.filter((a) => a.tenantId === product.tenantId)
       if (
         action.status === 'active' &&
-        productActivateBlocker(product, attributesFor(product.categoryId, state.attributes, state.categories))
+        productActivateBlocker(product, attributesFor(product.categoryId, defs, state.categories))
       )
         return state
       return {
@@ -666,9 +670,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
             p.tenantId === action.tenantId &&
             p.variants.some((v) => v.id === action.variantId),
         ) ||
-        !state.warehouses.some(
-          (w) => w.id === action.warehouseId && w.tenantId === action.tenantId,
-        )
+        !state.warehouses.some((w) => w.id === action.warehouseId && w.tenantId === action.tenantId)
       )
         return state
       const existing = state.stock.find(
@@ -803,7 +805,8 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     }
     case 'orders/place': {
       const { order, customer } = action
-      if (orderPlaceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products)) return state
+      if (orderPlaceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products))
+        return state
       const modifierQty = modifierDemand(order)
       const isNew = !!customer && !state.customers.some((c) => c.id === customer.id)
       const paid = order.paymentStatus === 'paid'

@@ -21,7 +21,12 @@ export type CardProps = ComponentProps<'div'> & { variant?: 'default' | 'ink' | 
 
 export function Card({ variant = 'default', className, children, ...props }: CardProps) {
   return (
-    <div data-variant={variant} className={cn(cardVariants({ variant }), className)} {...props}>
+    <div
+      data-variant={variant}
+      data-motion="rise"
+      className={cn(cardVariants({ variant }), className)}
+      {...props}
+    >
       {variant === 'ink' && (
         <div
           aria-hidden="true"

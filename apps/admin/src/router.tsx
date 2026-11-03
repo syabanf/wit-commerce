@@ -38,6 +38,11 @@ export const router = createBrowserRouter([
         handle: { breadcrumb: t.breadcrumb.integrations },
         lazy: page(() => import('./pages/integrations/IntegrationsPage'), 'IntegrationsPage'),
       },
+      {
+        path: 'integrations/credentials',
+        handle: { breadcrumb: t.breadcrumb.credentials },
+        lazy: page(() => import('./pages/integrations/CredentialsPage'), 'CredentialsPage'),
+      },
       ...settingsRoutes,
       // Section shortcuts and the not-found page come last.
       ...miscRoutes,

@@ -12,6 +12,21 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: commerce
+          POSTGRES_USER: commerce
+          POSTGRES_PASSWORD: commerce
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U commerce -d commerce"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://commerce:commerce@localhost:5433/commerce?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -19,10 +34,19 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
       - run: pnpm install --frozen-lockfile
       - name: Seed is up to date
         run: pnpm gen:fixtures && git diff --exit-code -- packages/fixtures/data
+      - name: Golden cases are up to date
+        run: pnpm gen:golden && git diff --exit-code -- apps/api/testdata
+      - name: OpenAPI document is up to date
+        run: pnpm gen:openapi && git diff --exit-code -- apps/api/openapi.json
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      - run: pnpm test:api
       - run: pnpm build

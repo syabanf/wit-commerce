@@ -1,12 +1,15 @@
 import { attributesFor, categoryRemoveBlocker, plural } from '@rc/fixtures'
-import type { Category } from '@rc/types'
+import type { Category, Product } from '@rc/types'
 import {
   Button,
+  ChipRow,
   type Column,
   ConfirmDialog,
   DataTable,
   EmptyState,
+  FilterChips,
   Input,
+  NoMatch,
   PageHeader,
   StatCard,
   toast,
@@ -27,6 +30,16 @@ interface Row {
   attributes: number
 }
 
+type Kind = 'top' | 'sub' | 'empty'
+const KINDS: { value: Kind; label: string }[] = [
+  { value: 'top', label: 'Top level' },
+  { value: 'sub', label: 'Sub-categories' },
+  { value: 'empty', label: 'Empty' },
+]
+
+const isEmptyCategory = (c: Category, categories: Category[], products: Product[]) =>
+  !products.some((p) => p.categoryId === c.id) && !categories.some((x) => x.parentId === c.id)
+
 export function CategoriesPage() {
   const s = useScoped()
   const { can } = useAuth()
@@ -36,6 +49,7 @@ export function CategoriesPage() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [dialogOpen, setDialogOpen] = useState(params.get('new') === '1')
   const [removing, setRemoving] = useState<Category | null>(null)
+  const [kind, setKind] = useHistoryState<Kind | null>('kind', null)
   const table = useTableHistory()
 
   const rows = useMemo<Row[]>(() => {
@@ -54,13 +68,22 @@ export function CategoriesPage() {
     () => ({
       top: s.categories.filter((c) => !c.parentId).length,
       sub: s.categories.filter((c) => c.parentId).length,
-      empty: s.categories.filter(
-        (c) =>
-          !s.products.some((p) => p.categoryId === c.id) && !s.categories.some((x) => x.parentId === c.id),
-      ).length,
+      empty: s.categories.filter((c) => isEmptyCategory(c, s.categories, s.products)).length,
     }),
     [s.categories, s.products],
   )
+
+  const kindTest: Record<Kind, (c: Category) => boolean> = {
+    top: (c) => !c.parentId,
+    sub: (c) => !!c.parentId,
+    empty: (c) => isEmptyCategory(c, s.categories, s.products),
+  }
+  const shown = kind ? rows.filter((r) => kindTest[kind](r.category)) : rows
+  const filtered = Boolean(query.trim() || kind)
+  const clear = () => {
+    setQuery('')
+    setKind(null)
+  }
 
   const openDialog = (category: Category | null) => {
     setEditing(category)
@@ -204,25 +227,34 @@ export function CategoriesPage() {
             tone={stats.empty ? 'warning' : 'success'}
           />
         </div>
+        <ChipRow className="max-w-full">
+          <FilterChips
+            variant="filter"
+            options={KINDS}
+            value={kind}
+            onChange={setKind}
+            counts={{
+              top: rows.filter((r) => kindTest.top(r.category)).length,
+              sub: rows.filter((r) => kindTest.sub(r.category)).length,
+              empty: rows.filter((r) => kindTest.empty(r.category)).length,
+            }}
+            total={rows.length}
+          />
+        </ChipRow>
         <DataTable
           columns={columns}
-          rows={rows}
+          rows={shown}
           getRowKey={(r) => r.category.id}
           onRowClick={manage ? (r) => openDialog(r.category) : undefined}
           initialSort={{ id: 'name' }}
           pageSize={0}
-          resetPageKey={query}
+          resetPageKey={`${query}|${kind}`}
           empty={
-            query.trim() ? (
-              <EmptyState
-                compact
+            filtered ? (
+              <NoMatch
                 title="No categories match"
-                description="Clear the search to see every category."
-                action={
-                  <Button variant="outline" size="sm" onClick={() => setQuery('')}>
-                    Clear search
-                  </Button>
-                }
+                description="Clear the search and filters to see every category."
+                onClear={clear}
               />
             ) : (
               <EmptyState

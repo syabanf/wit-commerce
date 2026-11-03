@@ -23,7 +23,6 @@ import {
   CardTitle,
   type Column,
   ConfirmDialog,
-  DataTable,
   EmptyState,
   KeyValue,
   Kicker,
@@ -32,10 +31,11 @@ import {
 } from '@rc/ui'
 import { Ban, Link2, MoreHorizontal, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { LeadStageBadge, ON_INK, OrderStatusBadge } from '../../components/badges'
+import { FilteredOrderTable } from '../../components/FilteredOrderTable'
 import { CustomerLink, OrderLink, ProductLink, paths } from '../../components/links'
 import { ProductsPicker } from '../../components/pickers'
 import { useNow, useScoped } from '../../state/scoped'
@@ -50,7 +50,6 @@ export function SellerDetailPage() {
   const { id } = useParams()
   const s = useScoped()
   const { can } = useAuth()
-  const navigate = useNavigate()
   const now = useNow(60_000)
   const [suspending, setSuspending] = useState(false)
   const seller = s.sellers.find((x) => x.id === id)
@@ -252,13 +251,11 @@ export function SellerDetailPage() {
             Orders from {url} or any link with ?ref={seller.slug}.
           </CardDescription>
         </CardHeader>
-        <DataTable
+        <FilteredOrderTable
+          name="seller.orders"
           columns={orderColumns}
-          rows={orders}
-          getRowKey={(o) => o.id}
-          onRowClick={(o) => navigate(paths.order(o.id))}
+          orders={orders}
           initialSort={{ id: 'date', desc: true }}
-          pageSize={8}
           empty={
             <EmptyState
               compact
