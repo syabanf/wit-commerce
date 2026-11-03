@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/mail"
 	"slices"
@@ -115,14 +114,10 @@ func (s *Server) writeStaffError(w http.ResponseWriter, r *http.Request, err err
 	s.writeError(w, r, err)
 }
 
-func (s *Server) logStaffChange(r *http.Request, action, targetID string) {
-	p, _ := auth.From(r.Context())
-	s.Log.Info("staff change", "action", action, "actor", p.ID, "target", targetID, "requestId", requestIDOf(r.Context()))
-}
-
-// changeStaff locks the person, runs the rule, then saves what change returns. The lock serialises
-// changes, so two admins cannot both demote each other and leave no platform admin.
-func (s *Server) changeStaff(ctx context.Context, actor auth.Principal, id string, change func(tx pgx.Tx, u domain.User) (domain.User, error)) (domain.User, error) {
+// changeStaff locks the person, runs the rule, then saves what change returns along with the event
+// it describes, in one transaction, so no change goes unrecorded. The lock serialises changes, so
+// two admins cannot both demote each other and leave no platform admin.
+func (s *Server) changeStaff(ctx context.Context, actor auth.Principal, id string, change func(tx pgx.Tx, u domain.User) (domain.User, staffEvent, error)) (domain.User, error) {
 	var saved domain.User
 	err := pgx.BeginFunc(ctx, s.DB.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `select pg_advisory_xact_lock(hashtext('staff'))`); err != nil {
@@ -135,11 +130,19 @@ func (s *Server) changeStaff(ctx context.Context, actor auth.Principal, id strin
 		if !mayManage(actor, u.Role, u.TenantIDs) {
 			return errStaffForbidden
 		}
-		saved, err = change(tx, u)
+		var event staffEvent
+		saved, event, err = change(tx, u)
 		if err != nil {
 			return err
 		}
-		return store.Put(ctx, tx, "users", id, saved)
+		if err := store.Put(ctx, tx, "users", id, saved); err != nil {
+			return err
+		}
+		if event.action == "" {
+			return nil
+		}
+		event.target, event.tenantIDs = saved, append(slices.Clone(u.TenantIDs), saved.TenantIDs...)
+		return event.record(ctx, tx, actor.ID)
 	})
 	return saved, err
 }
@@ -203,16 +206,17 @@ func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
 		if err := store.Put(r.Context(), tx, "users", u.ID, u); err != nil {
 			return err
 		}
-		_, err := tx.Exec(r.Context(), `insert into credentials (user_id, password_hash) values ($1, $2)`, u.ID, hash)
-		return err
+		if _, err := tx.Exec(r.Context(), `insert into credentials (user_id, password_hash) values ($1, $2)`, u.ID, hash); err != nil {
+			return err
+		}
+		return staffEvent{action: "created", detail: roleLabel(u.Role), target: u, tenantIDs: u.TenantIDs}.record(r.Context(), tx, p.ID)
 	})
 	if err != nil {
 		s.writeStaffError(w, r, err)
 		return
 	}
-	s.logStaffChange(r, "create", u.ID)
 	if s.emailReady() {
-		writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, EmailSent: s.mailInvite(r.Context(), u)})
+		writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, EmailSent: s.sendInvite(r.Context(), p, u)})
 		return
 	}
 	writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, TemporaryPassword: password})
@@ -230,27 +234,33 @@ func (s *Server) updateStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	saved, err := s.changeStaff(r.Context(), p, id, func(tx pgx.Tx, u domain.User) (domain.User, error) {
+	saved, err := s.changeStaff(r.Context(), p, id, func(tx pgx.Tx, u domain.User) (domain.User, staffEvent, error) {
 		if !mayManage(p, in.Role, in.TenantIDs) {
-			return u, errStaffForbidden
+			return u, staffEvent{}, errStaffForbidden
 		}
 		access := in.Role != u.Role || !slices.Equal(in.TenantIDs, u.TenantIDs)
 		if access && id == p.ID {
-			return u, staffError{http.StatusConflict, "OWN_ACCESS", "Ask another admin to change your own role or brands."}
+			return u, staffEvent{}, staffError{http.StatusConflict, "OWN_ACCESS", "Ask another admin to change your own role or brands."}
 		}
 		if in.Role != "platform_admin" {
 			if err := keepsAnAdmin(r.Context(), tx, u); err != nil {
-				return u, err
+				return u, staffEvent{}, err
 			}
 		}
+		detail, err := changesBetween(r.Context(), tx, u, in)
+		if err != nil {
+			return u, staffEvent{}, err
+		}
 		u.Name, u.Title, u.Role, u.TenantIDs = in.Name, in.Title, in.Role, in.TenantIDs
-		return u, nil
+		if detail == "" {
+			return u, staffEvent{}, nil
+		}
+		return u, staffEvent{action: "updated", detail: detail}, nil
 	})
 	if err != nil {
 		s.writeStaffError(w, r, err)
 		return
 	}
-	s.logStaffChange(r, "update", id)
 	writeJSON(w, http.StatusOK, staffResponse{User: saved})
 }
 
@@ -262,23 +272,26 @@ func (s *Server) setStaffStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := r.PathValue("id")
-	saved, err := s.changeStaff(r.Context(), p, id, func(tx pgx.Tx, u domain.User) (domain.User, error) {
+	saved, err := s.changeStaff(r.Context(), p, id, func(tx pgx.Tx, u domain.User) (domain.User, staffEvent, error) {
 		if id == p.ID {
-			return u, staffError{http.StatusConflict, "OWN_ACCESS", "You cannot disable your own account."}
+			return u, staffEvent{}, staffError{http.StatusConflict, "OWN_ACCESS", "You cannot disable your own account."}
 		}
 		if in.Disabled {
 			if err := keepsAnAdmin(r.Context(), tx, u); err != nil {
-				return u, err
+				return u, staffEvent{}, err
 			}
 		}
+		action := "enabled"
+		if in.Disabled {
+			action = "disabled"
+		}
 		u.Disabled = in.Disabled
-		return u, nil
+		return u, staffEvent{action: action}, nil
 	})
 	if err != nil {
 		s.writeStaffError(w, r, err)
 		return
 	}
-	s.logStaffChange(r, fmt.Sprintf("disabled=%t", in.Disabled), id)
 	writeJSON(w, http.StatusOK, staffResponse{User: saved})
 }
 
@@ -296,20 +309,19 @@ func (s *Server) resetStaffPassword(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	saved, err := s.changeStaff(r.Context(), p, id, func(tx pgx.Tx, u domain.User) (domain.User, error) {
+	saved, err := s.changeStaff(r.Context(), p, id, func(tx pgx.Tx, u domain.User) (domain.User, staffEvent, error) {
 		if id == p.ID {
-			return u, staffError{http.StatusConflict, "OWN_ACCESS", "Change your own password from the account menu."}
+			return u, staffEvent{}, staffError{http.StatusConflict, "OWN_ACCESS", "Change your own password from the account menu."}
 		}
 		_, err := tx.Exec(r.Context(), `insert into credentials (user_id, password_hash, tokens_valid_from) values ($1, $2, $3)
 			on conflict (user_id) do update set password_hash = excluded.password_hash,
 			tokens_valid_from = excluded.tokens_valid_from, updated_at = now()`, id, hash, time.Now().Truncate(time.Second))
-		return u, err
+		return u, staffEvent{action: "password_reset"}, err
 	})
 	if err != nil {
 		s.writeStaffError(w, r, err)
 		return
 	}
-	s.logStaffChange(r, "reset-password", id)
 	if s.emailReady() {
 		writeJSON(w, http.StatusOK, issuedStaffResponse{User: saved, EmailSent: s.mailAdminReset(r.Context(), saved)})
 		return
@@ -337,6 +349,16 @@ func (s *Server) inviteStaff(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusConflict, "NOT_INVITED", "This person has no pending invitation.")
 		return
 	}
-	s.logStaffChange(r, "invite", id)
-	writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, EmailSent: s.mailInvite(r.Context(), u)})
+	writeJSON(w, http.StatusOK, issuedStaffResponse{User: u, EmailSent: s.sendInvite(r.Context(), p, u)})
+}
+
+// sendInvite mails the invitation and records whether it went out.
+func (s *Server) sendInvite(ctx context.Context, actor auth.Principal, u domain.User) bool {
+	sent := s.mailInvite(ctx, u)
+	action := "invite_failed"
+	if sent {
+		action = "invite_sent"
+	}
+	s.recordStaff(ctx, actor.ID, staffEvent{action: action, target: u, tenantIDs: u.TenantIDs})
+	return sent
 }

@@ -123,6 +123,9 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
+	if u, err := store.Get[domain.User](r.Context(), s.DB.Pool, "users", p.ID); err == nil {
+		s.recordStaff(r.Context(), p.ID, staffEvent{action: "password_changed", target: u, tenantIDs: u.TenantIDs})
+	}
 	// Other sessions end here; this one continues on a new token.
 	token, _, err := s.Signer.Sign(auth.Principal{Kind: p.Kind, ID: p.ID, Role: p.Role, TenantIDs: p.TenantIDs}, now)
 	if err != nil {

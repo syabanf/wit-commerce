@@ -142,8 +142,12 @@ func EnsureAdmin(ctx context.Context, db *store.DB, email, name, password string
 		} else if err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `insert into credentials (user_id, password_hash) values ($1, $2)
-			on conflict (user_id) do update set password_hash = excluded.password_hash, updated_at = now()`, id, hash)
+		if _, err := tx.Exec(ctx, `insert into credentials (user_id, password_hash) values ($1, $2)
+			on conflict (user_id) do update set password_hash = excluded.password_hash, updated_at = now()`, id, hash); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `insert into staff_events (actor_id, actor_name, target_id, target_name, action)
+			values ('system', 'Server command', $1, $2, 'admin_set_from_server')`, id, name)
 		return err
 	})
 }

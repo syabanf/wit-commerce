@@ -300,3 +300,31 @@ func TestAFailedResendKeepsTheEarlierLink(t *testing.T) {
 	}
 	e.expect(204, "POST", "/auth/reset", "", map[string]string{"token": first, "newPassword": "my own long password"})
 }
+
+func TestInvitationOutcomesLandInTheHistory(t *testing.T) {
+	e, box := mailEnv(t)
+	admin := e.signIn("andi@lari.co.id", password)
+	var made struct {
+		User struct {
+			ID string `json:"id"`
+		} `json:"user"`
+	}
+	e.call("POST", "/users", admin, newStaff("log@example.com", "marketing", "ten-lari"), &made)
+	token, _ := box.link(t, 1)
+	box.mu.Lock()
+	box.fail = true
+	box.mu.Unlock()
+	e.call("POST", "/users/"+made.User.ID+"/invite", admin, nil, nil)
+	e.expect(204, "POST", "/auth/reset", "", map[string]string{"token": token, "newPassword": "my own long password"})
+	page := e.events(admin, "tenantId=ten-lari")
+	var actions []string
+	for _, event := range page.Events {
+		actions = append(actions, event.Action)
+	}
+	if strings.Join(actions, " ") != "invite_accepted invite_failed invite_sent created" {
+		t.Errorf("actions: %v", actions)
+	}
+	if page.Events[0].ActorName != "New Person" {
+		t.Errorf("the person accepting is the actor: %+v", page.Events[0])
+	}
+}

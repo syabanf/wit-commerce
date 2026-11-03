@@ -49,6 +49,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 	add("POST", "/auth/forgot", "", "", "Email a link to choose a new password", s.forgotPassword)
 	add("POST", "/auth/reset", "", "", "Choose a new password with a link from email", s.resetPassword)
 	add("POST", "/auth/password", "", "", "Change the signed-in user's password", s.user("", s.changePassword))
+	add("GET", "/users/events", "", "user.manage", "Who changed which staff account in a brand, newest first", s.staffEvents)
 	add("POST", "/users", "", "user.manage", "Add a staff member and email them an invitation", s.createStaff)
 	add("PUT", "/users/{id}", "", "user.manage", "Change a staff member's name, title, role or brands", s.updateStaff)
 	add("POST", "/users/{id}/status", "", "user.manage", "Disable or enable a staff member", s.setStaffStatus)

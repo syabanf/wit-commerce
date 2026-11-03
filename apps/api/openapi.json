@@ -2355,6 +2355,10 @@
         ],
         "type": "object"
       },
+      "Time": {
+        "properties": {},
+        "type": "object"
+      },
       "User": {
         "properties": {
           "color": {
@@ -2926,6 +2930,63 @@
           "customer",
           "expiresAt",
           "token"
+        ],
+        "type": "object"
+      },
+      "staffEventRow": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "at": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "targetName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "actorId",
+          "actorName",
+          "at",
+          "detail",
+          "id",
+          "targetId",
+          "targetName"
+        ],
+        "type": "object"
+      },
+      "staffEventsResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/staffEventRow"
+            },
+            "type": "array"
+          },
+          "nextBefore": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "events"
         ],
         "type": "object"
       },
@@ -13606,6 +13667,84 @@
           }
         ],
         "summary": "Add a staff member and email them an invitation",
+        "tags": [
+          "Platform"
+        ],
+        "x-required-permission": "user.manage"
+      }
+    },
+    "/users/events": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getUsersEvents",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/staffEventsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Who changed which staff account in a brand, newest first",
         "tags": [
           "Platform"
         ],

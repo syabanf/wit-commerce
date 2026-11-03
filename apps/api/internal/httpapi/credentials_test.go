@@ -309,7 +309,8 @@ func TestRateLimitPerKey(t *testing.T) {
 	e := setup(t)
 	key := e.issue("orders:read").Secret
 	limited := false
-	for range 700 {
+	// The count restarts each minute, so a run crossing one needs room for a second full window.
+	for range 1300 {
 		if e.call("GET", "/orders?limit=1", key, nil, nil) == http.StatusTooManyRequests {
 			limited = true
 			break

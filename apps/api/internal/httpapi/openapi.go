@@ -111,6 +111,7 @@ var routeDocs = map[string]routeDoc{
 	"POST /shop/{store}/reset":                 {body: resetInput{}},
 	"POST /shop/{store}/verify":                {body: verifyInput{}},
 	"POST /auth/password":                      {body: changePasswordInput{}, response: tokenResponse{}},
+	"GET /users/events":                        {response: staffEventsResponse{}},
 	"POST /users":                              {body: staffInput{}, response: issuedStaffResponse{}},
 	"PUT /users/{id}":                          {body: staffInput{}, response: staffResponse{}},
 	"POST /users/{id}/status":                  {body: staffStatusInput{}, response: staffResponse{}},

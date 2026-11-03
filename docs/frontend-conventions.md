@@ -43,6 +43,7 @@ Dependencies point down. A page composes; it owns no business rules.
 - Sign-in: `POST /auth/login` for staff and `POST /shop/{store}/login` or `/register` for shoppers, capped per client and per email. A guest may only name a new customer id when ordering, since the receipt carries a token for it. Registering never attaches a guest's earlier orders, because no email check proves the inbox yet.
 - Staff: `mayManage` in `staff.go` is the one rule, mirrored in `UsersPage`. A platform admin manages anyone; others only people wholly within their brands. `Server.current` re-reads the account on every request, so tokens carry identity and the database holds the role.
 - Email links: `email_tokens` keeps only a hash, a link works once, and the newest of a kind replaces the rest. Forgot answers the same whether or not the address has an account. Only a proven inbox may fold guest records into an account (`claimGuestRecords`).
+- Staff history: `staff_events` only ever gains rows, written in the same transaction as the change. A line's brands are the person's before and after; a line with none is for platform admins. Details never hold a password or a link.
 - Never return a secret except from create and rotate (`writeSecret`, `Cache-Control: no-store`). Connector values stay behind `service.ConnectorValues`, which no route calls.
 
 ## Routes and shared components

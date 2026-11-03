@@ -327,6 +327,23 @@ export interface IssuedStaff {
   emailSent: boolean
 }
 
+/** One line of the staff history. Names stay as they were at the time. */
+export interface StaffEvent {
+  id: number
+  at: string
+  actorId: string
+  actorName: string
+  targetId: string
+  targetName: string
+  action: string
+  detail: string
+}
+
+export interface StaffEventsPage {
+  events: StaffEvent[]
+  nextBefore?: number
+}
+
 export interface ShopperResponse {
   token: string
   expiresAt: string
@@ -532,6 +549,11 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
         call<{ user: User }>('POST', `/users/${id}/status`, { disabled }),
       resetPassword: (id: string) => call<IssuedStaff>('POST', `/users/${id}/reset-password`),
       invite: (id: string) => call<IssuedStaff>('POST', `/users/${id}/invite`),
+      events: (tenantId: string, before?: number) =>
+        call<StaffEventsPage>(
+          'GET',
+          `/users/events?tenantId=${encodeURIComponent(tenantId)}${before ? `&before=${before}` : ''}`,
+        ),
     },
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
     state: () => call<StateResponse>('GET', '/state'),

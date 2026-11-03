@@ -348,11 +348,11 @@ func (db *DB) IsEmpty(ctx context.Context) (bool, error) {
 
 // Truncate empties every entity table (dev reset).
 func (db *DB) Truncate(ctx context.Context) error {
-	names := make([]string, 0, len(Tables)+3)
+	names := make([]string, 0, len(Tables)+5)
 	for _, t := range Tables {
 		names = append(names, t)
 	}
-	names = append(names, "credentials", "customer_credentials", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries")
+	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries")
 	_, err := db.Pool.Exec(ctx, `truncate `+strings.Join(names, ", "))
 	return err
 }

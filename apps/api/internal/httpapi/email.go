@@ -196,11 +196,16 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 		if err != nil || u.Disabled {
 			return staffError{http.StatusGone, "LINK_EXPIRED", "This link has expired or was already used. Ask for a new one."}
 		}
+		action := "password_reset_by_link"
 		if u.Invited {
+			action = "invite_accepted"
 			u.Invited = false
 			if err := store.Put(r.Context(), tx, "users", id, u); err != nil {
 				return err
 			}
+		}
+		if err := (staffEvent{action: action, target: u, tenantIDs: u.TenantIDs}).record(r.Context(), tx, id); err != nil {
+			return err
 		}
 		_, err = tx.Exec(r.Context(), `insert into credentials (user_id, password_hash, tokens_valid_from) values ($1, $2, $3)
 			on conflict (user_id) do update set password_hash = excluded.password_hash,

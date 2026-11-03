@@ -52,6 +52,7 @@ import { HTTP, api } from '../../lib/api'
 import { useStore } from '../../state/store'
 import { SecretDialog } from '../integrations/SecretDialog'
 import { StaffDialog } from './StaffDialog'
+import { StaffHistory } from './StaffHistory'
 
 const ROLE_ICON: Record<Role, ReactNode> = {
   platform_admin: <ShieldCheck />,
@@ -80,6 +81,7 @@ export function UsersPage() {
   const [editing, setEditing] = useState<User | 'new' | null>(null)
   const [issued, setIssued] = useState<IssuedStaff | null>(null)
   const [pending, setPending] = useState<{ kind: 'reset' | 'status'; user: User } | null>(null)
+  const [historyVersion, setHistoryVersion] = useState(0)
   const table = useTableHistory()
   const [query, setQuery] = useHistoryState('users.q', '')
   const [role, setRole] = useHistoryState<Role | null>('users.role', null)
@@ -117,6 +119,7 @@ export function UsersPage() {
   // With email on the person gets a link and the admin sees no password.
   const report = (result: IssuedStaff) => {
     mergeUser(result.user)
+    setHistoryVersion((v) => v + 1)
     if (result.temporaryPassword) setIssued(result)
     else if (result.emailSent) toast('Email sent', { tone: 'success', description: result.user.email })
     else
@@ -132,6 +135,7 @@ export function UsersPage() {
       else {
         const { user } = await api.staff.setDisabled(pending.user.id, !pending.user.disabled)
         mergeUser(user)
+        setHistoryVersion((v) => v + 1)
         toast(user.disabled ? 'Account disabled' : 'Account enabled', {
           tone: 'success',
           description: user.name,
@@ -306,6 +310,8 @@ export function UsersPage() {
           />
         </Card>
 
+        {manage && <StaffHistory tenantId={s.tenant.id} version={historyVersion} />}
+
         <div className="gap-4 sm:grid-cols-2 xl:grid-cols-3 grid grid-cols-1">
           {ROLES.map((role) => {
             const people = members.get(role) ?? []
@@ -344,7 +350,10 @@ export function UsersPage() {
       {editing && (
         <StaffDialog
           person={editing === 'new' ? null : editing}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null)
+            setHistoryVersion((v) => v + 1)
+          }}
           onIssued={report}
         />
       )}
