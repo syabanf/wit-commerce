@@ -100,7 +100,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
                   priceClassName="text-xl md:text-2xl"
                 />
                 {detail.cartDiscountPct && (
-                  <p className="text-sm font-semibold text-[color:var(--sf-primary)]">
+                  <p className="text-sm font-semibold text-[color:var(--sf-primary-text)]">
                     {detail.cartDiscountPct}% off applied in cart
                   </p>
                 )}

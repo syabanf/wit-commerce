@@ -27,6 +27,7 @@ import { ProductImage } from '../components/product'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
 import { cartTotals } from '../lib/cart'
 import {
+  DEMO_PAYMENT_NOTE,
   CITIES,
   COURIERS,
   DEFAULT_COURIER,
@@ -463,7 +464,10 @@ export function CheckoutPage() {
                       role="status"
                       className="gap-3 p-4 text-sm flex items-center rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]"
                     >
-                      <Check className="size-5 shrink-0 text-[color:var(--sf-primary)]" aria-hidden="true" />
+                      <Check
+                        className="size-5 shrink-0 text-[color:var(--sf-primary-text)]"
+                        aria-hidden="true"
+                      />
                       <span>
                         Checking out as <strong>{account.name}</strong>, {LOYALTY_TIER_LABEL[account.tier]}{' '}
                         member with {account.points} points.
@@ -616,7 +620,7 @@ export function CheckoutPage() {
                           {qrisPaid ? (
                             <p
                               role="status"
-                              className="gap-2 text-sm font-semibold flex items-center text-[color:var(--sf-primary)]"
+                              className="gap-2 text-sm font-semibold flex items-center text-[color:var(--sf-primary-text)]"
                             >
                               <Check className="size-4" aria-hidden="true" /> Payment received
                             </p>
@@ -665,11 +669,7 @@ export function CheckoutPage() {
                 <div>
                   <dt className="text-[color:var(--sf-muted)]">Payment</dt>
                   <dd className="font-semibold">{payment?.name}</dd>
-                  <dd>
-                    {payment?.method === 'cod'
-                      ? 'Pay the courier on arrival'
-                      : 'Paid when you place the order'}
-                  </dd>
+                  <dd>{payment?.method === 'cod' ? 'Pay the courier on arrival' : DEMO_PAYMENT_NOTE}</dd>
                 </div>
               </dl>
               {referral && (

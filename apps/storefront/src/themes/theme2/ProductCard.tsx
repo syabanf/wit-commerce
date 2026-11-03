@@ -48,11 +48,11 @@ export function ProductCard({ product, className }: { product: Product; classNam
             {product.name}
           </Link>
         </h3>
-        <p className="sf-price pt-2 font-bold md:text-base mt-auto text-[15px] text-[color:var(--sf-primary)]">
+        <p className="sf-price pt-2 font-bold md:text-base mt-auto text-[15px] text-[color:var(--sf-primary-text)]">
           {product.assisted ? 'Talk to sales' : fmtIdr(fromPrice(product))}
         </p>
         {cartDiscountPct && (
-          <p className="text-xs font-semibold text-[color:var(--sf-primary)]">
+          <p className="text-xs font-semibold text-[color:var(--sf-primary-text)]">
             {cartDiscountPct}% off applied in cart
           </p>
         )}

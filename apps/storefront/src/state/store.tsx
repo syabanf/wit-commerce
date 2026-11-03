@@ -22,6 +22,7 @@ import {
 } from 'react'
 import { HTTP, api, shopperToken } from '../lib/api'
 import { ADMIN_ORIGINS, EMBED, EMBED_HOST, type PreviewState, cleanPreview } from '../lib/embed'
+import { StoreOffline } from '../components/StoreOffline'
 
 const STATE_KEY = 'rc.storefront.state.v1'
 
@@ -97,6 +98,7 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
 function ApiStateProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(emptyState)
   const [ready, setReady] = useState(false)
+  const [offline, setOffline] = useState(false)
   const current = useRef<{ subdomain: string; tenantId: string } | null>(null)
 
   useEffect(() => {
@@ -108,7 +110,10 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
         syncClock(now)
         setState((s) => mergeState(s, { tenants }))
       })
-      .catch((err: unknown) => console.error('stores did not load', err))
+      .catch((err: unknown) => {
+        console.error('stores did not load', err)
+        if (!cancelled) setOffline(true)
+      })
       .finally(() => {
         if (!cancelled) setReady(true)
       })
@@ -131,7 +136,10 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
         const { tenants: _tenants, ...rest } = loaded
         setState((s) => mergeState(s, rest))
       })
-      .catch((err: unknown) => console.error('store did not load', err))
+      .catch((err: unknown) => {
+        console.error('store did not load', err)
+        if (!cancelled) setOffline(true)
+      })
     api.shop
       .demoCustomers(subdomain)
       .then(({ customers }) => !cancelled && setState((s) => mergeState(s, { customers })))
@@ -165,6 +173,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
     [shown, send, loadStore, merge, ready],
   )
   // Pages read the tenant list on their first render; the canvas waits for it.
+  if (offline) return <StoreOffline />
   return <StoreContext value={value}>{ready ? children : <div className="min-h-dvh" />}</StoreContext>
 }
 

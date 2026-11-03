@@ -46,7 +46,7 @@ export function HeroRow({ section }: { section: PageSection }) {
                 to={paths.category(store, c.id)}
                 className={cn(
                   'min-h-11 gap-3 rounded-2xl px-3 text-sm font-semibold flex items-center hover:bg-[var(--sf-soft)]',
-                  i === 0 && 'text-[color:var(--sf-primary)]',
+                  i === 0 && 'text-[color:var(--sf-primary-text)]',
                 )}
                 style={i === 0 ? { background: tint('--sf-primary', 10) } : undefined}
               >
@@ -286,11 +286,11 @@ export function DealsStrip() {
       >
         <div className="gap-6 lg:flex-row lg:items-center lg:justify-between flex flex-col">
           <div className="min-w-0">
-            <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">Deal of the week</p>
+            <p className="font-bold text-[11px] tracking-[0.16em] uppercase">Deal of the week</p>
             <h2 id="deals-h" className="sf-title mt-1">
               {promotion.name}
             </h2>
-            <p className="mt-2 text-sm opacity-80">{promoTerms(promotion)}</p>
+            <p className="mt-2 text-sm">{promoTerms(promotion)}</p>
             <div className="mt-4">
               {promotion.trigger === 'code' ? (
                 <CouponCode code={promotion.code} />
@@ -302,7 +302,7 @@ export function DealsStrip() {
             </div>
           </div>
           <div className="shrink-0">
-            <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">Ends in</p>
+            <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase">Ends in</p>
             <Countdown endAt={promotion.endAt} />
           </div>
         </div>
@@ -383,7 +383,7 @@ export function OfferBand() {
         className="bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]"
         stub={<PromoValue promotion={promotion} className="text-6xl md:text-8xl" />}
       >
-        <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">
+        <p className="font-bold text-[11px] tracking-[0.16em] uppercase">
           {scopedCategory ? `${scopedCategory.name} offer` : `New to ${tenant.name.replace(/\.$/, '')}`}
         </p>
         <h2 id="offer-h" className="sf-title mt-1 max-w-2xl">
@@ -391,7 +391,7 @@ export function OfferBand() {
             ? `${offerText(promotion)} ${scopedCategory.name.toLowerCase()}`
             : `${offerText(promotion)} your first order`}
         </h2>
-        <p className="mt-2 text-sm opacity-80">{promoTerms(promotion)}</p>
+        <p className="mt-2 text-sm">{promoTerms(promotion)}</p>
         <div className="mt-5 gap-3 flex flex-wrap items-center">
           {promotion.trigger === 'code' && <CouponCode code={promotion.code} />}
           <ButtonLink to={to} variant="light">

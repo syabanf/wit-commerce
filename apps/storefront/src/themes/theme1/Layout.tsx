@@ -90,7 +90,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={withCategory ? 'Search products and brands' : 'Search products'}
-        className="h-10 min-w-0 px-3 text-sm flex-1 bg-transparent placeholder:text-[color:var(--sf-muted)]"
+        className="h-10 min-w-0 px-3 text-base md:text-sm flex-1 bg-transparent placeholder:text-[color:var(--sf-muted)]"
       />
       {withCategory && (
         <button
@@ -338,14 +338,14 @@ export function Layout({ children }: { children: ReactNode }) {
                 <Link
                   key={l.label}
                   to={l.to}
-                  className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary)]"
+                  className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
                 >
                   {l.label}
                 </Link>
               ))}
               <a
                 href="#help"
-                className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary)]"
+                className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
               >
                 Help
               </a>

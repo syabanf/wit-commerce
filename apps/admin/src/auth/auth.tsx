@@ -20,6 +20,8 @@ interface AuthValue {
   tenants: Tenant[]
   /** True while a signed-in session waits for the API to load its data. */
   loading: boolean
+  /** The API dropped the token while this browser still held a session. */
+  expired: boolean
   /** Local mode: sign in as a demo user by id. */
   signIn: (userId: string) => void
   /** API mode: sign in with email and password; resolves to an error sentence, or null when in. */
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tenant,
       tenants,
       loading: HTTP && !!token && !ready,
+      expired: HTTP && !token && !!session,
       signIn: (userId) => {
         const u = state.users.find((x) => x.id === userId)
         if (u) persist({ userId, tenantId: u.tenantIds[0]! })

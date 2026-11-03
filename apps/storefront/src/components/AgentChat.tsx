@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { type AgentPlan, type Mandate } from '../lib/agent'
+import { DEMO_PAYMENT_NOTE } from '../lib/checkout'
 import { paths } from '../lib/paths'
 import { type CartItem, type ChoiceItem, type Step, useAgentChat } from '../state/agentChat'
 import { useShop } from '../state/shop'
@@ -373,13 +374,15 @@ function ChoiceCard({
                   )}
                   <span className="mt-1 gap-2 @sm:hidden flex items-baseline">
                     <span className="sf-price text-sm font-bold">{o.amount}</span>
-                    {o.note && <span className="text-[11px] text-[color:var(--sf-primary)]">{o.note}</span>}
+                    {o.note && (
+                      <span className="text-[11px] text-[color:var(--sf-primary-text)]">{o.note}</span>
+                    )}
                   </span>
                 </span>
                 <span className="@sm:block hidden shrink-0 text-right">
                   <span className="sf-price text-sm font-bold block">{o.amount}</span>
                   {o.note && (
-                    <span className="block text-[11px] text-[color:var(--sf-primary)]">{o.note}</span>
+                    <span className="block text-[11px] text-[color:var(--sf-primary-text)]">{o.note}</span>
                   )}
                 </span>
               </button>
@@ -459,10 +462,10 @@ function CartCard({
           <>
             <p className="gap-2 flex items-start">
               <CircleAlert
-                className="mt-0.5 size-4 shrink-0 text-[color:var(--sf-primary)]"
+                className="mt-0.5 size-4 shrink-0 text-[color:var(--sf-primary-text)]"
                 aria-hidden="true"
               />
-              {plan.checkNote || 'Nothing is paid until you approve.'}
+              {plan.checkNote || 'Nothing is paid until you approve.'} {DEMO_PAYMENT_NOTE}
             </p>
             <div className="mt-3 gap-2 flex flex-wrap">
               <Button onClick={onApprove} className="@sm:w-auto w-full">

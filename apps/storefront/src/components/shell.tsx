@@ -123,7 +123,7 @@ export function CategoryMenu({
                   onClick={close}
                   className="min-h-11 gap-3 px-3 font-semibold flex items-center rounded-[var(--sf-tile-radius)] hover:bg-[var(--sf-soft)]"
                 >
-                  <CategoryIcon category={c} className="text-[color:var(--sf-primary)]" />
+                  <CategoryIcon category={c} className="text-[color:var(--sf-primary-text)]" />
                   <span className="min-w-0 flex-1 truncate">{c.name}</span>
                   <span className="text-xs text-[color:var(--sf-muted)]">
                     {productsIn(catalog, c.id).length}

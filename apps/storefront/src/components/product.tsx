@@ -115,6 +115,7 @@ export function Rating({ product, className }: { product: Product; className?: s
   return (
     <span
       className={cn('gap-1 text-xs inline-flex items-center', className)}
+      role="img"
       aria-label={`Rated ${product.rating.toFixed(1)} of 5 from ${product.reviewCount} reviews`}
     >
       <span className="flex text-[color:var(--sf-accent)]" aria-hidden="true">
@@ -156,7 +157,7 @@ export function PriceTag({
 }) {
   if (product.assisted)
     return (
-      <span className={cn('font-bold text-[color:var(--sf-primary)]', className, priceClassName)}>
+      <span className={cn('font-bold text-[color:var(--sf-primary-text)]', className, priceClassName)}>
         Talk to sales
       </span>
     )

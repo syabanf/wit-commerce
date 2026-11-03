@@ -16,7 +16,9 @@
    each theme sets its surface variables here, keyed by data-theme. Layered as base so utilities win. */
 @layer base {
   .sf-root {
-    --sf-muted: color-mix(in srgb, var(--sf-text) 64%, var(--sf-bg));
+    --sf-muted: color-mix(in srgb, var(--sf-text) 72%, var(--sf-bg));
+    /* The brand colour as text: a step toward the text colour keeps it AA on tinted panels. */
+    --sf-primary-text: color-mix(in srgb, var(--sf-primary) 85%, var(--sf-text));
     --sf-line: color-mix(in srgb, var(--sf-text) 12%, var(--sf-bg));
     --sf-soft: color-mix(in srgb, var(--sf-text) 6%, var(--sf-bg));
     font-family: var(--sf-body);
@@ -111,7 +113,7 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--sf-primary);
+  color: var(--sf-primary-text);
 }
 @utility sf-title {
   font-family: var(--sf-display);

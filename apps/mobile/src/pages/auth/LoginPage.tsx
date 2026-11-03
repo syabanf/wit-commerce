@@ -1,5 +1,6 @@
 import type { Seller, Tenant, User } from '@rc/types'
-import { Avatar, Button, Kicker, toast } from '@rc/ui'
+import { ApiError } from '@rc/api'
+import { Avatar, Banner, Button, Kicker, toast } from '@rc/ui'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
@@ -12,22 +13,29 @@ const rowClass =
   'flex min-h-12 w-full items-center gap-3 rounded-[20px] bg-card p-3 text-left shadow-card transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-[0.98]'
 
 /** The accounts the page offers: the dataset's, or the API's demo list before anyone signs in. */
-function useAccounts(): { users: User[]; sellers: Seller[]; tenants: Tenant[] } {
+function useAccounts(): { users: User[]; sellers: Seller[]; tenants: Tenant[]; offline: boolean } {
   const { state } = useStore()
   const [remote, setRemote] = useState<{ users: User[]; sellers: Seller[]; tenants: Tenant[] } | null>(null)
+  const [offline, setOffline] = useState(false)
   useEffect(() => {
     if (!HTTP) return
     api
       .demoAccounts()
       .then(({ users, sellers, tenants }) => setRemote({ users, sellers, tenants }))
-      .catch(() => setRemote({ users: [], sellers: [], tenants: [] }))
+      .catch((err: unknown) => {
+        // A deployment with demo sign-in off answers with a 4xx; only a failure is an outage.
+        setOffline(!(err instanceof ApiError) || err.status >= 500)
+        setRemote({ users: [], sellers: [], tenants: [] })
+      })
   }, [])
-  return HTTP ? (remote ?? { users: [], sellers: [], tenants: [] }) : state
+  return HTTP
+    ? { ...(remote ?? { users: [], sellers: [], tenants: [] }), offline }
+    : { ...state, offline: false }
 }
 
 export function LoginPage() {
   const state = useAccounts()
-  const { user, loading, signIn } = useAuth()
+  const { user, loading, signIn, expired } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [picking, setPicking] = useState<User | null>(null)
@@ -121,6 +129,16 @@ export function LoginPage() {
           <p className="mt-1 text-sm text-muted">
             Pick a demo seller to open their store, leads and customers.
           </p>
+          {state.offline && (
+            <Banner tone="danger" title="We cannot reach the server" className="mt-6">
+              Sign-in is unavailable right now. Try again in a moment.
+            </Banner>
+          )}
+          {expired && !state.offline && (
+            <Banner tone="warning" title="Your session ended" className="mt-6">
+              Sign in again to continue where you left off.
+            </Banner>
+          )}
           <section className="mt-8">
             <Kicker className="mb-2">Demo sellers</Kicker>
             <div className="space-y-2">

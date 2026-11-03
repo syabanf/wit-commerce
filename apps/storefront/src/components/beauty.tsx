@@ -295,7 +295,7 @@ export function IngredientSpotlight({ Heading = PlainHeading }: { Heading?: Head
         {list.map(([name, products]) => (
           <li key={name} className="w-64 xl:w-auto shrink-0 snap-start">
             <div className="sf-card p-4 flex h-full flex-col">
-              <span className="size-10 flex items-center justify-center rounded-full bg-[var(--sf-soft)] text-[color:var(--sf-primary)]">
+              <span className="size-10 flex items-center justify-center rounded-full bg-[var(--sf-soft)] text-[color:var(--sf-primary-text)]">
                 <FlaskConical className="size-5" aria-hidden="true" />
               </span>
               <p className="sf-display mt-3 text-lg font-bold">{name}</p>
@@ -341,7 +341,7 @@ export function TrustBar() {
           key={title}
           className="gap-3 p-4 flex items-start rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]"
         >
-          <Icon className="mt-0.5 size-5 shrink-0 text-[color:var(--sf-primary)]" aria-hidden="true" />
+          <Icon className="mt-0.5 size-5 shrink-0 text-[color:var(--sf-primary-text)]" aria-hidden="true" />
           <span className="min-w-0">
             <span className="text-sm font-bold block">{title}</span>
             <span className="mt-0.5 text-xs block text-[color:var(--sf-muted)]">{text}</span>
@@ -511,7 +511,7 @@ export function BeautyFacts({ product }: { product: Product }) {
                   to={paths.product(store, p!.id)}
                   className="p-2 block h-full rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]"
                 >
-                  <span className="font-bold tracking-widest text-[10px] text-[color:var(--sf-primary)] uppercase">
+                  <span className="font-bold tracking-widest text-[10px] text-[color:var(--sf-primary-text)] uppercase">
                     {step.label}
                   </span>
                   <span className="mt-1 text-xs font-semibold line-clamp-2 block min-h-[2lh]">{p!.name}</span>

@@ -25,6 +25,8 @@ interface AuthValue {
    * needs neither. Resolves to an error sentence, or null when in.
    */
   signIn: (seller: Seller, credentials?: { email: string; password: string }) => Promise<string | null>
+  /** The API dropped the token while this browser still held a session. */
+  expired: boolean
   signOut: () => void
 }
 
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       seller: user ? seller : null,
       tenant: user ? tenant : null,
       loading: HTTP && !!token && !ready,
+      expired: HTTP && !token && !!session,
       signIn: async (s, credentials) => {
         if (!s.userId) return 'This seller has no account yet.'
         if (HTTP) {

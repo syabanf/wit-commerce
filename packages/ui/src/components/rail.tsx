@@ -88,7 +88,7 @@ export function RailItem({
   const classes = cn(
     'relative flex shrink-0 items-center rounded-2xl text-on-ink-muted transition-colors hover:bg-white/10 hover:text-white [&_svg]:size-5 [&_svg]:shrink-0',
     focusRing,
-    'data-[active=true]:bg-accent data-[active=true]:text-white data-[active=true]:shadow-glow',
+    'data-[active=true]:bg-accent-strong data-[active=true]:text-white data-[active=true]:shadow-glow',
     !expanded
       ? 'size-11 justify-center'
       : sub
@@ -147,7 +147,7 @@ export function RailAction({ label, expanded, className, children, ...props }: R
         type="button"
         aria-label={expanded ? undefined : label}
         className={cn(
-          'text-white [&_svg]:size-5 inline-flex shrink-0 items-center justify-center bg-accent shadow-glow transition-colors hover:bg-accent-strong active:scale-[0.98] [&_svg]:shrink-0',
+          'text-white [&_svg]:size-5 inline-flex shrink-0 items-center justify-center bg-accent-strong shadow-glow transition-colors hover:bg-accent-dark active:scale-[0.98] [&_svg]:shrink-0',
           focusRing,
           expanded
             ? 'h-11 gap-2 px-4 text-sm font-semibold w-full rounded-full'

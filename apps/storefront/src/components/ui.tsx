@@ -97,7 +97,7 @@ export function IconButton({
 // --- form fields ---
 
 export const inputClass =
-  'h-12 w-full min-w-0 rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)] px-4 text-sm text-[color:var(--sf-text)] placeholder:text-[color:var(--sf-muted)] aria-[invalid=true]:border-danger'
+  'h-12 w-full min-w-0 rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)] px-4 text-base text-[color:var(--sf-text)] md:text-sm placeholder:text-[color:var(--sf-muted)] aria-[invalid=true]:border-danger'
 
 export function Field({
   id,

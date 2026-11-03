@@ -12,6 +12,9 @@ import type { CartTotals } from './cart'
 import type { Catalog } from './catalog'
 import { AVATAR_PALETTE } from '@rc/ui'
 
+/** No payment provider takes money yet; shoppers must not read "Paid" as a real charge. */
+export const DEMO_PAYMENT_NOTE = 'Demo store: no money is charged.'
+
 export const CITIES = [
   'Jakarta',
   'Bekasi',

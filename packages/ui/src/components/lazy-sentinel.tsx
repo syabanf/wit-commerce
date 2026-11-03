@@ -20,7 +20,7 @@ export function LazySentinel({ remaining, onLoad, sentinelRef, className }: Lazy
       <button
         type="button"
         onClick={onLoad}
-        className="px-1 font-semibold rounded-full text-accent hover:underline focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
+        className="min-h-11 px-3 font-semibold rounded-full text-accent-strong hover:underline focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
       >
         Load
       </button>

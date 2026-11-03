@@ -116,7 +116,7 @@ function SidePanel({
           id={`${uid}-pay`}
           value={settings.paymentTypeId ?? ''}
           onChange={(e) => onSettings({ ...settings, paymentTypeId: e.target.value || null })}
-          className="h-11 px-3 text-sm w-full rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)]"
+          className="h-11 px-3 text-base md:text-sm w-full rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)]"
         >
           <option value="">Best price</option>
           {paymentTypes.map((t) => (
@@ -127,7 +127,7 @@ function SidePanel({
         </select>
       </div>
       <p className="gap-2 p-3 text-xs flex items-start rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]">
-        <ShieldCheck className="size-4 shrink-0 text-[color:var(--sf-primary)]" aria-hidden="true" />
+        <ShieldCheck className="size-4 shrink-0 text-[color:var(--sf-primary-text)]" aria-hidden="true" />
         {policyNote}
       </p>
       <label className="gap-2 text-sm font-semibold flex cursor-pointer items-center">

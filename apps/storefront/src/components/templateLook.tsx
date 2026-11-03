@@ -71,7 +71,7 @@ function ImmersiveHero({ section }: { section: PageSection }) {
         style={{ background: 'linear-gradient(180deg, transparent 25%, rgb(0 0 0 / 0.7))' }} // wit-allow: scrim so white type reads on any photo
       />
       <div className="max-w-3xl p-6 md:p-12 lg:p-16 relative">
-        <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-80">{tenant.name}</p>
+        <p className="font-bold text-[11px] tracking-[0.16em] uppercase">{tenant.name}</p>
         <h1 className="sf-hero-title mt-3">
           <Underlined text={section.headline || tenant.brand.tagline} />
         </h1>
@@ -95,7 +95,7 @@ function OfferHero({ section }: { section: PageSection }) {
   const body = (
     <div className="gap-6 lg:flex-row lg:items-end lg:justify-between flex flex-col">
       <div className="min-w-0 max-w-2xl">
-        <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">{tenant.name}</p>
+        <p className="font-bold text-[11px] tracking-[0.16em] uppercase">{tenant.name}</p>
         <h1 className="sf-hero-title mt-2">{section.headline || tenant.brand.tagline}</h1>
         {section.body && <p className="mt-3 text-lg opacity-85">{section.body}</p>}
         <div className="mt-6 gap-3 flex flex-wrap items-center">
@@ -107,9 +107,9 @@ function OfferHero({ section }: { section: PageSection }) {
       </div>
       {promotion && (
         <div className="shrink-0">
-          <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">Ends in</p>
+          <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase">Ends in</p>
           <Countdown endAt={promotion.endAt} boxClassName="bg-[var(--sf-bg)] text-[color:var(--sf-text)]" />
-          <p className="mt-2 text-xs opacity-75">{promoTerms(promotion)}</p>
+          <p className="mt-2 text-xs">{promoTerms(promotion)}</p>
         </div>
       )}
     </div>

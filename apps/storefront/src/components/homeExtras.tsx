@@ -84,7 +84,7 @@ export function BenefitsStrip() {
     >
       {items.map(({ icon: Icon, title, text }) => (
         <li key={title} className="gap-3 px-4 py-3 md:p-4 md:items-start flex items-center bg-[var(--sf-bg)]">
-          <span className="size-10 flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-soft)] text-[color:var(--sf-primary)]">
+          <span className="size-10 flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-soft)] text-[color:var(--sf-primary-text)]">
             <Icon className="size-5" aria-hidden="true" />
           </span>
           <span className="min-w-0">
@@ -223,7 +223,7 @@ export function UseCases({ Heading = PlainHeading }: { Heading?: Heading }) {
               }
             >
               <span className="sf-display text-lg leading-tight font-bold">{c.label}</span>
-              <span className="gap-2 pt-3 text-xs mt-auto flex items-end justify-between opacity-80">
+              <span className="gap-2 pt-3 text-xs mt-auto flex items-end justify-between">
                 {c.hint}
                 <ArrowRight
                   className="size-4 group-hover:translate-x-0.5 shrink-0 transition"
@@ -310,7 +310,7 @@ export function Newsletter() {
       style={{ background: 'color-mix(in srgb, var(--sf-primary) 8%, var(--sf-bg))' }}
     >
       <div>
-        <p className="gap-2 text-xs font-bold tracking-widest flex items-center text-[color:var(--sf-primary)] uppercase">
+        <p className="gap-2 text-xs font-bold tracking-widest flex items-center text-[color:var(--sf-primary-text)] uppercase">
           <BadgePercent className="size-4" aria-hidden="true" />
           Members first
         </p>
@@ -360,7 +360,7 @@ export function Newsletter() {
             <p
               id={`${inputId}-err`}
               role="alert"
-              className="text-sm font-semibold sm:basis-full text-[color:var(--sf-primary)]"
+              className="text-sm font-semibold sm:basis-full text-[color:var(--sf-primary-text)]"
             >
               {error}
             </p>

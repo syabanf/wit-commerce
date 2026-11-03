@@ -29,6 +29,7 @@ function brandStyle(brand: BrandConfig): CSSProperties {
   const { colors } = brand
   return {
     '--sp-primary': colors.primary,
+    '--sp-primary-text': `color-mix(in srgb, ${colors.primary} 85%, black)`,
     '--sp-secondary': colors.secondary,
     '--sp-accent': colors.accent,
     '--sp-bg': colors.background,
@@ -119,7 +120,7 @@ function renderSection(kind: SectionKind, ctx: Ctx): ReactNode {
                   )}
                   <div className="p-2">
                     <p className="font-semibold leading-snug line-clamp-2 text-[11px]">{p.name}</p>
-                    <p className="mt-0.5 font-bold text-[11px] text-(--sp-primary)">
+                    <p className="mt-0.5 font-bold text-[11px] text-(--sp-primary-text)">
                       {p.assisted ? 'Ask me' : fmtIdr(p.price)}
                     </p>
                   </div>

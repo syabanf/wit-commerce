@@ -136,9 +136,9 @@ export function CodeOfferStrip({ code, value }: { code: string; value: number })
       style={{ background: 'color-mix(in srgb, var(--sf-primary) 6%, var(--sf-bg))' }}
     >
       <p className="text-sm">
-        <span className="font-bold text-[color:var(--sf-primary)]">Extra {value}% off</span> at checkout
+        <span className="font-bold text-[color:var(--sf-primary-text)]">Extra {value}% off</span> at checkout
       </p>
-      <CouponCode code={code} className="h-10 shrink-0 text-[color:var(--sf-primary)]" />
+      <CouponCode code={code} className="h-10 shrink-0 text-[color:var(--sf-primary-text)]" />
     </div>
   )
 }

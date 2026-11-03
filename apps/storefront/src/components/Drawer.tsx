@@ -1,4 +1,4 @@
-import { cn } from '@rc/ui'
+import { cn, useReturnFocus } from '@rc/ui'
 import { X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import type { ReactNode } from 'react'
@@ -21,6 +21,7 @@ export function Drawer({
   footer,
   children,
   bodyClassName,
+  autoFocusSelector,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -30,8 +31,19 @@ export function Drawer({
   footer?: ReactNode
   children: ReactNode
   bodyClassName?: string
+  /** The control a mouse user lands on when it opens. Touch skips it: focus would raise the keyboard. */
+  autoFocusSelector?: string
 }) {
   const { style, theme } = useBrand()
+  const focus = useReturnFocus({
+    onOpenAutoFocus: (event) => {
+      if (!autoFocusSelector || !window.matchMedia('(pointer: fine)').matches) return
+      const target = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(autoFocusSelector)
+      if (!target) return
+      event.preventDefault()
+      target.focus()
+    },
+  })
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -39,6 +51,7 @@ export function Drawer({
         <div className="sf-root contents" data-theme={theme} style={style}>
           <Dialog.Overlay className="inset-0 bg-black/40 fixed z-50 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
           <Dialog.Content
+            {...focus}
             className={cn(
               'fixed z-50 flex flex-col bg-[var(--sf-bg)] shadow-float outline-none data-[state=open]:animate-in data-[state=open]:duration-200',
               SIDE[side],

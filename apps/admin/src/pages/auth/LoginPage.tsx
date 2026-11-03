@@ -1,6 +1,7 @@
 import type { Tenant, User } from '@rc/types'
 import { ROLE_LABEL } from '@rc/types'
-import { Avatar, Button, Card, FormField, Input } from '@rc/ui'
+import { ApiError } from '@rc/api'
+import { Avatar, Banner, Button, Card, FormField, Input } from '@rc/ui'
 import { ArrowRight, Lock, Mail, Palette, ShoppingBag, UsersRound } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
@@ -31,22 +32,27 @@ const GLOW =
   'radial-gradient(40% 40% at 70% 30%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 70%)' // wit-allow: ambient canvas glow, layouts.md
 
 /** The accounts the page offers: the dataset's users, or the API's demo list before anyone signs in. */
-function useAccounts(): { users: User[]; tenants: Tenant[] } {
+function useAccounts(): { users: User[]; tenants: Tenant[]; offline: boolean } {
   const { state } = useStore()
   const [remote, setRemote] = useState<{ users: User[]; tenants: Tenant[] } | null>(null)
+  const [offline, setOffline] = useState(false)
   useEffect(() => {
     if (!HTTP) return
     api
       .demoAccounts()
       .then(({ users, tenants }) => setRemote({ users, tenants }))
-      .catch(() => setRemote({ users: [], tenants: [] }))
+      .catch((err: unknown) => {
+        // A deployment with demo sign-in off answers with a 4xx; only a failure is an outage.
+        setOffline(!(err instanceof ApiError) || err.status >= 500)
+        setRemote({ users: [], tenants: [] })
+      })
   }, [])
-  return HTTP ? (remote ?? { users: [], tenants: [] }) : state
+  return HTTP ? { ...(remote ?? { users: [], tenants: [] }), offline } : { ...state, offline: false }
 }
 
 export function LoginPage() {
-  const { users, tenants } = useAccounts()
-  const { user, loading, signIn, signInWithPassword } = useAuth()
+  const { users, tenants, offline } = useAccounts()
+  const { user, loading, signIn, signInWithPassword, expired } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
@@ -137,6 +143,16 @@ export function LoginPage() {
           </h2>
           <p className="mt-1 text-sm text-muted">Pick a demo account to see the console from that role.</p>
 
+          {offline && (
+            <Banner tone="danger" title="We cannot reach the server" className="mt-6">
+              Sign-in is unavailable right now. Try again in a moment.
+            </Banner>
+          )}
+          {expired && !offline && (
+            <Banner tone="warning" title="Your session ended" className="mt-6">
+              Sign in again to continue where you left off.
+            </Banner>
+          )}
           <form onSubmit={submit} noValidate className="mt-6 gap-4 grid grid-cols-1">
             <FormField label="Email" htmlFor="login-email" error={error || undefined}>
               <Input

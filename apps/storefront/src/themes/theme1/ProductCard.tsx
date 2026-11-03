@@ -81,6 +81,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
           {product.reviewCount > 0 && (
             <span
               className="gap-1 pb-0.5 text-xs inline-flex shrink-0 items-center text-[color:var(--sf-muted)]"
+              role="img"
               aria-label={`Rated ${product.rating.toFixed(1)} of 5`}
             >
               <Star className="size-3.5 fill-current text-[color:var(--sf-accent)]" aria-hidden="true" />
@@ -89,7 +90,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
           )}
         </div>
         {cartDiscountPct && (
-          <p className="text-xs font-semibold text-[color:var(--sf-primary)]">
+          <p className="text-xs font-semibold text-[color:var(--sf-primary-text)]">
             {cartDiscountPct}% off applied in cart
           </p>
         )}

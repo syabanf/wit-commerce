@@ -29,7 +29,7 @@ export function SummaryRows({
         <dd className="font-semibold tabular-nums">{fmtIdr(subtotal)}</dd>
       </div>
       {discounts.map((d) => (
-        <div key={d.promotionId} className="gap-4 flex justify-between text-[color:var(--sf-primary)]">
+        <div key={d.promotionId} className="gap-4 flex justify-between text-[color:var(--sf-primary-text)]">
           <dt className="min-w-0">{d.label}</dt>
           <dd className="font-semibold shrink-0 tabular-nums">−{fmtIdr(d.amount)}</dd>
         </div>
@@ -106,7 +106,7 @@ export function PaymentHints({ hints, className }: { hints: string[]; className?
       {hints.map((h) => (
         <li key={h} className="gap-2 text-sm flex items-start">
           <BadgePercent
-            className="mt-0.5 size-4 shrink-0 text-[color:var(--sf-primary)]"
+            className="mt-0.5 size-4 shrink-0 text-[color:var(--sf-primary-text)]"
             aria-hidden="true"
           />
           <span>{h}. Choose it at the payment step.</span>

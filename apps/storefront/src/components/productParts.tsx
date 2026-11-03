@@ -275,7 +275,7 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
               className="size-20 shrink-0 rounded-[var(--sf-tile-radius)]"
             />
             <div className="min-w-0 flex-1">
-              <p className="gap-1.5 text-xs font-semibold flex items-center text-[color:var(--sf-primary)]">
+              <p className="gap-1.5 text-xs font-semibold flex items-center text-[color:var(--sf-primary-text)]">
                 <Check className="size-4" aria-hidden="true" /> Added
               </p>
               <p className="sf-display mt-1 font-bold">{item.product.name}</p>
@@ -300,7 +300,10 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
               <strong>{fmtIdr(totals.subtotal)}</strong>
             </p>
             {totals.discounts.map((discount) => (
-              <p key={discount.promotionId} className="flex justify-between text-[color:var(--sf-primary)]">
+              <p
+                key={discount.promotionId}
+                className="flex justify-between text-[color:var(--sf-primary-text)]"
+              >
                 <span>{discount.label}</span>
                 <span>−{fmtIdr(discount.amount)}</span>
               </p>

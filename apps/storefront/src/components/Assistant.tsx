@@ -263,6 +263,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
       <Drawer
         open={open}
         onOpenChange={setOpen}
+        autoFocusSelector="form input"
         title={mode === 'agent' ? 'Your shopping agent' : `Ask ${tenant.name}`}
         description={
           mode === 'agent' ? (
@@ -291,7 +292,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Sepatu lari untuk 10K, maksimal 1,5 juta"
                 autoComplete="off"
-                className="h-12 min-w-0 px-4 text-sm flex-1 rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)]"
+                className="h-12 min-w-0 px-4 text-base md:text-sm flex-1 rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)]"
               />
               <Button
                 type="submit"

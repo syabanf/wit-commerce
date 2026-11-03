@@ -85,12 +85,12 @@ export function Product({ detail }: { detail: ProductDetail }) {
             <Rating product={product} className="mt-2" />
           </div>
           {product.assisted ? (
-            <p className="text-lg font-bold text-[color:var(--sf-primary)]">Price on request</p>
+            <p className="text-lg font-bold text-[color:var(--sf-primary-text)]">Price on request</p>
           ) : (
             <div className="space-y-1">
               <PriceTag product={product} price={detail.variant?.price} priceClassName="text-3xl" />
               {detail.cartDiscountPct && (
-                <p className="text-sm font-semibold text-[color:var(--sf-primary)]">
+                <p className="text-sm font-semibold text-[color:var(--sf-primary-text)]">
                   {detail.cartDiscountPct}% off applied in cart
                 </p>
               )}

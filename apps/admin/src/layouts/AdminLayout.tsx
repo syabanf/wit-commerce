@@ -7,6 +7,7 @@ import { useStore } from '../state/store'
 import { Header } from './Header'
 import { leafFor, sectionFor } from './nav'
 import { PhoneNav } from './PhoneNav'
+import { QuickSearch } from './QuickSearch'
 import { SideRail } from './SideRail'
 import { useNavCounts } from './useNavCounts'
 import { useFocusOnNavigate } from '../hooks/useFocusOnNavigate'
@@ -19,6 +20,8 @@ export function AdminLayout() {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [expandedPref, setExpandedPref] = usePersistentState('rc.admin.rail', true)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [showCodes, setShowCodes] = usePersistentState('rc.admin.show-codes', false)
   const { key, pathname } = useLocation()
   const navigationType = useNavigationType()
   const mainRef = useRef<HTMLElement>(null)
@@ -69,7 +72,12 @@ export function AdminLayout() {
 
       {/* Side rail */}
       <div className="md:block relative hidden shrink-0 print:hidden">
-        <SideRail expanded={expanded} canExpand={isDesktop} onToggle={() => setExpandedPref(!expandedPref)} />
+        <SideRail
+          expanded={expanded}
+          canExpand={isDesktop}
+          onToggle={() => setExpandedPref(!expandedPref)}
+          showCodes={showCodes}
+        />
       </div>
 
       {/* Main content */}
@@ -82,7 +90,12 @@ export function AdminLayout() {
             Skip to content
           </a>
         </nav>
-        <Header onMenu={() => setMoreOpen(true)} />
+        <Header
+          onMenu={() => setMoreOpen(true)}
+          onSearch={() => setSearchOpen(true)}
+          showCodes={showCodes}
+          onShowCodes={setShowCodes}
+        />
         <main
           id="main"
           tabIndex={-1}
@@ -115,6 +128,7 @@ export function AdminLayout() {
       </div>
 
       <PhoneNav moreOpen={moreOpen} onMoreChange={setMoreOpen} />
+      <QuickSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   )
 }

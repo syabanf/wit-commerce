@@ -86,7 +86,10 @@ export function PhoneNav({
     path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`)
   const current = sectionFor(pathname)
   const leaves: (NavLeaf & { section: string })[] = NAV.flatMap((s) =>
-    (s.items ?? [{ to: s.to, label: s.label, icon: s.icon }]).map((i) => ({ ...i, section: s.label })),
+    (s.items ?? [{ to: s.to, code: s.code ?? '', label: s.label, icon: s.icon }]).map((i) => ({
+      ...i,
+      section: s.label,
+    })),
   )
   const q = query.trim().toLowerCase()
 
@@ -181,9 +184,10 @@ export function PhoneNav({
             </div>
           )}
           {ordered.map((section, index) => {
-            const items = (
-              section.items ?? [{ to: section.to, label: section.label, icon: section.icon }]
-            ).filter(
+            const pages: NavLeaf[] = section.items ?? [
+              { to: section.to, code: section.code ?? '', label: section.label, icon: section.icon },
+            ]
+            const items = pages.filter(
               (i) => !q || i.label.toLowerCase().includes(q) || section.label.toLowerCase().includes(q),
             )
             if (!items.length) return null
@@ -223,7 +227,7 @@ export function PhoneNav({
                           {items.map((d) => {
                             const Icon = d.icon
                             const active = is(d.to)
-                            const badge = 'badge' in d && d.badge ? counts[d.badge] : 0
+                            const badge = d.badge ? counts[d.badge] : 0
                             return (
                               <Link
                                 key={d.to}

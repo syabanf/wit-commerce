@@ -21,7 +21,8 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
   const link = (active: boolean) =>
     cn(
       'inline-flex min-h-11 items-center px-3 text-sm font-semibold transition hover:opacity-80',
-      active ? 'text-[color:var(--sf-accent)]' : 'text-[color:var(--sf-on-primary)]',
+      'text-[color:var(--sf-on-primary)]',
+      active && 'underline decoration-[var(--sf-accent)] decoration-2 underline-offset-4',
     )
   return (
     <div className="h-16 gap-4 px-2.5 grid grid-cols-[1fr_auto_1fr] items-center rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)] shadow-float">

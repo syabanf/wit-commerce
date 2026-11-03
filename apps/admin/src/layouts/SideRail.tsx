@@ -25,10 +25,12 @@ export function SideRail({
   expanded,
   canExpand,
   onToggle,
+  showCodes,
 }: {
   expanded: boolean
   canExpand: boolean
   onToggle: () => void
+  showCodes: boolean
 }) {
   const { pathname } = useLocation()
   const counts = useNavCounts()
@@ -100,6 +102,8 @@ export function SideRail({
               trailing={
                 expanded && section.items ? (
                   <ChevronDown className={cn('!size-4 transition-transform', open && 'rotate-180')} />
+                ) : showCodes ? (
+                  <RailCode code={section.code} />
                 ) : undefined
               }
             >
@@ -115,6 +119,7 @@ export function SideRail({
                   active={leaf?.to === item.to}
                   label={item.label}
                   badge={item.badge ? counts[item.badge] : 0}
+                  trailing={showCodes ? <RailCode code={item.code} /> : undefined}
                 >
                   <NavLink to={item.to} end={item.to === '/integrations'} />
                 </RailItem>
@@ -125,6 +130,8 @@ export function SideRail({
     </Rail>
   )
 }
+
+const RailCode = ({ code }: { code?: string }) => <span className="font-mono text-[0.625rem]">{code}</span>
 
 function WorkspaceMenu({ expanded }: { expanded: boolean }) {
   const { tenant, tenants, switchTenant, signOut } = useAuth()

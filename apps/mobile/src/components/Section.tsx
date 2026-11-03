@@ -37,4 +37,4 @@ export function Section({
 
 /** The accent text link a Section header carries, sized for touch. */
 export const sectionLinkClass =
-  'flex h-11 items-center rounded-full px-1 text-sm font-semibold text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40'
+  'flex h-11 items-center rounded-full px-1 text-sm font-semibold text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40'

@@ -220,7 +220,7 @@ export function DataTable<T>({
                       : undefined
                   }
                   className={cn(
-                    'border-b border-border transition-colors last:border-b-0 hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none data-[clickable=true]:cursor-pointer',
+                    'border-b border-border transition-colors last:border-b-0 hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent data-[clickable=true]:cursor-pointer',
                     rowClassName?.(row),
                   )}
                 >

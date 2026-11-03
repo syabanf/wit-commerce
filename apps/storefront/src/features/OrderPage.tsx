@@ -6,6 +6,7 @@ import { SummaryRows } from '../components/cartParts'
 import { NotFound } from '../components/NotFound'
 import { ProductImage } from '../components/product'
 import { ButtonLink, Pill } from '../components/ui'
+import { DEMO_PAYMENT_NOTE } from '../lib/checkout'
 import { firstName, paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
@@ -40,6 +41,7 @@ export function OrderPage() {
           Order <strong className="font-mono text-[color:var(--sf-text)]">{order.code}</strong>, placed{' '}
           {fmtDateTime(order.createdAt)}.
         </p>
+        <p className="mt-2 text-sm font-semibold">{DEMO_PAYMENT_NOTE}</p>
         <div className="mt-4 gap-2 flex flex-wrap justify-center">
           <Pill tone={paid ? 'primary' : 'accent'}>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</Pill>
           {order.agent && (

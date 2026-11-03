@@ -11,7 +11,7 @@ export function FreeShippingProgress({ className }: { className?: string }) {
   const pct = done ? 100 : Math.min(100, Math.round((totals.subtotal / min) * 100))
   return (
     <div className={cn('gap-3 flex items-start', className)}>
-      <Truck className="mt-0.5 size-5 shrink-0 text-[color:var(--sf-primary)]" aria-hidden="true" />
+      <Truck className="mt-0.5 size-5 shrink-0 text-[color:var(--sf-primary-text)]" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">
           {done

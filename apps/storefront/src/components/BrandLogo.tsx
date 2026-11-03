@@ -103,7 +103,7 @@ export function BrandLogo({
       {brand ? (
         <span aria-hidden="true" className="min-w-0 leading-none">
           <span className={cn('sf-heading text-xl block', brand.wordClass)}>{brand.word}</span>
-          <span className="mt-0.5 font-semibold block text-[9px] tracking-[0.28em] uppercase opacity-70">
+          <span className="mt-0.5 font-semibold block text-[9px] tracking-[0.28em] uppercase">
             {brand.sub}
           </span>
         </span>

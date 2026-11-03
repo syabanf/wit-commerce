@@ -128,7 +128,7 @@ export function PlainHeading({ title, id, action }: HeadingProps) {
       {action && (
         <Link
           to={action.to}
-          className="group min-h-11 gap-1 text-sm font-semibold inline-flex items-center hover:text-[color:var(--sf-primary)]"
+          className="group min-h-11 gap-1 text-sm font-semibold inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
         >
           {action.label}
           <ArrowRight
@@ -358,11 +358,11 @@ export function PromoBlock({ section, seller }: { section: PageSection; seller?:
   const body = (
     <div className="gap-5 lg:flex-row lg:items-center lg:justify-between flex flex-col">
       <div className="min-w-0">
-        <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-75">
+        <p className="font-bold text-[11px] tracking-[0.16em] uppercase">
           {seller ? `${firstName(seller.name)}'s code` : 'Limited offer'}
         </p>
         <p className="sf-title mt-1">{text || 'A code for this store'}</p>
-        {promotion && <p className="mt-2 text-sm opacity-80">{promoTerms(promotion)}</p>}
+        {promotion && <p className="mt-2 text-sm">{promoTerms(promotion)}</p>}
       </div>
       <div className="gap-3 flex shrink-0 flex-wrap items-center">
         <CouponCode code={code} />
