@@ -36,9 +36,87 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-}
       TRUST_PROXY: 'true'
       PORT: '8090'
+      # With SPLIT_SERVICES=true the shop service streams deltas through Postgres NOTIFY, and the
+      # notifier service sends the queued email in place of the API.
+      EVENTS_NOTIFY: ${SPLIT_SERVICES:-false}
+      NOTIFIER_EXTERNAL: ${SPLIT_SERVICES:-false}
     # Only the web server on this machine reaches the API.
     ports:
       - '127.0.0.1:${API_PORT:-8090}:8090'
+
+  # The services below run only with SPLIT_SERVICES=true, which deploy-prod.sh turns into the
+  # "split" profile. They share the API's image and database; the API owns the schema.
+  ai:
+    profiles: [split]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    entrypoint: ['/app/ai']
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://commerce:${POSTGRES_PASSWORD}@postgres:5432/commerce?sslmode=disable
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:?run scripts/deploy-prod.sh}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-v4.1-flash}
+      TRUST_PROXY: 'true'
+      PORT: '8091'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8091/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    ports:
+      - '127.0.0.1:${AI_PORT:-8091}:8091'
+
+  notifier:
+    profiles: [split]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    entrypoint: ['/app/notifier']
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://commerce:${POSTGRES_PASSWORD}@postgres:5432/commerce?sslmode=disable
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      PORT: '8092'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8092/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  shop:
+    profiles: [split]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    entrypoint: ['/app/shop']
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://commerce:${POSTGRES_PASSWORD}@postgres:5432/commerce?sslmode=disable
+      PORT: '8093'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8093/api/v1/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    ports:
+      - '127.0.0.1:${SHOP_PORT:-8093}:8093'
 
 volumes:
   pgdata:

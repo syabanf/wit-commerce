@@ -1,8 +1,8 @@
-import { fmtAgo, fmtDate, fmtIdr, metricsFor, plural, toMs } from '@rc/fixtures'
+import { fmtAgo, fmtDate, fmtIdr, metricsFor, plural } from '@rc/fixtures'
 import { CUSTOMER_EVENT_LABEL, LIFECYCLE_STAGE_LABEL, LOYALTY_TIER_LABEL } from '@rc/types'
 import { Badge, Button, Card, EmptyState, Kicker } from '@rc/ui'
 import { NotebookPen, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { OrderStatusText } from '../../components/badges'
 import { Section } from '../../components/Section'
@@ -11,13 +11,18 @@ import { DetailHeader } from '../../layouts/DetailHeader'
 import { paths } from '../../lib/paths'
 import { useNow, useSellerScope } from '../../state/scope'
 import { NoteSheet, RecommendSheet } from './CustomerSheets'
+import { useCustomerEvents } from '../../state/useCustomerEvents'
+import { useRecentOrders } from '../../state/useOrderQuery'
 
 export function CustomerDetailPage() {
   const { id = '' } = useParams()
-  const { customers, metrics, customerOrders, customerEvents, user } = useSellerScope()
+  const { customers, metrics, customerOrders, customerEvents, user, tenant, customerName } = useSellerScope()
   const now = useNow()
+  const events = useCustomerEvents(customerEvents, tenant.id, { customerId: id, limit: 8 }, now)
   const [sheet, setSheet] = useState<'recommend' | 'note' | null>(null)
   const customer = customers.find((c) => c.id === id)
+  const localOrders = useMemo(() => customerOrders.filter((o) => o.customerId === id), [customerOrders, id])
+  const orders = useRecentOrders(localOrders, { tenantId: tenant.id, customerId: id }, customerName)
 
   if (!customer) {
     return (
@@ -39,8 +44,6 @@ export function CustomerDetailPage() {
   }
 
   const m = metricsFor(metrics, customer.id)
-  const orders = customerOrders.filter((o) => o.customerId === customer.id)
-  const events = customerEvents.filter((e) => e.customerId === customer.id && toMs(e.at) <= now).slice(0, 8)
 
   return (
     <div className="space-y-5">
@@ -76,19 +79,15 @@ export function CustomerDetailPage() {
         </dl>
       </Card>
 
-      <Section title="Last orders" count={orders.length}>
-        {orders.length ? (
+      <Section title="Last orders" count={orders.total}>
+        {orders.rows.length ? (
           <ul className="px-4 divide-y divide-border rounded-[24px] bg-card shadow-card">
-            {orders.slice(0, 5).map((o) => (
+            {orders.rows.map((o) => (
               <li key={o.id} className="min-h-14 gap-3 py-3 flex items-center">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium truncate font-mono">{o.code}</p>
                   <p className="text-xs truncate text-muted">
-                    {fmtDate(o.createdAt)} ·{' '}
-                    {plural(
-                      o.lines.reduce((n, l) => n + l.qty, 0),
-                      'item',
-                    )}
+                    {fmtDate(o.createdAt)} · {plural(o.itemCount, 'item')}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">

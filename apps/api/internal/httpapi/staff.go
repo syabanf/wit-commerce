@@ -103,7 +103,7 @@ func temporaryPassword() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
-func (s *Server) emailReady() bool { return s.Mail != nil && s.PublicURL != "" }
+func (s *Server) emailReady() bool { return s.notify.On() }
 
 func (s *Server) writeStaffError(w http.ResponseWriter, r *http.Request, err error) {
 	var refused staffError

@@ -17,12 +17,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/syabanf/wit-commerce/apps/api/internal/dotenv"
+
 	"github.com/syabanf/wit-commerce/apps/api/internal/ai"
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/httpapi"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
+	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/seed"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -94,7 +99,7 @@ func main() {
 	spec := flag.Bool("openapi", false, "print the OpenAPI document and stop; needs no database")
 	admin := flag.Bool("set-admin", false, "create or reset the platform admin in ADMIN_EMAIL, ADMIN_NAME and ADMIN_PASSWORD, then stop")
 	flag.Parse()
-	loadDotEnv(".env")
+	dotenv.Load(".env")
 	if *spec {
 		_, _ = os.Stdout.Write(httpapi.New(httpapi.Options{Version: Version}).Spec())
 		return
@@ -157,6 +162,11 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		}
 		log.Info("seed loaded", "dir", cfg.seedDir, "ms", time.Since(started).Milliseconds())
 	}
+	if rebuilt, err := readmodel.EnsureBuilt(ctx, db.Pool); err != nil {
+		return fmt.Errorf("read models: %w", err)
+	} else if rebuilt {
+		log.Info("read models rebuilt")
+	}
 	anchor, err := db.Anchor(ctx)
 	if err != nil {
 		return err
@@ -175,18 +185,29 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		return nil
 	}
 	allowInternal := os.Getenv("WEBHOOK_ALLOW_INTERNAL") == "true"
+	mailer := mail.New(os.Getenv("RESEND_URL"), os.Getenv("RESEND_API_KEY"), os.Getenv("EMAIL_FROM"))
+	hub := events.New()
+	// EVENTS_NOTIFY also sends every delta through Postgres NOTIFY, for cmd/shop's event streams.
+	var notifier *events.Notifier
+	if os.Getenv("EVENTS_NOTIFY") == "true" {
+		notifier = events.NewNotifier(db.Pool, log)
+		hub.Forward(notifier.Enqueue)
+	}
 	srv := httpapi.New(httpapi.Options{
 		DB: db, Clock: clock.New(anchor), Signer: signer, Vault: vault,
 		Outbound: service.OutboundClient(allowInternal), AllowInternalWebhooks: allowInternal,
 		AI:         ai.New(os.Getenv("OLLAMA_URL"), os.Getenv("OLLAMA_API_KEY"), os.Getenv("OLLAMA_MODEL")),
-		Mail:       mail.New(os.Getenv("RESEND_URL"), os.Getenv("RESEND_API_KEY"), os.Getenv("EMAIL_FROM")),
+		Mail:       mailer,
 		PublicURL:  strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
-		TrustProxy: os.Getenv("TRUST_PROXY") == "true", Hub: events.New(), Log: log, Version: Version,
+		TrustProxy: os.Getenv("TRUST_PROXY") == "true", Hub: hub, Log: log, Version: Version,
 		DemoLogin: cfg.demoLogin, AllowedOrigins: cfg.allowedOrigins,
 	})
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if notifier != nil {
+		go notifier.Run(ctx)
+	}
 	go func() {
 		t := time.NewTicker(cfg.tickEvery)
 		defer t.Stop()
@@ -216,6 +237,13 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 			}
 		}
 	}()
+
+	// The queued email goes out from here unless cmd/notifier sends it. Running both is safe: each
+	// claim skips rows another worker holds.
+	if mailer != nil && os.Getenv("NOTIFIER_EXTERNAL") != "true" {
+		outbox := &notifications.Notifications{Runtime: &kernel.Runtime{DB: db}, Mail: mailer, Log: log}
+		go outbox.Run(ctx, 2*time.Second)
+	}
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.port),

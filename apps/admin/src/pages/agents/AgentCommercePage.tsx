@@ -1,5 +1,6 @@
-import { fmtAgo, fmtIdr, fmtIdrShort, fmtNumber, fmtPercent, fmtWhen, isSold, toMs } from '@rc/fixtures'
-import { AGENT_KIND_LABEL, type AgentPolicy } from '@rc/types'
+import type { OrderRow } from '@rc/api'
+import { dayKey, fmtAgo, fmtIdr, fmtIdrShort, fmtNumber, fmtPercent, fmtWhen, toMs } from '@rc/fixtures'
+import { AGENT_KIND_LABEL, type AgentPolicy, SOLD_ORDER_STATUSES } from '@rc/types'
 import {
   Badge,
   Banner,
@@ -22,27 +23,33 @@ import {
 } from '@rc/ui'
 import { Bot, HandCoins, Pencil, Scale, Wallet } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
-import { OrderLink, paths } from '../../components/links'
+import { paths } from '../../components/links'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
+import { HTTP } from '../../lib/api'
+import { toRow } from '../../state/orderRow'
 import { useNow, useScoped } from '../../state/scoped'
+import { useOrderQuery } from '../../state/useOrderQuery'
 import { ChartCard } from '../analytics/ChartCard'
 import { AgentPolicyDialog } from './AgentPolicyDialog'
 import {
   AGENT_KINDS,
   type AgentFilter,
-  type AgentOrder,
   FILTERS,
   dayStart,
   defaultPolicy,
-  isAgentOrder,
   sessionsPerDay,
   trafficInsight,
 } from './lib'
 
 const DAYS = 30
+
+type AgentRow = OrderRow & { agentInfo: NonNullable<OrderRow['agentInfo']> }
+const isAgentRow = (o: OrderRow): o is AgentRow => !!o.agentInfo
+const isSold = (o: OrderRow) => SOLD_ORDER_STATUSES.includes(o.status)
+const passes = (filter: AgentFilter, o: AgentRow) => filter !== 'negotiated' || o.agentInfo.negotiated > 0
 
 export function AgentCommercePage() {
   const s = useScoped()
@@ -59,55 +66,83 @@ export function AgentCommercePage() {
     [s.state.agentPolicies, s.tenantId],
   )
 
+  const from = dayStart(now, DAYS - 1)
+  // With the API the state holds only open orders, so the window's agent orders come from the read
+  // model. At most 500 come back, more than a brand's agents place in a month today.
+  const remote = useOrderQuery(
+    {
+      tenantId: s.tenantId,
+      agent: true,
+      since: new Date(from).toISOString(),
+      sort: 'placed',
+      desc: true,
+      pageSize: 500,
+    },
+    s.orders,
+  )
+
   const d = useMemo(() => {
-    const from = dayStart(now, DAYS - 1)
-    const recent = s.orders.filter((o) => toMs(o.createdAt) >= from)
-    const agent = recent.filter(isAgentOrder)
-    const net = (list: typeof recent) =>
+    const rows = HTTP
+      ? (remote.page?.rows ?? [])
+      : s.orders
+          .filter((o) => o.agent && toMs(o.createdAt) >= from)
+          .map((o) => toRow(o, s.customerName(o.customerId)))
+          // Newest first; orders placed the same second by id, as the API orders them.
+          .sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    const agent = rows.filter(isAgentRow)
+    const net = (list: AgentRow[]) =>
       list.filter(isSold).reduce((sum, o) => sum + o.total - o.refundedAmount, 0)
-    const negotiated = agent.filter((o) => o.agent.negotiated > 0)
-    const negotiatedSum = negotiated.reduce((n, o) => n + o.agent.negotiated, 0)
+    const negotiated = agent.filter((o) => o.agentInfo.negotiated > 0)
+    const negotiatedSum = negotiated.reduce((n, o) => n + o.agentInfo.negotiated, 0)
     const negotiatedSubtotal = negotiated.reduce((n, o) => n + o.subtotal, 0)
     const revenue = net(agent)
-    const allRevenue = net(recent)
+    // Every sold order in the window, net of refunds, from the sales read model.
+    const first = dayKey(from)
+    const allRevenue = s.facts.salesDays.reduce((sum, x) => (x.day >= first ? sum + x.revenue : sum), 0)
     return {
-      agent: agent.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt)),
+      agent,
       revenue,
       share: allRevenue ? revenue / allRevenue : 0,
       negotiated: negotiated.length,
       avgNegotiated: negotiated.length ? negotiatedSum / negotiated.length : 0,
       avgNegotiatedPct: negotiatedSubtotal ? negotiatedSum / negotiatedSubtotal : 0,
-      avgCompared: agent.length ? agent.reduce((n, o) => n + o.agent.compared, 0) / agent.length : 0,
+      avgCompared: agent.length ? agent.reduce((n, o) => n + o.agentInfo.compared, 0) / agent.length : 0,
       byKind: AGENT_KINDS.map((k) => {
-        const list = agent.filter((o) => o.agent.kind === k)
+        const list = agent.filter((o) => o.agentInfo.kind === k)
         return { kind: k, orders: list.length, revenue: net(list) }
       }).sort((a, b) => b.orders - a.orders),
       sessions: sessionsPerDay(s.traffic, DAYS, now),
       insight: trafficInsight(s.traffic, now),
     }
-  }, [s.orders, s.traffic, now])
+  }, [s, remote.page, from, now])
 
   const [query, setQuery] = useHistoryState('agentQuery', '')
   const searched = d.agent.filter((o) =>
-    matchesQuery(query, o.code, s.customerName(o.customerId), o.agent.intent, AGENT_KIND_LABEL[o.agent.kind]),
+    matchesQuery(query, o.code, o.customerName, o.agentInfo.intent, AGENT_KIND_LABEL[o.agentInfo.kind]),
   )
-  const test = FILTERS.find((f) => f.value === filter)?.test ?? (() => true)
-  const rows = searched.filter(test)
+  const rows = searched.filter((o) => passes(filter, o))
   const activeCount = (query.trim() ? 1 : 0) + (filter === 'all' ? 0 : 1)
   const clear = () => {
     setQuery('')
     setFilter('all')
   }
 
-  const columns: Column<AgentOrder>[] = [
+  const columns: Column<AgentRow>[] = [
     {
       id: 'order',
       header: 'Order',
       sortValue: (o) => o.code,
       cell: (o) => (
         <div className="min-w-0">
-          <OrderLink orderId={o.id} />
-          <p className="text-xs truncate text-muted">{AGENT_KIND_LABEL[o.agent.kind]}</p>
+          {/* From the row, since a closed order is no longer in the state with the API. */}
+          <Link
+            to={paths.order(o.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs font-medium font-mono text-foreground hover:text-accent hover:underline"
+          >
+            {o.code}
+          </Link>
+          <p className="text-xs truncate text-muted">{AGENT_KIND_LABEL[o.agentInfo.kind]}</p>
           <p className="mt-1 leading-4 md:hidden text-[0.6875rem] text-muted">{fmtWhen(o.createdAt, now)}</p>
         </div>
       ),
@@ -124,8 +159,8 @@ export function AgentCommercePage() {
       header: "Shopper's intent",
       hideBelow: 'lg',
       cell: (o) => (
-        <p className="text-sm max-w-[22rem] truncate" title={o.agent.intent}>
-          {o.agent.intent}
+        <p className="text-sm max-w-[22rem] truncate" title={o.agentInfo.intent}>
+          {o.agentInfo.intent}
         </p>
       ),
     },
@@ -134,10 +169,10 @@ export function AgentCommercePage() {
       header: 'Negotiated',
       align: 'right',
       hideBelow: 'xl',
-      sortValue: (o) => o.agent.negotiated,
+      sortValue: (o) => o.agentInfo.negotiated,
       cell: (o) =>
-        o.agent.negotiated ? (
-          <span className="whitespace-nowrap tabular-nums">-{fmtIdr(o.agent.negotiated)}</span>
+        o.agentInfo.negotiated ? (
+          <span className="whitespace-nowrap tabular-nums">-{fmtIdr(o.agentInfo.negotiated)}</span>
         ) : (
           <span className="text-muted">–</span>
         ),
@@ -260,7 +295,7 @@ export function AgentCommercePage() {
               <Chip
                 key={f.value}
                 active={filter === f.value}
-                count={searched.filter(f.test).length}
+                count={searched.filter((o) => passes(f.value, o)).length}
                 onClick={() => setFilter(filter === f.value ? 'all' : f.value)}
               >
                 {f.label}
@@ -322,11 +357,7 @@ export function AgentCommercePage() {
             </CardHeader>
             <CardContent>
               <dl className="gap-3 sm:grid-cols-2 grid grid-cols-1">
-                <Fact
-                  label="Shopper approval"
-                  value="Every order"
-                  hint="The agent asks before it pays"
-                />
+                <Fact label="Shopper approval" value="Every order" hint="The agent asks before it pays" />
                 <Fact
                   label="Negotiated"
                   value={fmtPercent(d.agent.length ? d.negotiated / d.agent.length : 0)}

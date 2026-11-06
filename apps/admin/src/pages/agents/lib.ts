@@ -1,22 +1,13 @@
 import { DAY, dayKey, fmtDateShort, fmtPercent, startOfDay } from '@rc/fixtures'
-import {
-  AGENT_KIND_LABEL,
-  type AgentKind,
-  type AgentPolicy,
-  type Order,
-  type TrafficDay,
-} from '@rc/types'
+import { AGENT_KIND_LABEL, type AgentKind, type AgentPolicy, type TrafficDay } from '@rc/types'
 
 export const AGENT_KINDS = Object.keys(AGENT_KIND_LABEL) as AgentKind[]
 
-export type AgentOrder = Order & { agent: NonNullable<Order['agent']> }
-export const isAgentOrder = (o: Order): o is AgentOrder => !!o.agent
-
 export type AgentFilter = 'all' | 'negotiated'
 
-export const FILTERS: { value: AgentFilter; label: string; test: (o: AgentOrder) => boolean }[] = [
-  { value: 'all', label: 'All', test: () => true },
-  { value: 'negotiated', label: 'Negotiated', test: (o) => o.agent.negotiated > 0 },
+export const FILTERS: { value: AgentFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'negotiated', label: 'Negotiated' },
 ]
 
 /** What a tenant has before anyone saves a policy: agents refused. */

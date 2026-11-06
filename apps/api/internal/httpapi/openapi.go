@@ -111,6 +111,8 @@ var routeDocs = map[string]routeDoc{
 	"POST /shop/{store}/reset":                 {body: resetInput{}},
 	"POST /shop/{store}/verify":                {body: verifyInput{}},
 	"POST /auth/password":                      {body: changePasswordInput{}, response: tokenResponse{}},
+	"GET /views/orders":                        {response: orderRowsResponse{}},
+	"GET /views/customer-events":               {response: customerEventsResponse{}},
 	"GET /users/events":                        {response: staffEventsResponse{}},
 	"POST /users":                              {body: staffInput{}, response: issuedStaffResponse{}},
 	"PUT /users/{id}":                          {body: staffInput{}, response: staffResponse{}},
@@ -299,7 +301,7 @@ func tagOf(path string) string {
 		return "Catalog"
 	case "stock", "modifier-stock", "warehouses":
 		return "Inventory"
-	case "orders":
+	case "orders", "views":
 		return "Orders"
 	case "customers", "leads", "tickets", "segments":
 		return "Customers"

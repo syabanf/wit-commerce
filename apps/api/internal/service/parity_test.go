@@ -15,6 +15,8 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
+	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/seed"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/testdb"
@@ -101,7 +103,7 @@ func TestServiceMatchesTheReducer(t *testing.T) {
 	if err := json.Unmarshal(raw, &golden); err != nil {
 		t.Fatal(err)
 	}
-	svc := &service.Service{DB: db, Clock: clock.New(clock.MustParse(clock.FixtureNow))}
+	svc := service.New(kernel.Runtime{DB: db, Clock: clock.New(clock.MustParse(clock.FixtureNow))})
 
 	for _, c := range golden.Cases {
 		t.Run(c.Name, func(t *testing.T) {
@@ -128,6 +130,11 @@ func TestServiceMatchesTheReducer(t *testing.T) {
 				for _, row := range rows {
 					want[collection] = append(want[collection], normalize(row))
 				}
+			}
+			// Read models ride along in deltas for the console; the reducer has none to compare.
+			for _, collection := range readmodel.Collections {
+				delete(got, collection)
+				delete(delta.Removes, collection)
 			}
 			for _, collection := range union(want, got) {
 				w, g := sortedRows(want[collection]), sortedRows(got[collection])

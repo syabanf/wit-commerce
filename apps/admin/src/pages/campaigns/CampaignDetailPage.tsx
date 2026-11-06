@@ -1,5 +1,4 @@
 import {
-  audienceSize,
   campaignLaunchBlocker,
   describePromotion,
   fmtDate,
@@ -14,14 +13,15 @@ import {
   plural,
   toIso,
   toMs,
+  segmentMembers,
 } from '@rc/fixtures'
+import type { OrderRow } from '@rc/api'
 import {
   CAMPAIGN_STATUS_LABEL,
   FUNNEL_FLOW,
   FUNNEL_STEP_LABEL,
   MESSAGE_CHANNEL_LABEL,
   type Campaign,
-  type Order,
 } from '@rc/types'
 import {
   ActionMenu,
@@ -65,11 +65,12 @@ export function CampaignDetailPage() {
   const [editing, setEditing] = useState(false)
   const campaign = s.campaigns.find((c) => c.id === id)
   const segmentId = campaign?.segmentId ?? null
-  const size = useMemo(
-    () => audienceSize(s.state, s.tenantId, segmentId, nowMs()),
-    [s.state, s.tenantId, segmentId],
-  )
-  const orders = useMemo(() => s.orders.filter((o) => o.campaignId === id), [s.orders, id])
+  // From the console's customer metrics, as the segments page counts: with the API the state holds
+  // neither every order nor the event history that audienceSize reads.
+  const size = useMemo(() => {
+    const segment = s.segments.find((seg) => seg.id === segmentId)
+    return segment ? segmentMembers(segment, s.customers, s.crm).length : 0
+  }, [s.segments, s.customers, s.crm, segmentId])
 
   if (!campaign) {
     return (
@@ -140,13 +141,18 @@ export function CampaignDetailPage() {
     navigate(paths.campaign(copy.id))
   }
 
-  const orderColumns: Column<Order>[] = [
-    { id: 'order', header: 'Order', sortValue: (o) => o.code, cell: (o) => <OrderLink orderId={o.id} /> },
+  const orderColumns: Column<OrderRow>[] = [
+    {
+      id: 'order',
+      header: 'Order',
+      sortValue: (o) => o.code,
+      cell: (o) => <OrderLink orderId={o.id} code={o.code} />,
+    },
     {
       id: 'customer',
       header: 'Customer',
       hideBelow: 'md',
-      sortValue: (o) => s.customerName(o.customerId),
+      sortValue: (o) => o.customerName,
       cell: (o) => <CustomerLink customerId={o.customerId} />,
     },
     {
@@ -157,7 +163,7 @@ export function CampaignDetailPage() {
       cell: (o) => <OrderStatusBadge status={o.status} />,
     },
     {
-      id: 'date',
+      id: 'placed',
       header: 'Placed',
       hideBelow: 'lg',
       sortValue: (o) => toMs(o.createdAt),
@@ -412,8 +418,8 @@ export function CampaignDetailPage() {
         <FilteredOrderTable
           name="campaign.orders"
           columns={orderColumns}
-          orders={orders}
-          initialSort={{ id: 'date', desc: true }}
+          filter={{ campaignId: campaign.id }}
+          initialSort={{ id: 'placed', desc: true }}
           empty={
             <EmptyState
               compact

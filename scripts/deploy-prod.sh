@@ -14,6 +14,8 @@
 #   PUBLIC_URL    https://commerce.reddie.id
 #   WEB_ROOT      /var/www/commerce (the admin at the root, the storefront in shop/)
 #   API_PORT      8090, on 127.0.0.1 only
+#   SPLIT_SERVICES=true  run the AI chat, the storefront reads and the email worker as their own
+#                 containers (ports AI_PORT 8091, SHOP_PORT 8093); false keeps them in the API
 #   ENV_FILE      .env.production
 #   COMPOSE_NAME  commerce-prod
 #   ADMIN_EMAIL   the platform admin's email, instead of asking
@@ -29,6 +31,9 @@ cd "$(dirname "$0")/.."
 PUBLIC_URL="${PUBLIC_URL:-https://commerce.reddie.id}"
 WEB_ROOT="${WEB_ROOT:-/var/www/commerce}"
 export API_PORT="${API_PORT:-8090}"
+export AI_PORT="${AI_PORT:-8091}" SHOP_PORT="${SHOP_PORT:-8093}"
+export SPLIT_SERVICES="${SPLIT_SERVICES:-false}"
+if [ "$SPLIT_SERVICES" = true ]; then export COMPOSE_PROFILES=split; fi
 ENV_FILE="${ENV_FILE:-.env.production}"
 COMPOSE_NAME="${COMPOSE_NAME:-commerce-prod}"
 NGINX_CONF=/etc/nginx/conf.d/commerce.conf
@@ -152,6 +157,36 @@ publish_web() {
   echo "Published to $WEB_ROOT"
 }
 
+# With SPLIT_SERVICES=true, nginx sends the AI chat and the storefront's public reads to their own
+# services. Regex and exact locations win over the /api/ prefix; other methods stay on the API.
+split_locations() {
+  [ "$SPLIT_SERVICES" = true ] || return 0
+  local proxy="proxy_http_version 1.1;
+    proxy_set_header Host \$host;
+    proxy_set_header Connection \"\";
+    proxy_set_header X-Forwarded-For \$shopper_ip;
+    proxy_set_header X-Forwarded-Proto \$http_x_forwarded_proto;"
+  cat <<CONF
+  location ~ ^/api/v1/shop/[^/]+/ai/ {
+    proxy_pass http://127.0.0.1:$AI_PORT;
+    $proxy
+    proxy_read_timeout 60s;
+  }
+  location = /api/v1/shop {
+    limit_except GET { proxy_pass http://127.0.0.1:$API_PORT; }
+    proxy_pass http://127.0.0.1:$SHOP_PORT;
+    $proxy
+  }
+  location ~ ^/api/v1/shop/[^/]+/(state|events)$ {
+    limit_except GET { proxy_pass http://127.0.0.1:$API_PORT; }
+    proxy_pass http://127.0.0.1:$SHOP_PORT;
+    $proxy
+    proxy_buffering off;
+    proxy_read_timeout 1h;
+  }
+CONF
+}
+
 nginx_site() {
   cat <<CONF
 # Behind Cloudflare the shopper's address is CF-Connecting-IP; the API's per-shopper limit reads it.
@@ -164,7 +199,7 @@ server {
   listen 80;
   server_name $DOMAIN;
   root $WEB_ROOT;
-
+$(split_locations)
   location /api/ {
     proxy_pass http://127.0.0.1:$API_PORT;
     proxy_http_version 1.1;

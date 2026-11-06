@@ -1,7 +1,8 @@
-import { type AppAction, customerMetrics, nowIso, nowMs, toMs } from '@rc/fixtures'
+import { type AppAction, type Facts, deriveFacts, metricsFromRows, nowIso, nowMs, toMs } from '@rc/fixtures'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/auth'
 import { useStore } from './store'
+import { HTTP } from '../lib/api'
 
 const byId = <T extends { id: string }>(list: readonly T[]) => new Map(list.map((x) => [x.id, x]))
 const newest =
@@ -28,6 +29,15 @@ function useScopeValue() {
       list.filter((x) => x.tenantId === tenant.id)
     const allProducts = own(state.products)
     const tenantOrders = own(state.orders)
+    // The read models, from the API or derived from the local orders in the demo.
+    const facts: Facts = HTTP
+      ? {
+          customerMetrics: own(state.customerMetrics),
+          salesDays: own(state.salesDays),
+          productDays: own(state.productDays),
+          sellerBuyers: own(state.sellerBuyers),
+        }
+      : deriveFacts(tenantOrders, own(state.customerEvents))
     const tenantCustomers = own(state.customers)
     const customers = tenantCustomers
       .filter((c) => c.sellerId === seller.id)
@@ -54,19 +64,27 @@ function useScopeValue() {
       /** Every lead code, so a new lead gets the next free one. */
       leadCodes: state.leads.map((l) => l.code),
       customers,
-      /** Orders attributed to this seller's store or ref links, newest first. */
+      /**
+       * Orders attributed to this seller's store or ref links, newest first. With the API the state
+       * holds only orders under way, so complete lists read the read model (useRecentOrders).
+       */
       orders: tenantOrders.filter((o) => o.sellerId === seller.id).sort(newest((o) => o.createdAt)),
-      /** Every order of this seller's customers, wherever they bought, newest first. */
+      /** Every order of this seller's customers, wherever they bought, newest first. Under way only with the API. */
       customerOrders: tenantOrders
         .filter((o) => customerIds.has(o.customerId))
         .sort(newest((o) => o.createdAt)),
       customerEvents: state.customerEvents
         .filter((e) => customerIds.has(e.customerId))
         .sort(newest((e) => e.at)),
-      metrics: customerMetrics(
-        tenantOrders.filter((o) => customerIds.has(o.customerId)),
-        (productId) => maps.product.get(productId)?.categoryId,
+      metrics: metricsFromRows(
+        facts.customerMetrics.filter((m) => customerIds.has(m.customerId)),
+        state.products,
       ),
+      /** This seller's sales facts, which the store and home figures sum. */
+      sales: {
+        salesDays: facts.salesDays.filter((d) => d.sellerId === seller.id),
+        sellerBuyers: facts.sellerBuyers.filter((b) => b.sellerId === seller.id),
+      },
       traffic: state.traffic.filter((t) => t.sellerId === seller.id),
       /** Products a seller can feature, recommend or log a lead for. */
       products: allProducts.filter((p) => p.status === 'active'),

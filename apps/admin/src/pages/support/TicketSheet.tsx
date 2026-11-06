@@ -1,4 +1,4 @@
-import { fmtDateTime, fmtIdr, fmtWhen, metricsFor, plural, toMs } from '@rc/fixtures'
+import { fmtDateTime, fmtIdr, fmtWhen, metricsFor, plural } from '@rc/fixtures'
 import type { Ticket } from '@rc/types'
 import { CUSTOMER_EVENT_LABEL, TICKET_KIND_LABEL, TICKET_STATUS_LABEL } from '@rc/types'
 import {
@@ -17,13 +17,16 @@ import {
   toast,
 } from '@rc/ui'
 import { CircleCheck, X } from 'lucide-react'
-import { type ReactNode, useMemo } from 'react'
+import { type ReactNode } from 'react'
 import { useAuth } from '../../auth/auth'
 import { ON_INK, OrderStatusBadge, TierBadge } from '../../components/badges'
 import { CustomerLink, OrderLink } from '../../components/links'
 import { UserPicker } from '../../components/pickers'
+import { HTTP } from '../../lib/api'
 import { useScoped } from '../../state/scoped'
+import { useOrderQuery } from '../../state/useOrderQuery'
 import { TICKET_CHANNEL_LABEL, isLate, slaText } from './lib'
+import { useCustomerEvents } from '../../state/useCustomerEvents'
 
 /** Quick triage for one ticket: who the customer is, the order behind it, assign and resolve. */
 export function TicketSheet({
@@ -49,16 +52,21 @@ function TicketPanel({ ticket, now }: { ticket: Ticket; now: number }) {
   const { can } = useAuth()
   const manage = can('ticket.manage')
   const customer = s.maps.customer.get(ticket.customerId)
-  const order = ticket.orderId ? s.maps.order.get(ticket.orderId) : undefined
+  const listed = ticket.orderId ? s.maps.order.get(ticket.orderId) : undefined
+  // With the API a closed order is not in the state, so its row is read from the server.
+  const read = useOrderQuery(
+    { tenantId: s.tenant.id, ids: ticket.orderId ?? '' },
+    s.orders,
+    !!ticket.orderId && !listed,
+  )
+  const order = listed ?? read.page?.rows.find((r) => r.id === ticket.orderId)
   const metrics = metricsFor(s.crm.metrics, ticket.customerId)
   const late = isLate(ticket, now)
-  const recent = useMemo(
-    () =>
-      s.customerEvents
-        .filter((e) => e.customerId === ticket.customerId && toMs(e.at) <= now)
-        .sort((a, b) => toMs(b.at) - toMs(a.at))
-        .slice(0, 3),
-    [s.customerEvents, ticket.customerId, now],
+  const recent = useCustomerEvents(
+    s.customerEvents,
+    s.tenant.id,
+    { customerId: ticket.customerId, limit: 3 },
+    now,
   )
 
   const assign = (assigneeId: string | null) => {
@@ -137,9 +145,13 @@ function TicketPanel({ ticket, now }: { ticket: Ticket; now: number }) {
         <Section title="Order">
           {order ? (
             <div className="gap-3 rounded-2xl p-3 flex flex-wrap items-center bg-surface-2">
-              <OrderLink orderId={order.id} />
+              <OrderLink orderId={order.id} code={order.code} />
               <OrderStatusBadge status={order.status} />
               <span className="text-sm font-semibold ml-auto tabular-nums">{fmtIdr(order.total)}</span>
+            </div>
+          ) : HTTP && ticket.orderId ? (
+            <div className="gap-3 rounded-2xl p-3 flex flex-wrap items-center bg-surface-2">
+              <OrderLink orderId={ticket.orderId} />
             </div>
           ) : (
             <p className="text-sm text-muted">Not about a specific order.</p>

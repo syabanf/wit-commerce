@@ -18,7 +18,10 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
+	aimodule "github.com/syabanf/wit-commerce/apps/api/internal/modules/ai"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
@@ -53,16 +56,20 @@ type Options struct {
 type Server struct {
 	Options
 	svc                                     *service.Service
+	notify                                  *notifications.Notifications
 	handler                                 http.Handler
 	limiter                                 *keyLimiter
 	aiClients, aiTotal                      *keyLimiter
 	signInClients, signInEmails, mailEmails *keyLimiter
+	assistant                               *aimodule.AI
 	spec                                    []byte
 }
 
 // New builds the server and its handler chain.
 func New(o Options) *Server {
-	s := &Server{Options: o, svc: &service.Service{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}, limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
+	s := &Server{Options: o, svc: service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}), limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
+	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, PublicURL: o.PublicURL, Log: o.Log}
+	s.assistant = aimodule.New(o.AI, s.svc.Catalog)
 	mux := http.NewServeMux()
 	s.routes(mux)
 	s.handler = s.requestID(s.cors(s.recover(s.logRequests(mux))))

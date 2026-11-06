@@ -10,7 +10,8 @@ import {
   sellerPerformance,
   toMs,
 } from '@rc/fixtures'
-import { SELLER_KIND_LABEL, SELLER_STATUS_LABEL, type Order, type Seller } from '@rc/types'
+import type { OrderRow } from '@rc/api'
+import { SELLER_KIND_LABEL, SELLER_STATUS_LABEL, type Seller } from '@rc/types'
 import {
   ActionMenu,
   Badge,
@@ -54,14 +55,31 @@ export function SellerDetailPage() {
   const [suspending, setSuspending] = useState(false)
   const seller = s.sellers.find((x) => x.id === id)
 
-  const orders = useMemo(() => s.orders.filter((o) => o.sellerId === id), [s.orders, id])
   const stats = useMemo(
     () =>
-      seller ? sellerPerformance([seller], s.orders, s.traffic, s.leads, 30, now).get(seller.id) : undefined,
-    [seller, s.orders, s.traffic, s.leads, now],
+      seller
+        ? sellerPerformance(
+            [seller],
+            s.facts.salesDays,
+            s.facts.sellerBuyers,
+            s.traffic,
+            s.leads,
+            30,
+            now,
+          ).get(seller.id)
+        : undefined,
+    [seller, s.facts, s.traffic, s.leads, now],
   )
   const visitors = useMemo(() => (id ? dailyVisitors(s.traffic, id, 30, now) : []), [s.traffic, id, now])
-  const dailyOrders = useMemo(() => dailyRevenue(orders, 30, now), [orders, now])
+  const dailyOrders = useMemo(
+    () =>
+      dailyRevenue(
+        s.facts.salesDays.filter((d) => d.sellerId === id),
+        30,
+        now,
+      ),
+    [s.facts.salesDays, id, now],
+  )
 
   if (!seller || !stats) {
     return (
@@ -96,13 +114,18 @@ export function SellerDetailPage() {
     toast('Seller reactivated', { tone: 'success', description: `${seller.name} · ${url} is live again.` })
   }
 
-  const orderColumns: Column<Order>[] = [
-    { id: 'order', header: 'Order', sortValue: (o) => o.code, cell: (o) => <OrderLink orderId={o.id} /> },
+  const orderColumns: Column<OrderRow>[] = [
+    {
+      id: 'order',
+      header: 'Order',
+      sortValue: (o) => o.code,
+      cell: (o) => <OrderLink orderId={o.id} code={o.code} />,
+    },
     {
       id: 'customer',
       header: 'Customer',
       hideBelow: 'md',
-      sortValue: (o) => s.customerName(o.customerId),
+      sortValue: (o) => o.customerName,
       cell: (o) => <CustomerLink customerId={o.customerId} />,
     },
     {
@@ -113,7 +136,7 @@ export function SellerDetailPage() {
       cell: (o) => <OrderStatusBadge status={o.status} />,
     },
     {
-      id: 'date',
+      id: 'placed',
       header: 'Placed',
       hideBelow: 'lg',
       sortValue: (o) => toMs(o.createdAt),
@@ -254,8 +277,8 @@ export function SellerDetailPage() {
         <FilteredOrderTable
           name="seller.orders"
           columns={orderColumns}
-          orders={orders}
-          initialSort={{ id: 'date', desc: true }}
+          filter={{ sellerId: seller.id }}
+          initialSort={{ id: 'placed', desc: true }}
           empty={
             <EmptyState
               compact

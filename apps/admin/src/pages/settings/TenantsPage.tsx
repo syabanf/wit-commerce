@@ -1,4 +1,4 @@
-import { DAY, fmtIdrShort, fmtNumber, isSold, nowMs, startOfDay, toMs } from '@rc/fixtures'
+import { DAY, dayKey, fmtIdrShort, fmtNumber, isSold, nowMs, startOfDay, toMs } from '@rc/fixtures'
 import { INDUSTRY_LABEL, TENANT_PLAN_LABEL, type Tenant } from '@rc/types'
 import { Badge, Button, Card, EmptyState, PageHeader, ProgressBar, StatCard, toast } from '@rc/ui'
 import { Building2, Globe, Plus, Rocket, Wallet } from 'lucide-react'
@@ -6,6 +6,7 @@ import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { paths } from '../../components/links'
+import { HTTP } from '../../lib/api'
 import { useStore } from '../../state/store'
 import { ONBOARDING_STEPS, isLive, remainingSteps, storeHost } from './lib'
 
@@ -24,17 +25,28 @@ export function TenantsPage() {
   const stats = useMemo(() => {
     const from = startOfDay(nowMs()) + DAY - 30 * DAY
     const map = new Map<string, TenantStats>(state.tenants.map((t) => [t.id, { revenue: 0, customers: 0 }]))
-    for (const o of state.orders) {
-      if (!isSold(o) || toMs(o.createdAt) < from) continue
-      const row = map.get(o.tenantId)
-      if (row) row.revenue += o.total - o.refundedAmount
+    // The API keeps only open orders in the state, so it sums the sales read model, which carries
+    // every brand this user can open. The demo still has every order.
+    if (HTTP) {
+      const first = dayKey(from)
+      for (const d of state.salesDays) {
+        if (d.day < first) continue
+        const row = map.get(d.tenantId)
+        if (row) row.revenue += d.revenue
+      }
+    } else {
+      for (const o of state.orders) {
+        if (!isSold(o) || toMs(o.createdAt) < from) continue
+        const row = map.get(o.tenantId)
+        if (row) row.revenue += o.total - o.refundedAmount
+      }
     }
     for (const c of state.customers) {
       const row = map.get(c.tenantId)
       if (row) row.customers += 1
     }
     return map
-  }, [state.tenants, state.orders, state.customers])
+  }, [state.tenants, state.orders, state.salesDays, state.customers])
 
   const live = tenants.filter(isLive).length
   const inProgress = tenants.filter((t) => t.onboarding.length < ONBOARDING_STEPS.length).length

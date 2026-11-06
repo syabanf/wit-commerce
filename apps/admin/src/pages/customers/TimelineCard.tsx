@@ -1,4 +1,4 @@
-import { fmtTime, plural, toMs } from '@rc/fixtures'
+import { fmtTime, plural } from '@rc/fixtures'
 import type { Customer } from '@rc/types'
 import { CUSTOMER_EVENT_LABEL } from '@rc/types'
 import { Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Textarea, cn, toast } from '@rc/ui'
@@ -6,6 +6,7 @@ import { type Ref, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { OrderLink, paths } from '../../components/links'
 import { useScoped } from '../../state/scoped'
+import { useCustomerEvents } from '../../state/useCustomerEvents'
 import { CUSTOMER_EVENT_ICON, groupByDay } from './lib'
 
 const PAGE = 15
@@ -27,12 +28,11 @@ export function TimelineCard({
   const [shown, setShown] = useState(PAGE)
 
   // Events stamped after the app clock have not happened yet.
-  const events = useMemo(
-    () =>
-      s.customerEvents
-        .filter((e) => e.customerId === customer.id && toMs(e.at) <= now)
-        .sort((a, b) => toMs(b.at) - toMs(a.at)),
-    [s.customerEvents, customer.id, now],
+  const events = useCustomerEvents(
+    s.customerEvents,
+    s.tenant.id,
+    { customerId: customer.id, limit: 500 },
+    now,
   )
   const groups = useMemo(() => groupByDay(events.slice(0, shown), now), [events, shown, now])
   const more = events.length - shown

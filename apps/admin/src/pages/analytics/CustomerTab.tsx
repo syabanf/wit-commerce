@@ -23,13 +23,13 @@ export function CustomerTab({ days, today }: { days: number; today: number }) {
 
   const d = useMemo(
     () => ({
-      kpis: periodKpis(s.orders, s.traffic, days, today),
-      repeat: repeatRate(s.orders),
+      kpis: periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, today),
+      repeat: repeatRate(s.facts.customerMetrics),
       ltv: lifetimeValue(s.crm.metrics),
-      cohorts: cohorts(s.orders, 6, HORIZON, today),
-      monthly: monthlyRevenue(s.orders, 12, today),
+      cohorts: cohorts(s.facts.customerMetrics, 6, HORIZON, today),
+      monthly: monthlyRevenue(s.facts.salesDays, 12, today),
     }),
-    [s.orders, s.traffic, s.crm.metrics, days, today],
+    [s.facts, s.traffic, s.crm.metrics, days, today],
   )
   const buyers = d.kpis.newCustomers + d.kpis.returningCustomers
   const hasMonthly = d.monthly.some((m) => m.revenue > 0)

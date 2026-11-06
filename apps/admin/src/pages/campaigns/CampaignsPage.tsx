@@ -1,11 +1,10 @@
 import {
-  DAY,
+  dayKey,
   fmtDate,
   fmtDateShort,
   fmtIdrShort,
   fmtNumber,
   fmtPercent,
-  isSold,
   plural,
   segmentMembers,
   toMs,
@@ -34,6 +33,7 @@ import { CampaignStatusBadge } from '../../components/badges'
 import { paths } from '../../components/links'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
+import { windowStart } from '../analytics/lib'
 import { CampaignDialog } from './CampaignDialog'
 import { clickToPurchase, fmtRoi, roi } from './lib'
 
@@ -66,10 +66,10 @@ export function CampaignsPage() {
   )
 
   const stats = useMemo(() => {
-    const from = now - 30 * DAY
-    const revenue30 = s.orders.reduce(
-      (sum, o) =>
-        o.campaignId && isSold(o) && toMs(o.createdAt) >= from ? sum + o.total - o.refundedAmount : sum,
+    // Whole WIB days, today and the 29 before, as the analytics count a 30-day window.
+    const from = dayKey(windowStart(30, now))
+    const revenue30 = s.facts.salesDays.reduce(
+      (sum, d) => (d.campaignId && d.day >= from ? sum + d.revenue : sum),
       0,
     )
     const launched = s.campaigns.filter((c) => c.status !== 'draft')
@@ -86,7 +86,7 @@ export function CampaignsPage() {
         .filter((c) => c.status === 'scheduled')
         .sort((a, b) => toMs(a.startAt) - toMs(b.startAt))[0],
     }
-  }, [s.orders, s.campaigns, now])
+  }, [s.facts.salesDays, s.campaigns, now])
 
   // Search first, so the status chip counts reflect it.
   const searched = useMemo(
@@ -146,7 +146,9 @@ export function CampaignsPage() {
         c.segmentId ? (
           <div className="min-w-0">
             <p className="truncate">{s.segmentName(c.segmentId)}</p>
-            <p className="text-[0.6875rem] text-muted">{plural(audience.get(c.segmentId) ?? 0, 'customer')}</p>
+            <p className="text-[0.6875rem] text-muted">
+              {plural(audience.get(c.segmentId) ?? 0, 'customer')}
+            </p>
           </div>
         ) : (
           <span className="text-muted">No audience</span>

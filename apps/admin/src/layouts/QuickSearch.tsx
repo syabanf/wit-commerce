@@ -17,8 +17,10 @@ import { type KeyboardEvent, type ReactElement, useEffect, useId, useMemo, useRe
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { paths } from '../components/links'
+import { HTTP } from '../lib/api'
 import { usePersistentState } from '../lib/storage'
 import { type Scoped, useScoped } from '../state/scoped'
+import { useOrderQuery } from '../state/useOrderQuery'
 import { useCreateActions } from './CreateMenu'
 import { type BadgeKey, NAV } from './nav'
 import { useNavCounts } from './useNavCounts'
@@ -222,6 +224,25 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const records = useMemo(() => recordGroups(scoped), [scoped])
+  // With the API the state holds only open orders, so a search asks the server for every order.
+  const typed = query.trim()
+  const remote = useOrderQuery(
+    { tenantId: scoped.tenantId, q: typed, pageSize: RECORD_LIMIT },
+    scoped.orders,
+    !!typed,
+  )
+  const remoteOrders = useMemo<Row[] | null>(
+    () =>
+      remote.page?.rows.map((o) => ({
+        key: o.id,
+        label: o.customerName,
+        hint: `${ORDER_STATUS_LABEL[o.status]} · ${fmtIdr(o.total)}`,
+        code: o.code,
+        icon: <ShoppingBag />,
+        to: paths.order(o.id),
+      })) ?? null,
+    [remote.page],
+  )
 
   const groups = useMemo(() => {
     const q = query.trim()
@@ -255,7 +276,10 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
       { title: 'Tasks', rows: hits(tasks) },
       { title: 'Create', rows: hits(createRows) },
       { title: 'Pages', rows: hits(PAGE_ROWS) },
-      ...records.map((g) => ({ title: g.title, rows: hits(g.rows).slice(0, RECORD_LIMIT) })),
+      ...records.map((g) => ({
+        title: g.title,
+        rows: HTTP && g.title === 'Orders' ? (remoteOrders ?? []) : hits(g.rows).slice(0, RECORD_LIMIT),
+      })),
     ]
     // A typed code goes first, so the code and Enter open it.
     const exact = found.flatMap((g) => g.rows).find((r) => r.code?.toLowerCase() === q.toLowerCase())
@@ -263,7 +287,7 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
       ? found.map((g) => ({ ...g, rows: g.rows.filter((r) => r.code !== exact.code) }))
       : found
     return [...(exact ? [{ title: 'Code', rows: [exact] }] : []), ...rest].filter((g) => g.rows.length)
-  }, [query, records, recent, counts, creates, can])
+  }, [query, records, remoteOrders, recent, counts, creates, can])
 
   const flat = groups.flatMap((g) => g.rows)
 

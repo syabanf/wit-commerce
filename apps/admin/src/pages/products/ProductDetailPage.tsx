@@ -108,12 +108,12 @@ function ProductRecord({ id }: { id: string }) {
   const product = s.products.find((p) => p.id === id)
 
   const perf = useMemo(
-    () => (product ? productPerformance([product], s.orders, 30, now).get(product.id) : undefined),
-    [product, s.orders, now],
+    () => (product ? productPerformance([product], s.facts.productDays, 30, now).get(product.id) : undefined),
+    [product, s.facts.productDays, now],
   )
   const daily = useMemo(
-    () => (product ? dailyUnits(product.id, s.orders, 30, now) : []),
-    [product, s.orders, now],
+    () => (product ? dailyUnits(product.id, s.facts.productDays, 30, now) : []),
+    [product, s.facts.productDays, now],
   )
 
   if (!product) {

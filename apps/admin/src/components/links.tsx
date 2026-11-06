@@ -1,6 +1,8 @@
 import { Avatar, cn } from '@rc/ui'
 import { Link } from 'react-router'
+import { HTTP } from '../lib/api'
 import { useScoped } from '../state/scoped'
+import { useOrderCode } from '../state/useOrderCode'
 
 /** Routes for entity pages, shared by every feature. Build every in-app link through these. */
 export const paths = {
@@ -50,21 +52,36 @@ export function CustomerLink({
   )
 }
 
-/** Mono order code linking to the order. */
-export function OrderLink({ orderId, className }: { orderId: string; className?: string }) {
-  const { maps } = useScoped()
+/**
+ * Mono order code linking to the order. With the API the state carries only orders under way, so
+ * pass `code` when the caller has it; otherwise an unlisted order's code is read from the server.
+ */
+export function OrderLink({
+  orderId,
+  code,
+  className,
+}: {
+  orderId: string
+  code?: string
+  className?: string
+}) {
+  const { maps, tenant } = useScoped()
   const o = maps.order.get(orderId)
-  if (!o) return <span className="text-muted">Removed order</span>
+  const read = useOrderCode(orderId, tenant.id, HTTP && !o && !code)
+  const shown = code ?? o?.code ?? read
+  if (shown === null || (shown === undefined && !HTTP))
+    return <span className="text-muted">Removed order</span>
+  if (shown === undefined) return <span className="text-xs font-mono text-muted">…</span>
   return (
     <Link
-      to={paths.order(o.id)}
+      to={paths.order(orderId)}
       onClick={stop}
       className={cn(
         'text-xs font-medium font-mono text-foreground hover:text-accent hover:underline',
         className,
       )}
     >
-      {o.code}
+      {shown}
     </Link>
   )
 }

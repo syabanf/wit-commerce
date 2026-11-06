@@ -8,6 +8,7 @@ import type { Customer, Order, Page } from '../packages/types/src/index.ts'
 import { FIXTURE_NOW } from '../packages/fixtures/src/clock.ts'
 import { seedState } from '../packages/fixtures/src/data.ts'
 import { DAY, HOUR, toIso, toMs } from '../packages/fixtures/src/dates.ts'
+import { deriveFacts } from '../packages/fixtures/src/facts.ts'
 import { type AppAction, type AppState, reduce } from '../packages/fixtures/src/store.ts'
 
 type Collection = keyof AppState
@@ -306,3 +307,18 @@ const target = join(dir, '..', 'apps', 'api', 'testdata', 'golden.json')
 writeFileSync(target, JSON.stringify(out, null, 1))
 console.log(`golden: ${cases.length} cases, ${cases.filter((c) => Object.keys(c.upserts).length || Object.keys(c.removes).length).length} with changes → ${target}`)
 void DAY
+
+// The read models the API projects, as the demo derives them from the same seed. The API's
+// readmodel parity test compares its projection with these rows.
+const seeded = seedState()
+const facts = deriveFacts(seeded.orders, seeded.customerEvents)
+const byId = <T extends { id: string }>(rows: T[]) => [...rows].sort((a, b) => a.id.localeCompare(b.id))
+const readModels = {
+  customerMetrics: byId(facts.customerMetrics),
+  salesDays: byId(facts.salesDays),
+  productDays: byId(facts.productDays),
+  sellerBuyers: byId(facts.sellerBuyers),
+}
+const readModelTarget = join(dirname(target), 'readmodels.json')
+writeFileSync(readModelTarget, JSON.stringify(readModels, null, 1))
+console.log(`read models: ${Object.entries(readModels).map(([k, v]) => `${k} ${v.length}`).join(', ')} → ${readModelTarget}`)

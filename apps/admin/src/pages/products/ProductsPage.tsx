@@ -58,7 +58,7 @@ export function ProductsPage() {
       { replace: true },
     )
 
-  const perf = useMemo(() => productPerformance(s.products, s.orders, 30, now), [s.products, s.orders, now])
+  const perf = useMemo(() => productPerformance(s.products, s.facts.productDays, 30, now), [s.products, s.facts.productDays, now])
 
   const viewTest = useMemo(() => {
     const tests: Record<View, (p: Product) => boolean> = {

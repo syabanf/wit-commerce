@@ -16,6 +16,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
+	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 	"strings"
 )
@@ -96,6 +97,9 @@ func Load(ctx context.Context, db *store.DB, dir, demoPassword string) error {
 				pgx.CopyFromRows(rows)); err != nil {
 				return fmt.Errorf("seed %s: %w", collection, err)
 			}
+		}
+		if err := readmodel.Rebuild(ctx, tx); err != nil {
+			return err
 		}
 		if demoPassword == "" {
 			return nil

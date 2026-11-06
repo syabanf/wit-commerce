@@ -10,7 +10,8 @@ import {
   tierFor,
   toMs,
 } from '@rc/fixtures'
-import type { Customer, Order } from '@rc/types'
+import type { OrderRow } from '@rc/api'
+import type { Customer } from '@rc/types'
 import { CHANNEL_LABEL, LIFECYCLE_FLOW, LIFECYCLE_STAGE_LABEL, LOYALTY_TIER_LABEL } from '@rc/types'
 import {
   ActionMenu,
@@ -33,7 +34,9 @@ import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
 import { FilteredOrderTable } from '../../components/FilteredOrderTable'
 import { OrderLink } from '../../components/links'
+import { HTTP } from '../../lib/api'
 import { useNow, useScoped } from '../../state/scoped'
+import { useOrderQuery } from '../../state/useOrderQuery'
 import { tierMinimum } from '../loyalty/lib'
 import { AddPointsDialog } from './AddPointsDialog'
 import { CustomerDialog } from './CustomerDialog'
@@ -80,10 +83,13 @@ export function CustomerDetailPage() {
   const [pending, setPending] = useState<Pending>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const customer = s.customers.find((c) => c.id === id)
-  const orders = useMemo(
-    () => s.orders.filter((o) => o.customerId === id).sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt)),
+  // Orders placed, every status: counted locally in the demo, read from the server with the API.
+  const localPlaced = useMemo(
+    () => (HTTP ? 0 : s.orders.filter((o) => o.customerId === id).length),
     [s.orders, id],
   )
+  const counted = useOrderQuery({ tenantId: s.tenant.id, customerId: id, pageSize: 1 }, s.orders, !!id)
+  const placed = HTTP ? counted.page?.total : localPlaced
 
   if (!customer) {
     return (
@@ -123,8 +129,13 @@ export function CustomerDetailPage() {
       )
   }
 
-  const columns: Column<Order>[] = [
-    { id: 'order', header: 'Order', sortValue: (o) => o.code, cell: (o) => <OrderLink orderId={o.id} /> },
+  const columns: Column<OrderRow>[] = [
+    {
+      id: 'order',
+      header: 'Order',
+      sortValue: (o) => o.code,
+      cell: (o) => <OrderLink orderId={o.id} code={o.code} />,
+    },
     {
       id: 'placed',
       header: 'Placed',
@@ -271,17 +282,20 @@ export function CustomerDetailPage() {
             <CardHeader>
               <CardTitle>Orders</CardTitle>
               <p className="text-sm text-muted">
-                {orders.length
-                  ? `${fmtNumber(orders.length)} placed · ${fmtIdr(m.spend)} sold`
-                  : 'No orders yet.'}
+                {placed === undefined
+                  ? null
+                  : placed
+                    ? `${fmtNumber(placed)} placed · ${fmtIdr(m.spend)} sold`
+                    : 'No orders yet.'}
               </p>
             </CardHeader>
-            {orders.length > 0 && (
+            {!!placed && (
               <FilteredOrderTable
                 name="customer.orders"
                 className="px-1 pb-3"
                 columns={columns}
-                orders={orders}
+                filter={{ customerId: customer.id }}
+                total={HTTP ? placed : undefined}
                 initialSort={{ id: 'placed', desc: true }}
               />
             )}

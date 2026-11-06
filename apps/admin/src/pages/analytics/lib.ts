@@ -6,11 +6,10 @@ import {
   dayKey,
   fmtDateShort,
   fmtPercent,
-  isSold,
   startOfDay,
   toMs,
 } from '@rc/fixtures'
-import type { Campaign, Order, Product, TrafficDay } from '@rc/types'
+import type { Campaign, Product, ProductDay, TrafficDay } from '@rc/types'
 import type { Tone } from '@rc/ui'
 
 export const WINDOWS = [7, 30, 90] as const
@@ -49,20 +48,17 @@ export function visitorsPerDay(traffic: readonly TrafficDay[], days: number, now
   })
 }
 
-export const soldInWindow = (orders: readonly Order[], from: number) =>
-  orders.filter((o) => isSold(o) && toMs(o.createdAt) >= from)
-
-/** Line revenue per category in the window. */
+/** Line revenue per category from the WIB day of `from` on. */
 export function revenueByCategory(
-  orders: readonly Order[],
+  productDays: readonly ProductDay[],
+  from: number,
   categoryOf: (productId: string) => string | undefined,
 ) {
+  const first = dayKey(from)
   const map = new Map<string, number>()
-  for (const o of orders) {
-    for (const l of o.lines) {
-      const cat = categoryOf(l.productId)
-      if (cat) map.set(cat, (map.get(cat) ?? 0) + l.qty * l.price)
-    }
+  for (const d of productDays) {
+    const cat = d.day >= first ? categoryOf(d.productId) : undefined
+    if (cat) map.set(cat, (map.get(cat) ?? 0) + d.revenue)
   }
   return [...map].sort((a, b) => b[1] - a[1])
 }

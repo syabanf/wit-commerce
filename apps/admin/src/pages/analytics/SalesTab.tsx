@@ -11,7 +11,7 @@ export function SalesTab({ days, today }: { days: number; today: number }) {
   const s = useScoped()
 
   const d = useMemo(() => {
-    const rows = [...sellerPerformance(s.sellers, s.orders, s.traffic, s.leads, days, today).values()].sort(
+    const rows = [...sellerPerformance(s.sellers, s.facts.salesDays, s.facts.sellerBuyers, s.traffic, s.leads, days, today).values()].sort(
       (a, b) => b.revenue - a.revenue,
     )
     const sum = (key: 'revenue' | 'orders' | 'leads' | 'commission') => rows.reduce((n, r) => n + r[key], 0)
@@ -21,9 +21,9 @@ export function SalesTab({ days, today }: { days: number; today: number }) {
       orders: sum('orders'),
       leads: sum('leads'),
       commission: sum('commission'),
-      storeRevenue: periodKpis(s.orders, s.traffic, days, today).revenue,
+      storeRevenue: periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, today).revenue,
     }
-  }, [s.sellers, s.orders, s.traffic, s.leads, days, today])
+  }, [s.sellers, s.facts, s.traffic, s.leads, days, today])
 
   const selling = d.rows.filter((r) => r.revenue > 0)
 

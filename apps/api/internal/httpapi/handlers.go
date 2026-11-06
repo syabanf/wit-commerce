@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
+	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -184,14 +186,33 @@ func (s *Server) tenantScope(ctx context.Context, p auth.Principal) ([]string, e
 	return ids, rows.Err()
 }
 
-// loadState reads the collections for a set of tenants; users and tenants rows come whole.
-func (s *Server) loadState(ctx context.Context, tenantIDs []string, collections []string) (map[string][]json.RawMessage, error) {
+// loadState reads the collections for a set of tenants; users and tenants rows come whole. With
+// sellers set, the collections that carry order figures hold only those sellers' own.
+func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, collections []string) (map[string][]json.RawMessage, error) {
 	out := map[string][]json.RawMessage{}
-	where, args := store.TenantIn(tenantIDs)
+	tenantWhere, tenantArgs := store.TenantIn(tenantIDs)
 	for _, c := range collections {
 		var rows []json.RawMessage
 		var err error
+		where, args := tenantWhere, tenantArgs
+		if sellers != nil && len(tenantArgs) == 1 {
+			if clause, extra, ok := limitState(c, sellers); ok {
+				where, args = where+" and "+clause, append(slices.Clone(tenantArgs), extra...)
+			}
+		}
 		switch c {
+		case "orders":
+			// Only orders still under way: the queues, notifications and badges work on these. Every
+			// other order is one query away (GET /views/orders, GET /orders/{id}). Each carries only the
+			// shipment from its history; a detail reads the whole order.
+			rows, err = store.Raw(ctx, s.DB.Pool, c, where+" and status in ('new', 'confirmed', 'paid', 'processing', 'packed', 'shipped')", args...)
+			if err == nil {
+				err = withShipmentsOnly(rows)
+			}
+		case readmodel.CustomerMetricsCollection:
+			rows, err = readmodel.CustomerMetricsRows(ctx, s.DB.Pool, where, args...)
+		case readmodel.SalesDaysCollection, readmodel.ProductDaysCollection, readmodel.SellerBuyersCollection:
+			rows, err = readmodel.FactRows(ctx, s.DB.Pool, c, where, args...)
 		case "users":
 			// Colleagues and platform admins; staff of other brands stay out of this browser.
 			rows, err = store.Raw(ctx, s.DB.Pool, c, "data->'tenantIds' ?| $1 or data->>'role' = 'platform_admin'", tenantIDs)
@@ -213,6 +234,48 @@ func (s *Server) loadState(ctx context.Context, tenantIDs []string, collections 
 	return out, nil
 }
 
+// stateCollections is what a signed-in console loads at once. Customer history is left out: screens
+// read it through GET /views/customer-events, a page at a time. Customer metrics come from their read
+// model in its place, so segment rules and customer lists need neither the history nor every order.
+var stateCollections = append(slices.DeleteFunc(slices.Clone(store.Collections), func(c string) bool { return c == "customerEvents" }),
+	readmodel.Collections...)
+
+// withShipmentsOnly trims each order's history to its shipped events, the part lists and the
+// dashboard read. The rest is half of an order's size.
+func withShipmentsOnly(rows []json.RawMessage) error {
+	for i, raw := range rows {
+		var order map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &order); err != nil {
+			return err
+		}
+		var history []struct {
+			Status *string `json:"status"`
+		}
+		if err := json.Unmarshal(order["events"], &history); err != nil {
+			return err
+		}
+		var all []json.RawMessage
+		if err := json.Unmarshal(order["events"], &all); err != nil {
+			return err
+		}
+		kept := []json.RawMessage{}
+		for j, e := range history {
+			if e.Status != nil && *e.Status == "shipped" {
+				kept = append(kept, all[j])
+			}
+		}
+		trimmed, err := json.Marshal(kept)
+		if err != nil {
+			return err
+		}
+		order["events"] = trimmed
+		if rows[i], err = json.Marshal(order); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.From(r.Context())
 	ids, err := s.tenantScope(r.Context(), p)
@@ -220,7 +283,12 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	state, err := s.loadState(r.Context(), ids, store.Collections)
+	sellers, err := s.ownSellers(r.Context(), p)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	state, err := s.loadState(r.Context(), ids, sellers, stateCollections)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
@@ -266,7 +334,16 @@ func (s *Server) userEvents(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	s.stream(w, r, events.Scope{TenantIDs: ids})
+	scope := events.Scope{TenantIDs: ids}
+	sellers, err := s.ownSellers(r.Context(), p)
+	if err == nil && sellers != nil {
+		scope, err = s.sellerStreamScope(r.Context(), ids, sellers)
+	}
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	s.stream(w, r, scope)
 }
 
 func (s *Server) placeOrder(w http.ResponseWriter, r *http.Request) {
@@ -317,7 +394,7 @@ func (s *Server) shopState(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	state, err := s.loadState(r.Context(), []string{tenant.ID}, shopCollections)
+	state, err := s.loadState(r.Context(), []string{tenant.ID}, nil, shopCollections)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

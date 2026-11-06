@@ -16,6 +16,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/httpapi"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/seed"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -283,7 +284,7 @@ func TestConnectorValuesAreEncryptedAndWriteOnly(t *testing.T) {
 	if bytes.Contains(sealed, []byte(value)) {
 		t.Error("the database holds the value in clear")
 	}
-	svc := &service.Service{DB: e.db, Vault: e.vault}
+	svc := service.New(kernel.Runtime{DB: e.db, Vault: e.vault})
 	values, err := svc.ConnectorValues(ctx, "int-lari-midtrans")
 	if err != nil || values["server_key"] != value {
 		t.Errorf("decrypt: %v %v", err, values)

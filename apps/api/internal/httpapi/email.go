@@ -2,36 +2,33 @@ package httpapi
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
-	"fmt"
-	"html"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
-	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/crm"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/orders"
+	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
-const (
-	kindReset        = "reset"
-	kindInvite       = "invite"
-	kindVerify       = "verify"
-	subjectUser      = "user"
-	subjectCustomer  = "customer"
-	resetLifetime    = time.Hour
-	verifyLifetime   = 24 * time.Hour
-	inviteLifetime   = 7 * 24 * time.Hour
-	mailRatePerEmail = 3
-)
+const mailRatePerEmail = 3
+
+// errLinkExpired answers a link that was used before, has expired, or names a missing record.
+var errLinkExpired = staffError{http.StatusGone, "LINK_EXPIRED", "This link has expired or was already used. Ask for a new one."}
+
+// linkError turns the notifications module's refusal into the answer the client reads.
+func linkError(err error) error {
+	if errors.Is(err, notifications.ErrLinkExpired) {
+		return errLinkExpired
+	}
+	return err
+}
 
 type forgotInput struct {
 	Email string `json:"email"`
@@ -46,77 +43,9 @@ type verifyInput struct {
 	Token string `json:"token"`
 }
 
-func hashToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
-}
-
-// addToken stores a new link beside any earlier ones.
-func (s *Server) addToken(ctx context.Context, kind, subjectType, subjectID string, lifetime time.Duration) (string, error) {
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	token := base64.RawURLEncoding.EncodeToString(raw)
-	_, err := s.DB.Pool.Exec(ctx, `insert into email_tokens (hash, kind, subject_type, subject_id, expires_at) values ($1, $2, $3, $4, $5)`,
-		hashToken(token), kind, subjectType, subjectID, time.Now().Add(lifetime))
-	return token, err
-}
-
-// retireOtherTokens leaves token as the only working link of its kind.
-func (s *Server) retireOtherTokens(ctx context.Context, kind, subjectType, subjectID, token string) error {
-	_, err := s.DB.Pool.Exec(ctx, `delete from email_tokens where subject_type = $1 and subject_id = $2 and kind = $3 and hash <> $4`,
-		subjectType, subjectID, kind, hashToken(token))
-	return err
-}
-
-// issueToken replaces any earlier unused link of this kind, so only the newest one works.
-func (s *Server) issueToken(ctx context.Context, kind, subjectType, subjectID string, lifetime time.Duration) (string, error) {
-	token, err := s.addToken(ctx, kind, subjectType, subjectID, lifetime)
-	if err != nil {
-		return "", err
-	}
-	return token, s.retireOtherTokens(ctx, kind, subjectType, subjectID, token)
-}
-
-// useToken spends a link once; a second use, an expired link or the wrong kind finds nothing.
-func useToken(ctx context.Context, tx pgx.Tx, token, subjectType string, kinds ...string) (string, error) {
-	var id string
-	err := tx.QueryRow(ctx, `update email_tokens set used_at = now()
-		where hash = $1 and kind = any($2) and subject_type = $3 and used_at is null and expires_at > now() returning subject_id`,
-		hashToken(token), kinds, subjectType).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", staffError{http.StatusGone, "LINK_EXPIRED", "This link has expired or was already used. Ask for a new one."}
-	}
-	return id, err
-}
-
-// sendLater answers the request first, so the time to respond does not reveal whether an email
-// has an account. A failure goes to the log without the message, which holds a working link.
-func (s *Server) sendLater(m mail.Message) {
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		if err := s.Mail.Send(ctx, m); err != nil {
-			s.Log.Error("email not sent", "err", err, "subject", m.Subject)
-		}
-	}()
-}
-
-func linkMessage(to, subject, intro, action, link string) mail.Message {
-	note := "If you did not ask for this, you can ignore this email."
-	return mail.Message{
-		To:      to,
-		Subject: subject,
-		Text:    fmt.Sprintf("%s\n\n%s: %s\n\n%s\n", intro, action, link, note),
-		HTML: fmt.Sprintf(`<p>%s</p><p><a href="%s">%s</a></p><p>%s</p>`,
-			html.EscapeString(intro), html.EscapeString(link), html.EscapeString(action), html.EscapeString(note)),
-	}
-}
-
 // emailOn answers when no email service is set up, which says nothing about any one account.
 func (s *Server) emailOn(w http.ResponseWriter) bool {
-	if s.Mail == nil || s.PublicURL == "" {
+	if !s.notify.On() {
 		writeProblem(w, http.StatusServiceUnavailable, "EMAIL_OFF", "Email is not set up yet. Contact the store or your admin.")
 		return false
 	}
@@ -159,13 +88,7 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) {
 	email := normalEmail(in.Email)
 	u, _, err := s.userByEmail(r.Context(), email)
 	if err == nil && !u.Disabled && s.mailAllowed(email) {
-		token, err := s.issueToken(r.Context(), kindReset, subjectUser, u.ID, resetLifetime)
-		if err != nil {
-			s.Log.Error("reset link not issued", "err", err)
-		} else {
-			link := s.PublicURL + "/reset-password?token=" + url.QueryEscape(token)
-			s.sendLater(linkMessage(u.Email, "Reset your Commerce OS password", "Use this link within an hour to choose a new password.", "Choose a new password", link))
-		}
+		s.notify.MailUserReset(r.Context(), u)
 	}
 	accepted(w)
 }
@@ -188,13 +111,13 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = pgx.BeginFunc(r.Context(), s.DB.Pool, func(tx pgx.Tx) error {
-		id, err := useToken(r.Context(), tx, in.Token, subjectUser, kindReset, kindInvite)
+		id, err := notifications.RedeemUserLink(r.Context(), tx, in.Token)
 		if err != nil {
-			return err
+			return linkError(err)
 		}
 		u, err := store.Get[domain.User](r.Context(), tx, "users", id)
 		if err != nil || u.Disabled {
-			return staffError{http.StatusGone, "LINK_EXPIRED", "This link has expired or was already used. Ask for a new one."}
+			return errLinkExpired
 		}
 		action := "password_reset_by_link"
 		if u.Invited {
@@ -219,46 +142,13 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// mailStaffLink sends a link to a staff member while the admin waits, so the admin hears if it
-// failed. Nothing here reveals an account: the admin already chose this person.
-func (s *Server) mailStaffLink(ctx context.Context, u domain.User, kind string, lifetime time.Duration, subject, intro, action, query string) bool {
-	if !s.mailAllowed(u.Email) {
-		return false
-	}
-	token, err := s.addToken(ctx, kind, subjectUser, u.ID, lifetime)
-	if err != nil {
-		s.Log.Error("staff link not issued", "err", err)
-		return false
-	}
-	sendCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	link := s.PublicURL + "/reset-password?token=" + url.QueryEscape(token) + query
-	if err := s.Mail.Send(sendCtx, linkMessage(u.Email, subject, intro, action, link)); err != nil {
-		// The earlier link is the only one the person holds, so a failed send must not end it.
-		s.Log.Error("email not sent", "err", err, "subject", subject)
-		if _, err := s.DB.Pool.Exec(ctx, `delete from email_tokens where hash = $1`, hashToken(token)); err != nil {
-			s.Log.Error("unsent link not removed", "err", err)
-		}
-		return false
-	}
-	if err := s.retireOtherTokens(ctx, kind, subjectUser, u.ID, token); err != nil {
-		s.Log.Error("earlier links not retired", "err", err)
-	}
-	return true
-}
-
+// mailInvite and mailAdminReset send while the admin waits, so the admin hears if the send failed.
 func (s *Server) mailInvite(ctx context.Context, u domain.User) bool {
-	return s.mailStaffLink(ctx, u, kindInvite, inviteLifetime, "You are invited to Commerce OS",
-		"An admin added you to Commerce OS. Use this link within 7 days to choose your password.", "Choose your password", "&invite=1")
+	return s.mailAllowed(u.Email) && s.notify.MailInvite(ctx, u)
 }
 
 func (s *Server) mailAdminReset(ctx context.Context, u domain.User) bool {
-	return s.mailStaffLink(ctx, u, kindReset, resetLifetime, "An admin reset your Commerce OS password",
-		"An admin reset your password. Use this link within an hour to choose a new one.", "Choose a new password", "")
-}
-
-func (s *Server) storeLink(tenant domain.Tenant, param, token string) string {
-	return s.PublicURL + "/shop/" + tenant.Subdomain + "/account?" + param + "=" + url.QueryEscape(token)
+	return s.mailAllowed(u.Email) && s.notify.MailAdminReset(ctx, u)
 }
 
 // shopForgot also serves a guest from checkout: the link proves the inbox, so it may set the first
@@ -282,12 +172,7 @@ func (s *Server) shopForgot(w http.ResponseWriter, r *http.Request) {
 	err = s.DB.Pool.QueryRow(r.Context(), `select c.id from customers c left join customer_credentials cc on cc.customer_id = c.id
 		where c.tenant_id = $1 and c.email = $2 order by cc.customer_id is null limit 1`, tenant.ID, email).Scan(&id)
 	if err == nil && s.mailAllowed(tenant.ID+email) {
-		token, err := s.issueToken(r.Context(), kindReset, subjectCustomer, id, resetLifetime)
-		if err != nil {
-			s.Log.Error("reset link not issued", "err", err)
-		} else {
-			s.sendLater(linkMessage(email, "Reset your "+tenant.Name+" password", "Use this link within an hour to choose a new password.", "Choose a new password", s.storeLink(tenant, "reset", token)))
-		}
+		s.notify.MailCustomerReset(r.Context(), tenant, id, email)
 	}
 	accepted(w)
 }
@@ -315,13 +200,13 @@ func (s *Server) shopReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = pgx.BeginFunc(r.Context(), s.DB.Pool, func(tx pgx.Tx) error {
-		id, err := useToken(r.Context(), tx, in.Token, subjectCustomer, kindReset)
+		id, err := notifications.RedeemCustomerReset(r.Context(), tx, in.Token)
 		if err != nil {
-			return err
+			return linkError(err)
 		}
 		c, err := store.Get[domain.Customer](r.Context(), tx, "customers", id)
 		if err != nil || c.TenantID != tenant.ID {
-			return staffError{http.StatusGone, "LINK_EXPIRED", "This link has expired or was already used. Ask for a new one."}
+			return errLinkExpired
 		}
 		// Reading the email proved the inbox, which is what verifying asks for.
 		if _, err := tx.Exec(r.Context(), `insert into customer_credentials (customer_id, password_hash, tokens_valid_from) values ($1, $2, $3)
@@ -340,15 +225,10 @@ func (s *Server) shopReset(w http.ResponseWriter, r *http.Request) {
 
 // sendVerifyEmail mails the signed-in shopper a link that proves the inbox.
 func (s *Server) sendVerifyEmail(ctx context.Context, tenant domain.Tenant, c domain.Customer) {
-	if s.Mail == nil || s.PublicURL == "" || !s.mailAllowed(tenant.ID+c.Email) {
+	if !s.notify.On() || !s.mailAllowed(tenant.ID+c.Email) {
 		return
 	}
-	token, err := s.issueToken(ctx, kindVerify, subjectCustomer, c.ID, verifyLifetime)
-	if err != nil {
-		s.Log.Error("verify link not issued", "err", err)
-		return
-	}
-	s.sendLater(linkMessage(c.Email, "Confirm your email at "+tenant.Name, "Confirm this email to bring your earlier guest orders into your account.", "Confirm my email", s.storeLink(tenant, "verify", token)))
+	s.notify.MailVerify(ctx, tenant, c)
 }
 
 func (s *Server) shopSendVerify(w http.ResponseWriter, r *http.Request) {
@@ -389,13 +269,13 @@ func (s *Server) shopVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = pgx.BeginFunc(r.Context(), s.DB.Pool, func(tx pgx.Tx) error {
-		id, err := useToken(r.Context(), tx, in.Token, subjectCustomer, kindVerify)
+		id, err := notifications.RedeemCustomerVerify(r.Context(), tx, in.Token)
 		if err != nil {
-			return err
+			return linkError(err)
 		}
 		c, err := store.Get[domain.Customer](r.Context(), tx, "customers", id)
 		if err != nil || c.TenantID != tenant.ID {
-			return staffError{http.StatusGone, "LINK_EXPIRED", "This link has expired or was already used. Ask for a new one."}
+			return errLinkExpired
 		}
 		return claimGuestRecords(r.Context(), tx, c)
 	})
@@ -408,6 +288,8 @@ func (s *Server) shopVerify(w http.ResponseWriter, r *http.Request) {
 
 // claimGuestRecords marks the inbox proven and folds guest records with this email into the account:
 // their orders, history, leads, tickets and points. Only a proven inbox gets here.
+// The HTTP layer runs it because it spans owners: orders and crm move their own rows, and this
+// layer owns customer_credentials and refreshes the read models.
 func claimGuestRecords(ctx context.Context, tx pgx.Tx, c domain.Customer) error {
 	if _, err := tx.Exec(ctx, `update customer_credentials set email_verified_at = now() where customer_id = $1`, c.ID); err != nil {
 		return err
@@ -431,19 +313,28 @@ func claimGuestRecords(ctx context.Context, tx pgx.Tx, c domain.Customer) error 
 		return nil
 	}
 	for _, guest := range guests {
-		g, err := store.Get[domain.Customer](ctx, tx, "customers", guest)
-		if err != nil {
+		if err := orders.ReassignCustomer(ctx, tx, guest, c.ID); err != nil {
 			return err
 		}
-		c.Points += g.Points
-		for _, table := range []string{"orders", "customer_events", "leads", "tickets"} {
-			if _, err := tx.Exec(ctx, `update `+table+` set data = jsonb_set(data, '{customerId}', to_jsonb($1::text)) where data->>'customerId' = $2`, c.ID, guest); err != nil {
-				return err
-			}
-		}
-		if err := store.Delete(ctx, tx, "customers", guest); err != nil {
+		if err := crm.MergeGuest(ctx, tx, &c, guest); err != nil {
 			return err
 		}
 	}
-	return store.Put(ctx, tx, "customers", c.ID, c)
+	if err := crm.SaveMerged(ctx, tx, c); err != nil {
+		return err
+	}
+	// These writes bypass the service, so they project the moved orders and metrics themselves.
+	if err := readmodel.RefreshCustomers(ctx, tx, []string{c.ID}); err != nil {
+		return err
+	}
+	if _, err := readmodel.RefreshCustomerMetrics(ctx, tx, append(guests, c.ID)); err != nil {
+		return err
+	}
+	// The moved orders now name another customer, which the seller buyer facts count.
+	tenants, days, err := readmodel.SalesDaysOf(ctx, tx, "o.customer_id = $1", c.ID)
+	if err != nil {
+		return err
+	}
+	_, _, err = readmodel.RefreshSalesDays(ctx, tx, tenants, days)
+	return err
 }

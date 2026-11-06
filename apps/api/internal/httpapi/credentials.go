@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -106,8 +107,21 @@ func (s *Server) getHandler(collection string) http.HandlerFunc {
 			s.writeError(w, r, err)
 			return
 		}
-		// A row of another tenant reads as missing, so a key cannot probe ids.
-		rows, err := store.Raw(r.Context(), s.DB.Pool, collection, "id = $1 and tenant_id = $2", r.PathValue("id"), tenantID)
+		// A row of another tenant reads as missing, so a key cannot probe ids. So does another
+		// seller's order for a sales user.
+		where, args := "id = $1 and tenant_id = $2", []any{r.PathValue("id"), tenantID}
+		if collection == "orders" {
+			p, _ := auth.From(r.Context())
+			sellers, err := s.ownSellers(r.Context(), p)
+			if err != nil {
+				s.writeError(w, r, err)
+				return
+			}
+			if sellers != nil {
+				where, args = where+" and "+fmt.Sprintf(ownOrders, 3), append(args, sellers)
+			}
+		}
+		rows, err := store.Raw(r.Context(), s.DB.Pool, collection, where, args...)
 		if err != nil {
 			s.writeError(w, r, err)
 			return

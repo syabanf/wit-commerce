@@ -12,7 +12,7 @@ import { useNow, useSellerScope } from '../../state/scope'
 import { FeaturedSheet, MAX_FEATURED } from './FeaturedSheet'
 
 export function StorePage() {
-  const { seller, tenant, page, templates, maps, storeUrl, storeHref, orders, traffic, leads, dispatch } =
+  const { seller, tenant, page, templates, maps, storeUrl, storeHref, sales, traffic, leads, dispatch } =
     useSellerScope()
   const now = useNow()
   const [editingFeatured, setEditingFeatured] = useState(false)
@@ -20,7 +20,7 @@ export function StorePage() {
   const featured = seller.featuredProductIds
     .map((id) => maps.product.get(id))
     .filter((p): p is Product => !!p)
-  const stats = sellerPerformance([seller], orders, traffic, leads, 30, now).get(seller.id)!
+  const stats = sellerPerformance([seller], sales.salesDays, sales.sellerBuyers, traffic, leads, 30, now).get(seller.id)!
   const layoutLocked = tenant.brand.locks.layout
   const featuredLocked = tenant.brand.locks.featured_product
   const allowed = templates.filter((t) => seller.allowedTemplateIds.includes(t.id))

@@ -195,14 +195,18 @@ export function RecommendedCard({ customer, metrics }: { customer: Customer; met
   const favourite = favouriteCategory(metrics)
   const picks = useMemo(() => {
     if (!favourite) return []
-    const bought = new Set(
-      s.orders.filter((o) => o.customerId === customer.id).flatMap((o) => o.lines.map((l) => l.productId)),
-    )
+    // Sold orders come from the customer's metrics; the orders still under way from the state. With
+    // the API the state no longer carries closed orders, so cancelled and returned ones drop out.
+    const sold = s.facts.customerMetrics.find((r) => r.customerId === customer.id)?.productCounts ?? {}
+    const bought = new Set([
+      ...Object.keys(sold),
+      ...s.orders.filter((o) => o.customerId === customer.id).flatMap((o) => o.lines.map((l) => l.productId)),
+    ])
     return s.products
       .filter((p) => p.status === 'active' && p.categoryId === favourite && !bought.has(p.id))
       .sort((a, b) => b.views30d - a.views30d)
       .slice(0, 3)
-  }, [s.orders, s.products, customer.id, favourite])
+  }, [s.facts.customerMetrics, s.orders, s.products, customer.id, favourite])
 
   return (
     <SideCard title="Recommended for them">

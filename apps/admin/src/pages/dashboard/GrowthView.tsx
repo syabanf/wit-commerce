@@ -3,11 +3,10 @@ import {
   fmtIdrShort,
   fmtNumber,
   fmtPercent,
-  isSold,
   periodKpis,
   repeatRate,
   sellerPerformance,
-  toMs,
+  dayKey,
 } from '@rc/fixtures'
 import type { LifecycleStage } from '@rc/types'
 import { CUSTOMER_EVENT_LABEL, LIFECYCLE_STAGE_LABEL } from '@rc/types'
@@ -29,6 +28,8 @@ import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { paths } from '../../components/links'
 import type { Scoped } from '../../state/scoped'
+import { useCustomerEvents } from '../../state/useCustomerEvents'
+import { windowStart } from '../analytics/lib'
 
 const STAGES: { stage: LifecycleStage; className: string }[] = [
   { stage: 'registered', className: 'bg-chart-muted' },
@@ -40,12 +41,29 @@ const STAGES: { stage: LifecycleStage; className: string }[] = [
 ]
 
 export function GrowthView({ s, now }: { s: Scoped; now: number }) {
+  const activity = useCustomerEvents(
+    s.customerEvents,
+    s.tenant.id,
+    { excludeKind: 'registered', limit: 8 },
+    now,
+  )
   const data = useMemo(() => {
-    const month = periodKpis(s.orders, s.traffic, 30, now)
-    const recent = s.orders.filter((o) => isSold(o) && now - toMs(o.createdAt) < 30 * 86_400_000)
-    const campaignRevenue = recent.filter((o) => o.campaignId).reduce((sum, o) => sum + o.total, 0)
-    const sellerRevenue = recent.filter((o) => o.sellerId).reduce((sum, o) => sum + o.total, 0)
-    const perf = sellerPerformance(s.sellers, s.orders, s.traffic, s.leads, 30, now)
+    const month = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, 30, now)
+    // The last 30 WIB days, net of refunds, as the other figures count them.
+    const first = dayKey(windowStart(30, now))
+    const recent = s.facts.salesDays.filter((d) => d.day >= first)
+    const net = (rows: typeof recent) => rows.reduce((sum, d) => sum + d.revenue, 0)
+    const campaignRevenue = net(recent.filter((d) => d.campaignId))
+    const sellerRevenue = net(recent.filter((d) => d.sellerId))
+    const perf = sellerPerformance(
+      s.sellers,
+      s.facts.salesDays,
+      s.facts.sellerBuyers,
+      s.traffic,
+      s.leads,
+      30,
+      now,
+    )
     const sellers = [...perf.values()]
       .filter((p) => p.revenue > 0)
       .sort((a, b) => b.revenue - a.revenue)
@@ -54,18 +72,17 @@ export function GrowthView({ s, now }: { s: Scoped; now: number }) {
       ...st,
       count: s.customers.filter((c) => c.stage === st.stage).length,
     }))
-    const activity = s.customerEvents.filter((e) => e.kind !== 'registered').slice(0, 8)
     return {
       month,
       campaignRevenue,
       sellerRevenue,
-      revenue30: recent.reduce((sum, o) => sum + o.total, 0),
+      revenue30: net(recent),
       sellers,
       stages,
       activity,
-      repeat: repeatRate(s.orders),
+      repeat: repeatRate(s.facts.customerMetrics),
     }
-  }, [s, now])
+  }, [s, now, activity])
 
   const topRevenue = data.sellers[0]?.revenue ?? 0
 

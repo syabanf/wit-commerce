@@ -14,6 +14,7 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 )
 
@@ -44,7 +45,7 @@ func receiver(t *testing.T, answer func(n int) int) (*httptest.Server, func() []
 }
 
 func (e *env) deliverer() *service.Service {
-	return &service.Service{DB: e.db, Vault: e.vault, Clock: clock.New(time.Now()), HTTP: service.OutboundClient(true), AllowInternalWebhooks: true}
+	return service.New(kernel.Runtime{DB: e.db, Vault: e.vault, Clock: clock.New(time.Now()), HTTP: service.OutboundClient(true), AllowInternalWebhooks: true})
 }
 
 func (e *env) hook(url string, events ...string) service.IssuedWebhook {

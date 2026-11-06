@@ -1,6 +1,7 @@
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -18,7 +19,9 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/httpapi"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
 	"github.com/syabanf/wit-commerce/apps/api/internal/seed"
 	"github.com/syabanf/wit-commerce/apps/api/internal/testdb"
 )
@@ -27,9 +30,14 @@ type inbox struct {
 	mu   sync.Mutex
 	sent []map[string]any
 	fail bool
+	// outbox sends the queued email, as the drain loop in cmd/api or cmd/notifier would.
+	outbox *notifications.Notifications
 }
 
 func (b *inbox) count() int {
+	if _, err := b.outbox.Drain(context.Background()); err != nil {
+		panic(err)
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return len(b.sent)
@@ -88,10 +96,13 @@ func mailEnv(t *testing.T) (*env, *inbox) {
 	}))
 	t.Cleanup(resend.Close)
 	signer, _ := auth.NewSigner(strings.Repeat("s", 32), time.Hour)
+	mailer := mail.New(resend.URL, "re_test", "Shop <noreply@example.com>")
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	box.outbox = &notifications.Notifications{Runtime: &kernel.Runtime{DB: db}, Mail: mailer, Log: log}
 	srv := httptest.NewServer(httpapi.New(httpapi.Options{
 		DB: db, Clock: clock.New(time.Now()), Signer: signer, Hub: events.New(),
-		Mail: mail.New(resend.URL, "re_test", "Shop <noreply@example.com>"), PublicURL: "https://shop.example.com",
-		Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Version: "test",
+		Mail: mailer, PublicURL: "https://shop.example.com",
+		Log: log, Version: "test",
 	}))
 	t.Cleanup(srv.Close)
 	return &env{t: t, url: srv.URL + "/api/v1", db: db}, box

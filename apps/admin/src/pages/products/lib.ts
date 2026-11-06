@@ -1,15 +1,5 @@
-import {
-  DAY,
-  type StockSummary,
-  dayKey,
-  fmtDateShort,
-  isSold,
-  nextCode,
-  startOfDay,
-  stockState,
-  toMs,
-} from '@rc/fixtures'
-import type { Order, Product, StockState } from '@rc/types'
+import { DAY, type StockSummary, dayKey, fmtDateShort, nextCode, startOfDay, stockState } from '@rc/fixtures'
+import type { Product, StockState, ProductDay } from '@rc/types'
 
 const NO_STOCK: StockSummary = { onHand: 0, reserved: 0, available: 0, safety: 0 }
 
@@ -41,7 +31,7 @@ export function nextProductCode(products: readonly Product[], tenantCode: string
 }
 
 /** Units of one product on sold orders per day, for the last `days` days, today included. */
-export function dailyUnits(productId: string, orders: readonly Order[], days: number, now: number) {
+export function dailyUnits(productId: string, productDays: readonly ProductDay[], days: number, now: number) {
   const start = startOfDay(now) - (days - 1) * DAY
   const points = Array.from({ length: days }, (_, i) => ({
     day: dayKey(start + i * DAY),
@@ -49,11 +39,9 @@ export function dailyUnits(productId: string, orders: readonly Order[], days: nu
     value: 0,
   }))
   const index = new Map(points.map((p, i) => [p.day, i]))
-  for (const o of orders) {
-    if (!isSold(o)) continue
-    const i = index.get(dayKey(toMs(o.createdAt)))
-    if (i === undefined) continue
-    for (const l of o.lines) if (l.productId === productId) points[i]!.value += l.qty
+  for (const d of productDays) {
+    const i = d.productId === productId ? index.get(d.day) : undefined
+    if (i !== undefined) points[i]!.value += d.units
   }
   return points
 }

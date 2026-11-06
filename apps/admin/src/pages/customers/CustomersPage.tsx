@@ -100,9 +100,9 @@ export function CustomersPage() {
       newCount: all.filter(inView.test.new).length,
       atRisk: all.filter((r) => r.c.stage === 'at_risk').length,
       dormant: all.filter((r) => r.c.stage === 'dormant').length,
-      repeat: repeatRate(s.orders),
+      repeat: repeatRate(s.facts.customerMetrics),
     }),
-    [all, inView, s.orders],
+    [all, inView, s.facts.customerMetrics],
   )
 
   const rows = useMemo(() => {

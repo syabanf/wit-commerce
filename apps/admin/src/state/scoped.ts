@@ -1,7 +1,8 @@
-import { type AppAction, nowIso, nowMs, segmentContext, stockByProduct } from '@rc/fixtures'
+import { type AppAction, nowIso, nowMs, segmentContextFromRows, stockByProduct, deriveFacts, type Facts } from '@rc/fixtures'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/auth'
 import { useStore } from './store'
+import { HTTP } from '../lib/api'
 
 /** The store plus a dispatch that stamps the signed-in user and the app clock on every action. */
 export function useAppState() {
@@ -34,6 +35,15 @@ export function useScoped() {
     const sellers = own(state.sellers)
     const stock = own(state.stock)
     const modifierStock = own(state.modifierStock)
+    // The read models the analytics sum: from the API, or derived from the local orders in the demo.
+    const facts: Facts = HTTP
+      ? {
+          customerMetrics: own(state.customerMetrics),
+          salesDays: own(state.salesDays),
+          productDays: own(state.productDays),
+          sellerBuyers: own(state.sellerBuyers),
+        }
+      : deriveFacts(orders, customerEvents)
     const maps = {
       user: byId(state.users),
       seller: byId(state.sellers),
@@ -74,8 +84,9 @@ export function useScoped() {
       modifierStock,
       modifierStockMoves: own(state.modifierStockMoves),
       stockByProduct: stockByProduct(stock),
+      facts,
       /** Order count, spend and cart state per customer, as segment rules read them. */
-      crm: segmentContext(orders, products, customerEvents),
+      crm: segmentContextFromRows(facts.customerMetrics, products),
       categories: own(state.categories),
       attributes: own(state.attributes),
       modifiers: own(state.modifiers),

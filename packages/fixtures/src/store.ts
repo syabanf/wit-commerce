@@ -41,7 +41,7 @@ import type {
   TrafficDay,
   User,
   Warehouse,
-} from '@rc/types'
+  CustomerMetricsRow, ProductDay, SalesDay, SellerBuyer } from '@rc/types'
 import { ORDER_STATUS_LABEL } from '@rc/types'
 import { DAY, HOUR, toIso, toMs } from './dates'
 import {
@@ -87,6 +87,12 @@ export interface AppState {
   modifierStockMoves: ModifierStockMove[]
   customers: Customer[]
   customerEvents: CustomerEvent[]
+  /** API read model; the demo derives metrics from orders and leaves this empty. */
+  customerMetrics: CustomerMetricsRow[]
+  /** API read models of sold orders; the demo derives them from orders and leaves these empty. */
+  salesDays: SalesDay[]
+  productDays: ProductDay[]
+  sellerBuyers: SellerBuyer[]
   orders: Order[]
   segments: Segment[]
   leads: Lead[]

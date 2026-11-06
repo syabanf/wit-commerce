@@ -4,6 +4,7 @@ package events
 
 import (
 	"encoding/json"
+	"slices"
 	"sync"
 )
 
@@ -31,6 +32,9 @@ type Scope struct {
 	TenantIDs []string
 	// Collections the subscriber may receive; nil means all.
 	Collections map[string]bool
+	// Keep, when set, decides row by row. It sees customer rows before the rest of a change, and
+	// runs under the hub's lock, so it may keep state of its own.
+	Keep func(collection string, data json.RawMessage) bool
 }
 
 func (s Scope) tenant(id string) bool {
@@ -49,12 +53,20 @@ func (s Scope) tenant(id string) bool {
 func (s Scope) Filter(c Change) (map[string]any, bool) {
 	upserts := map[string][]json.RawMessage{}
 	removes := map[string][]string{}
-	for collection, rows := range c.Upserts {
+	collections := make([]string, 0, len(c.Upserts))
+	for collection := range c.Upserts {
+		collections = append(collections, collection)
+	}
+	// Customers first, so a Keep that tracks assignments sees them before the orders of the same change.
+	if i := slices.Index(collections, "customers"); i > 0 {
+		collections[0], collections[i] = collections[i], collections[0]
+	}
+	for _, collection := range collections {
 		if s.Collections != nil && !s.Collections[collection] {
 			continue
 		}
-		for _, r := range rows {
-			if s.tenant(r.TenantID) {
+		for _, r := range c.Upserts[collection] {
+			if s.tenant(r.TenantID) && (s.Keep == nil || s.Keep(collection, r.Data)) {
 				upserts[collection] = append(upserts[collection], r.Data)
 			}
 		}
@@ -84,6 +96,8 @@ type subscriber struct {
 type Hub struct {
 	mu   sync.Mutex
 	subs map[*subscriber]struct{}
+	// forward, when set, also hands every published change to other processes.
+	forward func(Change)
 }
 
 // New makes an empty hub.
@@ -102,9 +116,20 @@ func (h *Hub) Subscribe(scope Scope) (<-chan []byte, func()) {
 	}
 }
 
-// Publish sends the change to every subscriber whose scope keeps part of it. Slow readers drop
-// events rather than block the writer; they refetch on reconnect.
+// Forward makes Publish also call fn with each change. Set it before the hub is in use.
+func (h *Hub) Forward(fn func(Change)) { h.forward = fn }
+
+// Publish delivers the change here and, with Forward set, to other processes.
 func (h *Hub) Publish(c Change) {
+	h.Deliver(c)
+	if h.forward != nil {
+		h.forward(c)
+	}
+}
+
+// Deliver sends the change to every subscriber in this process whose scope keeps part of it. Slow
+// readers drop events rather than block the writer; they refetch on reconnect.
+func (h *Hub) Deliver(c Change) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for s := range h.subs {

@@ -1,4 +1,4 @@
-import { DAY, fmtIdr, fmtNumber, fmtPercent, plural, toMs } from '@rc/fixtures'
+import { DAY, fmtIdr, fmtNumber, fmtPercent, plural } from '@rc/fixtures'
 import type { LoyaltyTier } from '@rc/types'
 import { LOYALTY_TIER_FLOW, LOYALTY_TIER_LABEL } from '@rc/types'
 import {
@@ -21,6 +21,7 @@ import { TierBadge } from '../../components/badges'
 import { paths } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
 import { REWARDS, TIER_FILL, tierRequirement } from './lib'
+import { useCustomerEvents } from '../../state/useCustomerEvents'
 
 const TIER_ICON: Record<LoyaltyTier, ReactNode> = {
   member: <Users />,
@@ -36,16 +37,18 @@ export function LoyaltyPage() {
   const now = useNow(60_000)
   const loyalty = s.tenant.loyalty
 
+  const since = now - 30 * DAY
+  const upgrades = useCustomerEvents(
+    s.customerEvents,
+    s.tenant.id,
+    { kind: 'tier_upgraded', since, limit: 500 },
+    now,
+  )
   const data = useMemo(() => {
     const byTier = Object.fromEntries(
       LOYALTY_TIER_FLOW.map((t) => [t, s.customers.filter((c) => c.tier === t).length]),
     ) as Record<LoyaltyTier, number>
-    const since = now - 30 * DAY
-    const movedUp = new Set(
-      s.customerEvents
-        .filter((e) => e.kind === 'tier_upgraded' && toMs(e.at) >= since && toMs(e.at) <= now)
-        .map((e) => e.customerId),
-    )
+    const movedUp = new Set(upgrades.map((e) => e.customerId))
     const top = [...s.customers].sort((a, b) => b.points - a.points).slice(0, TOP)
     return {
       byTier,
@@ -54,7 +57,7 @@ export function LoyaltyPage() {
       top,
       canRedeem: REWARDS.map((r) => s.customers.filter((c) => c.points >= r.points).length),
     }
-  }, [s.customers, s.customerEvents, now])
+  }, [s.customers, upgrades])
 
   const total = s.customers.length
   const pointsOff = loyalty.pointsPer10k === 0

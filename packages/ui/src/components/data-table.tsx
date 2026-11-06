@@ -44,6 +44,11 @@ export type DataTableProps<T> = {
   initialState?: DataTableState
   /** Reports every sort and page change, including the jump to page 1 when `resetPageKey` changes. */
   onStateChange?: (state: DataTableState) => void
+  /**
+   * Server mode: rows are one page, already filtered and sorted by the server, and this is the
+   * count across pages. The table then only reports sort and page through onStateChange.
+   */
+  totalRows?: number
   className?: string
 }
 
@@ -89,8 +94,11 @@ export function DataTable<T>({
   resetPageKey,
   initialState,
   onStateChange,
+  totalRows,
   className,
 }: DataTableProps<T>) {
+  const server = totalRows !== undefined
+  const count = totalRows ?? rows.length
   const [sort, setSort] = useState(() =>
     initialState
       ? initialState.sort
@@ -101,26 +109,29 @@ export function DataTable<T>({
   const [pageState, setPageState] = useState({
     page: initialState?.page ?? 0,
     key: resetPageKey,
-    count: rows.length,
+    count,
   })
 
   let page = pageState.page
-  if (!sameKey(pageState.key, resetPageKey) || pageState.count !== rows.length) {
+  // A new filter starts at page 1. In server mode the total arrives with each page and moves with
+  // live changes, so it does not reset the page: a page restored after Back survives the first answer.
+  if (!sameKey(pageState.key, resetPageKey) || (!server && pageState.count !== count)) {
     page = 0
-    setPageState({ page: 0, key: resetPageKey, count: rows.length })
+    setPageState({ page: 0, key: resetPageKey, count })
   }
 
   const sorted = useMemo(() => {
     const getValue = sort ? columns.find((column) => column.id === sort.id)?.sortValue : undefined
-    if (!sort || !getValue) return rows
+    if (server || !sort || !getValue) return rows
     return [...rows].sort((a, b) => compareValues(getValue(a), getValue(b), sort.desc))
-  }, [rows, columns, sort])
+  }, [rows, columns, sort, server])
 
   const paged = pageSize > 0
-  const pageCount = paged ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1
-  const safePage = Math.min(page, pageCount - 1)
+  const pageCount = paged ? Math.max(1, Math.ceil(count / pageSize)) : 1
+  // Until the server answers there is no total to clamp to.
+  const safePage = server && count === 0 ? page : Math.min(page, pageCount - 1)
   const start = paged ? safePage * pageSize : 0
-  const visible = paged ? sorted.slice(start, start + pageSize) : sorted
+  const visible = paged && !server ? sorted.slice(start, start + pageSize) : sorted
 
   const setPage = (next: number) => setPageState((s) => ({ ...s, page: next }))
 
@@ -244,10 +255,10 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {paged && sorted.length > 0 && (
+      {paged && count > 0 && (
         <div className="px-4 py-3 text-sm flex items-center justify-between border-t border-border text-muted">
           <span className="tabular-nums">
-            {start + 1}-{start + visible.length} of {sorted.length}
+            {start + 1}-{start + visible.length} of {count}
           </span>
           <div className="gap-2 flex items-center">
             <Button

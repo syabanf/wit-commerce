@@ -1,7 +1,16 @@
-import type { Channel, Lead, Order, Product, Seller, TrafficDay } from '@rc/types'
+import type {
+  Channel,
+  CustomerMetricsRow,
+  Lead,
+  Product,
+  ProductDay,
+  SalesDay,
+  Seller,
+  SellerBuyer,
+  TrafficDay,
+} from '@rc/types'
 import { nowMs } from './clock'
 import { DAY, addMonths, dayKey, monthKey, startOfDay, startOfMonth, toMs } from './dates'
-import { isSold } from './derive'
 import { fmtDateShort, fmtMonthShort } from './format'
 
 export interface DayPoint {
@@ -12,19 +21,18 @@ export interface DayPoint {
 }
 
 /** Sold revenue and order count per day for the last `days` days, today included. */
-export function dailyRevenue(orders: readonly Order[], days: number, now = nowMs()): DayPoint[] {
+export function dailyRevenue(sales: readonly SalesDay[], days: number, now = nowMs()): DayPoint[] {
   const start = startOfDay(now) - (days - 1) * DAY
   const points: DayPoint[] = Array.from({ length: days }, (_, i) => {
     const ms = start + i * DAY
     return { day: dayKey(ms), label: fmtDateShort(ms), revenue: 0, orders: 0 }
   })
   const index = new Map(points.map((p, i) => [p.day, i]))
-  for (const o of orders) {
-    if (!isSold(o)) continue
-    const i = index.get(dayKey(toMs(o.createdAt)))
+  for (const s of sales) {
+    const i = index.get(s.day)
     if (i === undefined) continue
-    points[i]!.revenue += o.total - o.refundedAmount
-    points[i]!.orders += 1
+    points[i]!.revenue += s.revenue
+    points[i]!.orders += s.orders
   }
   return points
 }
@@ -40,13 +48,13 @@ export interface PeriodKpis {
   prev: { revenue: number; orders: number; conversion: number }
 }
 
-function inWindow(ms: number, from: number, to: number) {
-  return ms >= from && ms < to
-}
+/** The WIB days from `from` up to, not including, `to`, as day keys compare. */
+const dayIn = (day: string, from: number, to: number) => day >= dayKey(from) && day < dayKey(to)
 
 /** Revenue, orders, AOV and conversion for the last `days` days, with the window before it. */
 export function periodKpis(
-  orders: readonly Order[],
+  sales: readonly SalesDay[],
+  customers: readonly CustomerMetricsRow[],
   traffic: readonly TrafficDay[],
   days: number,
   now = nowMs(),
@@ -54,35 +62,30 @@ export function periodKpis(
   const end = startOfDay(now) + DAY
   const from = end - days * DAY
   const prevFrom = from - days * DAY
-  const sold = orders.filter(isSold)
-  const firstOrder = new Map<string, number>()
-  for (const o of sold) {
-    const at = toMs(o.createdAt)
-    const prev = firstOrder.get(o.customerId)
-    if (prev === undefined || at < prev) firstOrder.set(o.customerId, at)
-  }
   const sum = (a: number, b: number) => {
     let revenue = 0
     let count = 0
-    for (const o of sold) {
-      if (!inWindow(toMs(o.createdAt), a, b)) continue
-      revenue += o.total - o.refundedAmount
-      count += 1
+    for (const s of sales) {
+      if (!dayIn(s.day, a, b)) continue
+      revenue += s.revenue
+      count += s.orders
     }
     return { revenue, count }
   }
   const visitorsIn = (a: number, b: number) =>
-    traffic.reduce(
-      (n, t) => (t.sellerId === null && inWindow(toMs(`${t.day}T12:00:00+07:00`), a, b) ? n + t.visitors : n),
-      0,
-    )
+    traffic.reduce((n, t) => (t.sellerId === null && dayIn(t.day, a, b) ? n + t.visitors : n), 0)
   const cur = sum(from, end)
   const prev = sum(prevFrom, from)
   const visitors = visitorsIn(from, end)
   const prevVisitors = visitorsIn(prevFrom, from)
-  const buyers = new Set(sold.filter((o) => inWindow(toMs(o.createdAt), from, end)).map((o) => o.customerId))
+  // A customer bought in the window when their last sold order falls in it; no order is later than today.
+  let buyers = 0
   let newCustomers = 0
-  for (const id of buyers) if ((firstOrder.get(id) ?? 0) >= from) newCustomers += 1
+  for (const c of customers) {
+    if (!c.orders || !c.lastAt || toMs(c.lastAt) < from) continue
+    buyers += 1
+    if (c.firstAt && toMs(c.firstAt) >= from) newCustomers += 1
+  }
   return {
     revenue: cur.revenue,
     orders: cur.count,
@@ -90,7 +93,7 @@ export function periodKpis(
     visitors,
     conversion: visitors ? cur.count / visitors : 0,
     newCustomers,
-    returningCustomers: buyers.size - newCustomers,
+    returningCustomers: buyers - newCustomers,
     prev: {
       revenue: prev.revenue,
       orders: prev.count,
@@ -112,33 +115,24 @@ export interface CohortRow {
 
 /** Monthly purchase cohorts: customers grouped by first-purchase month, with repeat rates after it. */
 export function cohorts(
-  orders: readonly Order[],
+  customers: readonly CustomerMetricsRow[],
   months: number,
   horizon: number,
   now = nowMs(),
 ): CohortRow[] {
-  const sold = orders.filter(isSold)
-  const first = new Map<string, number>()
-  const buyMonths = new Map<string, Set<string>>()
-  for (const o of sold) {
-    const at = toMs(o.createdAt)
-    first.set(o.customerId, Math.min(first.get(o.customerId) ?? Infinity, at))
-    const set = buyMonths.get(o.customerId) ?? new Set<string>()
-    set.add(monthKey(at))
-    buyMonths.set(o.customerId, set)
-  }
+  const buyers = customers.filter((c) => c.orders > 0 && c.firstAt)
   const current = startOfMonth(now)
   const rows: CohortRow[] = []
   for (let i = months - 1; i >= 0; i--) {
     const monthStart = addMonths(current, -i)
     const key = monthKey(monthStart)
-    const members = [...first].filter(([, at]) => monthKey(at) === key).map(([id]) => id)
+    const members = buyers.filter((c) => monthKey(toMs(c.firstAt!)) === key)
     const retention = Array.from({ length: horizon }, (_, k) => {
       const target = addMonths(monthStart, k + 1)
       if (target > current) return null
       const tKey = monthKey(target)
       if (!members.length) return 0
-      return members.filter((id) => buyMonths.get(id)?.has(tKey)).length / members.length
+      return members.filter((c) => c.buyMonths.includes(tKey)).length / members.length
     })
     rows.push({ key, label: fmtMonthShort(monthStart), size: members.length, retention })
   }
@@ -152,26 +146,27 @@ export interface MonthPoint {
   orders: number
 }
 
-export function monthlyRevenue(orders: readonly Order[], months: number, now = nowMs()): MonthPoint[] {
+export function monthlyRevenue(sales: readonly SalesDay[], months: number, now = nowMs()): MonthPoint[] {
   const current = startOfMonth(now)
   const points = Array.from({ length: months }, (_, i) => {
     const ms = addMonths(current, i - months + 1)
     return { key: monthKey(ms), label: fmtMonthShort(ms), revenue: 0, orders: 0 }
   })
   const index = new Map(points.map((p, i) => [p.key, i]))
-  for (const o of orders) {
-    if (!isSold(o)) continue
-    const i = index.get(monthKey(toMs(o.createdAt)))
+  for (const s of sales) {
+    const i = index.get(s.day.slice(0, 7))
     if (i === undefined) continue
-    points[i]!.revenue += o.total - o.refundedAmount
-    points[i]!.orders += 1
+    points[i]!.revenue += s.revenue
+    points[i]!.orders += s.orders
   }
   return points
 }
 
-export function channelMix(orders: readonly Order[]): Record<Channel, number> {
+/** Net revenue per channel, from the WIB day of `from` on, or over all time. */
+export function channelMix(sales: readonly SalesDay[], from?: number): Record<Channel, number> {
   const mix: Record<Channel, number> = { web: 0, personal_store: 0, whatsapp: 0, marketplace: 0, pos: 0, agent: 0 }
-  for (const o of orders) if (isSold(o)) mix[o.channel] += o.total - o.refundedAmount
+  const first = from === undefined ? '' : dayKey(from)
+  for (const s of sales) if (s.day >= first) mix[s.channel] += s.revenue
   return mix
 }
 
@@ -191,13 +186,15 @@ export interface SellerStats {
 /** Personal-store performance per seller over the last `days` days. */
 export function sellerPerformance(
   sellers: readonly Seller[],
-  orders: readonly Order[],
+  sales: readonly SalesDay[],
+  buyers: readonly SellerBuyer[],
   traffic: readonly TrafficDay[],
   leads: readonly Lead[],
   days: number,
   now = nowMs(),
 ): Map<string, SellerStats> {
   const from = startOfDay(now) + DAY - days * DAY
+  const first = dayKey(from)
   const map = new Map<string, SellerStats>()
   for (const s of sellers) {
     map.set(s.id, {
@@ -214,7 +211,7 @@ export function sellerPerformance(
     })
   }
   for (const t of traffic) {
-    if (!t.sellerId || toMs(`${t.day}T12:00:00+07:00`) < from) continue
+    if (!t.sellerId || t.day < first) continue
     const row = map.get(t.sellerId)
     if (!row) continue
     row.pageViews += t.pageViews
@@ -225,22 +222,25 @@ export function sellerPerformance(
     const row = map.get(l.sellerId)
     if (row) row.leads += 1
   }
-  const buyers = new Map<string, Map<string, number>>()
-  for (const o of orders) {
-    if (!o.sellerId || !isSold(o) || toMs(o.createdAt) < from) continue
-    const row = map.get(o.sellerId)
+  for (const s of sales) {
+    if (!s.sellerId || s.day < first) continue
+    const row = map.get(s.sellerId)
     if (!row) continue
-    row.orders += 1
-    row.revenue += o.total - o.refundedAmount
-    const counts = buyers.get(o.sellerId) ?? new Map<string, number>()
-    counts.set(o.customerId, (counts.get(o.customerId) ?? 0) + 1)
-    buyers.set(o.sellerId, counts)
+    row.orders += s.orders
+    row.revenue += s.revenue
+  }
+  const counts = new Map<string, Map<string, number>>()
+  for (const b of buyers) {
+    if (b.day < first) continue
+    const perCustomer = counts.get(b.sellerId) ?? new Map<string, number>()
+    perCustomer.set(b.customerId, (perCustomer.get(b.customerId) ?? 0) + b.orders)
+    counts.set(b.sellerId, perCustomer)
   }
   for (const s of sellers) {
     const row = map.get(s.id)!
     row.conversion = row.visitors ? row.orders / row.visitors : 0
     row.aov = row.orders ? row.revenue / row.orders : 0
-    row.repeatCustomers = [...(buyers.get(s.id)?.values() ?? [])].filter((n) => n > 1).length
+    row.repeatCustomers = [...(counts.get(s.id)?.values() ?? [])].filter((n) => n > 1).length
     row.commission = row.revenue * s.commissionRate
   }
   return map
@@ -258,11 +258,11 @@ export interface ProductStats {
 /** Units, revenue and view-to-order conversion per product for the last `days` days. */
 export function productPerformance(
   products: readonly Product[],
-  orders: readonly Order[],
+  productDays: readonly ProductDay[],
   days: number,
   now = nowMs(),
 ): Map<string, ProductStats> {
-  const from = startOfDay(now) + DAY - days * DAY
+  const first = dayKey(startOfDay(now) + DAY - days * DAY)
   const map = new Map<string, ProductStats>(
     products.map((p) => [
       p.id,
@@ -276,17 +276,13 @@ export function productPerformance(
       },
     ]),
   )
-  for (const o of orders) {
-    if (!isSold(o) || toMs(o.createdAt) < from) continue
-    const seen = new Set<string>()
-    for (const l of o.lines) {
-      const row = map.get(l.productId)
-      if (!row) continue
-      row.units += l.qty
-      row.revenue += l.qty * l.price
-      if (!seen.has(l.productId)) row.orders += 1
-      seen.add(l.productId)
-    }
+  for (const d of productDays) {
+    if (d.day < first) continue
+    const row = map.get(d.productId)
+    if (!row) continue
+    row.units += d.units
+    row.revenue += d.revenue
+    row.orders += d.orders
   }
   for (const row of map.values()) row.conversion = row.views ? row.orders / row.views : 0
   return map
@@ -306,9 +302,8 @@ export function cartAbandonment(traffic: readonly TrafficDay[], days: number, no
 }
 
 /** Repeat purchase rate: share of buyers with two or more sold orders. */
-export function repeatRate(orders: readonly Order[]): number {
-  const counts = new Map<string, number>()
-  for (const o of orders) if (isSold(o)) counts.set(o.customerId, (counts.get(o.customerId) ?? 0) + 1)
-  if (!counts.size) return 0
-  return [...counts.values()].filter((n) => n > 1).length / counts.size
+export function repeatRate(customers: readonly CustomerMetricsRow[]): number {
+  const buyers = customers.filter((c) => c.orders > 0)
+  if (!buyers.length) return 0
+  return buyers.filter((c) => c.orders > 1).length / buyers.length
 }

@@ -44,6 +44,7 @@ import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge, PaymentBadge, TierBadge } from '../../components/badges'
 import { CustomerLink, ProductLink, SellerChip, paths } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
+import { useFullOrder } from '../../state/useFullOrder'
 import { CancelOrderDialog, NoteDialog, RefundDialog, ShipDialog } from './dialogs'
 import { HeroMetric } from '../../components/HeroMetric'
 
@@ -77,7 +78,19 @@ export function OrderDetailPage() {
   const { can } = useAuth()
   const now = useNow(60_000)
   const [pending, setPending] = useState<Pending>(null)
-  const order = s.orders.find((o) => o.id === id)
+  const { order, loading } = useFullOrder(
+    id,
+    s.orders.find((o) => o.id === id),
+    s.tenant.id,
+  )
+
+  if (!order && loading) {
+    return (
+      <Card>
+        <EmptyState title="Loading order" description="Reading the order from the server." />
+      </Card>
+    )
+  }
 
   if (!order) {
     return (

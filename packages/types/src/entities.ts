@@ -665,3 +665,62 @@ export interface SearchTerm {
   count30d: number
   results: number
 }
+
+/**
+ * Read model from the API: one customer's order count, spend and recency from sold orders, what
+ * they bought per product, and their last abandoned checkout and purchase. The console reads these
+ * instead of every order and every event. Times are ISO strings or null.
+ */
+export interface CustomerMetricsRow {
+  id: string
+  tenantId: string
+  customerId: string
+  orders: number
+  spend: number
+  firstAt: string | null
+  lastAt: string | null
+  productCounts: Record<string, number>
+  lastAbandonedAt: string | null
+  lastPurchaseEventAt: string | null
+  /** Months with a sold order, YYYY-MM in WIB, oldest first; cohorts read them. */
+  buyMonths: string[]
+}
+
+/**
+ * Read model: sold orders and net revenue per WIB day, channel, seller and campaign. KPIs, revenue
+ * charts, channel mix and seller and campaign revenue sum these instead of reading every order.
+ */
+export interface SalesDay {
+  id: string
+  tenantId: string
+  /** YYYY-MM-DD in WIB. */
+  day: string
+  channel: Channel
+  sellerId: string | null
+  campaignId: string | null
+  orders: number
+  /** Net of refunds. */
+  revenue: number
+}
+
+/** Read model: units, line revenue and orders per product per WIB day, from sold orders. */
+export interface ProductDay {
+  id: string
+  tenantId: string
+  day: string
+  productId: string
+  units: number
+  /** Quantity times line price, before order discounts, as product performance counts it. */
+  revenue: number
+  orders: number
+}
+
+/** Read model: sold orders per seller, customer and WIB day, for repeat buyers per seller. */
+export interface SellerBuyer {
+  id: string
+  tenantId: string
+  sellerId: string
+  customerId: string
+  day: string
+  orders: number
+}

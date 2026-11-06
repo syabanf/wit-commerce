@@ -928,6 +928,57 @@
         ],
         "type": "object"
       },
+      "CustomerEvent": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "by": {
+            "nullable": true,
+            "type": "string"
+          },
+          "campaignId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "orderId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "productId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "by",
+          "campaignId",
+          "customerId",
+          "id",
+          "kind",
+          "label",
+          "orderId",
+          "productId",
+          "tenantId"
+        ],
+        "type": "object"
+      },
       "DeltaResponse": {
         "properties": {
           "now": {
@@ -2659,6 +2710,20 @@
         ],
         "type": "object"
       },
+      "customerEventsResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object"
+      },
       "enabledInput": {
         "properties": {
           "enabled": {
@@ -2775,6 +2840,223 @@
         },
         "required": [
           "ok"
+        ],
+        "type": "object"
+      },
+      "orderRow": {
+        "properties": {
+          "agent": {
+            "type": "boolean"
+          },
+          "agentInfo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AgentOrderInfo"
+              }
+            ],
+            "nullable": true
+          },
+          "campaignId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "customerCode": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "paymentMethod": {
+            "type": "string"
+          },
+          "paymentStatus": {
+            "type": "string"
+          },
+          "paymentTypeId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "refundedAmount": {
+            "type": "integer"
+          },
+          "sellerId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "shippedAt": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Time"
+              }
+            ],
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "subtotal": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "agent",
+          "agentInfo",
+          "campaignId",
+          "channel",
+          "code",
+          "createdAt",
+          "customerCode",
+          "customerId",
+          "customerName",
+          "id",
+          "itemCount",
+          "paymentMethod",
+          "paymentStatus",
+          "paymentTypeId",
+          "refundedAmount",
+          "sellerId",
+          "shippedAt",
+          "status",
+          "subtotal",
+          "total"
+        ],
+        "type": "object"
+      },
+      "orderRowsResponse": {
+        "properties": {
+          "lateBefore": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "paymentStatusCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "payments": {
+            "$ref": "#/components/schemas/paymentStats"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/orderRow"
+            },
+            "type": "array"
+          },
+          "stageCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/orderStats"
+          },
+          "statusCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lateBefore",
+          "paymentStatusCounts",
+          "payments",
+          "rows",
+          "stageCounts",
+          "stats",
+          "statusCounts",
+          "total"
+        ],
+        "type": "object"
+      },
+      "orderStats": {
+        "properties": {
+          "inTransit": {
+            "type": "integer"
+          },
+          "late": {
+            "type": "integer"
+          },
+          "returns": {
+            "type": "integer"
+          },
+          "shippedLast24h": {
+            "type": "integer"
+          },
+          "toFulfil": {
+            "type": "integer"
+          },
+          "unpaid": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inTransit",
+          "late",
+          "returns",
+          "shippedLast24h",
+          "toFulfil",
+          "unpaid"
+        ],
+        "type": "object"
+      },
+      "paymentStats": {
+        "properties": {
+          "collected": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "paid": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "pendingAmount": {
+            "type": "integer"
+          },
+          "refunded": {
+            "type": "integer"
+          },
+          "refundedAmount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "collected",
+          "failed",
+          "paid",
+          "pending",
+          "pendingAmount",
+          "refunded",
+          "refundedAmount"
         ],
         "type": "object"
       },
@@ -14121,6 +14403,160 @@
           "Platform"
         ],
         "x-required-permission": "user.manage"
+      }
+    },
+    "/views/customer-events": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsCustomerEvents",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/customerEventsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Customer history, newest first: one customer, one kind, or the latest",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/views/orders": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsOrders",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/orderRowsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The orders list: filtered, searched, sorted and paged on the server",
+        "tags": [
+          "Orders"
+        ]
       }
     },
     "/warehouses": {

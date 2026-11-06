@@ -44,7 +44,7 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
   const navigate = useNavigate()
 
   const d = useMemo(() => {
-    const stats = productPerformance(s.products, s.orders, days, today)
+    const stats = productPerformance(s.products, s.facts.productDays, days, today)
     const active = s.products.filter((p) => p.status === 'active')
     const ranked = [...stats.values()].filter((r) => r.revenue > 0).sort((a, b) => b.revenue - a.revenue)
     const slow = active
@@ -66,7 +66,7 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
       lowStock,
       views: viewsWithoutSales(s.products, stats),
     }
-  }, [s.products, s.orders, s.stockByProduct, days, today])
+  }, [s.products, s.facts.productDays, s.stockByProduct, days, today])
 
   const searches = useMemo(
     () =>

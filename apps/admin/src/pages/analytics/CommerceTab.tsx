@@ -14,7 +14,7 @@ import { Eye, Receipt, ShoppingBag, ShoppingCart, Wallet } from 'lucide-react'
 import { useMemo } from 'react'
 import { useScoped } from '../../state/scoped'
 import { ChartCard } from './ChartCard'
-import { changeHint, revenueByCategory, soldInWindow, visitorsPerDay, windowStart } from './lib'
+import { changeHint, revenueByCategory, visitorsPerDay, windowStart } from './lib'
 
 const CHANNEL_ORDER: Channel[] = ['web', 'personal_store', 'agent', 'marketplace', 'whatsapp', 'pos']
 const CHANNEL_COLOR: Record<Channel, string> = {
@@ -30,11 +30,11 @@ export function CommerceTab({ days, today }: { days: number; today: number }) {
   const s = useScoped()
 
   const d = useMemo(() => {
-    const sold = soldInWindow(s.orders, windowStart(days, today))
-    const mix = channelMix(sold)
+    const from = windowStart(days, today)
+    const mix = channelMix(s.facts.salesDays, from)
     return {
-      kpis: periodKpis(s.orders, s.traffic, days, today),
-      revenue: dailyRevenue(s.orders, days, today),
+      kpis: periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, today),
+      revenue: dailyRevenue(s.facts.salesDays, days, today),
       visitors: visitorsPerDay(s.traffic, days, today),
       abandonment: cartAbandonment(s.traffic, days, today),
       mix: CHANNEL_ORDER.map((c) => ({
@@ -43,9 +43,9 @@ export function CommerceTab({ days, today }: { days: number; today: number }) {
         value: mix[c],
         color: CHANNEL_COLOR[c],
       })),
-      categories: revenueByCategory(sold, (id) => s.maps.product.get(id)?.categoryId),
+      categories: revenueByCategory(s.facts.productDays, from, (id) => s.maps.product.get(id)?.categoryId),
     }
-  }, [s.orders, s.traffic, s.maps.product, days, today])
+  }, [s.facts, s.traffic, s.maps.product, days, today])
 
   const { kpis } = d
   const prevAov = kpis.prev.orders ? kpis.prev.revenue / kpis.prev.orders : 0

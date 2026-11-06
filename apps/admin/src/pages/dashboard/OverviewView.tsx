@@ -6,7 +6,6 @@ import {
   fmtIdrShort,
   fmtNumber,
   fmtPercent,
-  isSold,
   periodKpis,
   plural,
   productPerformance,
@@ -43,8 +42,12 @@ import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { ORDER_STATUS_TONE, OrderStatusBadge } from '../../components/badges'
 import { paths } from '../../components/links'
+import { HTTP } from '../../lib/api'
+import { toRow } from '../../state/orderRow'
 import type { Scoped } from '../../state/scoped'
+import { useOrderQuery } from '../../state/useOrderQuery'
 import { type Queue, isLate, toFulfil } from './lib'
+import { windowStart } from '../analytics/lib'
 
 const OVERVIEW: OrderStatus[] = ['new', 'paid', 'processing', 'packed', 'shipped', 'delivered']
 const CHANNEL_COLOR: Record<Channel, string> = {
@@ -65,33 +68,49 @@ const CHANNEL_DOT: Record<Channel, string> = {
 }
 
 export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queues: Queue[] }) {
+  // With the API the state holds only open orders: the latest orders, the count per status and
+  // the shipments of the last 24 hours come from the orders read model.
+  const remote = useOrderQuery(
+    { tenantId: s.tenantId, sort: 'placed', desc: true, pageSize: 5 },
+    s.orders,
+  ).page
+
   const data = useMemo(() => {
-    const week = periodKpis(s.orders, s.traffic, 7, now)
-    const days = dailyRevenue(s.orders, 14, now)
-    const recent = s.orders.filter((o) => now - toMs(o.createdAt) < 30 * 86_400_000)
-    const mix = channelMix(recent)
-    const perf = productPerformance(s.products, s.orders, 7, now)
+    const week = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, 7, now)
+    const days = dailyRevenue(s.facts.salesDays, 14, now)
+    const mix = channelMix(s.facts.salesDays, windowStart(30, now))
+    const perf = productPerformance(s.products, s.facts.productDays, 7, now)
     const top = [...perf.values()]
       .filter((p) => p.units > 0)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5)
     const fulfil = s.orders.filter(toFulfil)
     const late = fulfil.filter((o) => isLate(o, now))
-    const shippedToday = s.orders.filter((o) =>
-      o.events.some((e) => e.status === 'shipped' && now - toMs(e.at) < 24 * 3_600_000),
-    ).length
+    const shippedToday = HTTP
+      ? (remote?.stats.shippedLast24h ?? 0)
+      : s.orders.filter((o) =>
+          o.events.some((e) => e.status === 'shipped' && now - toMs(e.at) < 24 * 3_600_000),
+        ).length
     const running = s.campaigns.filter((c) => c.status === 'running').sort((a, b) => b.budget - a.budget)[0]
+    // Sold orders the campaign brought in, counted from the sales read model.
     const campaignOrders = running
-      ? s.orders
-          .filter((o) => o.campaignId === running.id && isSold(o))
-          .sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt))
-      : []
-    return { week, days, mix, top, fulfil, late, shippedToday, running, campaignOrders }
-  }, [s, now])
+      ? s.facts.salesDays.reduce((n, d) => (d.campaignId === running.id ? n + d.orders : n), 0)
+      : 0
+    const statusCounts: Partial<Record<OrderStatus, number>> = {}
+    if (HTTP) Object.assign(statusCounts, remote?.statusCounts)
+    else for (const o of s.orders) statusCounts[o.status] = (statusCounts[o.status] ?? 0) + 1
+    return { week, days, mix, top, fulfil, late, shippedToday, running, campaignOrders, statusCounts }
+  }, [s, now, remote])
 
   const recentOrders = useMemo(
-    () => [...s.orders].sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt)).slice(0, 5),
-    [s.orders],
+    () =>
+      HTTP
+        ? (remote?.rows ?? [])
+        : [...s.orders]
+            .sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt))
+            .slice(0, 5)
+            .map((o) => toRow(o, s.customerName(o.customerId))),
+    [s, remote],
   )
   const mixTotal = Object.values(data.mix).reduce((a, b) => a + b, 0)
   const revenueChange = data.week.prev.revenue
@@ -198,7 +217,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
               </div>
               <div className="gap-2 pt-4 mt-auto flex flex-wrap items-center justify-between">
                 <p className="text-sm text-on-ink-muted">
-                  {plural(data.campaignOrders.length, 'order')} ·{' '}
+                  {plural(data.campaignOrders, 'order')} ·{' '}
                   {fmtPercent(
                     data.running.funnel.clicked
                       ? data.running.funnel.purchased / data.running.funnel.clicked
@@ -237,7 +256,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
           >
             <StatCard
               label={ORDER_STATUS_LABEL[st]}
-              value={s.orders.filter((o) => o.status === st).length}
+              value={data.statusCounts[st] ?? 0}
               hint={
                 st === 'new'
                   ? 'Not yet confirmed'
@@ -272,7 +291,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
                 className="gap-3 rounded-2xl p-3 flex items-center bg-surface-2 transition-colors hover:bg-surface"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="text-sm font-semibold block truncate">{s.customerName(o.customerId)}</span>
+                  <span className="text-sm font-semibold block truncate">{o.customerName}</span>
                   <span className="text-xs block truncate text-muted">
                     <span className="font-mono">{o.code}</span> · {CHANNEL_LABEL[o.channel]} ·{' '}
                     {fmtAgo(o.createdAt, now)}

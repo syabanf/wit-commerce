@@ -1,5 +1,5 @@
 import type { AppAction, AppState } from '@rc/fixtures'
-import type { Customer, Order, Seller, Tenant, User } from '@rc/types'
+import type { Customer, Order, Seller, Tenant, User, CustomerEvent } from '@rc/types'
 
 // The HTTP client for apps/api. Every reducer action maps to one request (actionRequest), every
 // answer is a Delta the app lays over its AppState (applyDelta), and the event stream delivers the
@@ -267,6 +267,10 @@ export const emptyState = (): AppState => ({
   modifierStockMoves: [],
   customers: [],
   customerEvents: [],
+  customerMetrics: [],
+  salesDays: [],
+  productDays: [],
+  sellerBuyers: [],
   orders: [],
   segments: [],
   leads: [],
@@ -325,6 +329,98 @@ export interface IssuedStaff {
   user: User
   temporaryPassword?: string
   emailSent: boolean
+}
+
+export interface CustomerEventsQuery {
+  tenantId: string
+  customerId?: string
+  kind?: CustomerEvent['kind']
+  excludeKind?: CustomerEvent['kind']
+  /** RFC 3339; only events at or after it. */
+  since?: string
+  limit?: number
+}
+
+export interface OrderRowsQuery {
+  tenantId: string
+  view?: string
+  status?: string | null
+  paymentStatus?: string | null
+  paymentMethod?: string | null
+  customerId?: string
+  sellerId?: string
+  campaignId?: string
+  /** open, delivered or closed, as a record's order card groups them. */
+  stage?: string | null
+  /** Only orders a buying agent placed. */
+  agent?: boolean
+  /** Comma-separated order ids, at most 500. */
+  ids?: string
+  /** RFC 3339; only orders placed at or after it. */
+  since?: string
+  q?: string
+  sort?: string
+  desc?: boolean
+  page?: number
+  /** At most 500. */
+  pageSize?: number
+}
+
+/** One order as the list shows it, from the read side. */
+export interface OrderRow {
+  id: string
+  code: string
+  customerId: string
+  customerName: string
+  customerCode: string
+  status: Order['status']
+  paymentStatus: Order['paymentStatus']
+  channel: Order['channel']
+  sellerId: string | null
+  campaignId: string | null
+  createdAt: string
+  total: number
+  subtotal: number
+  itemCount: number
+  agent: boolean
+  refundedAmount: number
+  paymentMethod: Order['paymentMethod']
+  paymentTypeId: string | null
+  /** When the order shipped, or null. */
+  shippedAt: string | null
+  agentInfo: Order['agent'] | null
+}
+
+export interface OrderRowsPage {
+  rows: OrderRow[]
+  total: number
+  /** Per status within the view; search and the other filters do not narrow them. */
+  statusCounts: Partial<Record<Order['status'], number>>
+  /** Per payment status, with every filter but the payment status applied. */
+  paymentStatusCounts: Partial<Record<Order['paymentStatus'], number>>
+  /** Per stage (open, delivered, closed), with every filter but the stage applied. */
+  stageCounts: Partial<Record<'open' | 'delivered' | 'closed', number>>
+  /** The brand's queues, whatever the filters. */
+  stats: {
+    toFulfil: number
+    late: number
+    unpaid: number
+    inTransit: number
+    returns: number
+    shippedLast24h: number
+  }
+  /** The brand's payments, whatever the filters. */
+  payments: {
+    paid: number
+    pending: number
+    failed: number
+    refunded: number
+    collected: number
+    refundedAmount: number
+    pendingAmount: number
+  }
+  /** An order to fulfil placed before this is late, on the store's clock. */
+  lateBefore: string
 }
 
 /** One line of the staff history. Names stay as they were at the time. */
@@ -542,6 +638,26 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     forgotPassword: (email: string) => call<{ message: string }>('POST', '/auth/forgot', { email }),
     resetPassword: (token: string, newPassword: string) =>
       call<void>('POST', '/auth/reset', { token, newPassword }),
+    orders: {
+      /** The whole order, history included; the console's state carries only its shipments. */
+      get: (id: string, tenantId: string) =>
+        call<Order>('GET', `/orders/${id}?tenantId=${encodeURIComponent(tenantId)}`),
+    },
+    views: {
+      customerEvents: (params: CustomerEventsQuery) => {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params))
+          if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
+        return call<{ events: CustomerEvent[] }>('GET', `/views/customer-events?${query}`)
+      },
+      /** The orders list from the read model: filtered, searched, sorted and paged on the server. */
+      orders: (params: OrderRowsQuery) => {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params))
+          if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
+        return call<OrderRowsPage>('GET', `/views/orders?${query}`)
+      },
+    },
     staff: {
       create: (input: StaffInput & { email: string }) => call<IssuedStaff>('POST', '/users', input),
       update: (id: string, input: StaffInput) => call<{ user: User }>('PUT', `/users/${id}`, input),

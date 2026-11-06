@@ -57,8 +57,8 @@ export function SellersPage() {
     )
 
   const perf = useMemo(
-    () => sellerPerformance(s.sellers, s.orders, s.traffic, s.leads, 30, now),
-    [s.sellers, s.orders, s.traffic, s.leads, now],
+    () => sellerPerformance(s.sellers, s.facts.salesDays, s.facts.sellerBuyers, s.traffic, s.leads, 30, now),
+    [s.sellers, s.facts, s.traffic, s.leads, now],
   )
 
   const stats = useMemo(() => {

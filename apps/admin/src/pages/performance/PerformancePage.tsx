@@ -63,14 +63,14 @@ export function PerformancePage() {
   const days = Number(range)
 
   const rows = useMemo<Row[]>(() => {
-    const perf = sellerPerformance(s.sellers, s.orders, s.traffic, s.leads, days, now)
+    const perf = sellerPerformance(s.sellers, s.facts.salesDays, s.facts.sellerBuyers, s.traffic, s.leads, days, now)
     return s.sellers.map((seller) => ({ ...perf.get(seller.id)!, seller }))
-  }, [s.sellers, s.orders, s.traffic, s.leads, days, now])
+  }, [s.sellers, s.facts, s.traffic, s.leads, days, now])
 
   const totals = useMemo(() => {
     const sum = (pick: (r: Row) => number) => rows.reduce((n, r) => n + pick(r), 0)
     const revenue = sum((r) => r.revenue)
-    const storeRevenue = periodKpis(s.orders, s.traffic, days, now).revenue
+    const storeRevenue = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, now).revenue
     const byKind = KINDS.map((kind) => ({
       kind,
       value: rows.filter((r) => r.seller.kind === kind).reduce((n, r) => n + r.revenue, 0),
@@ -83,7 +83,7 @@ export function PerformancePage() {
       storeRevenue,
       byKind,
     }
-  }, [rows, s.orders, s.traffic, days, now])
+  }, [rows, s.facts, s.traffic, days, now])
 
   const leaders = rows.filter((r) => r.revenue > 0).sort((a, b) => b.revenue - a.revenue)
   const example = leaders[0]?.seller ?? s.sellers.find((x) => x.status === 'active')

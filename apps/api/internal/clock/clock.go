@@ -66,3 +66,12 @@ const (
 	Hour = int64(3_600_000)
 	Day  = 24 * Hour
 )
+
+// IsoPtr formats an optional moment, keeping nil.
+func IsoPtr(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := Iso(*t)
+	return &s
+}

@@ -1,5 +1,5 @@
 import { fmtAgo, fmtIdr, fmtIdrShort, fmtNumber, sellerPerformance, toMs } from '@rc/fixtures'
-import type { Order } from '@rc/types'
+import type { OrderRow } from '@rc/api'
 import { Button, Card, EmptyState, cn } from '@rc/ui'
 import { ArrowRight, Receipt, Share2, Store, Target } from 'lucide-react'
 import { Link, type To } from 'react-router'
@@ -10,6 +10,7 @@ import { ScreenHeader } from '../../layouts/ScreenHeader'
 import { paths } from '../../lib/paths'
 import { firstName, fmtRate, greeting, isOpenLead, monthToDateDays, shareLink } from '../../lib/seller'
 import { useNow, useSellerScope } from '../../state/scope'
+import { useRecentOrders } from '../../state/useOrderQuery'
 
 const TILE_TONE = {
   ink: 'bg-ink text-on-ink',
@@ -43,10 +44,14 @@ function StatTile({
 }
 
 export function HomePage() {
-  const { user, seller, tenant, leads, orders, traffic, storeUrl, storeHref, maps } = useSellerScope()
+  const { user, seller, tenant, leads, orders, sales, traffic, storeUrl, storeHref, maps, customerName } =
+    useSellerScope()
   const now = useNow()
+  const recent = useRecentOrders(orders, { tenantId: tenant.id, sellerId: seller.id }, customerName)
   const perf = (days: number) =>
-    sellerPerformance([seller], orders, traffic, leads, days, now).get(seller.id)!
+    sellerPerformance([seller], sales.salesDays, sales.sellerBuyers, traffic, leads, days, now).get(
+      seller.id,
+    )!
   const week = perf(7)
   const month = perf(30)
   const thisMonth = perf(monthToDateDays(now))
@@ -133,7 +138,7 @@ export function HomePage() {
         )}
       </Section>
 
-      <Section id="recent-sales" title="Recent sales" count={orders.length}>
+      <Section id="recent-sales" title="Recent sales" count={recent.total}>
         <div className="gap-3 p-4 flex items-center justify-between rounded-[24px] bg-card shadow-card">
           <div className="min-w-0">
             <p className="text-xs font-medium text-muted">Commission this month</p>
@@ -144,9 +149,9 @@ export function HomePage() {
             <span className="font-semibold block text-body tabular-nums">{fmtIdr(thisMonth.revenue)}</span>
           </p>
         </div>
-        {orders.length ? (
+        {recent.rows.length ? (
           <ul className="px-4 divide-y divide-border rounded-[24px] bg-card shadow-card">
-            {orders.slice(0, 5).map((order) => (
+            {recent.rows.map((order) => (
               <SaleRow key={order.id} order={order} now={now} />
             ))}
           </ul>
@@ -165,12 +170,12 @@ export function HomePage() {
   )
 }
 
-function SaleRow({ order, now }: { order: Order; now: number }) {
-  const { customerName, isMine } = useSellerScope()
+function SaleRow({ order, now }: { order: OrderRow; now: number }) {
+  const { isMine } = useSellerScope()
   const body = (
     <>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold truncate">{customerName(order.customerId)}</p>
+        <p className="text-sm font-semibold truncate">{order.customerName}</p>
         <p className="text-xs truncate text-muted">
           <span className="font-mono">{order.code}</span> · {fmtAgo(order.createdAt, now)}
         </p>

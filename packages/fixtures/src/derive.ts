@@ -12,6 +12,7 @@ import type {
   SegmentRule,
   StockLevel,
   StockState,
+  CustomerMetricsRow,
 } from '@rc/types'
 import { ORDER_STATUS_FLOW, SOLD_ORDER_STATUSES } from '@rc/types'
 import { nowMs } from './clock'
@@ -175,12 +176,12 @@ export function customerMetrics(
 
 export const metricsFor = (map: Map<string, CustomerMetrics>, id: string) => map.get(id) ?? emptyMetrics()
 
-/** The most bought category id of a customer. */
+/** The most bought category id of a customer; a tie goes to the lower id, so every mode agrees. */
 export function favouriteCategory(m: CustomerMetrics): string | null {
   let best: string | null = null
   let count = 0
   for (const [id, n] of m.categoryCounts) {
-    if (n > count) {
+    if (n > count || (n === count && best !== null && id < best)) {
       best = id
       count = n
     }
@@ -215,6 +216,57 @@ export interface SegmentContext {
   metrics: Map<string, CustomerMetrics>
   /** Customers with a checkout abandoned in the last 7 days. */
   abandoned: Set<string>
+}
+
+/**
+ * The same context from the API's customer metrics read model, for a console that has neither every
+ * order nor the event history. Category counts come from the products the rows name.
+ */
+export function segmentContextFromRows(
+  rows: readonly CustomerMetricsRow[],
+  products: readonly Pick<Product, 'id' | 'categoryId'>[],
+  now = nowMs(),
+): SegmentContext {
+  return { metrics: metricsFromRows(rows, products, now), abandoned: abandonedFromRows(rows, now) }
+}
+
+export function metricsFromRows(
+  rows: readonly CustomerMetricsRow[],
+  products: readonly Pick<Product, 'id' | 'categoryId'>[],
+  now = nowMs(),
+): Map<string, CustomerMetrics> {
+  const category = new Map(products.map((p) => [p.id, p.categoryId]))
+  const map = new Map<string, CustomerMetrics>()
+  for (const r of rows) {
+    if (!r.orders) continue
+    const lastAt = r.lastAt ? toMs(r.lastAt) : null
+    const categoryCounts = new Map<string, number>()
+    for (const [productId, qty] of Object.entries(r.productCounts)) {
+      const cat = category.get(productId)
+      if (cat) categoryCounts.set(cat, (categoryCounts.get(cat) ?? 0) + qty)
+    }
+    map.set(r.customerId, {
+      orders: r.orders,
+      spend: r.spend,
+      aov: r.spend / r.orders,
+      firstAt: r.firstAt ? toMs(r.firstAt) : null,
+      lastAt,
+      daysSinceLast: lastAt === null ? null : Math.floor((now - lastAt) / DAY),
+      categoryCounts,
+    })
+  }
+  return map
+}
+
+function abandonedFromRows(rows: readonly CustomerMetricsRow[], now: number): Set<string> {
+  const out = new Set<string>()
+  for (const r of rows) {
+    if (!r.lastAbandonedAt) continue
+    const abandoned = toMs(r.lastAbandonedAt)
+    const purchased = r.lastPurchaseEventAt ? toMs(r.lastPurchaseEventAt) : 0
+    if (abandoned > purchased && now - abandoned <= 7 * DAY) out.add(r.customerId)
+  }
+  return out
 }
 
 /** Customers whose checkout was abandoned in the last 7 days without a later purchase. */
