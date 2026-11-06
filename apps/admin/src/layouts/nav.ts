@@ -1,3 +1,4 @@
+import type { Role } from '@rc/types'
 import type { LucideIcon } from 'lucide-react'
 import {
   BadgePercent,
@@ -20,6 +21,7 @@ import {
   Headset,
   KeyRound,
   LayoutGrid,
+  Mail,
   Megaphone,
   Network,
   Package,
@@ -45,6 +47,8 @@ export interface NavLeaf {
   label: string
   icon: LucideIcon
   badge?: BadgeKey
+  /** Shown to platform admins only. */
+  platformOnly?: boolean
 }
 
 /** Separate daily selling work from catalog and payment configuration. */
@@ -198,9 +202,19 @@ export const NAV: NavSection[] = [
       { to: '/settings/users', code: 'USR', label: 'Users & roles', icon: ShieldCheck },
       { to: '/settings/tenants', code: 'TEN', label: 'Tenants', icon: Building2 },
       { to: '/settings/apps', code: 'APP', label: 'App marketplace', icon: Blocks },
+      { to: '/settings/email', code: 'EML', label: 'Email', icon: Mail, platformOnly: true },
     ],
   },
 ]
+
+const STAFF_NAV: NavSection[] = NAV.map((section) =>
+  section.items?.some((i) => i.platformOnly)
+    ? { ...section, items: section.items.filter((i) => !i.platformOnly) }
+    : section,
+)
+
+/** The navigation a role sees: platform-only pages stay out of everyone else's menus. */
+export const navFor = (role: Role | undefined) => (role === 'platform_admin' ? NAV : STAFF_NAV)
 
 /** Codes of the create actions: the page's code and a plus. */
 export const CREATE_CODE = {

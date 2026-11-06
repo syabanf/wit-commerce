@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -41,7 +42,17 @@ type Message struct {
 	HTML    string
 }
 
-// Send delivers a message. Errors name the status only: a body could echo the link it carries.
+// Error is a refusal from Resend. Error names the status only, because Resend's answer can quote the
+// message, link included. Detail holds Resend's own sentence, for callers whose message carries no
+// secret.
+type Error struct {
+	Status int
+	Detail string
+}
+
+func (e *Error) Error() string { return fmt.Sprintf("resend: answered %d", e.Status) }
+
+// Send delivers a message. A refusal comes back as *Error.
 func (c *Client) Send(ctx context.Context, m Message) error {
 	body, err := json.Marshal(map[string]any{"from": c.From, "to": []string{m.To}, "subject": m.Subject, "text": m.Text, "html": m.HTML})
 	if err != nil {
@@ -59,7 +70,11 @@ func (c *Client) Send(ctx context.Context, m Message) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
-		return fmt.Errorf("resend: answered %d", res.StatusCode)
+		var answer struct {
+			Message string `json:"message"`
+		}
+		_ = json.NewDecoder(io.LimitReader(res.Body, 4<<10)).Decode(&answer)
+		return &Error{Status: res.StatusCode, Detail: answer.Message}
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-import { ApiError, applyDelta, emptyState, mergeState } from '@rc/api'
+import { ApiError, type Delta, applyDelta, emptyState, mergeState } from '@rc/api'
 import {
   type AppAction,
   type AppState,
@@ -28,14 +28,17 @@ const STATE_KEY = 'rc.storefront.state.v1'
 
 interface StoreValue {
   state: AppState
-  /** Dispatches a store action stamped as a storefront change at the app clock. */
-  send: (action: AppAction) => Promise<void>
+  /** Dispatches a store action stamped as a storefront change at the app clock. In API mode it
+   * resolves to the server's answer; the local mode has none. */
+  send: (action: AppAction) => Promise<Delta | null>
   /** API mode: loads one store's public dataset and keeps it current; the local mode has it all. */
   loadStore: (subdomain: string, tenantId: string) => () => void
   /** API mode: lays rows the server sent over the state (the shopper's account and orders). */
   merge: (loaded: Partial<AppState>) => void
   /** False until the API answered with the list of stores. */
   ready: boolean
+  /** API mode: the store's payment types a provider collects online. */
+  onlinePayments: string[]
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -81,11 +84,12 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
   }, [])
   const send = useCallback(async (action: AppAction) => {
     dispatch({ action, meta: { by: 'storefront', at: nowIso() } } satisfies Envelope)
+    return null
   }, [])
   const preview = usePreview()
   const shown = useMemo(() => (preview ? { ...state, ...preview } : state), [state, preview])
   const value = useMemo<StoreValue>(
-    () => ({ state: shown, send, loadStore: () => noop, merge: noop, ready: true }),
+    () => ({ state: shown, send, loadStore: () => noop, merge: noop, ready: true, onlinePayments: [] }),
     [shown, send],
   )
   return <StoreContext value={value}>{children}</StoreContext>
@@ -99,6 +103,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(emptyState)
   const [ready, setReady] = useState(false)
   const [offline, setOffline] = useState(false)
+  const [onlinePayments, setOnlinePayments] = useState<string[]>([])
   const current = useRef<{ subdomain: string; tenantId: string } | null>(null)
 
   useEffect(() => {
@@ -129,9 +134,10 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     api.shop
       .state(subdomain)
-      .then(({ state: loaded, now }) => {
+      .then(({ state: loaded, now, onlinePayments: online }) => {
         if (cancelled) return
         syncClock(now)
+        setOnlinePayments(online ?? [])
         // The tenants list stays whole; everything else is this store's.
         const { tenants: _tenants, ...rest } = loaded
         setState((s) => mergeState(s, rest))
@@ -155,12 +161,13 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const send = useCallback(async (action: AppAction) => {
-    if (action.type === 'system/tick') return
+    if (action.type === 'system/tick') return null
     const store = current.current
     try {
       const delta = await api.send(action, store?.subdomain)
       if (delta.token && store) shopperToken(store.tenantId).set(delta.token)
       setState((s) => applyDelta(s, delta))
+      return delta
     } catch (err) {
       throw err instanceof ApiError ? err : new Error('The store did not answer. Try again in a moment.')
     }
@@ -169,8 +176,8 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const preview = usePreview()
   const shown = useMemo(() => (preview ? { ...state, ...preview } : state), [state, preview])
   const value = useMemo<StoreValue>(
-    () => ({ state: shown, send, loadStore, merge, ready }),
-    [shown, send, loadStore, merge, ready],
+    () => ({ state: shown, send, loadStore, merge, ready, onlinePayments }),
+    [shown, send, loadStore, merge, ready, onlinePayments],
   )
   // Pages read the tenant list on their first render; the canvas waits for it.
   if (offline) return <StoreOffline />

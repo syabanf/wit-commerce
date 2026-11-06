@@ -86,6 +86,8 @@ services:
         condition: service_started
     environment:
       DATABASE_URL: postgres://commerce:${POSTGRES_PASSWORD}@postgres:5432/commerce?sslmode=disable
+      # Opens the Resend key a platform admin saves under Settings → Email.
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:?run scripts/deploy-prod.sh}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       PORT: '8092'

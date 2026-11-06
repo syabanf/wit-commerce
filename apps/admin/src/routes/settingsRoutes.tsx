@@ -27,6 +27,11 @@ export const settingsRoutes: RouteObject[] = [
     handle: { breadcrumb: t.breadcrumb.apps },
     lazy: page(() => import('../pages/settings/AppsPage'), 'AppsPage'),
   },
+  {
+    path: 'settings/email',
+    handle: { breadcrumb: t.breadcrumb.email },
+    lazy: page(() => import('../pages/settings/EmailSettingsPage'), 'EmailSettingsPage'),
+  },
 ]
 
 // Miscellaneous redirects and wildcard

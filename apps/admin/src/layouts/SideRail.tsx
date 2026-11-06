@@ -18,7 +18,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { CreateMenu } from './CreateMenu'
 import { LogoMark } from './LogoMark'
-import { NAV, leafFor, sectionFor } from './nav'
+import { leafFor, navFor, sectionFor } from './nav'
 import { useNavCounts } from './useNavCounts'
 
 export function SideRail({
@@ -34,6 +34,7 @@ export function SideRail({
 }) {
   const { pathname } = useLocation()
   const counts = useNavCounts()
+  const nav = navFor(useAuth().user?.role)
   const current = sectionFor(pathname)
   const leaf = leafFor(pathname)
 
@@ -73,9 +74,9 @@ export function SideRail({
       workspace={<WorkspaceMenu expanded={expanded} />}
       footer={canExpand ? <RailCollapse expanded={expanded} onToggle={onToggle} /> : undefined}
     >
-      {NAV.map((section, index) => {
+      {nav.map((section, index) => {
         const Icon = section.icon
-        const firstInGroup = NAV[index - 1]?.group !== section.group
+        const firstInGroup = nav[index - 1]?.group !== section.group
         const isCurrent = section.id === current.id
         const open = expanded && isCurrent && !!section.items
         const badge = section.badge

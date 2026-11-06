@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
-	"github.com/syabanf/wit-commerce/apps/api/internal/modules/inventory"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/orders"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
@@ -30,18 +29,7 @@ func (s *Service) Tick(ctx context.Context, at string) (*Delta, error) {
 			if now-clock.Ms(o.CreatedAt) < PaymentWindowHours*clock.Hour {
 				continue
 			}
-			l, err := inventory.Lookup(t, o)
-			if err != nil {
-				return err
-			}
-			if err := inventory.Reserve(t, l, o, -1, false); err != nil {
-				return err
-			}
-			o.Status, o.PaymentStatus = "cancelled", "failed"
-			o.CancelReason = kernel.Ptr("payment_expired")
-			o.Events = append([]domain.OrderEvent{kernel.OrderEvent(at, "system", kernel.Ptr("cancelled"),
-				fmt.Sprintf("No payment within %d hours", PaymentWindowHours))}, o.Events...)
-			if err := t.Put("orders", o.ID, o); err != nil {
+			if err := orders.Expire(t, o, "payment_expired", fmt.Sprintf("No payment within %d hours", PaymentWindowHours), at, "system"); err != nil {
 				return err
 			}
 		}

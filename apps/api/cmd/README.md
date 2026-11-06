@@ -38,3 +38,44 @@ Turning it off again is safe: `api` serves every route either way.
 
 Every binary reads `.env` in its working directory for development runs; real environment
 variables win.
+
+## Midtrans sandbox
+
+A brand that saves Midtrans keys collects real payments at checkout. A brand without keys keeps the
+simulated checkout: non-COD orders are placed paid.
+
+How it runs: the API places a Midtrans order `pending` whatever the browser sent, creates a Snap
+transaction (order id as `order_id`, the order total as `gross_amount`) and answers with its
+`redirectUrl`. The storefront sends the shopper there. Midtrans posts to the notification URL; the
+API checks the signature, asks Midtrans for the status, and marks the order paid on `settlement` or
+an accepted `capture`, or cancels it on `expire`, `cancel` or `deny`. The order page shows Pay now
+while the order waits, and turns paid over the store's event stream when the notification lands.
+The admin's order page shows the Midtrans status, transaction id and last notification time.
+
+To test by hand:
+
+1. Sign in to the Midtrans dashboard in sandbox mode and copy the server key and client key from
+   Settings → Access Keys. Sandbox keys start with `SB-`.
+2. In the admin, open Settings → App marketplace, pick the brand, open Midtrans, paste both keys and
+   save. Turn the integration on, then press Test connection: it should say Midtrans accepted them.
+3. In the Midtrans dashboard, set Settings → Configuration → Payment Notification URL to
+   `{PUBLIC_URL}/api/v1/payments/midtrans/notification`. Midtrans must reach that address over
+   HTTPS, so a laptop needs a tunnel such as `cloudflared tunnel --url http://localhost:8787`.
+4. Set `PUBLIC_URL` on the API, so Midtrans sends the shopper back to
+   `{PUBLIC_URL}/shop/{store}/order/{id}`. Without it the API uses the request's `Origin` when it is
+   in `ALLOWED_ORIGINS`, which suits a storefront served at the root in development.
+5. Check out on that brand's storefront with QRIS, a virtual account, GoPay or a card. The
+   storefront opens the Snap page.
+6. Pay with Midtrans's sandbox tools:
+   - Card: `4811 1111 1111 1114`, any future expiry, CVV `123`, OTP `112233` (accepted). A card
+     ending `1112` with the same details is denied.
+   - Virtual account, QRIS and GoPay: open the Midtrans simulator at
+     `https://simulator.sandbox.midtrans.com`, pick the method, paste the VA number or QR link the
+     Snap page shows and pay.
+7. Watch the order page turn paid without a reload, and the admin order page show `settlement`
+   with the transaction id. Midtrans's dashboard lists the notification under Transactions.
+8. To test expiry, leave a VA unpaid; Midtrans sends `expire` when it lapses (24 hours by default)
+   and the order is cancelled. The API's own timer cancels it after 24 hours too.
+
+The notification is safe to repeat: a second `settlement` changes nothing, and a notification with a
+bad signature answers 401 and changes nothing.

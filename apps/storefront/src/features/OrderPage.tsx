@@ -5,7 +5,7 @@ import { useParams } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
 import { NotFound } from '../components/NotFound'
 import { ProductImage } from '../components/product'
-import { ButtonLink, Pill } from '../components/ui'
+import { ButtonLink, Pill, buttonClass } from '../components/ui'
 import { DEMO_PAYMENT_NOTE } from '../lib/checkout'
 import { firstName, paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
@@ -14,7 +14,7 @@ import { useShop } from '../state/shop'
 /** Order confirmation: code, items, totals, payment state and points. */
 export function OrderPage() {
   const { orderId = '' } = useParams()
-  const { orders, catalog, customers, store, tenant } = useShop()
+  const { orders, catalog, customers, store, tenant, paysOnline, payments } = useShop()
   const order = orders.find((o) => o.id === orderId)
   useTitle(order ? `Order ${order.code} · ${tenant.name}` : tenant.name)
   if (!order)
@@ -28,6 +28,10 @@ export function OrderPage() {
   const seller = order.sellerId ? catalog.sellers.find((s) => s.id === order.sellerId) : undefined
   const payment = catalog.paymentTypes.find((t) => t.id === order.paymentTypeId)
   const paid = order.paymentStatus === 'paid'
+  const online = paysOnline(order.paymentTypeId)
+  // Waiting for an online payment: the store stream turns this page paid when it arrives.
+  const awaiting = order.paymentStatus === 'pending' && order.paymentMethod !== 'cod'
+  const link = payments[order.id]
   return (
     <div className="max-w-3xl space-y-6 md:pt-12 mx-auto">
       <section className="sf-card p-6 md:p-10 text-center">
@@ -41,7 +45,7 @@ export function OrderPage() {
           Order <strong className="font-mono text-[color:var(--sf-text)]">{order.code}</strong>, placed{' '}
           {fmtDateTime(order.createdAt)}.
         </p>
-        <p className="mt-2 text-sm font-semibold">{DEMO_PAYMENT_NOTE}</p>
+        {!online && <p className="mt-2 text-sm font-semibold">{DEMO_PAYMENT_NOTE}</p>}
         <div className="mt-4 gap-2 flex flex-wrap justify-center">
           <Pill tone={paid ? 'primary' : 'accent'}>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</Pill>
           {order.agent && (
@@ -54,12 +58,26 @@ export function OrderPage() {
           <Pill>{COURIER_LABEL[order.courier]}</Pill>
           <Pill>{CHANNEL_LABEL[order.channel]}</Pill>
         </div>
-        <p className="mt-4 text-sm">
+        <p className="mt-4 text-sm" role="status">
           {paid
             ? `You earned ${order.pointsEarned} points.`
-            : `Pay the courier ${fmtIdr(order.total)} on delivery. Your ${order.pointsEarned} points arrive once you pay.`}
+            : order.paymentStatus === 'failed'
+              ? 'This order was cancelled because the payment did not arrive.'
+              : awaiting
+                ? `We are waiting for your payment of ${fmtIdr(order.total)}. This page updates when it arrives.`
+                : `Pay the courier ${fmtIdr(order.total)} on delivery. Your ${order.pointsEarned} points arrive once you pay.`}
           {seller && ` ${seller.name} helped with this order.`}
         </p>
+        {awaiting && link && (
+          <a href={link.redirectUrl} className={`mt-4 ${buttonClass('primary', 'lg')}`}>
+            Pay now · {fmtIdr(order.total)}
+          </a>
+        )}
+        {awaiting && online && !link && (
+          <p className="mt-2 text-sm text-[color:var(--sf-muted)]">
+            The payment page did not open. Contact {tenant.name} to pay for this order.
+          </p>
+        )}
       </section>
       <section className="sf-card p-5 md:p-8" aria-labelledby="items-h">
         <h2 id="items-h" className="sf-display mb-4 text-xl font-bold">

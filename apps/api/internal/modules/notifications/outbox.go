@@ -66,11 +66,13 @@ func backoff(attempts int) time.Duration {
 	return d
 }
 
-// Drain sends one batch of due email and reports how many went out. With no mail client it leaves
+// Drain sends one batch of due email and reports how many went out. It reads the email settings
+// first, so a key saved in the console takes effect on the next drain. With no mail client it leaves
 // every row as it is. A row is marked sent after Resend accepts it; a failed send comes back after a
 // backoff, and after maxAttempts it stays unsent with its link blanked.
 func (n *Notifications) Drain(ctx context.Context) (int, error) {
-	if n.Mail == nil {
+	client := n.refresh(ctx).client
+	if client == nil {
 		return 0, nil
 	}
 	batch, err := n.claim(ctx)
@@ -83,7 +85,7 @@ func (n *Notifications) Drain(ctx context.Context) (int, error) {
 			return sent, n.release(batch[i:])
 		}
 		sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
-		sendErr := n.Mail.Send(sendCtx, q.msg)
+		sendErr := client.Send(sendCtx, q.msg)
 		cancel()
 		if err := n.settle(ctx, q, sendErr); err != nil {
 			return sent, err

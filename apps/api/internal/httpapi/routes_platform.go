@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// platformRoutes registers health, docs, the route table, sign-in and the server-side views.
+// platformRoutes registers health, docs, the route table, sign-in, email settings and the server-side views.
 func (s *Server) platformRoutes(rt *router) {
 	rt.add("GET", "/health", "", "", "Liveness, database and event stream counts", s.health)
 	rt.add("GET", "/openapi.json", "", "", "This API as an OpenAPI 3.0 document", func(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +20,9 @@ func (s *Server) platformRoutes(rt *router) {
 	rt.add("POST", "/auth/forgot", "", "", "Email a link to choose a new password", s.forgotPassword)
 	rt.add("POST", "/auth/reset", "", "", "Choose a new password with a link from email", s.resetPassword)
 	rt.add("POST", "/auth/password", "", "", "Change the signed-in user's password", s.user("", s.changePassword))
+	rt.add("GET", "/settings/email", "", "", "How the platform sends email (platform admin); never the key", s.platformAdmin(s.getEmailSettings))
+	rt.add("PUT", "/settings/email", "", "", "Save the Resend API key and from address (platform admin); an empty key keeps the saved one", s.platformAdmin(s.saveEmailSettings))
+	rt.add("POST", "/settings/email/test", "", "", "Send a test email to the signed-in platform admin", s.platformAdmin(s.sendTestEmail))
 	rt.add("GET", "/views/orders", "", "", "The orders list: filtered, searched, sorted and paged on the server", s.reader("orders:read", s.orderRows))
 	rt.add("GET", "/views/customer-events", "", "", "Customer history, newest first: one customer, one kind, or the latest", s.reader("customers:read", s.customerEvents))
 }

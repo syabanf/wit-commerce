@@ -107,19 +107,10 @@ func (s *Server) getHandler(collection string) http.HandlerFunc {
 			s.writeError(w, r, err)
 			return
 		}
-		// A row of another tenant reads as missing, so a key cannot probe ids. So does another
-		// seller's order for a sales user.
-		where, args := "id = $1 and tenant_id = $2", []any{r.PathValue("id"), tenantID}
-		if collection == "orders" {
-			p, _ := auth.From(r.Context())
-			sellers, err := s.ownSellers(r.Context(), p)
-			if err != nil {
-				s.writeError(w, r, err)
-				return
-			}
-			if sellers != nil {
-				where, args = where+" and "+fmt.Sprintf(ownOrders, 3), append(args, sellers)
-			}
+		where, args, err := s.visibleRow(r, collection, tenantID)
+		if err != nil {
+			s.writeError(w, r, err)
+			return
 		}
 		rows, err := store.Raw(r.Context(), s.DB.Pool, collection, where, args...)
 		if err != nil {
@@ -132,6 +123,23 @@ func (s *Server) getHandler(collection string) http.HandlerFunc {
 		}
 		writeJSON(w, http.StatusOK, rows[0])
 	}
+}
+
+// visibleRow is the where clause for the row named in the URL. A row of another tenant reads as
+// missing, so a key cannot probe ids. So does another seller's order for a sales user.
+func (s *Server) visibleRow(r *http.Request, collection, tenantID string) (string, []any, error) {
+	where, args := "id = $1 and tenant_id = $2", []any{r.PathValue("id"), tenantID}
+	if collection == "orders" {
+		p, _ := auth.From(r.Context())
+		sellers, err := s.ownSellers(r.Context(), p)
+		if err != nil {
+			return "", nil, err
+		}
+		if sellers != nil {
+			where, args = where+" and "+fmt.Sprintf(ownOrders, 3), append(args, sellers)
+		}
+	}
+	return where, args, nil
 }
 
 // --- credentials ---

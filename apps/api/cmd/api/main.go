@@ -198,6 +198,7 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		Outbound: service.OutboundClient(allowInternal), AllowInternalWebhooks: allowInternal,
 		AI:         ai.New(os.Getenv("OLLAMA_URL"), os.Getenv("OLLAMA_API_KEY"), os.Getenv("OLLAMA_MODEL")),
 		Mail:       mailer,
+		ResendURL:  os.Getenv("RESEND_URL"),
 		PublicURL:  strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
 		TrustProxy: os.Getenv("TRUST_PROXY") == "true", Hub: hub, Log: log, Version: Version,
 		DemoLogin: cfg.demoLogin, AllowedOrigins: cfg.allowedOrigins,
@@ -239,9 +240,10 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 	}()
 
 	// The queued email goes out from here unless cmd/notifier sends it. Running both is safe: each
-	// claim skips rows another worker holds.
-	if mailer != nil && os.Getenv("NOTIFIER_EXTERNAL") != "true" {
-		outbox := &notifications.Notifications{Runtime: &kernel.Runtime{DB: db}, Mail: mailer, Log: log}
+	// claim skips rows another worker holds. It runs with email off too, since a platform admin can
+	// save a key in the console at any time.
+	if os.Getenv("NOTIFIER_EXTERNAL") != "true" {
+		outbox := &notifications.Notifications{Runtime: &kernel.Runtime{DB: db, Vault: vault}, Mail: mailer, ResendURL: os.Getenv("RESEND_URL"), Log: log}
 		go outbox.Run(ctx, 2*time.Second)
 	}
 

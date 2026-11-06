@@ -15,6 +15,32 @@ export interface Delta {
   now?: string
   /** A customer token, handed out when a guest checkout created the account. */
   token?: string
+  /** Placing an order a provider collects online: the page the shopper pays on. */
+  payment?: PaymentLink
+  /** Placing that order worked, but the payment page did not open. */
+  paymentError?: string
+}
+
+/** Where a shopper pays for an order online. */
+export interface PaymentLink {
+  provider: string
+  status: string
+  snapToken: string
+  redirectUrl: string
+}
+
+/** An order's online payment as the provider last reported it. */
+export interface OrderPayment {
+  orderId: string
+  tenantId: string
+  provider: string
+  transactionId: string | null
+  /** The provider's status, for example pending, settlement or expire. */
+  status: string
+  grossAmount: number
+  notifiedAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ApiProblem {
@@ -315,6 +341,8 @@ export interface DemoAccounts {
 export interface StateResponse {
   state: Partial<AppState>
   now: string
+  /** A store's state: the payment types a provider collects online. */
+  onlinePayments?: string[]
 }
 
 export interface StaffInput {
@@ -512,6 +540,24 @@ export interface ConnectionResult {
   ms: number
 }
 
+/** How the platform sends email. It never carries the key. */
+export interface EmailSettings {
+  provider: 'resend'
+  from: string
+  keySet: boolean
+  keyLast4: string
+  updatedAt: string | null
+  updatedBy: string | null
+  /** settings: saved in the console; env: RESEND_API_KEY and EMAIL_FROM; off: neither. */
+  source: 'settings' | 'env' | 'off'
+}
+
+export interface EmailTestResult {
+  ok: boolean
+  to: string
+  error?: string
+}
+
 export interface WebhookEndpoint {
   id: string
   tenantId: string
@@ -579,6 +625,8 @@ export interface AIChatAnswer {
 export interface MeResponse {
   customer: Customer
   orders: Order[]
+  /** Payment pages of the orders still waiting for an online payment, by order id. */
+  payments: Record<string, PaymentLink>
   hasPassword: boolean
   emailVerified: boolean
   /** Whether this deployment can send email. */
@@ -642,6 +690,12 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       /** The whole order, history included; the console's state carries only its shipments. */
       get: (id: string, tenantId: string) =>
         call<Order>('GET', `/orders/${id}?tenantId=${encodeURIComponent(tenantId)}`),
+      /** The online payment record, or null when a provider never took this order's payment. */
+      payment: (id: string, tenantId: string) =>
+        call<{ payment: OrderPayment | null }>(
+          'GET',
+          `/orders/${id}/payment?tenantId=${encodeURIComponent(tenantId)}`,
+        ),
     },
     views: {
       customerEvents: (params: CustomerEventsQuery) => {
@@ -696,6 +750,13 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       /** Calls the provider with the stored values. */
       test: (integrationId: string) =>
         call<ConnectionResult>('POST', `/integrations/${integrationId}/credentials/test`),
+    },
+    emailSettings: {
+      get: () => call<EmailSettings>('GET', '/settings/email'),
+      /** An empty key keeps the saved one. */
+      save: (input: { key: string; from: string }) => call<EmailSettings>('PUT', '/settings/email', input),
+      /** Sends one email to the signed-in platform admin. */
+      test: () => call<EmailTestResult>('POST', '/settings/email/test'),
     },
     webhooks: {
       list: (tenantId: string) => call<WebhookList>('GET', `/tenants/${tenantId}/webhooks`),

@@ -45,6 +45,7 @@ import { ON_INK, OrderStatusBadge, PaymentBadge, TierBadge } from '../../compone
 import { CustomerLink, ProductLink, SellerChip, paths } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
 import { useFullOrder } from '../../state/useFullOrder'
+import { useOrderPayment } from '../../state/useOrderPayment'
 import { CancelOrderDialog, NoteDialog, RefundDialog, ShipDialog } from './dialogs'
 import { HeroMetric } from '../../components/HeroMetric'
 
@@ -83,6 +84,7 @@ export function OrderDetailPage() {
     s.orders.find((o) => o.id === id),
     s.tenant.id,
   )
+  const payment = useOrderPayment(id, s.tenant.id, order?.paymentStatus)
 
   if (!order && loading) {
     return (
@@ -374,6 +376,21 @@ export function OrderDetailPage() {
                   ),
                 },
                 { label: 'Refunded', value: order.refundedAmount ? fmtIdr(order.refundedAmount) : 'None' },
+                ...(payment
+                  ? [
+                      { label: 'Midtrans', value: payment.status },
+                      {
+                        label: 'Transaction',
+                        value: (
+                          <span className="text-xs font-mono">{payment.transactionId ?? 'Not yet'}</span>
+                        ),
+                      },
+                      {
+                        label: 'Last notice',
+                        value: payment.notifiedAt ? fmtDateTime(payment.notifiedAt) : 'None yet',
+                      },
+                    ]
+                  : []),
               ]}
             />
           </SideCard>

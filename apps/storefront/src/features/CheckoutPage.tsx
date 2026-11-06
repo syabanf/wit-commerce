@@ -222,7 +222,7 @@ function Choice({
 export function CheckoutPage() {
   const { state } = useStore()
   const shop = useShop()
-  const { catalog, cart, customer, customers, referral, store, tenant, send, signIn } = shop
+  const { catalog, cart, customer, customers, referral, store, tenant, send, signIn, paysOnline } = shop
   const navigate = useNavigate()
   const uid = useId()
   useTitle(`Checkout · ${tenant.name}`)
@@ -319,7 +319,7 @@ export function CheckoutPage() {
     }
     if (s === 2) {
       if (!payment) e.payment = 'Choose how you want to pay.'
-      else if (payment.method === 'qris' && !qrisPaid)
+      else if (payment.method === 'qris' && !qrisPaid && !paysOnline(payment.id))
         e.payment = 'Scan the QR code, then choose I have paid to continue.'
     }
     return e
@@ -367,10 +367,12 @@ export function CheckoutPage() {
       return
     }
     send({ type: 'orders/place', order, customer: created })
-      .then(() => signIn(order.customerId))
-      .then(() => {
+      .then(async (answer) => {
+        await signIn(order.customerId)
         cart.clear()
-        navigate(paths.order(store, order.id), { replace: true })
+        // The provider's page takes the payment and sends the shopper back to the order page.
+        if (answer?.payment) window.location.assign(answer.payment.redirectUrl)
+        else navigate(paths.order(store, order.id), { replace: true })
       })
       .catch((err: Error) => setPlaceError(err.message))
   }
@@ -631,7 +633,12 @@ export function CheckoutPage() {
                     note={offers.length ? offers.join(' · ') : t.provider}
                   >
                     <p className="text-sm text-[color:var(--sf-muted)]">{t.instructions}</p>
-                    {t.method === 'qris' && (
+                    {paysOnline(t.id) && (
+                      <p className="mt-3 text-sm">
+                        You pay on the secure Midtrans page after you place the order.
+                      </p>
+                    )}
+                    {t.method === 'qris' && !paysOnline(t.id) && (
                       <div className="mt-4 gap-3 sm:flex-row sm:items-center flex flex-col items-center">
                         <div className="bg-white p-3 rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)]">
                           <FakeQr seed={`${tenant.id}-${totals.subtotal}`} />
@@ -656,7 +663,7 @@ export function CheckoutPage() {
                         </div>
                       </div>
                     )}
-                    {t.method === 'va' && (
+                    {t.method === 'va' && !paysOnline(t.id) && (
                       <p className="mt-3 text-sm">
                         Account number <strong className="tracking-wider font-mono">8808 {vaDigits}</strong>,
                         shown again on your receipt.
@@ -693,7 +700,13 @@ export function CheckoutPage() {
                 <div>
                   <dt className="text-[color:var(--sf-muted)]">Payment</dt>
                   <dd className="font-semibold">{payment?.name}</dd>
-                  <dd>{payment?.method === 'cod' ? 'Pay the courier on arrival' : DEMO_PAYMENT_NOTE}</dd>
+                  <dd>
+                    {payment?.method === 'cod'
+                      ? 'Pay the courier on arrival'
+                      : paysOnline(payment?.id)
+                        ? 'You pay on the Midtrans page next'
+                        : DEMO_PAYMENT_NOTE}
+                  </dd>
                 </div>
               </dl>
               {referral && (

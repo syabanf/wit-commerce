@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 )
@@ -111,6 +112,9 @@ var routeDocs = map[string]routeDoc{
 	"POST /shop/{store}/reset":                 {body: resetInput{}},
 	"POST /shop/{store}/verify":                {body: verifyInput{}},
 	"POST /auth/password":                      {body: changePasswordInput{}, response: tokenResponse{}},
+	"GET /settings/email":                      {response: notifications.EmailSettings{}},
+	"PUT /settings/email":                      {body: notifications.EmailSettingsInput{}, response: notifications.EmailSettings{}},
+	"POST /settings/email/test":                {response: notifications.EmailTestResult{}},
 	"GET /views/orders":                        {response: orderRowsResponse{}},
 	"GET /views/customer-events":               {response: customerEventsResponse{}},
 	"GET /users/events":                        {response: staffEventsResponse{}},
@@ -178,7 +182,9 @@ var routeDocs = map[string]routeDoc{
 	"POST /webhook-deliveries/{id}/retry":      {response: okResponse{}},
 	"POST /shop/{store}/ai/chat":               {body: AIChatInput{}, response: AIChatAnswer{}},
 	"POST /shop/{store}/price":                 {body: priceInput{}, response: rules.CartPrice{}},
-	"POST /shop/{store}/orders":                {body: placeOrderInput{}},
+	"POST /shop/{store}/orders":                {body: placeOrderInput{}, response: shopOrderResponse{}},
+	"POST /payments/midtrans/notification":     {body: midtransNotificationInput{}, response: okResponse{}},
+	"GET /orders/{id}/payment":                 {response: orderPaymentResponse{}},
 	"POST /shop/{store}/leads":                 {body: domain.Lead{}},
 }
 
@@ -200,22 +206,23 @@ var hiddenRoutes = map[string]bool{
 
 // publicRoutes need no token.
 var publicRoutes = map[string]bool{
-	"GET /health":                     true,
-	"POST /auth/login":                true,
-	"POST /shop/{store}/login":        true,
-	"POST /auth/forgot":               true,
-	"POST /auth/reset":                true,
-	"POST /shop/{store}/forgot":       true,
-	"POST /shop/{store}/reset":        true,
-	"POST /shop/{store}/verify":       true,
-	"POST /shop/{store}/verify-email": true,
-	"POST /shop/{store}/register":     true,
-	"POST /shop/{store}/password":     true,
-	"GET /shop":                       true,
-	"POST /shop/{store}/ai/chat":      true,
-	"POST /shop/{store}/price":        true,
-	"POST /shop/{store}/orders":       true,
-	"POST /shop/{store}/leads":        true,
+	"GET /health":                          true,
+	"POST /auth/login":                     true,
+	"POST /shop/{store}/login":             true,
+	"POST /auth/forgot":                    true,
+	"POST /auth/reset":                     true,
+	"POST /shop/{store}/forgot":            true,
+	"POST /shop/{store}/reset":             true,
+	"POST /shop/{store}/verify":            true,
+	"POST /shop/{store}/verify-email":      true,
+	"POST /shop/{store}/register":          true,
+	"POST /shop/{store}/password":          true,
+	"GET /shop":                            true,
+	"POST /shop/{store}/ai/chat":           true,
+	"POST /shop/{store}/price":             true,
+	"POST /shop/{store}/orders":            true,
+	"POST /shop/{store}/leads":             true,
+	"POST /payments/midtrans/notification": true,
 }
 
 var pathParam = regexp.MustCompile(`\{([a-zA-Z]+)\}`)
@@ -326,7 +333,9 @@ func tagOf(path string) string {
 		return "Integrations"
 	case "shop":
 		return "Storefront"
-	case "auth", "health", "users":
+	case "payments":
+		return "Payments"
+	case "auth", "health", "users", "settings":
 		return "Platform"
 	}
 	panic("openapi: no tag for " + path)

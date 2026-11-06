@@ -37,8 +37,11 @@ type Options struct {
 	AllowInternalWebhooks bool
 	// AI understands shoppers' messages; nil turns it off and the storefront uses its own parser.
 	AI *ai.Client
-	// Mail sends password and verification links; nil turns those flows off.
+	// Mail sends password and verification links when no email settings are saved in the console;
+	// with neither, those flows are off.
 	Mail *mail.Client
+	// ResendURL is where a client built from saved email settings sends; empty means Resend.
+	ResendURL string
 	// PublicURL is the site's address, for links in email.
 	PublicURL string
 	// TrustProxy reads the client address from X-Forwarded-For; set it only behind a proxy.
@@ -68,7 +71,7 @@ type Server struct {
 // New builds the server and its handler chain.
 func New(o Options) *Server {
 	s := &Server{Options: o, svc: service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}), limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
-	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, PublicURL: o.PublicURL, Log: o.Log}
+	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, Log: o.Log}
 	s.assistant = aimodule.New(o.AI, s.svc.Catalog)
 	mux := http.NewServeMux()
 	s.routes(mux)

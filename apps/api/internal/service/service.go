@@ -34,6 +34,7 @@ func New(rt kernel.Runtime) *Service {
 	r := &rt
 	inv := &inventory.Inventory{Runtime: r}
 	mkt := &marketing.Marketing{Runtime: r}
+	ints := &integrations.Integrations{Runtime: r}
 	return &Service{
 		Runtime:      r,
 		Identity:     &identity.Identity{Runtime: r},
@@ -42,8 +43,8 @@ func New(rt kernel.Runtime) *Service {
 		CRM:          &crm.CRM{Runtime: r, SegmentUsers: mkt},
 		Marketing:    mkt,
 		Storefront:   &storefront.Storefront{Runtime: r},
-		Integrations: &integrations.Integrations{Runtime: r},
-		Orders:       &orders.Orders{Runtime: r},
+		Integrations: ints,
+		Orders:       &orders.Orders{Runtime: r, Payments: onlinePayments{rt: r, ints: ints}},
 	}
 }
 

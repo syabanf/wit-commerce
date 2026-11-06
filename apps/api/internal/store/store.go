@@ -352,7 +352,7 @@ func (db *DB) Truncate(ctx context.Context) error {
 	for _, t := range Tables {
 		names = append(names, t)
 	}
-	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log")
+	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log", "email_settings")
 	_, err := db.Pool.Exec(ctx, `truncate `+strings.Join(names, ", "))
 	return err
 }

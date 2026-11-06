@@ -2,10 +2,11 @@
 import { Banner, Entrance, Spinner, cn, useMediaQuery } from '@rc/ui'
 import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router'
+import { useAuth } from '../auth/auth'
 import { usePersistentState } from '../lib/storage'
 import { useStore } from '../state/store'
 import { Header } from './Header'
-import { leafFor, sectionFor } from './nav'
+import { leafFor, navFor, sectionFor } from './nav'
 import { PhoneNav } from './PhoneNav'
 import { QuickSearch } from './QuickSearch'
 import { SideRail } from './SideRail'
@@ -137,13 +138,15 @@ export function AdminLayout() {
 function SectionTabs() {
   const { pathname } = useLocation()
   const counts = useNavCounts()
+  const { user } = useAuth()
   const section = sectionFor(pathname)
   const leaf = leafFor(pathname)
-  if (!section.items || !leaf || pathname !== leaf.to) return null
+  const items = navFor(user?.role).find((s) => s.id === section.id)?.items
+  if (!items || !leaf || pathname !== leaf.to) return null
   return (
     <nav aria-label={`${section.label} pages`} className="mb-4 no-scrollbar flex max-w-full overflow-x-auto">
       <div className="gap-1 p-1 inline-flex shrink-0 rounded-full bg-card shadow-card">
-        {section.items.map((item) => {
+        {items.map((item) => {
           const count = item.badge ? counts[item.badge] : 0
           return (
             <NavLink

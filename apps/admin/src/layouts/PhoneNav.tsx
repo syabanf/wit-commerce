@@ -34,7 +34,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { usePersistentState } from '../lib/storage'
 import { CreateMenu } from './CreateMenu'
-import { type BadgeKey, NAV, type NavLeaf, sectionFor } from './nav'
+import { type BadgeKey, type NavLeaf, navFor, sectionFor } from './nav'
 import { useNavCounts } from './useNavCounts'
 
 interface Shortcut {
@@ -85,7 +85,8 @@ export function PhoneNav({
   const is = (path: string) =>
     path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`)
   const current = sectionFor(pathname)
-  const leaves: (NavLeaf & { section: string })[] = NAV.flatMap((s) =>
+  const nav = navFor(user.role)
+  const leaves: (NavLeaf & { section: string })[] = nav.flatMap((s) =>
     (s.items ?? [{ to: s.to, code: s.code ?? '', label: s.label, icon: s.icon }]).map((i) => ({
       ...i,
       section: s.label,
@@ -104,7 +105,7 @@ export function PhoneNav({
     setRecent((list) => [to, ...list.filter((x) => x !== to)].slice(0, 4))
     onMoreChange(false)
   }
-  const ordered = NAV
+  const ordered = nav
 
   return (
     <>

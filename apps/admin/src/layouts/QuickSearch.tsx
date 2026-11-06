@@ -22,7 +22,7 @@ import { usePersistentState } from '../lib/storage'
 import { type Scoped, useScoped } from '../state/scoped'
 import { useOrderQuery } from '../state/useOrderQuery'
 import { useCreateActions } from './CreateMenu'
-import { type BadgeKey, NAV } from './nav'
+import { type BadgeKey, NAV, type NavSection, navFor } from './nav'
 import { useNavCounts } from './useNavCounts'
 
 interface Row {
@@ -78,20 +78,24 @@ const TASKS: { label: string; code: string; to: string; badge: BadgeKey; permiss
   },
 ]
 
-const PAGE_ROWS: Row[] = NAV.flatMap((section) => {
-  const pages = section.items ?? (section.code ? [{ ...section, code: section.code }] : [])
-  return pages.map((page) => {
-    const Icon = page.icon
-    return {
-      key: `page-${page.to}`,
-      label: page.label,
-      hint: section.items ? section.label : undefined,
-      code: page.code,
-      icon: <Icon />,
-      to: page.to,
-    }
+const pageRows = (nav: NavSection[]): Row[] =>
+  nav.flatMap((section) => {
+    const pages = section.items ?? (section.code ? [{ ...section, code: section.code }] : [])
+    return pages.map((page) => {
+      const Icon = page.icon
+      return {
+        key: `page-${page.to}`,
+        label: page.label,
+        hint: section.items ? section.label : undefined,
+        code: page.code,
+        icon: <Icon />,
+        to: page.to,
+      }
+    })
   })
-})
+
+/** Every page, for telling pages from records in the recent list. */
+const ALL_PAGES = pageRows(NAV)
 
 function recordGroups(s: Scoped): Group[] {
   return [
@@ -195,7 +199,7 @@ export function QuickSearch({
   }, [open, onOpenChange])
 
   useEffect(() => {
-    if (PAGE_ROWS.some((row) => row.to === pathname)) return
+    if (ALL_PAGES.some((row) => row.to === pathname)) return
     setRecent((paths) => [pathname, ...paths.filter((p) => p !== pathname)].slice(0, RECENT_STORED))
   }, [pathname, setRecent])
 
@@ -217,8 +221,9 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
   const scoped = useScoped()
   const counts = useNavCounts()
   const creates = useCreateActions()
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const navigate = useNavigate()
+  const pages = useMemo(() => pageRows(navFor(user?.role)), [user?.role])
   const listId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
@@ -269,13 +274,13 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
         { title: 'Tasks', rows: tasks },
         { title: 'Create', rows: createRows },
         { title: 'Recently opened', rows: opened.map((r) => ({ ...r, icon: <History /> })) },
-        { title: 'Pages', rows: PAGE_ROWS },
+        { title: 'Pages', rows: pages },
       ].filter((g) => g.rows.length)
     }
     const found: Group[] = [
       { title: 'Tasks', rows: hits(tasks) },
       { title: 'Create', rows: hits(createRows) },
-      { title: 'Pages', rows: hits(PAGE_ROWS) },
+      { title: 'Pages', rows: hits(pages) },
       ...records.map((g) => ({
         title: g.title,
         rows: HTTP && g.title === 'Orders' ? (remoteOrders ?? []) : hits(g.rows).slice(0, RECORD_LIMIT),
@@ -287,7 +292,7 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
       ? found.map((g) => ({ ...g, rows: g.rows.filter((r) => r.code !== exact.code) }))
       : found
     return [...(exact ? [{ title: 'Code', rows: [exact] }] : []), ...rest].filter((g) => g.rows.length)
-  }, [query, records, remoteOrders, recent, counts, creates, can])
+  }, [query, records, remoteOrders, recent, counts, creates, can, pages])
 
   const flat = groups.flatMap((g) => g.rows)
 

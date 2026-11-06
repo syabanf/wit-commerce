@@ -399,7 +399,12 @@ func (s *Server) shopState(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"state": state, "now": s.Clock.NowIso()})
+	online, err := s.svc.OnlinePaymentTypes(r.Context(), tenant.ID)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"state": state, "now": s.Clock.NowIso(), "onlinePayments": online})
 }
 
 func (s *Server) shopEvents(w http.ResponseWriter, r *http.Request) {
@@ -408,7 +413,33 @@ func (s *Server) shopEvents(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	s.stream(w, r, shopScope(tenant.ID))
+	scope := shopScope(tenant.ID)
+	// A signed-in shopper also hears about their own orders and account, so a payment that lands
+	// while the order page is open shows at once. cmd/shop has no signer and streams the store only.
+	if s.Signer != nil {
+		if p, ok := s.shopper(r, tenant.ID); ok {
+			scope.Collections["orders"], scope.Collections["customers"] = true, true
+			scope.Keep = ownRows(p.ID)
+		}
+	}
+	s.stream(w, r, scope)
+}
+
+// ownRows keeps a shopper's own orders and customer record, and every row of the other collections.
+func ownRows(customerID string) func(string, json.RawMessage) bool {
+	return func(collection string, data json.RawMessage) bool {
+		var row struct {
+			ID         string `json:"id"`
+			CustomerID string `json:"customerId"`
+		}
+		switch collection {
+		case "orders":
+			return json.Unmarshal(data, &row) == nil && row.CustomerID == customerID
+		case "customers":
+			return json.Unmarshal(data, &row) == nil && row.ID == customerID
+		}
+		return true
+	}
 }
 
 func (s *Server) demoCustomers(w http.ResponseWriter, r *http.Request) {
@@ -500,7 +531,12 @@ func (s *Server) shopMe(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "hasPassword": hasPassword, "emailVerified": verified, "emailOn": s.Mail != nil && s.PublicURL != ""})
+	payments, err := s.shopPayments(r, orders)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "payments": payments, "hasPassword": hasPassword, "emailVerified": verified, "emailOn": s.notify.On()})
 }
 
 func (s *Server) shopPrice(w http.ResponseWriter, r *http.Request) {
@@ -585,6 +621,7 @@ func (s *Server) shopPlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := s.publish(d)
+	s.startPayment(r, tenant, in.Order.ID, out)
 	// A new customer gets their token with the receipt, so the account page works right away.
 	if in.Customer != nil && p.ID == "guest" {
 		cp := auth.Principal{Kind: auth.KindCustomer, ID: in.Customer.ID, TenantID: tenant.ID}

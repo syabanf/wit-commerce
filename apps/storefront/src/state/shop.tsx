@@ -3,7 +3,7 @@ import type { AppAction } from '@rc/fixtures'
 import type { Customer, Order, Seller, Tenant } from '@rc/types'
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
-import { ApiError, type ShopperResponse } from '@rc/api'
+import { ApiError, type Delta, type PaymentLink, type ShopperResponse } from '@rc/api'
 import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
 import { type Catalog, buildCatalog } from '../lib/catalog'
 import { usePersisted } from '../lib/storage'
@@ -45,8 +45,12 @@ export interface ShopValue {
   wishlist: { ids: string[]; has: (id: string) => boolean; toggle: (id: string) => boolean }
   cart: CartApi
   totals: CartTotals
-  /** Dispatches a store action; in API mode it resolves once the server answered, or rejects. */
-  send: (action: AppAction) => Promise<void>
+  /** Dispatches a store action; in API mode it resolves to the server's answer, or rejects. */
+  send: (action: AppAction) => Promise<Delta | null>
+  /** API mode: whether a provider collects this payment type online, on its own page. */
+  paysOnline: (paymentTypeId?: string | null) => boolean
+  /** API mode: the payment pages of the shopper's orders still waiting for payment, by order id. */
+  payments: Record<string, PaymentLink>
 }
 
 const ShopContext = createContext<ShopValue | null>(null)
@@ -66,7 +70,7 @@ export function useNow(ms = 60_000) {
 
 /** One tenant's storefront: catalog, cart, wishlist, referral and the signed-in customer. */
 export function ShopProvider({ tenant, children }: { tenant: Tenant; children: ReactNode }) {
-  const { state, send, loadStore, merge } = useStore()
+  const { state, send, loadStore, merge, onlinePayments } = useStore()
   const now = useNow()
   // API mode: this store's dataset and event stream, and the token requests carry.
   useEffect(() => {
@@ -105,6 +109,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
   const [emailVerified, setEmailVerified] = useState(false)
   const [emailOn, setEmailOn] = useState(false)
   const [accountVersion, setAccountVersion] = useState(0)
+  const [payments, setPayments] = useState<Record<string, PaymentLink>>({})
   // API mode: a stored shopper token restores the account and its orders after a reload.
   useEffect(() => {
     if (!HTTP || !customerId || !shopperToken(tenant.id).get()) return
@@ -112,8 +117,16 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     api.shop
       .me(tenant.subdomain)
       .then(
-        ({ customer: me, orders: mine, hasPassword: stored, emailVerified: proven, emailOn: canSend }) => {
+        ({
+          customer: me,
+          orders: mine,
+          payments: links,
+          hasPassword: stored,
+          emailVerified: proven,
+          emailOn: canSend,
+        }) => {
           if (cancelled) return
+          setPayments(links ?? {})
           setHasPassword(stored)
           setEmailVerified(proven)
           setEmailOn(canSend)
@@ -202,6 +215,8 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
       cart,
       totals,
       send,
+      paysOnline: (id) => !!id && onlinePayments.includes(id),
+      payments,
     }
   }, [
     catalog,
@@ -222,6 +237,8 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     cart,
     totals,
     send,
+    onlinePayments,
+    payments,
   ])
 
   return <ShopContext value={value}>{children}</ShopContext>

@@ -1,5 +1,5 @@
-// Command notifier sends the email the API queues in email_outbox. It shares the API's database and
-// mail settings and serves only /health. Run it with NOTIFIER_EXTERNAL=true on the API, or beside an
+// Command notifier sends the email the API queues in email_outbox. It shares the API's database,
+// CREDENTIALS_KEY and mail settings, and serves only /health. Run it with NOTIFIER_EXTERNAL=true on the API, or beside an
 // API that drains too: each claim skips rows another worker holds.
 package main
 
@@ -18,6 +18,7 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/dotenv"
 
+	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
@@ -74,27 +75,30 @@ func run(ctx context.Context, log *slog.Logger) error {
 		return err
 	}
 	defer db.Pool.Close()
-	// The API owns migrations; this process only reads and updates email_outbox.
+	vault, err := openVault()
+	if err != nil {
+		return err
+	}
+	if vault == nil {
+		log.Warn("CREDENTIALS_KEY is not set; email settings saved in the console are ignored")
+	}
+	// The API owns migrations; this process only reads email_settings and updates email_outbox.
 	n := &notifications.Notifications{
-		Runtime: &kernel.Runtime{DB: db},
-		Mail:    mail.New(os.Getenv("RESEND_URL"), os.Getenv("RESEND_API_KEY"), os.Getenv("EMAIL_FROM")),
-		Log:     log,
+		Runtime:   &kernel.Runtime{DB: db, Vault: vault},
+		Mail:      mail.New(os.Getenv("RESEND_URL"), os.Getenv("RESEND_API_KEY"), os.Getenv("EMAIL_FROM")),
+		ResendURL: os.Getenv("RESEND_URL"),
+		Log:       log,
 	}
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// Each drain reads the email settings first, so the loop runs with email off too: a key saved in
+	// the console starts the sending on the next drain.
 	drained := make(chan struct{})
-	if n.Mail == nil {
-		// The API queues nothing without a key, so there is nothing to send. Stay up for health
-		// checks rather than crash in a loop.
-		log.Warn("RESEND_API_KEY or EMAIL_FROM is not set; email is off and nothing is sent")
-		close(drained)
-	} else {
-		go func() {
-			defer close(drained)
-			n.Run(ctx, cfg.every)
-		}()
-	}
+	go func() {
+		defer close(drained)
+		n.Run(ctx, cfg.every)
+	}()
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.port),
@@ -121,6 +125,18 @@ func run(ctx context.Context, log *slog.Logger) error {
 	return err
 }
 
+// openVault opens the key the API encrypts email settings with: CREDENTIALS_KEY, or in a demo the
+// key the API derives from JWT_SECRET. Without either it returns nil.
+func openVault() (*auth.Vault, error) {
+	if key := os.Getenv("CREDENTIALS_KEY"); key != "" {
+		return auth.NewVault(key)
+	}
+	if secret := os.Getenv("JWT_SECRET"); secret != "" && os.Getenv("DEMO_LOGIN") != "false" {
+		return auth.DeriveVault(secret)
+	}
+	return nil, nil
+}
+
 // healthHandler answers GET /health with the queue depth, or 503 when the database is out of reach.
 func healthHandler(n *notifications.Notifications) http.Handler {
 	mux := http.NewServeMux()
@@ -132,7 +148,8 @@ func healthHandler(n *notifications.Notifications) http.Handler {
 			_ = json.NewEncoder(w).Encode(map[string]any{"status": "down", "version": Version})
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "version": Version, "email": n.Mail != nil, "pending": pending})
+		source := n.Source()
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "version": Version, "email": source != notifications.SourceOff, "emailSource": source, "pending": pending})
 	})
 	return mux
 }

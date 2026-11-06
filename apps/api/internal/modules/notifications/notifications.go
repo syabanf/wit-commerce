@@ -1,6 +1,7 @@
 // Package notifications owns outgoing email and the single-use links it carries, kept in the
-// email_tokens table. It composes each message and sends it through Resend: at once when an admin
-// waits for the answer, otherwise through the email_outbox queue that Drain empties.
+// email_tokens table, and the email setup a platform admin saves, kept in email_settings. It composes
+// each message and sends it through Resend: at once when an admin waits for the answer, otherwise
+// through the email_outbox queue that Drain empties.
 package notifications
 
 import (
@@ -14,6 +15,7 @@ import (
 	"html"
 	"log/slog"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -39,18 +41,26 @@ const (
 // ErrLinkExpired means a link was used before, has expired, or is of the wrong kind.
 var ErrLinkExpired = errors.New("link expired or already used")
 
-// Notifications sends email. A nil Mail or an empty PublicURL turns email off, and then nothing is
-// queued. Drain needs only DB, Mail and Log, since queued rows hold the finished message.
+// Notifications sends email. Settings saved in the console pick the mail client; without them Mail,
+// built from the environment, does; with neither email is off and nothing is queued. An empty
+// PublicURL turns email off too. Drain needs no PublicURL, since queued rows hold the finished
+// message. Runtime.Vault opens the saved key; without it only Mail counts.
 type Notifications struct {
 	*kernel.Runtime
+	// Mail is the client from RESEND_API_KEY and EMAIL_FROM, or nil.
 	Mail *mail.Client
+	// ResendURL is where a client built from saved settings sends; empty means Resend itself.
+	ResendURL string
 	// PublicURL is the site's address, for links in email.
 	PublicURL string
 	Log       *slog.Logger
+
+	mu      sync.Mutex
+	current resolved
 }
 
 // On reports whether email can go out.
-func (n *Notifications) On() bool { return n.Mail != nil && n.PublicURL != "" }
+func (n *Notifications) On() bool { return n.PublicURL != "" && n.resolve().client != nil }
 
 func hashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
@@ -173,6 +183,10 @@ func (n *Notifications) MailVerify(ctx context.Context, tenant domain.Tenant, c 
 // failed. It skips the outbox on purpose: the admin needs the answer now, and a queued send could
 // only report "queued". Nothing here reveals an account: the admin already chose this person.
 func (n *Notifications) mailStaffLink(ctx context.Context, u domain.User, kind string, lifetime time.Duration, subject, intro, action, query string) bool {
+	client := n.resolve().client
+	if client == nil {
+		return false
+	}
 	token, err := addToken(ctx, n.DB.Pool, kind, subjectUser, u.ID, lifetime)
 	if err != nil {
 		n.Log.Error("staff link not issued", "err", err)
@@ -181,7 +195,7 @@ func (n *Notifications) mailStaffLink(ctx context.Context, u domain.User, kind s
 	sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 	link := n.PublicURL + "/reset-password?token=" + url.QueryEscape(token) + query
-	if err := n.Mail.Send(sendCtx, linkMessage(u.Email, subject, intro, action, link)); err != nil {
+	if err := client.Send(sendCtx, linkMessage(u.Email, subject, intro, action, link)); err != nil {
 		// The earlier link is the only one the person holds, so a failed send must not end it.
 		n.Log.Error("email not sent", "err", err, "subject", subject)
 		if _, err := n.DB.Pool.Exec(ctx, `delete from email_tokens where hash = $1`, hashToken(token)); err != nil {
