@@ -155,12 +155,32 @@ func (s *Server) demoAccounts(w http.ResponseWriter, r *http.Request) {
 
 // shops lists every tenant, for the storefront's brand chooser.
 func (s *Server) shops(w http.ResponseWriter, r *http.Request) {
-	tenants, err := store.Raw(r.Context(), s.DB.Pool, "tenants", "")
+	tenants, err := store.List[domain.Tenant](r.Context(), s.DB.Pool, "tenants", "")
 	if err != nil {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"tenants": tenants, "now": s.Clock.NowIso()})
+	pages, err := store.List[domain.Page](r.Context(), s.DB.Pool, "pages", "")
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	live := make([]domain.Tenant, 0, len(tenants))
+	for _, tenant := range tenants {
+		if storeLive(tenant, pages) {
+			live = append(live, tenant)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"tenants": live, "now": s.Clock.NowIso()})
+}
+
+func storeLive(t domain.Tenant, pages []domain.Page) bool {
+	for _, page := range pages {
+		if page.TenantID == t.ID && page.Kind == "home" && page.Status == "published" {
+			return true
+		}
+	}
+	return false
 }
 
 // --- state ---
@@ -383,6 +403,13 @@ func (s *Server) storeTenant(r *http.Request) (domain.Tenant, error) {
 		return domain.Tenant{}, err
 	}
 	if len(rows) == 0 {
+		return domain.Tenant{}, service.NotFound{What: "store"}
+	}
+	pages, err := store.List[domain.Page](r.Context(), s.DB.Pool, "pages", "tenant_id = $1", rows[0].ID)
+	if err != nil {
+		return domain.Tenant{}, err
+	}
+	if !storeLive(rows[0], pages) {
 		return domain.Tenant{}, service.NotFound{What: "store"}
 	}
 	return rows[0], nil

@@ -1,5 +1,5 @@
 import type { User } from '@rc/types'
-import { ApiError, applyDelta, emptyState, mergeState } from '@rc/api'
+import { ApiError, applyDelta, emptyState, mergeState, type Delta } from '@rc/api'
 import {
   type AppState,
   type Envelope,
@@ -27,6 +27,7 @@ import { HTTP, api, tokenStore } from '../lib/api'
 interface StoreValue {
   state: AppState
   send: Dispatch<Envelope>
+  commit: (action: Envelope) => Promise<Delta | null>
   storageError: boolean
   /** False while the API loads the dataset for a signed-in user. */
   ready: boolean
@@ -62,7 +63,17 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(timer)
   }, [])
   const value = useMemo(
-    () => ({ state, send, storageError, ready: true, mergeUser: () => undefined }),
+    () => ({
+      state,
+      send,
+      commit: async (action: Envelope) => {
+        send(action)
+        return null
+      },
+      storageError,
+      ready: true,
+      mergeUser: () => undefined,
+    }),
     [state, storageError],
   )
   return <StoreContext value={value}>{children}</StoreContext>
@@ -123,13 +134,19 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
       })
   }, [])
 
+  const commit = useCallback(async ({ action }: Envelope) => {
+    const delta = await api.send(action)
+    setState((s) => applyDelta(s, delta))
+    return delta
+  }, [])
+
   const mergeUser = useCallback(
     (user: User) => setState((s) => ({ ...s, users: [...s.users.filter((u) => u.id !== user.id), user] })),
     [],
   )
   const value = useMemo(
-    () => ({ state, send, storageError: false, ready, mergeUser }),
-    [state, send, ready, mergeUser],
+    () => ({ state, send, commit, storageError: false, ready, mergeUser }),
+    [state, send, commit, ready, mergeUser],
   )
   return <StoreContext value={value}>{children}</StoreContext>
 }

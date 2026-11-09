@@ -36,6 +36,8 @@ export const PREVIEW_KEYS = [
   'products',
   'promotions',
   'paymentTypes',
+  'warehouses',
+  'stock',
 ] as const satisfies readonly (keyof AppState)[]
 
 export type PreviewState = Partial<Pick<AppState, (typeof PREVIEW_KEYS)[number]>>

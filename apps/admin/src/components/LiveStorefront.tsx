@@ -22,6 +22,8 @@ type PreviewState = Pick<
   | 'products'
   | 'promotions'
   | 'paymentTypes'
+  | 'warehouses'
+  | 'stock'
 >
 
 const replace = <T extends { id: string }>(list: readonly T[], item: T) =>
@@ -79,6 +81,8 @@ export function LiveStorefront({
       products: state.products,
       promotions: state.promotions,
       paymentTypes: state.paymentTypes,
+      warehouses: state.warehouses,
+      stock: state.stock,
     }),
     [state, tenant, brand, page],
   )
@@ -151,11 +155,7 @@ export function LiveStorefront({
           Open in new page
         </button>
       </div>
-      <div
-        ref={box}
-        className="rounded-2xl relative overflow-hidden bg-surface-2"
-        style={{ height }}
-      >
+      <div ref={box} className="rounded-2xl relative overflow-hidden bg-surface-2" style={{ height }}>
         <iframe
           ref={frame}
           key={src}

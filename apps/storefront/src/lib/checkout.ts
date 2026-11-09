@@ -7,6 +7,7 @@ import type {
   OrderEvent,
   PaymentType,
   StockLevel,
+  Tenant,
 } from '@rc/types'
 import type { CartTotals } from './cart'
 import type { Catalog } from './catalog'
@@ -52,6 +53,14 @@ export const DEFAULT_COURIER = COURIERS.filter((c) => c.fee > 0).reduce((cheapes
   courier.fee < cheapest.fee ? courier : cheapest,
 )
 export const CHEAPEST_FEE = DEFAULT_COURIER.fee
+
+export const couriersFor = (tenant: Tenant) =>
+  COURIERS.filter((c) => !tenant.shippingCouriers?.length || tenant.shippingCouriers.includes(c.id))
+
+export const defaultCourierFor = (tenant: Tenant) => {
+  const options = couriersFor(tenant)
+  return options.filter((c) => c.fee > 0).sort((a, b) => a.fee - b.fee)[0] ?? options[0] ?? DEFAULT_COURIER
+}
 
 export function courierFee(courier: CourierOption, freeShipping: boolean) {
   return freeShipping ? 0 : courier.fee

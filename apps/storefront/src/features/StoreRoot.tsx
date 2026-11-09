@@ -7,6 +7,7 @@ import { EMBED } from '../lib/embed'
 import { usePersisted } from '../lib/storage'
 import { useIsPhone } from '../lib/useIsPhone'
 import { useTitle } from '../lib/useTitle'
+import { HTTP } from '../lib/api'
 import { AgentChatProvider } from '../state/agentChat'
 import { ShopProvider, useShop } from '../state/shop'
 import { useStore } from '../state/store'
@@ -64,7 +65,13 @@ export function StoreRoot() {
   const { store } = useParams()
   const { state } = useStore()
   const tenant = state.tenants.find((t) => t.subdomain === store)
-  if (!tenant) return <UnknownStore />
+  if (
+    !tenant ||
+    (!EMBED &&
+      !HTTP &&
+      !state.pages.some((p) => p.tenantId === tenant.id && p.kind === 'home' && p.status === 'published'))
+  )
+    return <UnknownStore />
   return (
     <ShopProvider key={tenant.id} tenant={tenant}>
       <AgentChatProvider>

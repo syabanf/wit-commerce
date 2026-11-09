@@ -19,6 +19,7 @@ import { BrandLogo } from '../components/BrandLogo'
 import { brandVars } from '../lib/brand'
 import { useTitle } from '../lib/useTitle'
 import { useStore } from '../state/store'
+import { HTTP } from '../lib/api'
 import { THEMES } from '../themes/registry'
 
 const THEME_IDS = Object.keys(THEMES) as StorefrontTheme[]
@@ -135,7 +136,11 @@ const otherTheme = (t: Tenant): StorefrontTheme => THEME_IDS.find((id) => id !==
 export function BrandChooserPage() {
   const { state } = useStore()
   useTitle('Commerce OS · Storefront demo')
-  const tenants = state.tenants
+  const tenants = HTTP
+    ? state.tenants
+    : state.tenants.filter((t) =>
+        state.pages.some((p) => p.tenantId === t.id && p.kind === 'home' && p.status === 'published'),
+      )
   const using = (theme: StorefrontTheme) => tenants.filter((t) => t.brand.theme === theme)
 
   return (

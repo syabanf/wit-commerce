@@ -72,6 +72,8 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
   switch (action.type) {
     case 'tenants/create':
       return { method: 'POST', path: '/tenants', body: action.tenant }
+    case 'tenants/setup':
+      return { method: 'POST', path: '/tenants/setup', body: action.setup }
     case 'tenants/completeStep':
       return { method: 'POST', path: `/tenants/${action.tenantId}/onboarding/${action.step}` }
     case 'brand/update':

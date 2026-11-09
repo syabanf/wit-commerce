@@ -8,7 +8,7 @@ import { useAuth } from '../../auth/auth'
 import { paths } from '../../components/links'
 import { HTTP } from '../../lib/api'
 import { useStore } from '../../state/store'
-import { ONBOARDING_STEPS, isLive, remainingSteps, storeHost } from './lib'
+import { ONBOARDING_STEPS, storeHost } from './lib'
 
 interface TenantStats {
   revenue: number
@@ -48,8 +48,24 @@ export function TenantsPage() {
     return map
   }, [state.tenants, state.orders, state.salesDays, state.customers])
 
-  const live = tenants.filter(isLive).length
-  const inProgress = tenants.filter((t) => t.onboarding.length < ONBOARDING_STEPS.length).length
+  const setupSteps = (t: Tenant) => {
+    const done = new Set(t.onboarding)
+    const home = state.pages.find((p) => p.tenantId === t.id && p.kind === 'home')
+    if (home) {
+      done.add('template')
+      done.add('preview')
+    }
+    if (home?.status === 'published') done.add('publish')
+    else done.delete('publish')
+    if (state.products.some((p) => p.tenantId === t.id)) done.add('products')
+    if (state.users.some((u) => u.role !== 'platform_admin' && u.tenantIds.includes(t.id))) done.add('users')
+    if (state.paymentTypes.some((p) => p.tenantId === t.id && p.enabled)) done.add('payment')
+    return done
+  }
+  const live = tenants.filter((t) => setupSteps(t).has('publish')).length
+  const inProgress = tenants.filter((t) =>
+    ONBOARDING_STEPS.some((step) => !setupSteps(t).has(step.key)),
+  ).length
   const gmv = tenants.reduce((n, t) => n + (stats.get(t.id)?.revenue ?? 0), 0)
 
   const open = (t: Tenant) => {
@@ -113,8 +129,9 @@ export function TenantsPage() {
         {tenants.length ? (
           <div className="gap-4 md:grid-cols-2 xl:grid-cols-3 grid grid-cols-1">
             {tenants.map((t) => {
-              const done = ONBOARDING_STEPS.filter((s) => t.onboarding.includes(s.key)).length
-              const remaining = remainingSteps(t)
+              const completed = setupSteps(t)
+              const done = ONBOARDING_STEPS.filter((s) => completed.has(s.key)).length
+              const remaining = ONBOARDING_STEPS.filter((s) => !completed.has(s.key))
               const row = stats.get(t.id) ?? { revenue: 0, customers: 0 }
               return (
                 <Card key={t.id} className="p-5 flex flex-col">

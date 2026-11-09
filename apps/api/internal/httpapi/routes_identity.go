@@ -20,6 +20,7 @@ func (s *Server) staffRoutes(rt *router) {
 // tenantRoutes registers tenants, the brand guideline and the buying-agent policy.
 func (s *Server) tenantRoutes(rt *router) {
 	rt.add("POST", "/tenants", "tenants/create", "tenant.manage", "Create a tenant", body(s, s.svc.CreateTenant))
+	rt.add("POST", "/tenants/setup", "tenants/setup", "tenant.manage", "Create a tenant with its initial store data", body(s, s.svc.SetupTenant))
 	rt.add("POST", "/tenants/{id}/onboarding/{step}", "tenants/completeStep", "brand.manage", "Mark an onboarding step done", func(w http.ResponseWriter, r *http.Request) {
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
 			return s.svc.CompleteOnboardingStep(r.Context(), m, r.PathValue("id"), r.PathValue("step"))

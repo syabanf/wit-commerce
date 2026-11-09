@@ -71,7 +71,7 @@ export const storeHost = (t: Pick<Tenant, 'domain' | 'subdomain'>) =>
   t.domain ?? `${t.subdomain}.commerceos.id`
 
 export const WIZARD_PAYMENTS: PaymentMethod[] = ['qris', 'va', 'ewallet', 'credit_card', 'paylater', 'cod']
-export const WIZARD_COURIERS: Courier[] = ['jne', 'jnt', 'sicepat', 'gojek', 'grab', 'pickup']
+export const WIZARD_COURIERS: Courier[] = ['jne', 'sicepat', 'gojek', 'pickup']
 
 /** Uppercase code from the name, made unique against existing codes. */
 export function tenantCode(name: string, taken: readonly string[]) {

@@ -2,7 +2,7 @@ import { describePromotion } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { useMemo, useState } from 'react'
 import type { CartItem, CartTotals } from '../lib/cart'
-import { CHEAPEST_FEE } from '../lib/checkout'
+import { defaultCourierFor } from '../lib/checkout'
 import { isBuyable } from '../lib/catalog'
 import { useShop } from '../state/shop'
 
@@ -29,10 +29,10 @@ export interface CartView {
 }
 
 export function useCartView(): CartView {
-  const { catalog, cart, totals } = useShop()
+  const { catalog, cart, totals, tenant } = useShop()
   const [input, setInput] = useState(cart.cart.voucher ?? '')
   const [localError, setLocalError] = useState<string | null>(null)
-  const shipping = totals.freeShipping ? 0 : CHEAPEST_FEE
+  const shipping = totals.freeShipping ? 0 : defaultCourierFor(tenant).fee
   const crossSell = useMemo(() => {
     const inCart = new Set(totals.items.map((i) => i.product.id))
     const cats = new Set(totals.items.map((i) => i.product.categoryId))

@@ -4,7 +4,7 @@ import { AGENT_KIND_LABEL } from '@rc/types'
 import { SYNONYMS, describeIntent, type Intent, recommend, understand } from './assistant'
 import { type CartTotals, cartTotals } from './cart'
 import { type Catalog, categoryIdsUnder, fromPrice, isBuyable, variantAvailable } from './catalog'
-import { COURIERS, type CourierOption, DEFAULT_COURIER, courierFee } from './checkout'
+import { couriersFor, defaultCourierFor, type CourierOption, courierFee } from './checkout'
 
 // Agentic checkout, frontend only: a buying agent reads the shopper's mandate, works the real catalog,
 // stock, promotions and the store's agent policy, and returns every step it took. Pure functions; the
@@ -269,7 +269,7 @@ export function planAgentRun(
     trials: [],
     shippingOptions: [],
     negotiation: { allowed: false, askedPct: 0, grantedPct: 0, amount: 0, note: '' },
-    courier: DEFAULT_COURIER,
+    courier: defaultCourierFor(catalog.tenant),
     shipping: 0,
     total: 0,
     overBudget: false,
@@ -376,11 +376,15 @@ export function planAgentRun(
         : 'The store agent declined: its agent discount limit is 0%.'
       : `${catalog.tenant.name} does not negotiate with agents. List price stands.`,
   }
-  const shippingOptions = COURIERS.filter((c) => !c.jakartaOnly || customer.city === 'Jakarta').map((c) => ({
-    courier: c,
-    fee: courierFee(c, best.totals.freeShipping),
-  }))
-  const courier = shippingOptions.find((o) => o.courier.id === input.courierId)?.courier ?? DEFAULT_COURIER
+  const shippingOptions = couriersFor(catalog.tenant)
+    .filter((c) => !c.jakartaOnly || customer.city === 'Jakarta')
+    .map((c) => ({
+      courier: c,
+      fee: courierFee(c, best.totals.freeShipping),
+    }))
+  const courier =
+    shippingOptions.find((o) => o.courier.id === input.courierId)?.courier ??
+    defaultCourierFor(catalog.tenant)
   const shipping = courierFee(courier, best.totals.freeShipping)
   const total = Math.max(0, best.payable - negotiated + shipping)
   const overBudget = !!budget && total > budget

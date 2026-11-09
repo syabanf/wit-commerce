@@ -88,6 +88,8 @@ export interface Tenant {
   createdAt: IsoDate
   brand: BrandConfig
   loyalty: LoyaltyConfig
+  /** Couriers available to shoppers. Older tenants without this field offer every courier. */
+  shippingCouriers?: Courier[]
   /** Onboarding steps the tenant has finished, in order. */
   onboarding: string[]
 }

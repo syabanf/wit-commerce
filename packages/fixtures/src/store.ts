@@ -41,7 +41,11 @@ import type {
   TrafficDay,
   User,
   Warehouse,
-  CustomerMetricsRow, ProductDay, SalesDay, SellerBuyer } from '@rc/types'
+  CustomerMetricsRow,
+  ProductDay,
+  SalesDay,
+  SellerBuyer,
+} from '@rc/types'
 import { ORDER_STATUS_LABEL } from '@rc/types'
 import { DAY, HOUR, toIso, toMs } from './dates'
 import {
@@ -108,8 +112,20 @@ export interface AppState {
   searchTerms: SearchTerm[]
 }
 
+/** The initial store data created together with a tenant. */
+export interface TenantSetup {
+  tenant: Tenant
+  page: Page
+  categories: Category[]
+  products: Product[]
+  warehouse: Warehouse
+  stock: StockLevel[]
+  paymentTypes: PaymentType[]
+}
+
 export type AppAction =
   | { type: 'tenants/create'; tenant: Tenant }
+  | { type: 'tenants/setup'; setup: TenantSetup }
   | { type: 'tenants/completeStep'; tenantId: string; step: string }
   | { type: 'brand/update'; tenantId: string; brand: BrandConfig }
   | { type: 'brand/toggleLock'; tenantId: string; key: BrandLockKey }
@@ -497,6 +513,19 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
   switch (action.type) {
     case 'tenants/create':
       return { ...state, tenants: [...state.tenants, action.tenant] }
+    case 'tenants/setup': {
+      const { tenant, page, categories, products, warehouse, stock, paymentTypes } = action.setup
+      return {
+        ...state,
+        tenants: [...state.tenants, tenant],
+        pages: [...state.pages, page],
+        categories: [...state.categories, ...categories],
+        products: [...state.products, ...products],
+        warehouses: [...state.warehouses, warehouse],
+        stock: [...state.stock, ...stock],
+        paymentTypes: [...state.paymentTypes, ...paymentTypes],
+      }
+    }
     case 'tenants/completeStep':
       return {
         ...state,

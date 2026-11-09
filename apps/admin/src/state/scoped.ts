@@ -1,4 +1,12 @@
-import { type AppAction, nowIso, nowMs, segmentContextFromRows, stockByProduct, deriveFacts, type Facts } from '@rc/fixtures'
+import {
+  type AppAction,
+  nowIso,
+  nowMs,
+  segmentContextFromRows,
+  stockByProduct,
+  deriveFacts,
+  type Facts,
+} from '@rc/fixtures'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/auth'
 import { useStore } from './store'
@@ -6,21 +14,25 @@ import { HTTP } from '../lib/api'
 
 /** The store plus a dispatch that stamps the signed-in user and the app clock on every action. */
 export function useAppState() {
-  const { state, send } = useStore()
+  const { state, send, commit } = useStore()
   const { user } = useAuth()
   const by = user?.id ?? 'system'
   const dispatch = useCallback(
     (action: AppAction) => send({ action, meta: { by, at: nowIso() } }),
     [send, by],
   )
-  return { state, dispatch }
+  const dispatchAsync = useCallback(
+    (action: AppAction) => commit({ action, meta: { by, at: nowIso() } }),
+    [commit, by],
+  )
+  return { state, dispatch, dispatchAsync }
 }
 
 const byId = <T extends { id: string }>(list: readonly T[]) => new Map(list.map((x) => [x.id, x]))
 
 /** Everything a page needs for the current tenant, memoised on the store state. */
 export function useScoped() {
-  const { state, dispatch } = useAppState()
+  const { state, dispatch, dispatchAsync } = useAppState()
   const { user, tenant } = useAuth()
   if (!user || !tenant) throw new Error('useScoped needs a signed-in user')
   const tenantId = tenant.id
@@ -74,6 +86,7 @@ export function useScoped() {
       tenantId,
       state,
       dispatch,
+      dispatchAsync,
       products,
       orders,
       customers,
@@ -128,7 +141,7 @@ export function useScoped() {
       segmentName: (id: string | null | undefined) =>
         id ? (maps.segment.get(id)?.name ?? 'Removed segment') : 'No audience',
     }
-  }, [state, tenantId, tenant, user, dispatch])
+  }, [state, tenantId, tenant, user, dispatch, dispatchAsync])
 }
 
 export type Scoped = ReturnType<typeof useScoped>

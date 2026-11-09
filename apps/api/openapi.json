@@ -2448,6 +2448,12 @@
           "plan": {
             "type": "string"
           },
+          "shippingCouriers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "subdomain": {
             "type": "string"
           }
@@ -2465,6 +2471,53 @@
           "onboarding",
           "plan",
           "subdomain"
+        ],
+        "type": "object"
+      },
+      "TenantSetup": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "paymentTypes": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentType"
+            },
+            "type": "array"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "type": "array"
+          },
+          "stock": {
+            "items": {
+              "$ref": "#/components/schemas/StockLevel"
+            },
+            "type": "array"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/Tenant"
+          },
+          "warehouse": {
+            "$ref": "#/components/schemas/Warehouse"
+          }
+        },
+        "required": [
+          "categories",
+          "page",
+          "paymentTypes",
+          "products",
+          "stock",
+          "tenant",
+          "warehouse"
         ],
         "type": "object"
       },
@@ -13244,6 +13297,95 @@
           "Store"
         ],
         "x-action": "tenants/create",
+        "x-required-permission": "tenant.manage"
+      }
+    },
+    "/tenants/setup": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postTenantsSetup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantSetup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Create a tenant with its initial store data",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "tenants/setup",
         "x-required-permission": "tenant.manage"
       }
     },

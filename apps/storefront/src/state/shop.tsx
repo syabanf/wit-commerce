@@ -5,6 +5,7 @@ import { type ReactNode, createContext, useContext, useEffect, useMemo, useState
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
 import { ApiError, type Delta, type PaymentLink, type ShopperResponse } from '@rc/api'
 import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
+import { EMBED } from '../lib/embed'
 import { type Catalog, buildCatalog } from '../lib/catalog'
 import { usePersisted } from '../lib/storage'
 import { useStore } from './store'
@@ -74,7 +75,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
   const now = useNow()
   // API mode: this store's dataset and event stream, and the token requests carry.
   useEffect(() => {
-    if (!HTTP) return
+    if (!HTTP || EMBED) return
     setCurrentTenant(tenant.id)
     const stop = loadStore(tenant.subdomain, tenant.id)
     return () => {

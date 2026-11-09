@@ -1,4 +1,13 @@
-import { BRAND_FONT, DEFAULT_BRAND_COLORS, fmtIdr, newId, nowIso, plural, slugify } from '@rc/fixtures'
+import {
+  BRAND_FONT,
+  DEFAULT_BRAND_COLORS,
+  fmtIdr,
+  newId,
+  nowIso,
+  plural,
+  slugify,
+  type TenantSetup,
+} from '@rc/fixtures'
 import {
   BRAND_PERSONALITY_LABEL,
   type BrandConfig,
@@ -11,6 +20,10 @@ import {
   type Industry,
   PAYMENT_METHOD_LABEL,
   type PageSection,
+  type Product,
+  type Category,
+  type StockLevel,
+  type PaymentType,
   type PaymentMethod,
   SECTION_KIND_LABEL,
   type SectionKind,
@@ -36,7 +49,6 @@ import {
   SegmentedControl,
   Steps,
   Switch,
-  Textarea,
   cn,
   toast,
 } from '@rc/ui'
@@ -46,22 +58,14 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { StorefrontPreview } from '../../components/StorefrontPreview'
 import { useScoped } from '../../state/scoped'
-import {
-  ONBOARDING_STEPS,
-  SUBDOMAIN_PATTERN,
-  WIZARD_COURIERS,
-  WIZARD_PAYMENTS,
-  invalidEmails,
-  parseEmails,
-  tenantCode,
-} from './lib'
+import { ONBOARDING_STEPS, SUBDOMAIN_PATTERN, WIZARD_COURIERS, WIZARD_PAYMENTS, tenantCode } from './lib'
 
 const STEPS = [
   { key: 'business', label: 'Business' },
   { key: 'brand', label: 'Brand' },
   { key: 'template', label: 'Template' },
   { key: 'commerce', label: 'Payment & shipping' },
-  { key: 'products', label: 'Products & team' },
+  { key: 'products', label: 'Products' },
   { key: 'review', label: 'Review & publish' },
 ] as const
 type StepKey = (typeof STEPS)[number]['key']
@@ -70,8 +74,8 @@ type Catalog = 'csv' | 'sample' | 'empty'
 const CATALOG: { value: Catalog; title: string; body: string; icon: ReactNode }[] = [
   {
     value: 'csv',
-    title: 'Import a CSV later',
-    body: 'Upload the catalog from Products once the tenant exists.',
+    title: 'Add products later',
+    body: 'Create products one by one from Catalog after setup.',
     icon: <FileSpreadsheet />,
   },
   {
@@ -103,7 +107,6 @@ interface Draft {
   couriers: Courier[]
   freeShippingMin: string
   catalog: Catalog | null
-  invites: string
   publish: boolean
 }
 
@@ -126,7 +129,6 @@ const INITIAL: Draft = {
   couriers: ['jne', 'sicepat'],
   freeShippingMin: '500000',
   catalog: null,
-  invites: '',
   publish: false,
 }
 
@@ -169,16 +171,17 @@ function Wizard() {
   const [step, setStep] = useState(0)
   const [tried, setTried] = useState<ReadonlySet<StepKey>>(new Set())
   const [created, setCreated] = useState<Tenant | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [device, setDevice] = useState<Device>('desktop')
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }))
   const storeTemplates = useMemo(() => s.templates.filter((t) => t.scope === 'store'), [s.templates])
   const template = storeTemplates.find((t) => t.id === draft.templateId) ?? null
   const takenSubdomains = useMemo(() => new Set(s.state.tenants.map((t) => t.subdomain)), [s.state.tenants])
-  const emails = parseEmails(draft.invites)
 
   const stepKey = STEPS[step]!.key
-  const errors = stepErrors(stepKey, draft, takenSubdomains, emails)
+  const errors = stepErrors(stepKey, draft, takenSubdomains)
   const showErrors = tried.has(stepKey)
   const err = (field: string) => (showErrors ? errors[field] : undefined)
   const errorCount = Object.keys(errors).length
@@ -220,10 +223,10 @@ function Wizard() {
     finish()
   }
 
-  const finish = () => {
+  const finish = async () => {
+    if (saving || !template) return
     const completed = ['business', 'brand', 'template', 'commerce', 'payment', 'shipping']
     if (draft.catalog === 'sample') completed.push('products')
-    if (emails.length) completed.push('users')
     completed.push('preview')
     if (draft.publish) completed.push('publish')
     const tenant: Tenant = {
@@ -245,14 +248,23 @@ function Wizard() {
         thresholds: { silver: 1_500_000, gold: 5_000_000, platinum: 10_000_000 },
         freeShippingMin: Number(draft.freeShippingMin),
       },
+      shippingCouriers: draft.couriers,
       onboarding: ONBOARDING_STEPS.map((x) => x.key).filter((k) => completed.includes(k)),
     }
-    s.dispatch({ type: 'tenants/create', tenant })
-    toast('Tenant created', {
-      tone: 'success',
-      description: `${tenant.name} · ${tenant.subdomain}.commerceos.id`,
-    })
-    setCreated(tenant)
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await s.dispatchAsync({ type: 'tenants/setup', setup: buildSetup(tenant, template, draft, s.user.id) })
+      toast('Tenant created', {
+        tone: 'success',
+        description: `${tenant.name} · ${tenant.subdomain}.commerceos.id`,
+      })
+      setCreated(tenant)
+    } catch (err) {
+      setSaveError((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (created) {
@@ -274,7 +286,6 @@ function Wizard() {
             {remaining
               ? `${plural(remaining, 'setup step')} left, shown on the tenant card.`
               : 'Every setup step is done.'}
-            {emails.length ? ` Invites went to ${plural(emails.length, 'person', 'people')}.` : ''}
           </p>
           <div className="mt-6 gap-2 flex flex-wrap">
             <Button
@@ -339,7 +350,7 @@ function Wizard() {
                   label="Industry"
                   required
                   error={err('industry')}
-                  hint="Picks starting categories and sample products."
+                  hint="Groups the starter catalog."
                 >
                   <NativeSelect
                     value={draft.industry}
@@ -512,8 +523,8 @@ function Wizard() {
 
           {stepKey === 'products' && (
             <StepBody
-              title="Products and team"
-              lead="Decide how the catalog starts and who joins the console."
+              title="Products"
+              lead="Decide how the catalog starts. Team members can be invited after setup."
             >
               <div
                 className="gap-3 md:grid-cols-3 grid grid-cols-1"
@@ -542,22 +553,9 @@ function Wizard() {
                 })}
               </div>
               {err('catalog') && <p className="mt-2 text-xs text-danger">{err('catalog')}</p>}
-              <FormField
-                label="Invite the team"
-                className="mt-5"
-                error={err('invites')}
-                hint={
-                  emails.length
-                    ? `${plural(emails.length, 'invite')} go out as tenant admins once the tenant exists.`
-                    : 'Optional. One email per line or separated by commas.'
-                }
-              >
-                <Textarea
-                  value={draft.invites}
-                  placeholder={'andi@brand.co.id\nmaya@brand.co.id'}
-                  onChange={(e) => set('invites', e.target.value)}
-                />
-              </FormField>
+              <p className="mt-5 text-sm text-muted">
+                Invite teammates from Settings → Users & roles after creating the tenant.
+              </p>
             </StepBody>
           )}
 
@@ -600,10 +598,6 @@ function Wizard() {
                       {
                         label: 'Catalog',
                         value: CATALOG.find((c) => c.value === draft.catalog)?.title ?? 'None',
-                      },
-                      {
-                        label: 'Invites',
-                        value: emails.length ? plural(emails.length, 'person', 'people') : 'None',
                       },
                     ]}
                   />
@@ -660,12 +654,19 @@ function Wizard() {
             <span />
           )}
           <div className="gap-3 flex flex-wrap items-center justify-end">
+            {saveError && (
+              <p role="alert" className="text-sm text-danger">
+                {saveError}
+              </p>
+            )}
             {showErrors && errorCount > 0 && (
               <p className="text-sm text-danger">
                 {plural(errorCount, 'field needs', 'fields need')} attention.
               </p>
             )}
-            <Button onClick={next}>{step === STEPS.length - 1 ? 'Create tenant' : 'Continue'}</Button>
+            <Button onClick={next} disabled={saving}>
+              {saving ? 'Creating tenant…' : step === STEPS.length - 1 ? 'Create tenant' : 'Continue'}
+            </Button>
           </div>
         </div>
       </div>
@@ -675,12 +676,136 @@ function Wizard() {
 
 type Errors = Partial<Record<string, string>>
 
-function stepErrors(
-  key: StepKey,
-  draft: Draft,
-  takenSubdomains: ReadonlySet<string>,
-  emails: readonly string[],
-): Errors {
+const SAMPLE_NAMES: Record<Industry, string[]> = {
+  sport: ['Running shoes', 'Training shirt', 'Sports bottle', 'Running shorts', 'Gym bag', 'Sports cap'],
+  beauty: ['Face cleanser', 'Moisturiser', 'Sunscreen', 'Body lotion', 'Lip balm', 'Face serum'],
+  industrial: ['Safety gloves', 'Work helmet', 'Tool set', 'Safety glasses', 'Work boots', 'Cable reel'],
+  fnb: ['Coffee beans', 'Tea blend', 'Snack box', 'Fruit drink', 'Chocolate bar', 'Gift hamper'],
+  fashion: ['Everyday shirt', 'Canvas tote', 'Classic trousers', 'Light jacket', 'Cotton cap', 'Scarf'],
+  electronics: [
+    'Charging cable',
+    'Power adapter',
+    'Desk lamp',
+    'Wireless mouse',
+    'Phone stand',
+    'Headphones',
+  ],
+}
+
+function buildSetup(tenant: Tenant, template: Template, draft: Draft, by: string): TenantSetup {
+  const at = nowIso()
+  const category: Category = {
+    id: newId('cat'),
+    tenantId: tenant.id,
+    name: INDUSTRY_LABEL[tenant.industry],
+    description: 'Starter catalog. Edit or replace these products before launch.',
+    parentId: null,
+  }
+  const warehouse = {
+    id: newId('wh'),
+    tenantId: tenant.id,
+    code: 'MAIN',
+    name: 'Main warehouse',
+    city: 'Jakarta',
+  }
+  const products: Product[] =
+    draft.catalog === 'sample'
+      ? SAMPLE_NAMES[tenant.industry].map((name, i) => {
+          const price = (i + 1) * 50_000
+          return {
+            id: newId('prd'),
+            tenantId: tenant.id,
+            code: `${tenant.code}-${String(i + 1).padStart(3, '0')}`,
+            name: `Sample ${name}`,
+            categoryId: category.id,
+            type: 'physical',
+            status: 'active',
+            price,
+            compareAt: null,
+            memberPrice: null,
+            cost: 0,
+            tags: ['sample'],
+            options: [],
+            attributes: {},
+            description: 'Sample product. Replace the name, price and description before launch.',
+            bestFor: '',
+            variants: [
+              {
+                id: newId('var'),
+                sku: `${tenant.code}-${String(i + 1).padStart(3, '0')}`,
+                name: 'Standard',
+                optionValues: {},
+                price,
+                barcode: '',
+              },
+            ],
+            rating: 0,
+            reviewCount: 0,
+            views30d: 0,
+            assisted: false,
+            createdAt: at,
+            publishAt: null,
+          }
+        })
+      : []
+  const stock: StockLevel[] = products.map((p) => ({
+    id: newId('stk'),
+    tenantId: tenant.id,
+    productId: p.id,
+    variantId: p.variants[0]!.id,
+    warehouseId: warehouse.id,
+    onHand: 10,
+    reserved: 0,
+    safety: 0,
+  }))
+  const sections: PageSection[] = template.sections.map((sec) => ({
+    id: newId('sec'),
+    kind: sec.kind,
+    rule: sec.rule,
+    hidden: false,
+    headline: placeholderHeadline(sec.kind, tenant.name, draft.tagline),
+    body: sec.kind === 'hero' ? 'Explore our products.' : '',
+    productIds: sec.kind === 'featured_product' ? products.slice(0, 4).map((p) => p.id) : [],
+    ctaLabel: sec.kind === 'hero' ? 'Shop now' : '',
+  }))
+  const page = {
+    id: newId('page'),
+    tenantId: tenant.id,
+    title: 'Homepage',
+    slug: '/',
+    kind: 'home' as const,
+    templateId: template.id,
+    sellerId: null,
+    status: draft.publish ? ('published' as const) : ('draft' as const),
+    sections,
+    seo: { title: `${tenant.name} · Home`, description: draft.tagline.trim() },
+    updatedAt: at,
+    updatedBy: by,
+    publishedAt: draft.publish ? at : null,
+    scheduledAt: null,
+    revisions: [
+      { id: newId('rev'), at, by, note: 'Created from onboarding', sections, templateId: template.id },
+    ],
+    views30d: 0,
+  }
+  const paymentTypes: PaymentType[] = draft.payments.map((method, sort) => ({
+    id: newId('pay'),
+    tenantId: tenant.id,
+    name: PAYMENT_METHOD_LABEL[method],
+    method,
+    provider: 'Manual',
+    enabled: true,
+    feePercent: 0,
+    feeFixed: 0,
+    minAmount: 0,
+    maxAmount: null,
+    instructions: 'Follow the payment instructions shown after placing the order.',
+    sort,
+  }))
+  return { tenant, page, categories: [category], products, warehouse, stock, paymentTypes }
+}
+
+function stepErrors(key: StepKey, draft: Draft, takenSubdomains: ReadonlySet<string>): Errors {
   const e: Errors = {}
   if (key === 'business') {
     if (!draft.name.trim()) e.name = 'Enter the business name.'
@@ -704,8 +829,6 @@ function stepErrors(
   }
   if (key === 'products') {
     if (!draft.catalog) e.catalog = 'Choose how the catalog starts.'
-    const bad = invalidEmails(emails)
-    if (bad.length) e.invites = `Check ${bad.join(', ')}: each invite needs a full email address.`
   }
   return e
 }

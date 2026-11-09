@@ -30,8 +30,8 @@ import { cartTotals } from '../lib/cart'
 import {
   DEMO_PAYMENT_NOTE,
   CITIES,
-  COURIERS,
-  DEFAULT_COURIER,
+  couriersFor,
+  defaultCourierFor,
   EMAIL_PATTERN,
   PHONE_PATTERN,
   buildOrder,
@@ -239,7 +239,9 @@ export function CheckoutPage() {
     customer && (CITIES as readonly string[]).includes(customer.city) ? customer.city : '',
   )
   const [address, setAddress] = useState('')
-  const [courierId, setCourierId] = useState<Courier>(DEFAULT_COURIER.id)
+  const availableCouriers = couriersFor(tenant)
+  const firstCourier = defaultCourierFor(tenant)
+  const [courierId, setCourierId] = useState<Courier>(firstCourier.id)
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [qrisPaid, setQrisPaid] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
@@ -256,7 +258,7 @@ export function CheckoutPage() {
     () => cartTotals(catalog, cart.cart, referral?.id ?? null, nowMs(), paymentId),
     [catalog, cart.cart, referral, paymentId],
   )
-  const courier = COURIERS.find((c) => c.id === courierId) ?? COURIERS[0]!
+  const courier = availableCouriers.find((c) => c.id === courierId) ?? firstCourier
   const shipping = courierFee(courier, totals.freeShipping)
   const total = Math.max(0, totals.subtotal - totals.discount + shipping)
   const payable = availablePaymentTypes(
@@ -538,8 +540,7 @@ export function CheckoutPage() {
                     value={city}
                     onChange={(e) => {
                       setCity(e.target.value)
-                      if (e.target.value !== 'Jakarta' && courierId === 'gojek')
-                        setCourierId(DEFAULT_COURIER.id)
+                      if (e.target.value !== 'Jakarta' && courierId === 'gojek') setCourierId(firstCourier.id)
                     }}
                     className={inputClass}
                     {...describedBy(`${uid}-city`, errors.city)}
@@ -571,7 +572,7 @@ export function CheckoutPage() {
               </div>
               <fieldset className="space-y-2">
                 <legend className="mb-2 text-sm font-semibold">Courier</legend>
-                {COURIERS.map((c) => {
+                {availableCouriers.map((c) => {
                   const fee = courierFee(c, totals.freeShipping)
                   const blocked = !!c.jakartaOnly && city !== 'Jakarta'
                   return (

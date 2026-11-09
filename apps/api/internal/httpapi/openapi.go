@@ -127,6 +127,7 @@ var routeDocs = map[string]routeDoc{
 	"POST /shop/{store}/register":              {body: registerInput{}, response: shopperResponse{}},
 	"POST /shop/{store}/password":              {body: changePasswordInput{}, response: tokenResponse{}},
 	"POST /tenants":                            {body: domain.Tenant{}},
+	"POST /tenants/setup":                      {body: service.TenantSetup{}},
 	"PUT /tenants/{id}/brand":                  {body: domain.BrandConfig{}},
 	"PUT /tenants/{id}/agent-policy":           {body: domain.AgentPolicy{}},
 	"PUT /products/{id}":                       {body: domain.Product{}},

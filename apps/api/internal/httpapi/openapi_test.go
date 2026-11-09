@@ -58,7 +58,7 @@ func TestEveryWriteDocumentsItsBody(t *testing.T) {
 		}
 	}
 	// Every reducer action except the job timer (hidden from the contract) is in the document.
-	if want := 55; len(actions) != want {
+	if want := 56; len(actions) != want {
 		t.Errorf("documented %d actions, want %d", len(actions), want)
 	}
 }

@@ -45,18 +45,19 @@ type LoyaltyConfig struct {
 }
 
 type Tenant struct {
-	ID             string        `json:"id"`
-	Code           string        `json:"code"`
-	Name           string        `json:"name"`
-	Industry       string        `json:"industry"`
-	Plan           string        `json:"plan"`
-	Subdomain      string        `json:"subdomain"`
-	Domain         *string       `json:"domain"`
-	DomainVerified bool          `json:"domainVerified"`
-	CreatedAt      IsoDate       `json:"createdAt"`
-	Brand          BrandConfig   `json:"brand"`
-	Loyalty        LoyaltyConfig `json:"loyalty"`
-	Onboarding     []string      `json:"onboarding"`
+	ID               string        `json:"id"`
+	Code             string        `json:"code"`
+	Name             string        `json:"name"`
+	Industry         string        `json:"industry"`
+	Plan             string        `json:"plan"`
+	Subdomain        string        `json:"subdomain"`
+	Domain           *string       `json:"domain"`
+	DomainVerified   bool          `json:"domainVerified"`
+	CreatedAt        IsoDate       `json:"createdAt"`
+	Brand            BrandConfig   `json:"brand"`
+	Loyalty          LoyaltyConfig `json:"loyalty"`
+	ShippingCouriers []string      `json:"shippingCouriers,omitempty"`
+	Onboarding       []string      `json:"onboarding"`
 }
 
 type User struct {
