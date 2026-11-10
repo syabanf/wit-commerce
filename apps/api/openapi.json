@@ -376,6 +376,10 @@
             },
             "type": "object"
           },
+          "logoUrl": {
+            "nullable": true,
+            "type": "string"
+          },
           "personality": {
             "type": "string"
           },
@@ -1239,6 +1243,37 @@
         ],
         "type": "object"
       },
+      "MediaUpload": {
+        "properties": {
+          "height": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "height",
+          "id",
+          "mime",
+          "size",
+          "url",
+          "width"
+        ],
+        "type": "object"
+      },
       "ModifierGroup": {
         "properties": {
           "id": {
@@ -1683,6 +1718,10 @@
           "body": {
             "type": "string"
           },
+          "ctaHref": {
+            "nullable": true,
+            "type": "string"
+          },
           "ctaLabel": {
             "type": "string"
           },
@@ -1695,8 +1734,22 @@
           "id": {
             "type": "string"
           },
+          "imageUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PageSectionItem"
+            },
+            "type": "array"
+          },
           "kind": {
             "type": "string"
+          },
+          "order": {
+            "nullable": true,
+            "type": "integer"
           },
           "productIds": {
             "items": {
@@ -1717,6 +1770,21 @@
           "kind",
           "productIds",
           "rule"
+        ],
+        "type": "object"
+      },
+      "PageSectionItem": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "title"
         ],
         "type": "object"
       },
@@ -1928,6 +1996,10 @@
             "type": "string"
           },
           "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "nullable": true,
             "type": "string"
           },
           "memberPrice": {
@@ -2409,6 +2481,27 @@
         ],
         "type": "object"
       },
+      "SubdomainCheck": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "suggestions"
+        ],
+        "type": "object"
+      },
       "Tenant": {
         "properties": {
           "brand": {
@@ -2453,6 +2546,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "source": {
+            "type": "string"
           },
           "subdomain": {
             "type": "string"
@@ -2596,6 +2692,10 @@
             "type": "boolean"
           },
           "email": {
+            "type": "string"
+          },
+          "emailVerifiedAt": {
+            "nullable": true,
             "type": "string"
           },
           "id": {
@@ -2994,6 +3094,21 @@
           "expiresAt",
           "sellers",
           "token",
+          "user"
+        ],
+        "type": "object"
+      },
+      "meResponse": {
+        "properties": {
+          "emailOn": {
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "emailOn",
           "user"
         ],
         "type": "object"
@@ -3498,6 +3613,45 @@
           "customer",
           "expiresAt",
           "token"
+        ],
+        "type": "object"
+      },
+      "signUpInput": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "industry": {
+            "type": "string"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "website": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "industry",
+          "ownerName",
+          "password",
+          "storeName",
+          "subdomain",
+          "templateId",
+          "website"
         ],
         "type": "object"
       },
@@ -4166,7 +4320,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/meResponse"
                 }
               }
             },
@@ -4378,6 +4532,207 @@
         },
         "security": [],
         "summary": "Choose a new password with a link from email",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "operationId": "postAuthSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/signUpInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/loginResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Create a store and its owner account, and sign the owner in",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "operationId": "postAuthVerify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/verifyInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Confirm the signed-in owner's email with a link from email",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
+    "/auth/verify/resend": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postAuthVerifyResend",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Email the signed-in person a new link to confirm their email",
         "tags": [
           "Platform"
         ]
@@ -7463,6 +7818,125 @@
         "x-required-scope": "leads:write"
       }
     },
+    "/media": {
+      "post": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "postMedia",
+        "parameters": [
+          {
+            "description": "The brand the image belongs to.",
+            "in": "query",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "PNG, JPEG or WebP, at most 5 MB. SVG is refused.",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUpload"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Upload a PNG, JPEG or WebP image of at most 5 MB (store.manage or product.manage)",
+        "tags": [
+          "Media"
+        ],
+        "x-required-permission": "store.manage",
+        "x-required-scope": "store:write"
+      }
+    },
     "/modifier-stock/receive": {
       "post": {
         "description": "API keys need the scope `inventory:write`.",
@@ -9095,11 +9569,110 @@
             "session": []
           }
         ],
-        "summary": "Save page content as a new revision",
+        "summary": "Save page content: a live page keeps it as unpublished changes, any other page takes it as a new revision",
         "tags": [
           "Store"
         ],
         "x-action": "pages/save",
+        "x-required-permission": "store.manage",
+        "x-required-scope": "store:write"
+      }
+    },
+    "/pages/{id}/discard-draft": {
+      "post": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "postPagesIdDiscardDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Throw away a page's unpublished changes",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "pages/discardDraft",
         "x-required-permission": "store.manage",
         "x-required-scope": "store:write"
       }
@@ -12854,6 +13427,58 @@
         "summary": "Email the signed-in shopper a link that proves their inbox",
         "tags": [
           "Storefront"
+        ]
+      }
+    },
+    "/signup/subdomain": {
+      "get": {
+        "operationId": "getSignupSubdomain",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubdomainCheck"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Whether a store address is free, with three free ones when it is not",
+        "tags": [
+          "Platform"
         ]
       }
     },

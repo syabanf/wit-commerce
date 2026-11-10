@@ -60,16 +60,17 @@ func (s *Server) paymentRoutes(rt *router) {
 	rt.mux.HandleFunc("GET "+prefix+"/orders/{id}/payment", s.reader("orders:read", s.orderPayment))
 }
 
-// orderPageURL is where the provider sends the shopper back: the order page of the storefront.
-// Without PUBLIC_URL it trusts only an allowed Origin, so the link cannot point anywhere else.
-func (s *Server) orderPageURL(r *http.Request, subdomain, orderID string) string {
-	path := "/" + subdomain + "/order/" + url.PathEscape(orderID)
-	if s.PublicURL != "" {
-		return s.PublicURL + "/shop" + path
+// orderPageURL is where the provider sends the shopper back: the order page of the storefront, on the
+// store's own host when STORE_ROOT_DOMAIN is set. Without it or PUBLIC_URL it trusts only an allowed
+// Origin, so the link cannot point anywhere else.
+func (s *Server) orderPageURL(r *http.Request, tenant domain.Tenant, orderID string) string {
+	path := "/order/" + url.PathEscape(orderID)
+	if s.StoreRootDomain != "" || s.PublicURL != "" {
+		return domain.StoreLink(tenant, s.StoreRootDomain, s.PublicURL) + path
 	}
 	origin := strings.TrimRight(r.Header.Get("Origin"), "/")
 	if origin != "" && slices.ContainsFunc(s.AllowedOrigins, func(o string) bool { return strings.TrimRight(o, "/") == origin }) {
-		return origin + path
+		return origin + "/" + tenant.Subdomain + path
 	}
 	return ""
 }
@@ -77,7 +78,7 @@ func (s *Server) orderPageURL(r *http.Request, subdomain, orderID string) string
 // startPayment opens the provider's payment for a placed order and adds it to the answer. A failure
 // leaves the order placed and waiting for payment, and says so.
 func (s *Server) startPayment(r *http.Request, tenant domain.Tenant, orderID string, out map[string]any) {
-	p, err := s.svc.StartPayment(r.Context(), orderID, s.orderPageURL(r, tenant.Subdomain, orderID))
+	p, err := s.svc.StartPayment(r.Context(), orderID, s.orderPageURL(r, tenant, orderID))
 	if err != nil {
 		s.Log.Error("payment did not start", "orderId", orderID, "err", err, "requestId", requestIDOf(r.Context()))
 		out["paymentError"] = "Your order is in, but the payment page did not open. The store will contact you."

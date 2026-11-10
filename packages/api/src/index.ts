@@ -1,5 +1,5 @@
 import type { AppAction, AppState } from '@rc/fixtures'
-import type { Customer, Order, Seller, Tenant, User, CustomerEvent } from '@rc/types'
+import type { Customer, Order, Seller, Tenant, User, CustomerEvent, Industry } from '@rc/types'
 
 // The HTTP client for apps/api. Every reducer action maps to one request (actionRequest), every
 // answer is a Delta the app lays over its AppState (applyDelta), and the event stream delivers the
@@ -218,6 +218,8 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       return { method: 'POST', path: `/pages/${action.id}/unpublish` }
     case 'pages/rollback':
       return { method: 'POST', path: `/pages/${action.id}/rollback`, body: { revisionId: action.revisionId } }
+    case 'pages/discardDraft':
+      return { method: 'POST', path: `/pages/${action.id}/discard-draft` }
     case 'sellers/save':
       return { method: 'PUT', path: `/sellers/${action.seller.id}`, body: action.seller }
     case 'sellers/setTemplate':
@@ -283,6 +285,7 @@ export const emptyState = (): AppState => ({
   sellers: [],
   templates: [],
   pages: [],
+  pageDrafts: [],
   categories: [],
   attributes: [],
   modifiers: [],
@@ -338,6 +341,25 @@ export interface DemoAccounts {
   users: User[]
   tenants: Tenant[]
   sellers: Seller[]
+}
+
+export interface SignUpInput {
+  storeName: string
+  subdomain: string
+  industry: Industry
+  templateId: string
+  ownerName: string
+  email: string
+  password: string
+  /** Stays empty: a field people never see, so only a bot fills it. */
+  website: string
+}
+
+export interface SubdomainCheck {
+  available: boolean
+  reason?: string
+  /** Free addresses close to the one asked for, when it is not available. */
+  suggestions: string[]
 }
 
 export interface StateResponse {
@@ -635,20 +657,31 @@ export interface MeResponse {
   emailOn: boolean
 }
 
+/** An uploaded image. url is relative (/media/...) unless the API sets MEDIA_PUBLIC_URL. */
+export interface MediaUpload {
+  id: string
+  url: string
+  width: number
+  height: number
+  mime: 'image/png' | 'image/jpeg' | 'image/webp'
+  size: number
+}
+
 /** Builds the client. Every method throws ApiError on a non-2xx answer. */
 export function createApi({ baseUrl, getToken }: ApiOptions) {
   const root = `${baseUrl.replace(/\/$/, '')}/v1`
 
   async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return request<T>(method, path, body === undefined ? undefined : JSON.stringify(body), 'application/json')
+  }
+
+  /** Sends a raw body. FormData sets its own multipart content type, so contentType stays unset for it. */
+  async function request<T>(method: string, path: string, body?: BodyInit, contentType?: string): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (body !== undefined && contentType) headers['Content-Type'] = contentType
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(root + path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
+    const res = await fetch(root + path, { method, headers, body })
     if (res.status === 204) return undefined as T
     if (res.ok) return (await res.json()) as T
     let problem: ApiProblem = { status: res.status, code: 'HTTP_' + res.status, detail: res.statusText }
@@ -682,7 +715,13 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     health: () => call<{ ok: boolean; version: string; now: string }>('GET', '/health'),
     login: (email: string, password: string) =>
       call<LoginResponse>('POST', '/auth/login', { email, password }),
-    me: () => call<{ user: User }>('GET', '/auth/me'),
+    me: () => call<{ user: User; emailOn: boolean }>('GET', '/auth/me'),
+    /** Creates a store and its owner; the answer signs the owner in. */
+    signUp: (input: SignUpInput) => call<LoginResponse>('POST', '/auth/signup', input),
+    checkSubdomain: (name: string) =>
+      call<SubdomainCheck>('GET', `/signup/subdomain?name=${encodeURIComponent(name)}`),
+    verifyEmail: (token: string) => call<void>('POST', '/auth/verify', { token }),
+    resendVerifyEmail: () => call<{ message: string }>('POST', '/auth/verify/resend'),
     changePassword: (currentPassword: string, newPassword: string) =>
       call<{ token: string }>('POST', '/auth/password', { currentPassword, newPassword }),
     forgotPassword: (email: string) => call<{ message: string }>('POST', '/auth/forgot', { email }),
@@ -726,6 +765,14 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
           'GET',
           `/users/events?tenantId=${encodeURIComponent(tenantId)}${before ? `&before=${before}` : ''}`,
         ),
+    },
+    media: {
+      /** Stores a PNG, JPEG or WebP image of at most 5 MB for the brand; the answer carries its URL. */
+      upload: (tenantId: string, file: File) => {
+        const form = new FormData()
+        form.append('file', file)
+        return request<MediaUpload>('POST', `/media?tenantId=${encodeURIComponent(tenantId)}`, form)
+      },
     },
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
     state: () => call<StateResponse>('GET', '/state'),

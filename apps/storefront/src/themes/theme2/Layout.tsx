@@ -17,7 +17,9 @@ import { Intro } from './Intro'
 function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; menuOpen: boolean }) {
   const { tenant, store, cart, customer } = useShop()
   const { pathname } = useLocation()
-  const shopActive = /\/(search|c|p|collections)(\/|$)/.test(pathname.slice(store.length + 1))
+  const shopActive = /\/(search|c|p|collections)(\/|$)/.test(
+    pathname.slice(paths.home(store).replace(/\/$/, '').length),
+  )
   const link = (active: boolean) =>
     cn(
       'inline-flex min-h-11 items-center px-3 text-sm font-semibold transition hover:opacity-80',

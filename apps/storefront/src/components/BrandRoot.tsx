@@ -1,6 +1,7 @@
 import type { BrandConfig, StorefrontTheme } from '@rc/types'
+import { loadFonts } from '@rc/fixtures'
 import { cn } from '@rc/ui'
-import { type ReactNode, createContext, useContext, useMemo } from 'react'
+import { type ReactNode, createContext, useContext, useEffect, useMemo } from 'react'
 import { type SfStyle, brandVars } from '../lib/brand'
 
 interface BrandValue {
@@ -26,6 +27,12 @@ export function BrandRoot({
   children: ReactNode
 }) {
   const value = useMemo(() => ({ style: brandVars(brand), theme }), [brand, theme])
+  const heading = brand.fonts?.heading
+  const body = brand.fonts?.body
+  // Google Fonts for the chosen pair; DM Sans comes with index.html.
+  useEffect(() => {
+    loadFonts([heading, body])
+  }, [heading, body])
   return (
     <BrandContext value={value}>
       <div className={cn('sf-root min-h-dvh', className)} data-theme={theme} style={value.style}>

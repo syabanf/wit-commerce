@@ -64,7 +64,7 @@ Dependencies point down. A page composes; it owns no business rules.
 | Group | Sections |
 |---|---|
 | Daily work | Home, Orders, Customers (All customers, Support, Segments, Loyalty) |
-| Sell | Catalog (Products, Categories, Attributes, Modifiers, Inventory), Online store (Brand guideline, Domains & SEO) |
+| Sell | Catalog (Products, Categories, Attributes, Modifiers, Inventory), Online store (Store editor, Look and feel, Domains & SEO) |
 | Grow | Marketing (Campaigns, Promotions, Automations), Sales network (Leads, Sellers, Performance) |
 | Insights & setup | Analytics, Integrations, Settings |
 

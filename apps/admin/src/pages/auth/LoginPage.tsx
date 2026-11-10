@@ -187,14 +187,19 @@ export function LoginPage() {
               <ArrowRight />
             </Button>
           </form>
-          {HTTP && (
-            <Link
-              to="/reset-password"
-              className="mt-3 text-sm font-semibold min-h-11 inline-flex items-center underline"
-            >
-              Forgot your password?
+          <div className="mt-3 gap-x-6 flex flex-wrap">
+            {HTTP && (
+              <Link
+                to="/reset-password"
+                className="text-sm font-semibold min-h-11 inline-flex items-center underline"
+              >
+                Forgot your password?
+              </Link>
+            )}
+            <Link to="/start" className="text-sm font-semibold min-h-11 inline-flex items-center underline">
+              Create your store
             </Link>
-          )}
+          </div>
 
           {users.length > 0 && (
             <>

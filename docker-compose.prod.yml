@@ -34,12 +34,20 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       PUBLIC_URL: ${PUBLIC_URL:-}
+      # Email links and the payment return go to https://{subdomain}.$STORE_ROOT_DOMAIN; empty keeps
+      # them at $PUBLIC_URL/shop/{subdomain}.
+      STORE_ROOT_DOMAIN: ${STORE_ROOT_DOMAIN:-}
+      MEDIA_DIR: /media
       TRUST_PROXY: 'true'
       PORT: '8090'
       # With SPLIT_SERVICES=true the shop service streams deltas through Postgres NOTIFY, and the
       # notifier service sends the queued email in place of the API.
       EVENTS_NOTIFY: ${SPLIT_SERVICES:-false}
       NOTIFIER_EXTERNAL: ${SPLIT_SERVICES:-false}
+    # Uploaded images live on the host, so nginx serves /media/ from the same folder. The API runs as
+    # uid 10001, which must own it; deploy-prod.sh creates it.
+    volumes:
+      - ${MEDIA_ROOT:-/var/lib/commerce/media}:/media
     # Only the web server on this machine reaches the API.
     ports:
       - '127.0.0.1:${API_PORT:-8090}:8090'

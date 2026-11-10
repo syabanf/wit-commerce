@@ -36,7 +36,7 @@ import { useNavigate } from 'react-router'
 import { paths } from '../../components/links'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
-import { storeHost } from '../sellers/lib'
+import { storeAddress } from '../../lib/storefront'
 
 const WINDOWS = ['7', '30', '90'] as const
 type Window = (typeof WINDOWS)[number]
@@ -160,7 +160,7 @@ export function PerformancePage() {
       />
       <div className="space-y-4">
         <Banner tone="info" title="How attribution works">
-          Orders from {storeHost(s.tenant)}/{exampleSlug} or any link with ?ref={exampleSlug} count for that
+          Orders from {storeAddress(s.tenant)}/{exampleSlug} or any link with ?ref={exampleSlug} count for that
           seller. Commission is the seller&apos;s rate on that revenue, after refunds.
         </Banner>
 

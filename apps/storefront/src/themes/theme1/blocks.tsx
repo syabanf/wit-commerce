@@ -8,7 +8,7 @@ import { Countdown } from '../../components/Countdown'
 import { CategoryIcon, Photo, ProductImage } from '../../components/product'
 import { Sparkle, Stamp, Sticker, Underlined } from '../../components/ornaments'
 import { CouponCode, PromoValue, Ticket, promoTerms } from '../../components/promo'
-import { type HeadingProps, PlainHeading, RAIL } from '../../components/sections'
+import { type HeadingProps, PlainHeading, RAIL, SectionButton } from '../../components/sections'
 import { AccountGlyph, isVipCustomer, offerText } from '../../components/shell'
 import { ButtonLink, IconButton, Scroller } from '../../components/ui'
 import { tint } from '../../lib/brand'
@@ -63,6 +63,7 @@ export function HeroRow({ section }: { section: PageSection }) {
       >
         <Photo
           id={tenantPhotos(tenant.id)?.hero}
+          src={section.imageUrl}
           width={960}
           ratio={0.8}
           eager
@@ -84,9 +85,13 @@ export function HeroRow({ section }: { section: PageSection }) {
             <p className="mt-4 max-w-sm text-sm md:text-base text-[color:var(--sf-muted)]">{section.body}</p>
           )}
           <div className="mt-6">
-            <ButtonLink to={shopTo} variant="dark" size="lg">
-              {section.ctaLabel || 'Shop now'}
-            </ButtonLink>
+            <SectionButton
+              section={section}
+              fallback={shopTo}
+              label={section.ctaLabel || 'Shop now'}
+              variant="dark"
+              size="lg"
+            />
           </div>
         </div>
         {product && (

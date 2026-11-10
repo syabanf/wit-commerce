@@ -27,6 +27,7 @@ var Tables = map[string]string{
 	"sellers":            "sellers",
 	"templates":          "templates",
 	"pages":              "pages",
+	"pageDrafts":         "page_drafts",
 	"categories":         "categories",
 	"attributes":         "attributes",
 	"modifiers":          "modifiers",
@@ -56,7 +57,7 @@ var Tables = map[string]string{
 
 // Collections lists every collection in a stable order (the AppState field order).
 var Collections = []string{
-	"tenants", "users", "sellers", "templates", "pages", "categories", "attributes", "modifiers",
+	"tenants", "users", "sellers", "templates", "pages", "pageDrafts", "categories", "attributes", "modifiers",
 	"collections", "products", "warehouses", "stock", "stockMoves", "modifierStock", "modifierStockMoves",
 	"customers", "customerEvents", "orders", "segments", "leads", "tickets", "campaigns", "automations",
 	"promotions", "paymentTypes", "agentPolicies", "integrations", "integrationLogs", "traffic", "searchTerms",
@@ -352,7 +353,7 @@ func (db *DB) Truncate(ctx context.Context) error {
 	for _, t := range Tables {
 		names = append(names, t)
 	}
-	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log", "email_settings", "payments")
+	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log", "email_settings", "payments", "media")
 	_, err := db.Pool.Exec(ctx, `truncate `+strings.Join(names, ", "))
 	return err
 }

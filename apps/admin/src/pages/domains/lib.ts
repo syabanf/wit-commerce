@@ -1,9 +1,10 @@
+import { storeHost } from '@rc/fixtures'
 import type { Page, Tenant } from '@rc/types'
+import { STORE_ROOT } from '../../lib/storefront'
 
-export const PLATFORM_HOST = 'commerceos.id'
 export const PLATFORM_IP = '76.76.21.21'
 
-export const platformHost = (tenant: Tenant) => `${tenant.subdomain}.${PLATFORM_HOST}`
+export const platformHost = (tenant: Tenant) => storeHost(tenant, STORE_ROOT)
 
 /** The host shoppers reach: the custom domain once verified, else the platform subdomain. */
 export const primaryHost = (tenant: Tenant) =>

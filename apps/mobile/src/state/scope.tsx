@@ -1,8 +1,25 @@
-import { type AppAction, type Facts, deriveFacts, metricsFromRows, nowIso, nowMs, toMs } from '@rc/fixtures'
+import {
+  type AppAction,
+  DEFAULT_STORE_ROOT,
+  DEV_STORE_ROOT,
+  type Facts,
+  deriveFacts,
+  metricsFromRows,
+  nowIso,
+  nowMs,
+  storeHost,
+  storeOrigin,
+  toMs,
+} from '@rc/fixtures'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/auth'
 import { useStore } from './store'
 import { HTTP } from '../lib/api'
+
+/** The parent domain of store hosts, VITE_STORE_ROOT_DOMAIN. Development defaults to localhost:5375. */
+const STORE_ROOT =
+  (import.meta.env.VITE_STORE_ROOT_DOMAIN as string | undefined)?.trim() ||
+  (import.meta.env.DEV ? DEV_STORE_ROOT : DEFAULT_STORE_ROOT)
 
 const byId = <T extends { id: string }>(list: readonly T[]) => new Map(list.map((x) => [x.id, x]))
 const newest =
@@ -48,15 +65,14 @@ function useScopeValue() {
       customer: byId(tenantCustomers),
       template: byId(state.templates),
     }
-    const host = (tenant.domain ?? `${tenant.subdomain}.commerceos.id`).replace(/^www\./, '')
-    const storeUrl = `${host}/${seller.slug}`
+    const storeUrl = `${storeHost(tenant, STORE_ROOT)}/${seller.slug}`
     return {
       user,
       seller,
       tenant,
       dispatch,
       storeUrl,
-      storeHref: `https://${storeUrl}`,
+      storeHref: `${storeOrigin(tenant, STORE_ROOT)}/${seller.slug}`,
       page: state.pages.find((p) => p.sellerId === seller.id) ?? null,
       leads: own(state.leads)
         .filter((l) => l.sellerId === seller.id)

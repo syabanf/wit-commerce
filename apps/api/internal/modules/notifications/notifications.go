@@ -53,7 +53,10 @@ type Notifications struct {
 	ResendURL string
 	// PublicURL is the site's address, for links in email.
 	PublicURL string
-	Log       *slog.Logger
+	// StoreRootDomain puts shopper links on the store's own host (lari.commerce.reddie.id); empty
+	// keeps them at PublicURL/shop/{subdomain}.
+	StoreRootDomain string
+	Log             *slog.Logger
 
 	mu      sync.Mutex
 	current resolved
@@ -112,6 +115,11 @@ func RedeemUserLink(ctx context.Context, tx pgx.Tx, token string) (string, error
 	return useToken(ctx, tx, token, subjectUser, kindReset, kindInvite)
 }
 
+// RedeemUserVerify spends a store owner's email confirmation link and returns the user id.
+func RedeemUserVerify(ctx context.Context, tx pgx.Tx, token string) (string, error) {
+	return useToken(ctx, tx, token, subjectUser, kindVerify)
+}
+
 // RedeemCustomerReset spends a shopper's reset link and returns the customer id.
 func RedeemCustomerReset(ctx context.Context, tx pgx.Tx, token string) (string, error) {
 	return useToken(ctx, tx, token, subjectCustomer, kindReset)
@@ -154,7 +162,7 @@ func (n *Notifications) queueLink(ctx context.Context, kind, subjectType, subjec
 }
 
 func (n *Notifications) storeLink(tenant domain.Tenant, param, token string) string {
-	return n.PublicURL + "/shop/" + tenant.Subdomain + "/account?" + param + "=" + url.QueryEscape(token)
+	return domain.StoreLink(tenant, n.StoreRootDomain, n.PublicURL) + "/account?" + param + "=" + url.QueryEscape(token)
 }
 
 // MailUserReset queues for a staff member the link from "forgot password".
@@ -162,6 +170,14 @@ func (n *Notifications) MailUserReset(ctx context.Context, u domain.User) {
 	n.queueLink(ctx, kindReset, subjectUser, u.ID, resetLifetime, func(token string) mail.Message {
 		link := n.PublicURL + "/reset-password?token=" + url.QueryEscape(token)
 		return linkMessage(u.Email, "Reset your Commerce OS password", "Use this link within an hour to choose a new password.", "Choose a new password", link)
+	})
+}
+
+// MailUserVerify queues for a new store owner a link that proves the inbox.
+func (n *Notifications) MailUserVerify(ctx context.Context, u domain.User) {
+	n.queueLink(ctx, kindVerify, subjectUser, u.ID, verifyLifetime, func(token string) mail.Message {
+		link := n.PublicURL + "/verify-email?token=" + url.QueryEscape(token)
+		return linkMessage(u.Email, "Confirm your email for Commerce OS", "Confirm this email within 24 hours so you can publish your store.", "Confirm my email", link)
 	})
 }
 

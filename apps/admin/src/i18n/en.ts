@@ -14,6 +14,7 @@ export const en = {
     modifiers: 'Modifiers',
     inventory: 'Inventory',
     // Store
+    storeEditor: 'Store editor',
     brand: 'Brand',
     domains: 'Domains',
     // Customers

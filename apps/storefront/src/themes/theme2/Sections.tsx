@@ -14,6 +14,8 @@ import {
   CtaBand,
   Faq,
   PromoBlock,
+  SectionButton,
+  SectionStack,
   SellerHero,
   Testimonials,
   sectionProducts,
@@ -137,7 +139,7 @@ export function Sections({ sections, seller }: SectionsProps) {
   const look = useTemplateLook()
   const layout = PRODUCT_LAYOUT[look.products]
   return (
-    <div className={SPACING[look.spacing]}>
+    <SectionStack sections={sections} className={SPACING[look.spacing]}>
       {sections.map((s) => {
         switch (s.kind) {
           case 'hero':
@@ -208,9 +210,13 @@ export function Sections({ sections, seller }: SectionsProps) {
                 key={s.id}
                 section={s}
                 action={
-                  <ButtonLink to={paths.search(store, '', { sort: 'best' })} variant="light" size="lg">
-                    {s.ctaLabel || 'Shop best sellers'}
-                  </ButtonLink>
+                  <SectionButton
+                    section={s}
+                    fallback={paths.search(store, '', { sort: 'best' })}
+                    label={s.ctaLabel || 'Shop best sellers'}
+                    variant="light"
+                    size="lg"
+                  />
                 }
               />
             )
@@ -218,6 +224,6 @@ export function Sections({ sections, seller }: SectionsProps) {
             return null
         }
       })}
-    </div>
+    </SectionStack>
   )
 }

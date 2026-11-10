@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
@@ -22,6 +24,8 @@ type routeDoc struct {
 	body     any
 	response any
 	status   int
+	// upload means a multipart/form-data body with one file field, and a tenantId query parameter.
+	upload bool
 }
 
 type (
@@ -112,6 +116,10 @@ var routeDocs = map[string]routeDoc{
 	"POST /shop/{store}/reset":                 {body: resetInput{}},
 	"POST /shop/{store}/verify":                {body: verifyInput{}},
 	"POST /auth/password":                      {body: changePasswordInput{}, response: tokenResponse{}},
+	"POST /auth/signup":                        {body: signUpInput{}, response: loginResponse{}},
+	"GET /signup/subdomain":                    {response: identity.SubdomainCheck{}},
+	"POST /auth/verify":                        {body: verifyInput{}},
+	"GET /auth/me":                             {response: meResponse{}},
 	"GET /settings/email":                      {response: notifications.EmailSettings{}},
 	"PUT /settings/email":                      {body: notifications.EmailSettingsInput{}, response: notifications.EmailSettings{}},
 	"POST /settings/email/test":                {response: notifications.EmailTestResult{}},
@@ -187,6 +195,7 @@ var routeDocs = map[string]routeDoc{
 	"POST /payments/midtrans/notification":     {body: midtransNotificationInput{}, response: okResponse{}},
 	"GET /orders/{id}/payment":                 {response: orderPaymentResponse{}},
 	"POST /shop/{store}/leads":                 {body: domain.Lead{}},
+	"POST /media":                              {upload: true, response: media.MediaUpload{}, status: http.StatusCreated},
 }
 
 // hiddenRoutes are for the demo and for this server's own apps, so the published contract leaves them out.
@@ -212,6 +221,9 @@ var publicRoutes = map[string]bool{
 	"POST /shop/{store}/login":             true,
 	"POST /auth/forgot":                    true,
 	"POST /auth/reset":                     true,
+	"POST /auth/signup":                    true,
+	"GET /signup/subdomain":                true,
+	"POST /auth/verify":                    true,
 	"POST /shop/{store}/forgot":            true,
 	"POST /shop/{store}/reset":             true,
 	"POST /shop/{store}/verify":            true,
@@ -336,7 +348,9 @@ func tagOf(path string) string {
 		return "Storefront"
 	case "payments":
 		return "Payments"
-	case "auth", "health", "users", "settings":
+	case "media":
+		return "Media"
+	case "auth", "health", "users", "settings", "signup":
 		return "Platform"
 	}
 	panic("openapi: no tag for " + path)
@@ -428,6 +442,14 @@ func buildSpec(table []Route, version string) []byte {
 		}
 		if doc.body != nil {
 			op["requestBody"] = map[string]any{"required": true, "content": jsonContent(defs.of(reflect.TypeOf(doc.body)))}
+		}
+		if doc.upload {
+			params = append(params, map[string]any{"name": "tenantId", "in": "query", "required": true, "description": "The brand the image belongs to.", "schema": map[string]any{"type": "string"}})
+			op["parameters"] = params
+			op["requestBody"] = map[string]any{"required": true, "content": map[string]any{"multipart/form-data": map[string]any{"schema": map[string]any{
+				"type": "object", "required": []string{"file"},
+				"properties": map[string]any{"file": map[string]any{"type": "string", "format": "binary", "description": "PNG, JPEG or WebP, at most 5 MB. SVG is refused."}},
+			}}}}
 		}
 		responses := map[string]any{status: map[string]any{"description": "Success", "content": success}}
 		for code, about := range map[string]string{

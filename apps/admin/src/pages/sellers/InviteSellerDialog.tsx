@@ -16,7 +16,8 @@ import {
 import { type FormEvent, useMemo, useState } from 'react'
 import { TemplatePicker } from '../../components/pickers'
 import { useScoped } from '../../state/scoped'
-import { SELLER_CODE_PREFIX, storeHost, uniqueSlug } from './lib'
+import { storeAddress } from '../../lib/storefront'
+import { SELLER_CODE_PREFIX, uniqueSlug } from './lib'
 
 const KIND_OPTIONS = (Object.keys(SELLER_KIND_LABEL) as SellerKind[]).map((k) => ({
   value: k,
@@ -75,7 +76,7 @@ function InviteForm({ onDone }: { onDone: (seller: Seller | null) => void }) {
       : !SLUG.test(slug)
         ? 'Use lowercase letters, digits and single hyphens.'
         : taken.has(slug)
-          ? `Another seller already uses ${storeHost(s.tenant)}/${slug}.`
+          ? `Another seller already uses ${storeAddress(s.tenant)}/${slug}.`
           : undefined,
     commission:
       draft.commission !== '' && Number.isFinite(commission) && commission >= 0 && commission <= 50
@@ -185,7 +186,7 @@ function InviteForm({ onDone }: { onDone: (seller: Seller | null) => void }) {
           required
           htmlFor="sel-slug"
           error={show(errors.slug)}
-          hint={`${storeHost(s.tenant)}/${slug || 'name'} · also the ?ref= code`}
+          hint={`${storeAddress(s.tenant)}/${slug || 'name'} · also the ?ref= code`}
         >
           <Input
             id="sel-slug"

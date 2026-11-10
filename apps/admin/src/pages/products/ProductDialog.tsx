@@ -17,6 +17,7 @@ import {
   toast,
 } from '@rc/ui'
 import { type FormEvent, useState } from 'react'
+import { ImageUpload } from '../../components/ImageUpload'
 import { CategoryPicker } from '../../components/pickers'
 import { useScoped } from '../../state/scoped'
 import {
@@ -70,6 +71,7 @@ type Draft = {
   description: string
   bestFor: string
   tags: string
+  imageUrl: string | undefined
   options: OptionDraft[]
   overrides: Record<string, RowOverride>
 }
@@ -97,6 +99,7 @@ function toDraft(product: Product | null): Draft {
       description: '',
       bestFor: '',
       tags: '',
+      imageUrl: undefined,
       options: [],
       overrides: {},
     }
@@ -113,6 +116,7 @@ function toDraft(product: Product | null): Draft {
     description: product.description,
     bestFor: product.bestFor,
     tags: product.tags.join(', '),
+    imageUrl: product.imageUrl,
     options: toOptionDrafts(product.options),
     overrides: initialOverrides(product),
   }
@@ -221,6 +225,7 @@ function ProductForm({
       description: draft.description.trim(),
       bestFor: draft.bestFor.trim(),
       tags,
+      imageUrl: draft.imageUrl,
       options,
       variants: live.map((r) => ({
         id: r.id ?? newId('var'),
@@ -265,6 +270,15 @@ function ProductForm({
             value={draft.name}
             placeholder="Velocity Pro 3"
             onChange={(e) => set({ name: e.target.value })}
+          />
+        </FormField>
+        <FormField label="Photo" htmlFor="product-photo" className="sm:col-span-2">
+          <ImageUpload
+            id="product-photo"
+            tenantId={tenantId}
+            label="Product photo"
+            value={draft.imageUrl}
+            onChange={(imageUrl) => set({ imageUrl })}
           />
         </FormField>
         <FormField label="Category" required htmlFor="product-category" error={show(errors.category)}>

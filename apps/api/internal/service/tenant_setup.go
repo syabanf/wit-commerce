@@ -6,6 +6,7 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 )
 
 // TenantSetup creates the store's first usable dataset in one transaction.
@@ -23,6 +24,9 @@ func (s *Service) SetupTenant(ctx context.Context, m Meta, in TenantSetup) (*Del
 	id := in.Tenant.ID
 	if id == "" || strings.TrimSpace(in.Tenant.Name) == "" || in.Tenant.Subdomain == "" || in.Page.ID == "" || in.Warehouse.ID == "" || len(in.PaymentTypes) == 0 {
 		return nil, kernel.Invalid{Reason: "Complete the business, store page, warehouse and payment settings."}
+	}
+	if err := identity.ValidSubdomain(in.Tenant.Subdomain); err != nil {
+		return nil, err
 	}
 	if in.Page.TenantID != id || in.Warehouse.TenantID != id || in.Page.Kind != "home" || in.Page.Slug != "/" {
 		return nil, kernel.Invalid{Reason: "The initial page and warehouse must belong to the new tenant."}
@@ -48,7 +52,7 @@ func (s *Service) SetupTenant(ctx context.Context, m Meta, in TenantSetup) (*Del
 		}
 	}
 	return s.Run(ctx, func(t *kernel.Tx) error {
-		if err := t.Put("tenants", id, in.Tenant); err != nil {
+		if err := identity.AddTenant(t, in.Tenant); err != nil {
 			return err
 		}
 		if err := t.Put("pages", in.Page.ID, in.Page); err != nil {

@@ -16,6 +16,7 @@ import { Building2, Check, ChevronDown, LogOut, Plus } from 'lucide-react'
 import { Fragment } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
+import { storeAddress } from '../lib/storefront'
 import { CreateMenu } from './CreateMenu'
 import { LogoMark } from './LogoMark'
 import { leafFor, navFor, sectionFor } from './nav'
@@ -160,7 +161,7 @@ function WorkspaceMenu({ expanded }: { expanded: boolean }) {
             <Building2 />
             <span className="flex-1">
               {t.name}
-              <span className="text-xs block text-muted">{t.domain ?? `${t.subdomain}.commerceos.id`}</span>
+              <span className="text-xs block text-muted">{storeAddress(t)}</span>
             </span>
             {t.id === tenant.id && <Check className="text-accent" />}
           </DropdownMenuItem>

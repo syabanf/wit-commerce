@@ -9,3 +9,4 @@ reports/pengembangan/
 .env
 .env.local
 .env.production
+media-data/

@@ -4,6 +4,8 @@ import { t } from './i18n'
 import { AdminLayout } from './layouts/AdminLayout'
 import { LoginPage } from './pages/auth/LoginPage'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
+import { StartPage } from './pages/auth/StartPage'
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
 import { commerceRoutes } from './routes/commerceRoutes'
 import { customersRoutes } from './routes/customersRoutes'
 import { marketingRoutes } from './routes/marketingRoutes'
@@ -15,6 +17,8 @@ import { storeRoutes } from './routes/storeRoutes'
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/start', element: <StartPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
   {
     path: '/',
     element: (

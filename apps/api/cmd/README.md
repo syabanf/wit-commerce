@@ -39,6 +39,61 @@ Turning it off again is safe: `api` serves every route either way.
 Every binary reads `.env` in its working directory for development runs; real environment
 variables win.
 
+## Store subdomains
+
+Each brand's store opens on its own host, `https://{subdomain}.commerce.reddie.id`. The storefront
+reads the store from the host name and still calls `/api/v1/shop/{store}/...`, so the API needs no
+change. `scripts/deploy-prod.sh` sets it up when `STORE_ROOT_DOMAIN` is not empty.
+
+Settings:
+
+| Variable | Where | Meaning |
+| --- | --- | --- |
+| `STORE_ROOT_DOMAIN` | API, deploy script | Parent domain of store hosts. Email links and the payment return go to `https://{subdomain}.{root}`. Unset on the API means `commerce.reddie.id`; set but empty keeps `{PUBLIC_URL}/shop/{subdomain}`. The deploy script defaults it to the `PUBLIC_URL` host. |
+| `VITE_STORE_ROOT_DOMAIN` | admin, mobile and storefront builds | The same root. The admin shows `{subdomain}.{root}` as the store address and previews the store on that origin. A storefront build without it serves stores under `/{store}`. |
+| `MEDIA_ROOT` | deploy script | Host folder for uploaded images, `/var/lib/commerce/media` by default, mounted at `/media` in the API (`MEDIA_DIR`) and served by nginx at `/media/`. |
+
+nginx gets a second server block for `*.{root}`: the storefront build from `$WEB_ROOT/store`, the same
+`/api/` proxy and `/media/`. The main host keeps the admin and answers old `/shop/{store}/...` links
+with a 301 to `https://{store}.{root}/...`. A store that is not published shows a Coming soon page
+on its host.
+
+DNS: add a wildcard record for `*.commerce.reddie.id`, an A record to the server's address or a CNAME
+to the main host.
+
+TLS: Cloudflare Universal SSL covers `commerce.reddie.id` and `*.reddie.id`, but not a second-level
+wildcard such as `*.commerce.reddie.id`. Pick one:
+
+- Cloudflare Advanced Certificate Manager, which can issue `*.commerce.reddie.id` on the proxied
+  record. Nothing changes on the server.
+- A Let's Encrypt wildcard through the DNS-01 challenge, with the wildcard record set to DNS only
+  (grey cloud). For example with certbot and its Cloudflare plugin, using an API token limited to
+  editing DNS on the zone:
+
+  ```sh
+  certbot certonly --dns-cloudflare --dns-cloudflare-credentials /root/.secrets/cloudflare.ini \
+    -d 'commerce.reddie.id' -d '*.commerce.reddie.id'
+  ```
+
+  Then add TLS to the store server block that `deploy-prod.sh` writes:
+
+  ```nginx
+  listen 443 ssl;
+  http2 on;
+  ssl_certificate     /etc/letsencrypt/live/commerce.reddie.id/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/commerce.reddie.id/privkey.pem;
+  ```
+
+Before the wildcard record and certificate exist, deploy with `STORE_ROOT_DOMAIN=` (empty). Every store
+then stays on one host at `{PUBLIC_URL}/shop/{subdomain}`, as before: the storefront builds under
+`/shop/`, nginx serves it there, and the API writes links in that form. The script saves the choice in
+`.env.production`; deploy again with `STORE_ROOT_DOMAIN=commerce.reddie.id` once DNS and TLS are ready.
+
+In development `STORE_ROOT_DOMAIN` and `VITE_STORE_ROOT_DOMAIN` are `localhost:5375`. Browsers resolve
+`*.localhost` to this machine, so `http://lari.localhost:5375` opens the lari store from `pnpm dev`,
+and `http://localhost:5375/lari` still works. The storefront dev server proxies `/api` to port 8787, so
+store hosts reach the API on their own origin.
+
 ## Midtrans sandbox
 
 A brand that saves Midtrans keys collects real payments at checkout. A brand without keys keeps the
@@ -61,9 +116,10 @@ To test by hand:
 3. In the Midtrans dashboard, set Settings → Configuration → Payment Notification URL to
    `{PUBLIC_URL}/api/v1/payments/midtrans/notification`. Midtrans must reach that address over
    HTTPS, so a laptop needs a tunnel such as `cloudflared tunnel --url http://localhost:8787`.
-4. Set `PUBLIC_URL` on the API, so Midtrans sends the shopper back to
-   `{PUBLIC_URL}/shop/{store}/order/{id}`. Without it the API uses the request's `Origin` when it is
-   in `ALLOWED_ORIGINS`, which suits a storefront served at the root in development.
+4. Set `STORE_ROOT_DOMAIN` or `PUBLIC_URL` on the API, so Midtrans sends the shopper back to
+   `https://{store}.{STORE_ROOT_DOMAIN}/order/{id}`, or to `{PUBLIC_URL}/shop/{store}/order/{id}` when
+   `STORE_ROOT_DOMAIN` is empty. Without either the API uses the request's `Origin` when it is in
+   `ALLOWED_ORIGINS`.
 5. Check out on that brand's storefront with QRIS, a virtual account, GoPay or a card. The
    storefront opens the Snap page.
 6. Pay with Midtrans's sandbox tools:

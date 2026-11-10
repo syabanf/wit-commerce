@@ -67,9 +67,6 @@ export const isLive = (t: Pick<Tenant, 'domainVerified' | 'onboarding'>) =>
 export const remainingSteps = (t: Pick<Tenant, 'onboarding'>) =>
   ONBOARDING_STEPS.filter((s) => !t.onboarding.includes(s.key))
 
-export const storeHost = (t: Pick<Tenant, 'domain' | 'subdomain'>) =>
-  t.domain ?? `${t.subdomain}.commerceos.id`
-
 export const WIZARD_PAYMENTS: PaymentMethod[] = ['qris', 'va', 'ewallet', 'credit_card', 'paylater', 'cod']
 export const WIZARD_COURIERS: Courier[] = ['jne', 'sicepat', 'gojek', 'pickup']
 

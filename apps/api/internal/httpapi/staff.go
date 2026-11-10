@@ -16,6 +16,8 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
+	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
@@ -195,21 +197,11 @@ func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := domain.User{ID: ids.New("usr"), Name: in.Name, Email: email, Title: in.Title, Role: in.Role, TenantIDs: in.TenantIDs, Color: "#4c5a78", Invited: s.emailReady()}
-	err = pgx.BeginFunc(r.Context(), s.DB.Pool, func(tx pgx.Tx) error {
-		var taken bool
-		if err := tx.QueryRow(r.Context(), `select exists (select 1 from users where email = $1)`, email).Scan(&taken); err != nil {
+	_, err = s.svc.Run(r.Context(), func(t *kernel.Tx) error {
+		if err := identity.CreateUser(t, u, hash); err != nil {
 			return err
 		}
-		if taken {
-			return staffError{http.StatusConflict, "EMAIL_TAKEN", "Someone already signs in with this email."}
-		}
-		if err := store.Put(r.Context(), tx, "users", u.ID, u); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(r.Context(), `insert into credentials (user_id, password_hash) values ($1, $2)`, u.ID, hash); err != nil {
-			return err
-		}
-		return staffEvent{action: "created", detail: roleLabel(u.Role), target: u, tenantIDs: u.TenantIDs}.record(r.Context(), tx, p.ID)
+		return staffEvent{action: "created", detail: roleLabel(u.Role), target: u, tenantIDs: u.TenantIDs}.record(r.Context(), t.Tx, p.ID)
 	})
 	if err != nil {
 		s.writeStaffError(w, r, err)

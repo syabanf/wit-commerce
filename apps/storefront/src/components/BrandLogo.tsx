@@ -85,16 +85,25 @@ export function BrandMark({
   )
 }
 
-/** Mark plus wordmark. The tenant name stays readable to screen readers. */
+/** The uploaded logo, else mark plus wordmark. The tenant name stays readable to screen readers. */
 export function BrandLogo({
   tenant,
   inverse,
   className,
 }: {
-  tenant: Pick<Tenant, 'id' | 'name'>
+  tenant: Pick<Tenant, 'id' | 'name'> & { brand?: Pick<Tenant['brand'], 'logoUrl'> }
   inverse?: boolean
   className?: string
 }) {
+  const logoUrl = tenant.brand?.logoUrl
+  if (logoUrl)
+    return (
+      <img
+        src={logoUrl}
+        alt={tenant.name}
+        className={cn('h-9 w-auto max-w-[180px] shrink-0 object-contain', className)}
+      />
+    )
   const brand = BRANDS[tenant.id]
   return (
     <span className={cn('gap-2.5 min-w-0 inline-flex items-center', className)}>

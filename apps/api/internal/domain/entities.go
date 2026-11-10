@@ -30,6 +30,8 @@ type BrandConfig struct {
 	Tone        string          `json:"tone"`
 	Tagline     string          `json:"tagline"`
 	Locks       map[string]bool `json:"locks"`
+	// LogoURL is an uploaded logo; empty means the storefront draws its own mark.
+	LogoURL *string `json:"logoUrl,omitempty"`
 }
 
 type LoyaltyThresholds struct {
@@ -58,6 +60,8 @@ type Tenant struct {
 	Loyalty          LoyaltyConfig `json:"loyalty"`
 	ShippingCouriers []string      `json:"shippingCouriers,omitempty"`
 	Onboarding       []string      `json:"onboarding"`
+	// Source is "signup" for a store its owner created from the public sign-up page.
+	Source string `json:"source,omitempty"`
 }
 
 type User struct {
@@ -72,6 +76,8 @@ type User struct {
 	Disabled bool `json:"disabled,omitempty"`
 	// Invited stays true until the person chooses a password from their invitation.
 	Invited bool `json:"invited,omitempty"`
+	// EmailVerifiedAt is when the person proved the inbox with a link from email.
+	EmailVerifiedAt *IsoDate `json:"emailVerifiedAt,omitempty"`
 }
 
 type Seller struct {
@@ -122,6 +128,19 @@ type PageSection struct {
 	Body       string   `json:"body"`
 	ProductIDs []string `json:"productIds"`
 	CtaLabel   string   `json:"ctaLabel"`
+	// ImageURL is an uploaded image for the section; empty means the template's own photo.
+	ImageURL *string `json:"imageUrl,omitempty"`
+	// CtaHref is where the section's button goes: a store path ("/p/prd-1") or a full https link.
+	CtaHref *string `json:"ctaHref,omitempty"`
+	// Items are FAQ questions with answers, or testimonial quotes with their author.
+	Items []PageSectionItem `json:"items,omitempty"`
+	// Order is the position on the page once it is arranged by hand; without it the template order applies.
+	Order *int `json:"order,omitempty"`
+}
+
+type PageSectionItem struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
 }
 
 type PageRevision struct {
@@ -155,6 +174,18 @@ type Page struct {
 	ScheduledAt *IsoDate       `json:"scheduledAt"`
 	Revisions   []PageRevision `json:"revisions"`
 	Views30d    int            `json:"views30d"`
+}
+
+// PageDraft holds a live page's unpublished changes, one row per page (ID is the page's id).
+// Publishing copies them into the page. Staff see drafts; the storefront never receives them.
+type PageDraft struct {
+	ID         string        `json:"id"`
+	TenantID   string        `json:"tenantId"`
+	Sections   []PageSection `json:"sections"`
+	Seo        PageSeo       `json:"seo"`
+	TemplateID string        `json:"templateId"`
+	UpdatedAt  IsoDate       `json:"updatedAt"`
+	UpdatedBy  string        `json:"updatedBy"`
 }
 
 // --- catalog and stock ---
@@ -252,6 +283,8 @@ type Product struct {
 	Assisted    bool              `json:"assisted"`
 	CreatedAt   IsoDate           `json:"createdAt"`
 	PublishAt   *IsoDate          `json:"publishAt"`
+	// ImageURL is an uploaded photo; empty means the storefront's stock photo.
+	ImageURL *string `json:"imageUrl,omitempty"`
 }
 
 type Warehouse struct {
@@ -617,6 +650,7 @@ type AppState struct {
 	Sellers            []Seller             `json:"sellers"`
 	Templates          []Template           `json:"templates"`
 	Pages              []Page               `json:"pages"`
+	PageDrafts         []PageDraft          `json:"pageDrafts"`
 	Categories         []Category           `json:"categories"`
 	Attributes         []AttributeDef       `json:"attributes"`
 	Modifiers          []ModifierGroup      `json:"modifiers"`

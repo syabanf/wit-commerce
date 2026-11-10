@@ -51,7 +51,8 @@ func TestSeedRoundTripsThroughDomainTypes(t *testing.T) {
 			}
 			slice = reflect.Append(slice, item.Elem())
 		}
-		if slice.Len() == 0 {
+		// Every seeded page shows what shoppers see, so no page starts with unpublished changes.
+		if slice.Len() == 0 && collection != "pageDrafts" {
 			t.Fatalf("%s: nothing seeded", collection)
 		}
 	}

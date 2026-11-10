@@ -1,5 +1,6 @@
 import { DAY, dayKey, fmtDateShort, startOfDay } from '@rc/fixtures'
 import type { Seller, SellerKind, Tenant, TrafficDay } from '@rc/types'
+import { storeAddress } from '../../lib/storefront'
 
 /** Code prefix per seller kind, as the seeded sellers use it: S-001, A-011, R-021. */
 export const SELLER_CODE_PREFIX: Record<SellerKind, string> = {
@@ -9,12 +10,9 @@ export const SELLER_CODE_PREFIX: Record<SellerKind, string> = {
   affiliate: 'A-',
 }
 
-export const storeHost = (tenant: Pick<Tenant, 'domain' | 'subdomain'>) =>
-  tenant.domain ?? `${tenant.subdomain}.commerceos.id`
-
-/** "www.lari.co.id/fahmi" */
-export const storeUrl = (tenant: Pick<Tenant, 'domain' | 'subdomain'>, seller: Pick<Seller, 'slug'>) =>
-  `${storeHost(tenant)}/${seller.slug}`
+/** "lari.commerce.reddie.id/fahmi" */
+export const storeUrl = (tenant: Pick<Tenant, 'subdomain'>, seller: Pick<Seller, 'slug'>) =>
+  `${storeAddress(tenant)}/${seller.slug}`
 
 /** A slug no other seller of the tenant uses: "fahmi-rahman", then "fahmi-rahman-2". */
 export function uniqueSlug(base: string, taken: ReadonlySet<string>): string {

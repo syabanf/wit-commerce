@@ -74,6 +74,12 @@ func (b *inbox) link(t *testing.T, n int) (string, string) {
 
 func mailEnv(t *testing.T) (*env, *inbox) {
 	t.Helper()
+	return mailEnvAt(t, "")
+}
+
+// mailEnvAt sets STORE_ROOT_DOMAIN to root.
+func mailEnvAt(t *testing.T, root string) (*env, *inbox) {
+	t.Helper()
 	db := testdb.Open(t)
 	if err := seed.Load(t.Context(), db, testdb.SeedDir(t), password); err != nil {
 		t.Fatal(err)
@@ -101,7 +107,7 @@ func mailEnv(t *testing.T) (*env, *inbox) {
 	box.outbox = &notifications.Notifications{Runtime: &kernel.Runtime{DB: db}, Mail: mailer, Log: log}
 	srv := httptest.NewServer(httpapi.New(httpapi.Options{
 		DB: db, Clock: clock.New(time.Now()), Signer: signer, Hub: events.New(),
-		Mail: mailer, PublicURL: "https://shop.example.com",
+		Mail: mailer, PublicURL: "https://shop.example.com", StoreRootDomain: root,
 		Log: log, Version: "test",
 	}))
 	t.Cleanup(srv.Close)
@@ -202,6 +208,18 @@ func TestAResetLinkFromOneStoreFailsAtAnother(t *testing.T) {
 		t.Errorf("link: %s", link)
 	}
 	e.expect(410, "POST", "/shop/aruna/reset", "", map[string]string{"token": token, "newPassword": "a brand new password"})
+}
+
+func TestShopperLinksGoToTheStoreHost(t *testing.T) {
+	e, box := mailEnvAt(t, "commerce.example.com")
+	e.call("POST", "/shop/lari/register", "", map[string]string{"name": "Owner", "email": "host@example.com", "password": shopPassword}, nil)
+	if _, link := box.link(t, 1); !strings.HasPrefix(link, "https://lari.commerce.example.com/account?verify=") {
+		t.Errorf("verify link: %s", link)
+	}
+	e.expect(202, "POST", "/shop/lari/forgot", "", map[string]string{"email": "host@example.com"})
+	if _, link := box.link(t, 2); !strings.HasPrefix(link, "https://lari.commerce.example.com/account?reset=") {
+		t.Errorf("reset link: %s", link)
+	}
 }
 
 func TestEmailOffSaysSoWithoutAKey(t *testing.T) {

@@ -15,6 +15,7 @@ import integrations from '../data/integrations.json'
 import leads from '../data/leads.json'
 import modifiers from '../data/modifiers.json'
 import orders from '../data/orders.json'
+import pageDrafts from '../data/page-drafts.json'
 import pages from '../data/pages.json'
 import paymentTypes from '../data/payment-types.json'
 import products from '../data/products.json'
@@ -73,6 +74,7 @@ const seed = {
   sellers,
   templates,
   pages,
+  pageDrafts,
   categories,
   attributes,
   modifiers,

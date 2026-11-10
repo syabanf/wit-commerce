@@ -24,12 +24,14 @@ var owns = map[string][]string{
 	"inventory":    {"warehouses", "stock", "stockMoves", "modifierStock", "modifierStockMoves"},
 	"crm":          {"customers", "customerEvents", "segments", "leads", "tickets"},
 	"marketing":    {"campaigns", "automations", "promotions"},
-	"storefront":   {"sellers", "pages", "templates", "traffic", "searchTerms"},
+	"storefront":   {"sellers", "pages", "pageDrafts", "templates", "traffic", "searchTerms"},
 	"integrations": {"integrations", "integrationLogs"},
 	"orders":       {"orders"},
 	// notifications writes the email_tokens table, and ai writes nothing: neither owns a collection.
 	"notifications": {},
 	"ai":            {},
+	// media writes the media table.
+	"media": {},
 }
 
 // mayImport lists the modules each module calls. Calls run one way, so no cycle can form.

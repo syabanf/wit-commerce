@@ -4,7 +4,7 @@ import { SECTION_KIND_LABEL, SELLER_KIND_LABEL } from '@rc/types'
 import { cn } from '@rc/ui'
 import { ChevronDown, ImageIcon, Lock, MessageCircle, Search, ShoppingBag, Star } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
-import { BRAND_FONT_STACK } from '@rc/fixtures'
+import { fontStack } from '@rc/fixtures'
 
 export interface StorefrontPreviewProps {
   brand: BrandConfig
@@ -67,8 +67,8 @@ export function StorefrontPreview({
     '--sf-bg': brand.colors.background,
     '--sf-text': brand.colors.text,
     '--sf-radius': RADIUS[brand.radius],
-    '--sf-heading': BRAND_FONT_STACK,
-    '--sf-body': BRAND_FONT_STACK,
+    '--sf-heading': fontStack(brand.fonts?.heading),
+    '--sf-body': fontStack(brand.fonts?.body),
     background: 'var(--sf-bg)',
     color: 'var(--sf-text)',
     fontFamily: 'var(--sf-body)',

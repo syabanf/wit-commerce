@@ -1,6 +1,8 @@
 import { STOREFRONT_THEME_LABEL, type StorefrontTheme } from '@rc/types'
 import { LayoutGrid, Palette } from 'lucide-react'
 import { Link } from 'react-router'
+import { HOST_STORE } from '../lib/host'
+import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
 import { THEMES, useThemeChoice } from '../themes/registry'
 
@@ -27,11 +29,13 @@ export function DemoBar() {
             <Palette className="size-3.5" aria-hidden="true" />
             <span className="sm:inline hidden">View in</span> {STOREFRONT_THEME_LABEL[other].split(' · ')[0]}
           </button>
-          <Link to="/" className={pill}>
-            <LayoutGrid className="size-3.5" aria-hidden="true" />
-            <span className="sm:hidden">Demos</span>
-            <span className="sm:inline hidden">All demos</span>
-          </Link>
+          {!HOST_STORE && (
+            <Link to={paths.chooser()} className={pill}>
+              <LayoutGrid className="size-3.5" aria-hidden="true" />
+              <span className="sm:hidden">Demos</span>
+              <span className="sm:inline hidden">All demos</span>
+            </Link>
+          )}
         </div>
       </div>
     </div>

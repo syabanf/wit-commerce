@@ -1,12 +1,23 @@
-import { fmtIdr, fmtNumber, initials, nowMs, tenantPhotos, toMs } from '@rc/fixtures'
+import {
+  fmtIdr,
+  fmtNumber,
+  initials,
+  isExternalHref,
+  nowMs,
+  sectionHref,
+  sectionItems,
+  tenantPhotos,
+  toMs,
+} from '@rc/fixtures'
 import type { Industry, PageSection, Product, Promotion, Seller } from '@rc/types'
 import { SELLER_KIND_LABEL } from '@rc/types'
 import { cn, toast } from '@rc/ui'
 import { ArrowRight, AtSign, ChevronDown, MessageCircle, Quote } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Children, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { tint } from '../lib/brand'
 import { type Catalog, bestSellers } from '../lib/catalog'
+import { EMBED_FRAME, useFocusedSection } from '../lib/embed'
 import { firstName, paths, waLink } from '../lib/paths'
 import { RETURNS_POLICY } from '../lib/policy'
 import { useShop } from '../state/shop'
@@ -14,7 +25,7 @@ import { Sticker } from './ornaments'
 import { CouponCode, PromoValue, Ticket, promoTerms } from './promo'
 import { Photo } from './product'
 import { offerText } from './shell'
-import { Button, buttonClass } from './ui'
+import { Button, ButtonLink, type ButtonSize, type ButtonVariant, buttonClass } from './ui'
 
 // Section blocks both themes share. Surfaces read the theme variables (sf-card, --sf-card-radius),
 // so a block looks rounded in Theme 1 and hairline-square on a Theme 2 phone.
@@ -149,20 +160,22 @@ export function Testimonials({
   Heading?: (p: HeadingProps) => ReactNode
 }) {
   const { tenant } = useShop()
+  // The owner's own quotes when the section has them, else three from the store's industry.
+  const quotes =
+    sectionItems(section)?.map((i) => ({ quote: i.title, name: i.body })) ??
+    quotesFor(tenant.industry).slice(0, 3)
   return (
     <section aria-labelledby={`${section.id}-h`} id="testimonials" className="scroll-mt-24">
       <Heading id={`${section.id}-h`} title={section.headline || 'What customers say'} />
       {section.body && <p className="-mt-2 mb-4 text-sm text-[color:var(--sf-muted)]">{section.body}</p>}
       <ul className="gap-3 md:grid-cols-3 grid grid-cols-1">
-        {quotesFor(tenant.industry)
-          .slice(0, 3)
-          .map((q) => (
-            <li key={q.name} className="sf-card p-5">
-              <Quote className="size-5 text-[color:var(--sf-accent)]" aria-hidden="true" />
-              <blockquote className="mt-2 text-sm leading-relaxed font-semibold">{q.quote}</blockquote>
-              <p className="mt-2 text-xs text-[color:var(--sf-muted)]">{q.name}</p>
-            </li>
-          ))}
+        {quotes.map((q, i) => (
+          <li key={`${i}-${q.name}`} className="sf-card p-5">
+            <Quote className="size-5 text-[color:var(--sf-accent)]" aria-hidden="true" />
+            <blockquote className="mt-2 text-sm leading-relaxed font-semibold">{q.quote}</blockquote>
+            {q.name && <p className="mt-2 text-xs text-[color:var(--sf-muted)]">{q.name}</p>}
+          </li>
+        ))}
       </ul>
     </section>
   )
@@ -238,6 +251,7 @@ export function BrandStory({ section }: { section: PageSection }) {
       <div className="relative">
         <Photo
           id={tenantPhotos(tenant.id)?.story}
+          src={section.imageUrl}
           width={640}
           ratio={0.75}
           className="aspect-[4/3] rounded-[var(--sf-tile-radius)]"
@@ -278,37 +292,119 @@ export function Faq({
   Heading?: (p: HeadingProps) => ReactNode
 }) {
   const { tenant } = useShop()
+  const own = sectionItems(section)
   const [q, ...rest] = section.body.split('?')
-  const items = [
-    ...(q?.trim() && rest.join('?').trim() ? [{ q: `${q.trim()}?`, a: rest.join('?').trim() }] : []),
-    {
-      q: 'How long does delivery take?',
-      a: `Two to four days with JNE or SiCepat, the same day with GoSend in Jakarta. Orders from ${fmtIdr(tenant.loyalty.freeShippingMin)} ship free.`,
-    },
-    {
-      q: 'Can I return an item?',
-      a: RETURNS_POLICY[tenant.industry],
-    },
-    {
-      q: 'How can I pay?',
-      a: 'QRIS, virtual account, e-wallet, card, and cash on delivery where the store offers it.',
-    },
-  ]
+  // The owner's own questions replace the defaults; older pages keep one question in the body.
+  const items = own
+    ? own.map((i) => ({ q: i.title, a: i.body }))
+    : [
+        ...(q?.trim() && rest.join('?').trim() ? [{ q: `${q.trim()}?`, a: rest.join('?').trim() }] : []),
+        {
+          q: 'How long does delivery take?',
+          a: `Two to four days with JNE or SiCepat, the same day with GoSend in Jakarta. Orders from ${fmtIdr(tenant.loyalty.freeShippingMin)} ship free.`,
+        },
+        {
+          q: 'Can I return an item?',
+          a: RETURNS_POLICY[tenant.industry],
+        },
+        {
+          q: 'How can I pay?',
+          a: 'QRIS, virtual account, e-wallet, card, and cash on delivery where the store offers it.',
+        },
+      ]
   return (
     <section aria-labelledby={`${section.id}-h`}>
       <Heading id={`${section.id}-h`} title={section.headline || 'Questions'} />
       <div className="space-y-2">
-        {items.map((item) => (
-          <details key={item.q} className="group sf-card px-5">
+        {items.map((item, i) => (
+          <details key={`${i}-${item.q}`} className="group sf-card px-5">
             <summary className="min-h-14 gap-3 font-semibold flex cursor-pointer list-none items-center justify-between">
               {item.q}
               <ChevronDown className="size-4 shrink-0 transition group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <p className="pb-4 text-sm leading-relaxed text-[color:var(--sf-muted)]">{item.a}</p>
+            {item.a && <p className="pb-4 text-sm leading-relaxed text-[color:var(--sf-muted)]">{item.a}</p>}
           </details>
         ))}
       </div>
     </section>
+  )
+}
+
+/**
+ * A section's button: to the page or link the owner chose when there is one, else to `fallback`.
+ * Full links open in a new tab.
+ */
+export function SectionButton({
+  section,
+  fallback,
+  label,
+  variant,
+  size,
+  className,
+}: {
+  section: PageSection
+  fallback: string
+  label: string
+  variant?: ButtonVariant
+  size?: ButtonSize
+  className?: string
+}) {
+  const { store } = useShop()
+  const href = sectionHref(paths.home(store).replace(/\/$/, ''), section.ctaHref) ?? fallback
+  if (isExternalHref(href))
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonClass(variant, size), className)}
+      >
+        {label}
+        <span className="sr-only"> (opens in a new tab)</span>
+      </a>
+    )
+  return (
+    <ButtonLink to={href} variant={variant} size={size} className={className}>
+      {label}
+    </ButtonLink>
+  )
+}
+
+/**
+ * Inside the admin editor's frame, marks a rendered section so a click selects it there and hover
+ * outlines it. Everywhere else it renders the section untouched.
+ */
+export function EditableSection({ id, children }: { id: string; children: ReactNode }) {
+  const focused = useFocusedSection()
+  if (!EMBED_FRAME) return children
+  return (
+    <div data-section-id={id} data-selected={focused === id || undefined} className="empty:hidden">
+      {children}
+    </div>
+  )
+}
+
+/**
+ * The column of a page's sections. In the editor's frame each child is marked with the section at the
+ * same index, so children must come one per section, in order (null for a section that renders nothing).
+ */
+export function SectionStack({
+  sections,
+  className,
+  children,
+}: {
+  sections: PageSection[]
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={className}>
+      {EMBED_FRAME
+        ? Children.map(children, (child, i) =>
+            sections[i] ? <EditableSection id={sections[i].id}>{child}</EditableSection> : child,
+          )
+        : children}
+    </div>
   )
 }
 

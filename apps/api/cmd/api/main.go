@@ -22,6 +22,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/ai"
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
+	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/httpapi"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
@@ -46,6 +47,16 @@ type config struct {
 	port           int
 	allowedOrigins []string
 	tickEvery      time.Duration
+}
+
+// storeRootDomain is the parent domain of store hosts. Unset means commerce.reddie.id; set but empty
+// keeps every store on one host under PUBLIC_URL/shop.
+func storeRootDomain() string {
+	root, ok := os.LookupEnv("STORE_ROOT_DOMAIN")
+	if !ok {
+		return domain.DefaultStoreRoot
+	}
+	return strings.TrimSpace(root)
 }
 
 // loadConfig reads the environment and fails fast on what the service cannot run without.
@@ -196,12 +207,15 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 	srv := httpapi.New(httpapi.Options{
 		DB: db, Clock: clock.New(anchor), Signer: signer, Vault: vault,
 		Outbound: service.OutboundClient(allowInternal), AllowInternalWebhooks: allowInternal,
-		AI:         ai.New(os.Getenv("OLLAMA_URL"), os.Getenv("OLLAMA_API_KEY"), os.Getenv("OLLAMA_MODEL")),
-		Mail:       mailer,
-		ResendURL:  os.Getenv("RESEND_URL"),
-		PublicURL:  strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
-		TrustProxy: os.Getenv("TRUST_PROXY") == "true", Hub: hub, Log: log, Version: Version,
+		AI:        ai.New(os.Getenv("OLLAMA_URL"), os.Getenv("OLLAMA_API_KEY"), os.Getenv("OLLAMA_MODEL")),
+		Mail:      mailer,
+		ResendURL: os.Getenv("RESEND_URL"),
+		PublicURL: strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"),
+		// STORE_ROOT_DOMAIN gives each store its own host; empty keeps stores at PUBLIC_URL/shop/{subdomain}.
+		StoreRootDomain: strings.TrimSpace(os.Getenv("STORE_ROOT_DOMAIN")),
+		TrustProxy:      os.Getenv("TRUST_PROXY") == "true", Hub: hub, Log: log, Version: Version,
 		DemoLogin: cfg.demoLogin, AllowedOrigins: cfg.allowedOrigins,
+		MediaDir: os.Getenv("MEDIA_DIR"), MediaPublicURL: os.Getenv("MEDIA_PUBLIC_URL"),
 	})
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

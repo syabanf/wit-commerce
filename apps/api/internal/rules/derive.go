@@ -280,7 +280,8 @@ func AudienceSize(s domain.Segment, customers []domain.Customer, ctx SegmentCont
 // --- pages ---
 
 // ApplyTemplate lays the template's sections over a page's content. Each section takes the copy of
-// the first unused section of the same kind, so headline, body, products and CTA survive a change.
+// the first unused section of the same kind, so headline, body, products, CTA, image and items survive
+// a change. The template sets the order again, so a hand-made order is dropped.
 func ApplyTemplate(content []domain.PageSection, t domain.Template, pageID string) []domain.PageSection {
 	pool := append([]domain.PageSection(nil), content...)
 	out := make([]domain.PageSection, 0, len(t.Sections))
@@ -306,6 +307,9 @@ func ApplyTemplate(content []domain.PageSection, t domain.Template, pageID strin
 			section.Body = from.Body
 			section.ProductIDs = from.ProductIDs
 			section.CtaLabel = from.CtaLabel
+			section.ImageURL = from.ImageURL
+			section.CtaHref = from.CtaHref
+			section.Items = from.Items
 			if section.ProductIDs == nil {
 				section.ProductIDs = []string{}
 			}

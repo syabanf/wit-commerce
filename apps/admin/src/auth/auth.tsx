@@ -26,6 +26,8 @@ interface AuthValue {
   signIn: (userId: string) => void
   /** API mode: sign in with email and password; resolves to an error sentence, or null when in. */
   signInWithPassword: (email: string, password: string) => Promise<string | null>
+  /** API mode: keep a token the server just issued, as after sign-up. */
+  startSession: (token: string, user: User) => void
   signOut: () => void
   switchTenant: (tenantId: string) => void
   can: (permission: Permission) => boolean
@@ -49,6 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       writeStorage(SESSION_KEY, next)
       setSession(next)
     }
+    const startSession = (issued: string, u: User) => {
+      persist({ userId: u.id, tenantId: u.tenantIds[0] ?? '' })
+      tokenStore.set(issued)
+    }
     return {
       user,
       tenant,
@@ -62,14 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithPassword: async (email, password) => {
         try {
           const { token: issued, user: u } = await api.login(email, password)
-          persist({ userId: u.id, tenantId: u.tenantIds[0] ?? '' })
-          tokenStore.set(issued)
+          startSession(issued, u)
           return null
         } catch (err) {
           if (err instanceof ApiError) return err.message
           return 'The sign-in service did not answer. Check that the API is running.'
         }
       },
+      startSession,
       signOut: () => {
         persist(null)
         if (HTTP) tokenStore.set(null)

@@ -270,8 +270,15 @@ run('pages/schedule', { type: 'pages/schedule', id: page.id, at: at(hours + 48) 
 run('pages/publish', { type: 'pages/publish', id: page.id }, 'usr-maya')
 // Roll back to a seeded revision: both sides know its id, unlike the ones this run minted.
 run('pages/rollback', { type: 'pages/rollback', id: page.id, revisionId: page.revisions[0]!.id }, 'usr-maya')
+// The page is live, so the save, the template switch and the rollback above went into its draft.
+run('pages/discardDraft', { type: 'pages/discardDraft', id: page.id }, 'usr-maya')
+run('pages/discardDraft without a draft', { type: 'pages/discardDraft', id: page.id }, 'usr-maya')
 const newPage: Page = { ...page, id: 'page-golden', slug: '/golden', title: 'Golden page', status: 'draft', revisions: [], publishedAt: null }
 run('pages/create', { type: 'pages/create', page: newPage }, 'usr-maya')
+// A page that was never published takes a save directly; once scheduled, saves wait for the tick.
+run('pages/save draft page', { type: 'pages/save', id: newPage.id, sections: newPage.sections, note: 'Golden draft edit' }, 'usr-maya')
+run('pages/schedule draft page', { type: 'pages/schedule', id: newPage.id, at: at(hours + 5) }, 'usr-maya')
+run('pages/save scheduled page', { type: 'pages/save', id: newPage.id, sections: newPage.sections, seo: { ...newPage.seo, title: 'Golden scheduled title' }, note: 'Golden scheduled edit' }, 'usr-maya')
 const seller = find(state.sellers, (s) => s.tenantId === lari && s.allowedTemplateIds.length > 1, 'seller')
 run('sellers/save', { type: 'sellers/save', seller: { ...seller, featuredProductIds: [product.id] } }, 'usr-andi')
 run('sellers/save new', {

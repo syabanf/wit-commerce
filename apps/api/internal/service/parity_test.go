@@ -426,6 +426,10 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		var a struct{ ID, RevisionID string }
 		parse(&a)
 		return s.RollbackPage(ctx, m, a.ID, a.RevisionID)
+	case "pages/discardDraft":
+		var a struct{ ID string }
+		parse(&a)
+		return s.DiscardPageDraft(ctx, m, a.ID)
 	case "sellers/save":
 		var a struct{ Seller domain.Seller }
 		parse(&a)

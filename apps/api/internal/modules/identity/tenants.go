@@ -1,7 +1,10 @@
 package identity
 
 import (
+	"cmp"
 	"context"
+	"strconv"
+	"strings"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 
@@ -13,7 +16,59 @@ func (s *Identity) CreateTenant(ctx context.Context, m kernel.Meta, tenant domai
 	if tenant.ID == "" || tenant.Subdomain == "" {
 		return nil, kernel.Invalid{Reason: "A tenant needs an id and a subdomain."}
 	}
-	return s.Run(ctx, func(t *kernel.Tx) error { return t.Put("tenants", tenant.ID, tenant) })
+	if err := ValidSubdomain(tenant.Subdomain); err != nil {
+		return nil, err
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error { return AddTenant(t, tenant) })
+}
+
+// AddTenant writes a new tenant. A save would replace a row with the same id, since tenants carry no
+// tenantId for the store to guard, so an existing id or subdomain is refused here.
+func AddTenant(t *kernel.Tx, tenant domain.Tenant) error {
+	exists, err := TenantExists(t, tenant.ID)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrTenantExists
+	}
+	taken, err := SubdomainTaken(t, tenant.Subdomain)
+	if err != nil {
+		return err
+	}
+	if taken {
+		return ErrSubdomainTaken
+	}
+	return t.Put("tenants", tenant.ID, tenant)
+}
+
+// FreeTenantCode is an uppercase code from the name that no tenant uses yet: KOPISENJA, then KOPISENJA2.
+func FreeTenantCode(t *kernel.Tx, name string) (string, error) {
+	base := strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, strings.ToUpper(name))
+	base = cmp.Or(base[:min(len(base), 10)], "TENANT")
+	rows, err := t.Query(t.Ctx, `select data->>'code' from tenants where data->>'code' like $1`, base+"%")
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	taken := map[string]bool{}
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return "", err
+		}
+		taken[code] = true
+	}
+	code := base
+	for n := 2; taken[code]; n++ {
+		code = base + strconv.Itoa(n)
+	}
+	return code, rows.Err()
 }
 
 // CompleteOnboardingStep is tenants/completeStep.

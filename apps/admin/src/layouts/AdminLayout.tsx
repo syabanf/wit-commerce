@@ -11,6 +11,7 @@ import { PhoneNav } from './PhoneNav'
 import { QuickSearch } from './QuickSearch'
 import { SideRail } from './SideRail'
 import { useNavCounts } from './useNavCounts'
+import { VerifyEmailBanner } from './VerifyEmailBanner'
 import { useFocusOnNavigate } from '../hooks/useFocusOnNavigate'
 import type { RouteHandle } from '../routes/page'
 
@@ -108,6 +109,8 @@ export function AdminLayout() {
               This browser is out of storage or blocks it. Your changes stay until you reload the page.
             </Banner>
           )}
+
+          <VerifyEmailBanner />
 
           {/* Section tabs when rail is collapsed */}
           {!expanded && <SectionTabs />}

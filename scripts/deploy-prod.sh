@@ -12,7 +12,13 @@
 #
 # Settings, all optional:
 #   PUBLIC_URL    https://commerce.reddie.id
-#   WEB_ROOT      /var/www/commerce (the admin at the root, the storefront in shop/)
+#   WEB_ROOT      /var/www/commerce (the admin at the root, the storefront in store/, or in shop/
+#                 on a single host)
+#   STORE_ROOT_DOMAIN  set it (for example commerce.reddie.id) to open each brand's store at
+#                 https://{subdomain}.$STORE_ROOT_DOMAIN. It needs a wildcard DNS record and certificate
+#                 first, see apps/api/cmd/README.md. Empty, the default, keeps every store on one host at
+#                 $PUBLIC_URL/shop/{subdomain}. The value is saved in the env file for the next run.
+#   MEDIA_ROOT    /var/lib/commerce/media, uploaded images; the API writes them and nginx serves /media/
 #   API_PORT      8090, on 127.0.0.1 only
 #   SPLIT_SERVICES=true  run the AI chat, the storefront reads and the email worker as their own
 #                 containers (ports AI_PORT 8091, SHOP_PORT 8093); false keeps them in the API
@@ -35,6 +41,7 @@ export AI_PORT="${AI_PORT:-8091}" SHOP_PORT="${SHOP_PORT:-8093}"
 export SPLIT_SERVICES="${SPLIT_SERVICES:-false}"
 if [ "$SPLIT_SERVICES" = true ]; then export COMPOSE_PROFILES=split; fi
 ENV_FILE="${ENV_FILE:-.env.production}"
+export MEDIA_ROOT="${MEDIA_ROOT:-/var/lib/commerce/media}"
 COMPOSE_NAME="${COMPOSE_NAME:-commerce-prod}"
 NGINX_CONF=/etc/nginx/conf.d/commerce.conf
 DOMAIN="${PUBLIC_URL#*://}"
@@ -44,7 +51,7 @@ API="http://127.0.0.1:$API_PORT/api/v1"
 step() { printf '\n==> %s\n' "$1"; }
 fail() { printf 'Failed: %s\n' "$1" >&2; exit 1; }
 need() { command -v "$1" >/dev/null || fail "$1 is not installed on this machine"; }
-compose() { env -u PUBLIC_URL -u EMAIL_FROM -u DEMO_LOGIN docker compose -p "$COMPOSE_NAME" --env-file "$ENV_FILE" -f docker-compose.prod.yml "$@"; }
+compose() { env -u PUBLIC_URL -u STORE_ROOT_DOMAIN -u EMAIL_FROM -u DEMO_LOGIN docker compose -p "$COMPOSE_NAME" --env-file "$ENV_FILE" -f docker-compose.prod.yml "$@"; }
 sudo_if_needed() { if [ "$(id -u)" = 0 ] || [ -w "$WEB_ROOT" ]; then "$@"; else sudo "$@"; fi; }
 
 # Reads one value from the env file.
@@ -88,6 +95,11 @@ prepare_secrets() {
   fi
   unset RESEND_API_KEY
   store PUBLIC_URL "$PUBLIC_URL"
+  # Unset keeps the saved choice, or the PUBLIC_URL host on a first run; set but empty means one host.
+  if [ -z "${STORE_ROOT_DOMAIN+set}" ]; then
+    if grep -q '^STORE_ROOT_DOMAIN=' "$ENV_FILE"; then STORE_ROOT_DOMAIN="$(stored STORE_ROOT_DOMAIN)"; else STORE_ROOT_DOMAIN=""; fi
+  fi
+  store STORE_ROOT_DOMAIN "$STORE_ROOT_DOMAIN"
   [ -n "$(stored EMAIL_FROM)" ] || store EMAIL_FROM "${EMAIL_FROM:-Commerce OS <noreply@$DOMAIN>}"
   [ -n "$(stored DEMO_LOGIN)" ] || store DEMO_LOGIN "${DEMO_LOGIN:-false}"
   # Docker Compose reads the file itself, so these must not stay in this shell's environment.
@@ -98,6 +110,10 @@ prepare_secrets() {
 
 start_api() {
   step "Postgres and the API"
+  # The API runs as uid 10001 and writes uploads here; nginx reads them.
+  sudo_if_needed mkdir -p "$MEDIA_ROOT"
+  sudo_if_needed chown 10001:10001 "$MEDIA_ROOT"
+  sudo_if_needed chmod 755 "$MEDIA_ROOT"
   compose up -d --build
   local tries=0
   until curl -fsS -m 3 "$API/health" >/dev/null 2>&1; do
@@ -148,12 +164,23 @@ publish_web() {
   # Demo login buttons send this password, so it ships in the JavaScript only when demo login is on.
   local demo_password=''
   [ "$(stored DEMO_LOGIN)" != true ] || demo_password="$(stored DEMO_PASSWORD)"
-  VITE_API_URL=/api VITE_STOREFRONT_URL="$PUBLIC_URL/shop" VITE_DEMO_PASSWORD="$demo_password" \
-    pnpm --filter @rc/admin build
-  VITE_API_URL=/api VITE_ADMIN_ORIGINS="$PUBLIC_URL" pnpm --filter @rc/storefront build
-  sudo_if_needed mkdir -p "$WEB_ROOT/shop"
-  sudo_if_needed rsync -a --delete --exclude /shop apps/admin/dist/ "$WEB_ROOT/"
-  sudo_if_needed rsync -a --delete apps/storefront/dist/ "$WEB_ROOT/shop/"
+  if [ -n "$STORE_ROOT_DOMAIN" ]; then
+    # One storefront build at the root serves every store host; it reads the store from the host name.
+    VITE_API_URL=/api VITE_STORE_ROOT_DOMAIN="$STORE_ROOT_DOMAIN" VITE_DEMO_PASSWORD="$demo_password" \
+      pnpm --filter @rc/admin build
+    STOREFRONT_BASE=/ VITE_API_URL=/api VITE_STORE_ROOT_DOMAIN="$STORE_ROOT_DOMAIN" VITE_ADMIN_ORIGINS="$PUBLIC_URL" \
+      pnpm --filter @rc/storefront build
+    sudo_if_needed mkdir -p "$WEB_ROOT/store"
+    sudo_if_needed rsync -a --delete --exclude /shop --exclude /store apps/admin/dist/ "$WEB_ROOT/"
+    sudo_if_needed rsync -a --delete apps/storefront/dist/ "$WEB_ROOT/store/"
+  else
+    VITE_API_URL=/api VITE_STOREFRONT_URL="$PUBLIC_URL/shop" VITE_DEMO_PASSWORD="$demo_password" \
+      pnpm --filter @rc/admin build
+    VITE_API_URL=/api VITE_ADMIN_ORIGINS="$PUBLIC_URL" pnpm --filter @rc/storefront build
+    sudo_if_needed mkdir -p "$WEB_ROOT/shop"
+    sudo_if_needed rsync -a --delete --exclude /shop --exclude /store apps/admin/dist/ "$WEB_ROOT/"
+    sudo_if_needed rsync -a --delete apps/storefront/dist/ "$WEB_ROOT/shop/"
+  fi
   echo "Published to $WEB_ROOT"
 }
 
@@ -187,19 +214,8 @@ split_locations() {
 CONF
 }
 
-nginx_site() {
+api_location() {
   cat <<CONF
-# Behind Cloudflare the shopper's address is CF-Connecting-IP; the API's per-shopper limit reads it.
-map \$http_cf_connecting_ip \$shopper_ip {
-  default \$http_cf_connecting_ip;
-  ""      \$remote_addr;
-}
-
-server {
-  listen 80;
-  server_name $DOMAIN;
-  root $WEB_ROOT;
-$(split_locations)
   location /api/ {
     proxy_pass http://127.0.0.1:$API_PORT;
     proxy_http_version 1.1;
@@ -211,14 +227,84 @@ $(split_locations)
     proxy_buffering off;
     proxy_read_timeout 1h;
   }
+CONF
+}
+
+# Uploaded images. Each file name is a new id, so browsers may keep it for a year; nosniff stops a
+# browser reading an image as a script.
+media_location() {
+  cat <<CONF
+  location /media/ {
+    alias $MEDIA_ROOT/;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+CONF
+}
+
+# The admin on the main host. On a single host it also serves the storefront under /shop/; with store
+# hosts it sends old /shop/{store}/... links to https://{store}.$STORE_ROOT_DOMAIN/...
+main_site() {
+  cat <<CONF
+server {
+  listen 80;
+  server_name $DOMAIN;
+  root $WEB_ROOT;
+$(split_locations)
+$(api_location)
+$(media_location)
+CONF
+  if [ -n "$STORE_ROOT_DOMAIN" ]; then
+    cat <<CONF
+  location ~ ^/shop/([a-z0-9-]+)(/.*)?\$ {
+    return 301 https://\$1.$STORE_ROOT_DOMAIN\$2\$is_args\$args;
+  }
+CONF
+  else
+    cat <<CONF
   location /shop/ {
     try_files \$uri /shop/index.html;
   }
+CONF
+  fi
+  cat <<CONF
   location / {
     try_files \$uri /index.html;
   }
 }
 CONF
+}
+
+# Every store host: one storefront build that reads the store from the host name, with the same API.
+store_site() {
+  [ -n "$STORE_ROOT_DOMAIN" ] || return 0
+  cat <<CONF
+
+server {
+  listen 80;
+  server_name *.$STORE_ROOT_DOMAIN;
+  root $WEB_ROOT/store;
+$(split_locations)
+$(api_location)
+$(media_location)
+  location / {
+    try_files \$uri /index.html;
+  }
+}
+CONF
+}
+
+nginx_site() {
+  cat <<CONF
+# Behind Cloudflare the shopper's address is CF-Connecting-IP; the API's per-shopper limit reads it.
+map \$http_cf_connecting_ip \$shopper_ip {
+  default \$http_cf_connecting_ip;
+  ""      \$remote_addr;
+}
+
+CONF
+  main_site
+  store_site
 }
 
 configure_nginx() {
@@ -250,8 +336,18 @@ check_public() {
   local type
   type="$(curl -sS -m 15 -o /dev/null -w '%{content_type}' "$PUBLIC_URL/api/v1/health" || true)"
   case "$type" in
-    application/json*) echo "$PUBLIC_URL/api answers. Try $PUBLIC_URL/shop/lari/agent" ;;
+    application/json*) echo "$PUBLIC_URL/api answers." ;;
     *) echo "$PUBLIC_URL/api/v1/health answered '$type', so the API is not reachable there yet." ;;
+  esac
+  if [ -z "$STORE_ROOT_DOMAIN" ]; then
+    echo "Try $PUBLIC_URL/shop/lari/agent"
+    return
+  fi
+  local store="https://lari.$STORE_ROOT_DOMAIN"
+  type="$(curl -sS -m 15 -o /dev/null -w '%{content_type}' "$store/api/v1/health" || true)"
+  case "$type" in
+    application/json*) echo "Store hosts answer. Try $store/agent" ;;
+    *) echo "$store answered '$type'. Check the wildcard DNS record and certificate (apps/api/cmd/README.md, Store subdomains)." ;;
   esac
 }
 

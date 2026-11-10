@@ -75,12 +75,15 @@ type (
 	Invalid struct{ Reason string }
 	// Forbidden is a tenant the principal may not touch (403).
 	Forbidden struct{ TenantID string }
+	// Conflict is a name or id already in use (409), with a code the client can act on.
+	Conflict struct{ Code, Reason string }
 )
 
 func (e Refusal) Error() string   { return e.Reason }
 func (e NotFound) Error() string  { return e.What + " not found" }
 func (e Invalid) Error() string   { return e.Reason }
 func (e Forbidden) Error() string { return "no access to tenant " + e.TenantID }
+func (e Conflict) Error() string  { return e.Reason }
 
 // Refuse is a business rule saying no.
 func Refuse(reason string) error { return Refusal{Reason: reason} }

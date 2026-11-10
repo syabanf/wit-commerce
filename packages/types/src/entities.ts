@@ -65,6 +65,8 @@ export interface BrandConfig {
   tagline: string
   /** True means locked: sellers and campaign pages use the tenant value. */
   locks: Record<BrandLockKey, boolean>
+  /** An uploaded logo; empty means the storefront draws its own mark. */
+  logoUrl?: string
 }
 
 export interface LoyaltyConfig {
@@ -92,6 +94,8 @@ export interface Tenant {
   shippingCouriers?: Courier[]
   /** Onboarding steps the tenant has finished, in order. */
   onboarding: string[]
+  /** "signup" for a store its owner created from the public sign-up page. */
+  source?: 'signup'
 }
 
 export interface User {
@@ -106,6 +110,8 @@ export interface User {
   disabled?: boolean
   /** Added by an admin, and has not yet chosen a password from their invitation. */
   invited?: boolean
+  /** When the person proved their inbox with a link from email. */
+  emailVerifiedAt?: IsoDate
 }
 
 /** A person who sells for a tenant through a personal storefront (sales, agent, reseller, affiliate). */
@@ -153,6 +159,19 @@ export interface PageSection {
   body: string
   productIds: string[]
   ctaLabel: string
+  /** An uploaded image for the section; empty means the template's own photo. */
+  imageUrl?: string
+  /** Where the section's button goes: a store path ("/p/prd-1", "/about") or a full https link. */
+  ctaHref?: string
+  /** FAQ questions with answers, or testimonial quotes with their author. */
+  items?: PageSectionItem[]
+  /** Position on the page. Set once the page is arranged by hand; without it the template order applies. */
+  order?: number
+}
+
+export interface PageSectionItem {
+  title: string
+  body: string
 }
 
 export interface PageRevision {
@@ -182,6 +201,20 @@ export interface Page {
   scheduledAt: IsoDate | null
   revisions: PageRevision[]
   views30d: number
+}
+
+/**
+ * Changes to a live page that shoppers do not see yet, one row per page (`id` is the page's id).
+ * Publishing copies them into the page; staff see them, the storefront never receives them.
+ */
+export interface PageDraft {
+  id: string
+  tenantId: string
+  sections: PageSection[]
+  seo: Page['seo']
+  templateId: string
+  updatedAt: IsoDate
+  updatedBy: string
 }
 
 // --- catalog and stock ---
@@ -294,6 +327,8 @@ export interface Product {
   assisted: boolean
   createdAt: IsoDate
   publishAt: IsoDate | null
+  /** An uploaded photo; empty means the storefront's stock photo. */
+  imageUrl?: string
 }
 
 export interface Warehouse {

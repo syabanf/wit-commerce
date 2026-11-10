@@ -1,6 +1,6 @@
 import type { BrandConfig, RadiusScale } from '@rc/types'
 import type { CSSProperties } from 'react'
-import { BRAND_FONT_STACK } from '@rc/fixtures'
+import { fontStack } from '@rc/fixtures'
 
 export type SfStyle = CSSProperties & Partial<Record<`--sf-${string}`, string>>
 
@@ -54,9 +54,9 @@ export function brandVars(brand: BrandConfig): SfStyle {
     '--sf-btn-radius': brand.buttonStyle === 'pill' ? '9999px' : BUTTON_RADIUS[brand.radius],
     '--sf-btn-bg': outline ? 'transparent' : 'var(--sf-primary)',
     '--sf-btn-fg': outline ? 'var(--sf-primary)' : 'var(--sf-on-primary)',
-    // Every storefront sets in DM Sans, whatever an older guideline stored.
-    '--sf-heading': BRAND_FONT_STACK,
-    '--sf-body': BRAND_FONT_STACK,
-    '--sf-serif': BRAND_FONT_STACK,
+    // A font outside the pairing list, as an older guideline may store, sets in DM Sans.
+    '--sf-heading': fontStack(brand.fonts?.heading),
+    '--sf-body': fontStack(brand.fonts?.body),
+    '--sf-serif': fontStack(brand.fonts?.heading),
   }
 }

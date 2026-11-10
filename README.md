@@ -13,6 +13,8 @@ pnpm dev:mobile    # http://localhost:5374
 pnpm dev:storefront  # http://localhost:5375/lari, /aruna, /teknika
 ```
 
+With `VITE_STORE_ROOT_DOMAIN=localhost:5375` (set in `.claude/launch.json`) each store also opens on its own host, http://lari.localhost:5375. Browsers send `*.localhost` to this machine without a hosts file. New stores come from http://localhost:5373/start, where anyone can sign up and get `{name}.{root}`.
+
 Sign in with any demo account on the login screen; any password works on the bundled data. Against the API the password is the shared demo password (`commerce-demo` unless `DEMO_PASSWORD` says otherwise).
 
 | Account | Role | Brands |
@@ -97,7 +99,7 @@ WIT red accent on a near-black ink. Tenant storefront colours are data (`Tenant.
 
 ## Production
 
-The admin runs at https://commerce.reddie.id and the storefront at https://commerce.reddie.id/shop.
+The admin runs at https://commerce.reddie.id. Stores run at https://commerce.reddie.id/shop/{store}, or, once `STORE_ROOT_DOMAIN` is set and its wildcard DNS record and certificate exist, at https://{store}.commerce.reddie.id. See "Store subdomains" in [apps/api/cmd/README.md](apps/api/cmd/README.md).
 
 - Admin: build with `VITE_STOREFRONT_URL=https://commerce.reddie.id/shop pnpm --filter @rc/admin build`.
 - Storefront: build with `VITE_ADMIN_ORIGINS=https://commerce.reddie.id pnpm --filter @rc/storefront build`. Every build (`pnpm build`, `turbo run build` or `vite build` in `apps/storefront`) uses base `/shop/`, and the router takes its basename from it, so every link stays under `/shop`. `STOREFRONT_BASE=/` builds the store for the root; `pnpm --filter @rc/storefront preview` serves the build at http://localhost:4375/shop/.

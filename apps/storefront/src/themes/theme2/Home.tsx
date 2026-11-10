@@ -14,7 +14,7 @@ import {
   UseCases,
   extraSection,
 } from '../../components/homeExtras'
-import { BrandStory, RAIL, Testimonials } from '../../components/sections'
+import { BrandStory, EditableSection, RAIL, Testimonials } from '../../components/sections'
 import { SPACING, TemplateHero, useTemplateLook } from '../../components/templateLook'
 import { Button, ButtonLink } from '../../components/ui'
 import type { HomeData } from '../../features/home'
@@ -210,6 +210,7 @@ function Collections({ collections }: { collections: HomeData['collections'] }) 
               <Link to={paths.collection(store, collection.slug)} className="group block">
                 <Photo
                   id={first && (productPhoto(first.id) ?? categoryPhoto(first.categoryId))}
+                  src={first?.imageUrl}
                   width={640}
                   ratio={0.75}
                   className="md:aspect-[2/1] 2xl:aspect-[3/1] aspect-[4/3] rounded-[var(--sf-card-radius)]"
@@ -241,13 +242,15 @@ export function Home({ data }: { data: HomeData }) {
   const hasEditorialProducts = sections.some((s) => s.kind === 'featured_product' || s.kind === 'collection')
   return (
     <div data-template={data.template?.id ?? 'default'}>
-      {templateHero ? (
-        <div className="px-4 pt-4 md:px-6 md:pt-28 lg:px-10">
-          <TemplateHero section={templateHero} />
-        </div>
-      ) : (
-        <Hero data={data} product={data.heroProduct} main={!isPhone} />
-      )}
+      <EditableSection id={data.hero?.id ?? 'hero'}>
+        {templateHero ? (
+          <div className="px-4 pt-4 md:px-6 md:pt-28 lg:px-10">
+            <TemplateHero section={templateHero} />
+          </div>
+        ) : (
+          <Hero data={data} product={data.heroProduct} main={!isPhone} />
+        )}
+      </EditableSection>
       <PhoneShop data={data} main={isPhone && !templateHero} />
       <div className={cn('mt-12 px-4 md:mt-16 md:px-6 lg:px-10', SPACING[look.spacing])}>
         <BenefitsStrip />

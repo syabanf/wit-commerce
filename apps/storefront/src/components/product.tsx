@@ -42,25 +42,31 @@ export const productTone = (id: string) => TONES[hash(id) % TONES.length]!
 
 const PHOTO_WIDTH = { sm: 320, md: 640, lg: 1200 } as const
 
-/** A sample photo over a brand-tinted block; the block shows while the photo loads or when it fails. */
+/**
+ * A photo over a brand-tinted block; the block shows while the photo loads or when it fails. An uploaded
+ * image (src) wins over the sample photo (id).
+ */
 export function Photo({
   id,
+  src,
   width,
   ratio = 1,
   className,
   eager,
 }: {
   id: string | undefined
+  src?: string
   width: number
   ratio?: number
   className?: string
   eager?: boolean
 }) {
+  const url = src || (id && photoUrl(id, width, ratio))
   return (
     <div aria-hidden="true" className={cn('relative overflow-hidden bg-[var(--sf-soft)]', className)}>
-      {id && (
+      {url && (
         <img
-          src={photoUrl(id, width, ratio)}
+          src={url}
           alt=""
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"
@@ -71,21 +77,30 @@ export function Photo({
   )
 }
 
-/** Product photo from the sample set; products without one get a brand-tinted block with their initials. */
+/** The product's uploaded photo, else one from the sample set; without either a brand-tinted block with its initials. */
 export function ProductImage({
   product,
   className,
   size = 'md',
   strength = 16,
 }: {
-  product: Pick<Product, 'id' | 'name'>
+  product: Pick<Product, 'id' | 'name' | 'imageUrl'>
   className?: string
   size?: 'sm' | 'md' | 'lg'
   /** Tint percentage of the brand colour for the fallback block. */
   strength?: number
 }) {
   const photo = productPhoto(product.id)
-  if (photo) return <Photo id={photo} width={PHOTO_WIDTH[size]} eager={size === 'lg'} className={className} />
+  if (product.imageUrl || photo)
+    return (
+      <Photo
+        id={photo}
+        src={product.imageUrl}
+        width={PHOTO_WIDTH[size]}
+        eager={size === 'lg'}
+        className={className}
+      />
+    )
   const tone = productTone(product.id)
   return (
     <div

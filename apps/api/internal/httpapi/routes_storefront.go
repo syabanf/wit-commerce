@@ -10,7 +10,7 @@ import (
 // storefrontRoutes registers pages and sellers.
 func (s *Server) storefrontRoutes(rt *router) {
 	rt.add("POST", "/pages", "pages/create", "store.manage", "Create a page", body(s, s.svc.CreatePage))
-	rt.add("PUT", "/pages/{id}", "pages/save", "store.manage", "Save page content as a new revision", func(w http.ResponseWriter, r *http.Request) {
+	rt.add("PUT", "/pages/{id}", "pages/save", "store.manage", "Save page content: a live page keeps it as unpublished changes, any other page takes it as a new revision", func(w http.ResponseWriter, r *http.Request) {
 		var in service.SavePageInput
 		if err := decode(r, &in); err != nil {
 			s.writeError(w, r, err)
@@ -21,8 +21,8 @@ func (s *Server) storefrontRoutes(rt *router) {
 		})
 	})
 	rt.add("POST", "/pages/{id}/template", "pages/setTemplate", "store.manage", "Lay the page out with another template", templateOf(s, s.svc.SetPageTemplate))
-	rt.add("POST", "/pages/{id}/publish", "pages/publish", "store.manage", "Publish a page", idOnly(s, s.svc.PublishPage))
-	rt.add("POST", "/pages/{id}/schedule", "pages/schedule", "store.manage", "Schedule a page", func(w http.ResponseWriter, r *http.Request) {
+	rt.add("POST", "/pages/{id}/publish", "pages/publish", "store.manage", "Publish a page", s.verifiedToPublish(idOnly(s, s.svc.PublishPage)))
+	rt.add("POST", "/pages/{id}/schedule", "pages/schedule", "store.manage", "Schedule a page", s.verifiedToPublish(func(w http.ResponseWriter, r *http.Request) {
 		var in struct {
 			At string `json:"at"`
 		}
@@ -33,7 +33,8 @@ func (s *Server) storefrontRoutes(rt *router) {
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
 			return s.svc.SchedulePage(r.Context(), m, r.PathValue("id"), in.At)
 		})
-	})
+	}))
+	rt.add("POST", "/pages/{id}/discard-draft", "pages/discardDraft", "store.manage", "Throw away a page's unpublished changes", idOnly(s, s.svc.DiscardPageDraft))
 	rt.add("POST", "/pages/{id}/unpublish", "pages/unpublish", "store.manage", "Take a page back to draft", idOnly(s, s.svc.UnpublishPage))
 	rt.add("POST", "/pages/{id}/rollback", "pages/rollback", "store.manage", "Restore a revision", func(w http.ResponseWriter, r *http.Request) {
 		var in struct {

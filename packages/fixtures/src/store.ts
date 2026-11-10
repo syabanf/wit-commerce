@@ -24,6 +24,7 @@ import type {
   Order,
   OrderEvent,
   Page,
+  PageDraft,
   PageSection,
   Product,
   ProductStatus,
@@ -66,7 +67,9 @@ import {
   orderAdvanceBlocker,
   orderCancelBlocker,
   orderRefundBlocker,
+  pageEditsGoToDraft,
   pagePublishBlocker,
+  pageWithDraft,
   productActivateBlocker,
   segmentRemoveBlocker,
   sellerTemplateBlocker,
@@ -79,6 +82,8 @@ export interface AppState {
   sellers: Seller[]
   templates: Template[]
   pages: Page[]
+  /** Unpublished changes to live pages, one per page. Staff only: the storefront never gets them. */
+  pageDrafts: PageDraft[]
   categories: Category[]
   attributes: AttributeDef[]
   modifiers: ModifierGroup[]
@@ -191,6 +196,7 @@ export type AppAction =
   | { type: 'pages/schedule'; id: string; at: IsoDate }
   | { type: 'pages/unpublish'; id: string }
   | { type: 'pages/rollback'; id: string; revisionId: string }
+  | { type: 'pages/discardDraft'; id: string }
   | { type: 'sellers/save'; seller: Seller }
   | { type: 'sellers/setTemplate'; id: string; templateId: string }
   | { type: 'sellers/setStatus'; id: string; status: SellerStatus }
@@ -211,6 +217,47 @@ const upsert = <T extends { id: string }>(list: T[], item: T) =>
 
 const patch = <T extends { id: string }>(list: T[], id: string, fn: (x: T) => T) =>
   list.map((x) => (x.id === id ? fn(x) : x))
+
+/** A page keeps its last 12 versions, newest first. */
+const withRevision = (page: Page, revision: Page['revisions'][number]) =>
+  [revision, ...page.revisions].slice(0, 12)
+
+/** Records the page's content as the version that went live. */
+const publishedRevision = (page: Page, at: IsoDate, by: string): Page => ({
+  ...page,
+  revisions: withRevision(page, {
+    id: newId('rev'),
+    at,
+    by,
+    note: 'Published',
+    sections: page.sections,
+    templateId: page.templateId,
+  }),
+})
+
+const draftOf = (state: AppState, pageId: string) => state.pageDrafts.find((d) => d.id === pageId)
+
+/** Writes a live page's unpublished changes; the page itself stays as shoppers see it. */
+function saveDraft(
+  state: AppState,
+  page: Page,
+  sections: PageSection[],
+  seo: Page['seo'],
+  templateId: string,
+  at: IsoDate,
+  by: string,
+): AppState {
+  const draft: PageDraft = {
+    id: page.id,
+    tenantId: page.tenantId,
+    sections,
+    seo,
+    templateId,
+    updatedAt: at,
+    updatedBy: by,
+  }
+  return { ...state, pageDrafts: upsert(state.pageDrafts, draft) }
+}
 
 function customerEvent(
   order: Pick<Order, 'tenantId' | 'customerId' | 'id'>,
@@ -361,7 +408,8 @@ function advanceOrder(state: AppState, order: Order, by: string, at: IsoDate, tr
 
 /**
  * Lays the template's sections over a page's content. Each section takes the copy of the first
- * unused section of the same kind, so headline, body, products and CTA survive a template change.
+ * unused section of the same kind, so headline, body, products, CTA, image and items survive a template
+ * change. The template sets the order again, so a hand-made order is dropped.
  */
 export function applyTemplate(content: PageSection[], template: Template, pageId: string): PageSection[] {
   const pool = [...content]
@@ -377,6 +425,9 @@ export function applyTemplate(content: PageSection[], template: Template, pageId
       body: from?.body ?? '',
       productIds: from?.productIds ?? [],
       ctaLabel: from?.ctaLabel ?? '',
+      ...(from?.imageUrl !== undefined && { imageUrl: from.imageUrl }),
+      ...(from?.ctaHref !== undefined && { ctaHref: from.ctaHref }),
+      ...(from?.items !== undefined && { items: from.items }),
     }
   })
 }
@@ -495,17 +546,22 @@ function tick(state: AppState, at: IsoDate): AppState {
       return { ...p, status: 'expired' as const }
     return p
   })
-  const pages = state.pages.map((p) =>
-    p.status === 'scheduled' && p.scheduledAt && toMs(p.scheduledAt) <= now
-      ? { ...p, status: 'published' as const, publishedAt: p.scheduledAt, scheduledAt: null }
-      : p,
-  )
+  // A scheduled page goes live with its unpublished changes, unless they would not pass the checks.
+  let { pageDrafts } = state
+  const pages = state.pages.map((p) => {
+    if (p.status !== 'scheduled' || !p.scheduledAt || toMs(p.scheduledAt) > now) return p
+    const live = { ...p, status: 'published' as const, publishedAt: p.scheduledAt, scheduledAt: null }
+    const draft = pageDrafts.find((d) => d.id === p.id)
+    if (!draft || pagePublishBlocker(pageWithDraft(p, draft))) return live
+    pageDrafts = pageDrafts.filter((d) => d.id !== p.id)
+    return publishedRevision(pageWithDraft(live, draft), at, 'system')
+  })
   const campaigns = state.campaigns.map((c) => {
     if (c.status === 'scheduled' && toMs(c.startAt) <= now) return { ...c, status: 'running' as const }
     if (c.status === 'running' && toMs(c.endAt) < now) return { ...c, status: 'completed' as const }
     return c
   })
-  return { ...state, stock, modifierStock, orders, promotions, pages, campaigns }
+  return { ...state, stock, modifierStock, orders, promotions, pages, pageDrafts, campaigns }
 }
 
 export function reduce(state: AppState, { action, meta }: Envelope): AppState {
@@ -1010,33 +1066,42 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
 
     case 'pages/create':
       return { ...state, pages: [...state.pages, action.page] }
-    case 'pages/save':
+    case 'pages/save': {
+      const page = state.pages.find((p) => p.id === action.id)
+      if (!page) return state
+      const draft = draftOf(state, page.id)
+      if (pageEditsGoToDraft(page, draft)) {
+        const base = draft ?? page
+        return saveDraft(state, page, action.sections, action.seo ?? base.seo, base.templateId, at, by)
+      }
       return {
         ...state,
-        pages: patch(state.pages, action.id, (p) => ({
+        pages: patch(state.pages, page.id, (p) => ({
           ...p,
           sections: action.sections,
           seo: action.seo ?? p.seo,
           updatedAt: at,
           updatedBy: by,
-          revisions: [
-            {
-              id: newId('rev'),
-              at,
-              by,
-              note: action.note,
-              sections: action.sections,
-              templateId: p.templateId,
-            },
-            ...p.revisions,
-          ].slice(0, 12),
+          revisions: withRevision(p, {
+            id: newId('rev'),
+            at,
+            by,
+            note: action.note,
+            sections: action.sections,
+            templateId: p.templateId,
+          }),
         })),
       }
+    }
     case 'pages/setTemplate': {
       const page = state.pages.find((p) => p.id === action.id)
       const template = state.templates.find((t) => t.id === action.templateId)
-      if (!page || !template || page.templateId === template.id) return state
-      const sections = applyTemplate(page.sections, template, page.id)
+      const draft = page && draftOf(state, page.id)
+      const base = draft ?? page
+      if (!page || !base || !template || base.templateId === template.id) return state
+      const sections = applyTemplate(base.sections, template, page.id)
+      if (pageEditsGoToDraft(page, draft))
+        return saveDraft(state, page, sections, base.seo, template.id, at, by)
       return {
         ...state,
         pages: patch(state.pages, page.id, (p) => ({
@@ -1045,40 +1110,34 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
           sections,
           updatedAt: at,
           updatedBy: by,
-          revisions: [
-            {
-              id: newId('rev'),
-              at,
-              by,
-              note: `Switched to ${template.name}`,
-              sections,
-              templateId: template.id,
-            },
-            ...p.revisions,
-          ].slice(0, 12),
+          revisions: withRevision(p, {
+            id: newId('rev'),
+            at,
+            by,
+            note: `Switched to ${template.name}`,
+            sections,
+            templateId: template.id,
+          }),
         })),
       }
     }
     case 'pages/publish': {
       const page = state.pages.find((p) => p.id === action.id)
-      if (!page || pagePublishBlocker(page)) return state
+      if (!page) return state
+      const draft = draftOf(state, page.id)
+      const next = pageWithDraft(page, draft)
+      if (pagePublishBlocker(next)) return state
       return {
         ...state,
-        pages: patch(state.pages, page.id, (p) => ({
-          ...p,
-          status: 'published',
-          publishedAt: at,
-          scheduledAt: null,
-          revisions: [
-            { id: newId('rev'), at, by, note: 'Published', sections: p.sections, templateId: p.templateId },
-            ...p.revisions,
-          ].slice(0, 12),
-        })),
+        pages: patch(state.pages, page.id, () =>
+          publishedRevision({ ...next, status: 'published', publishedAt: at, scheduledAt: null }, at, by),
+        ),
+        pageDrafts: draft ? state.pageDrafts.filter((d) => d.id !== page.id) : state.pageDrafts,
       }
     }
     case 'pages/schedule': {
       const page = state.pages.find((p) => p.id === action.id)
-      if (!page || pagePublishBlocker(page)) return state
+      if (!page || pagePublishBlocker(pageWithDraft(page, draftOf(state, page.id)))) return state
       return {
         ...state,
         pages: patch(state.pages, page.id, (p) => ({ ...p, status: 'scheduled', scheduledAt: action.at })),
@@ -1093,6 +1152,9 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       const page = state.pages.find((p) => p.id === action.id)
       const rev = page?.revisions.find((r) => r.id === action.revisionId)
       if (!page || !rev) return state
+      const draft = draftOf(state, page.id)
+      if (pageEditsGoToDraft(page, draft))
+        return saveDraft(state, page, rev.sections, (draft ?? page).seo, rev.templateId, at, by)
       return {
         ...state,
         pages: patch(state.pages, page.id, (p) => ({
@@ -1101,20 +1163,21 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
           templateId: rev.templateId,
           updatedAt: at,
           updatedBy: by,
-          revisions: [
-            {
-              id: newId('rev'),
-              at,
-              by,
-              note: `Rolled back to ${rev.note.toLowerCase()}`,
-              sections: rev.sections,
-              templateId: rev.templateId,
-            },
-            ...p.revisions,
-          ].slice(0, 12),
+          revisions: withRevision(p, {
+            id: newId('rev'),
+            at,
+            by,
+            note: `Rolled back to ${rev.note.toLowerCase()}`,
+            sections: rev.sections,
+            templateId: rev.templateId,
+          }),
         })),
       }
     }
+    case 'pages/discardDraft':
+      return draftOf(state, action.id)
+        ? { ...state, pageDrafts: state.pageDrafts.filter((d) => d.id !== action.id) }
+        : state
 
     case 'sellers/save':
       return {

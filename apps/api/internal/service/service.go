@@ -56,5 +56,6 @@ type (
 	NotFound  = kernel.NotFound
 	Invalid   = kernel.Invalid
 	Forbidden = kernel.Forbidden
+	Conflict  = kernel.Conflict
 	tx        = kernel.Tx
 )

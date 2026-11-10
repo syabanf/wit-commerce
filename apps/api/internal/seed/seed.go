@@ -51,6 +51,7 @@ var files = map[string]string{
 	"integrationLogs": "integration-logs.json",
 	"traffic":         "traffic.json",
 	"searchTerms":     "search-terms.json",
+	"pageDrafts":      "page-drafts.json",
 }
 
 type row struct {

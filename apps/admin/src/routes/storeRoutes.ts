@@ -3,6 +3,11 @@ import { t } from '../i18n'
 import { page } from './page'
 export const storeRoutes: RouteObject[] = [
   {
+    path: 'store/editor',
+    handle: { breadcrumb: t.breadcrumb.storeEditor },
+    lazy: page(() => import('../pages/store-editor/StoreEditorPage'), 'StoreEditorPage'),
+  },
+  {
     path: 'store/brand',
     handle: { breadcrumb: t.breadcrumb.brand },
     lazy: page(() => import('../pages/brand/BrandPage'), 'BrandPage'),

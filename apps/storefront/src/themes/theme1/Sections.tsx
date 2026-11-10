@@ -5,13 +5,15 @@ import {
   CtaBand,
   Faq,
   PromoBlock,
+  SectionButton,
+  SectionStack,
   SellerHero,
   Testimonials,
   sectionProducts,
 } from '../../components/sections'
 import { SalesBand } from '../../components/SalesBand'
 import { PRODUCT_LAYOUT, SPACING, TemplateHero, useTemplateLook } from '../../components/templateLook'
-import { ButtonLink, buttonClass } from '../../components/ui'
+import { buttonClass } from '../../components/ui'
 import { sellsThroughSales } from '../../lib/catalog'
 import { firstName, paths, waLink } from '../../lib/paths'
 import { useShop } from '../../state/shop'
@@ -24,7 +26,7 @@ export function Sections({ sections, seller }: SectionsProps) {
   const look = useTemplateLook()
   const layout = PRODUCT_LAYOUT[look.products]
   return (
-    <div className={SPACING[look.spacing]}>
+    <SectionStack sections={sections} className={SPACING[look.spacing]}>
       {sections.map((s) => {
         switch (s.kind) {
           case 'hero':
@@ -92,9 +94,13 @@ export function Sections({ sections, seller }: SectionsProps) {
                 key={s.id}
                 section={s}
                 action={
-                  <ButtonLink to={paths.search(store, '', { sort: 'best' })} variant="light" size="lg">
-                    {s.ctaLabel || 'Shop best sellers'}
-                  </ButtonLink>
+                  <SectionButton
+                    section={s}
+                    fallback={paths.search(store, '', { sort: 'best' })}
+                    label={s.ctaLabel || 'Shop best sellers'}
+                    variant="light"
+                    size="lg"
+                  />
                 }
               />
             )
@@ -102,6 +108,6 @@ export function Sections({ sections, seller }: SectionsProps) {
             return null
         }
       })}
-    </div>
+    </SectionStack>
   )
 }

@@ -17,6 +17,7 @@ import {
 import { Link } from 'react-router'
 import { BrandLogo } from '../components/BrandLogo'
 import { brandVars } from '../lib/brand'
+import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useStore } from '../state/store'
 import { HTTP } from '../lib/api'
@@ -177,7 +178,11 @@ export function BrandChooserPage() {
                   </p>
                   <div className="pt-5 mt-auto">
                     <Link
-                      to={live.length ? `/${lead.subdomain}` : `/${lead.subdomain}?theme=${theme}`}
+                      to={
+                        live.length
+                          ? paths.home(lead.subdomain)
+                          : `${paths.home(lead.subdomain)}?theme=${theme}`
+                      }
                       className="h-11 gap-2 px-5 text-sm font-semibold text-white sm:w-auto sm:inline-flex flex w-full items-center justify-center rounded-full bg-accent-strong shadow-glow hover:bg-accent-dark"
                     >
                       Open the {lead.name} demo
@@ -190,7 +195,7 @@ export function BrandChooserPage() {
                         .map((t) => (
                           <Link
                             key={t.id}
-                            to={`/${t.subdomain}?theme=${theme}`}
+                            to={`${paths.home(t.subdomain)}?theme=${theme}`}
                             className="min-h-11 font-semibold inline-flex items-center text-foreground underline-offset-4 hover:underline"
                           >
                             {t.name}
@@ -230,14 +235,14 @@ export function BrandChooserPage() {
                 </p>
                 <div className="mt-3 gap-2 flex flex-wrap">
                   <Link
-                    to={`/${t.subdomain}`}
+                    to={paths.home(t.subdomain)}
                     className="h-10 gap-1.5 px-4 text-sm font-semibold inline-flex items-center rounded-full bg-ink text-on-ink hover:bg-ink-3"
                   >
                     Visit store
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                   <Link
-                    to={`/${t.subdomain}?theme=${otherTheme(t)}`}
+                    to={`${paths.home(t.subdomain)}?theme=${otherTheme(t)}`}
                     className="h-10 px-4 text-sm font-semibold inline-flex items-center rounded-full border border-border hover:bg-surface"
                   >
                     View in {STOREFRONT_THEME_LABEL[otherTheme(t)].split(' · ')[0]}

@@ -1,5 +1,5 @@
-import { attributesFor, lookFor, nowMs } from '@rc/fixtures'
-import type { AttributeDef, Category, Collection, Product } from '@rc/types'
+import { attributesFor, lookFor, nowMs, sectionsInOrder } from '@rc/fixtures'
+import type { AttributeDef, Category, Collection, Page, Product, Seller } from '@rc/types'
 import { Heart, PackageSearch } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router'
@@ -295,10 +295,28 @@ export function PersonalStorePage() {
     : catalog.sellers.find((s) => s.slug === slug && (s.status === 'active' || !!previewId))
   const own = seller ? catalog.pages.filter((p) => p.kind === 'personal' && p.sellerId === seller.id) : []
   const page = own.find((p) => p.id === previewId) ?? own.find((p) => p.status === 'published')
-  useTitle(seller ? `${seller.name} · ${catalog.tenant.name}` : catalog.tenant.name)
+  // Without a seller the segment may name one of the store's own pages, such as /about.
+  const storePage =
+    seller || RESERVED_SEGMENTS.has(slug)
+      ? undefined
+      : catalog.pages.find(
+          (p) =>
+            !p.sellerId &&
+            p.kind !== 'home' &&
+            p.slug === `/${slug}` &&
+            (p.status === 'published' || p.id === previewId),
+        )
+  useTitle(
+    seller
+      ? `${seller.name} · ${catalog.tenant.name}`
+      : storePage
+        ? `${storePage.title} · ${catalog.tenant.name}`
+        : catalog.tenant.name,
+  )
   useEffect(() => {
     if (seller && page) setReferral(seller.id)
   }, [seller, page, setReferral])
+  if (storePage) return <ContentPage page={storePage} />
   if (!seller || !page)
     return (
       <NotFound
@@ -340,14 +358,24 @@ export function StoreNotFoundPage() {
 
 /** `/:store/preview/:pageId`, embed only: any page the admin is editing, in the store's theme. */
 export function PagePreviewPage() {
-  const theme = useTheme()
   const { pageId = '' } = useParams()
   const { catalog } = useShop()
   const page = EMBED ? catalog.pages.find((p) => p.id === pageId) : undefined
   const seller = page?.sellerId ? catalog.sellers.find((s) => s.id === page.sellerId) : null
   useTitle(page ? `${page.title} · ${catalog.tenant.name}` : catalog.tenant.name)
   if (!page) return <NotFound title="Nothing to preview" text="Open this page from the admin console." />
-  const sections = page.sections.filter((s) => !s.hidden && s.kind !== 'footer')
+  return <ContentPage page={page} seller={seller} />
+}
+
+/** A store page that is not home, such as About or a campaign, in the page's order and template look. */
+function ContentPage({ page, seller }: { page: Page; seller?: Seller | null }) {
+  const theme = useTheme()
+  const { catalog } = useShop()
+  const template = catalog.templates.find((t) => t.id === page.templateId) ?? null
+  const sections = sectionsInOrder(
+    page.sections.filter((s) => !s.hidden && s.kind !== 'footer'),
+    template,
+  )
   const heroShown =
     sections.some((s) => s.kind === 'hero') &&
     (!!seller || theme.id === 'theme1' || lookFor(page.templateId).hero !== 'theme')

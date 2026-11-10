@@ -53,6 +53,8 @@ const files: Record<string, unknown> = {
   sellers,
   templates,
   pages,
+  // Unpublished changes start empty: every seeded page shows what shoppers see.
+  'page-drafts': [],
   categories,
   attributes,
   modifiers,

@@ -27,7 +27,7 @@ func TestSpecIsValidOpenAPI(t *testing.T) {
 }
 
 // Routes that act on the id in the URL alone take no body; every other write documents one.
-var noBody = regexp.MustCompile(`/(toggle|publish|unpublish|launch|pause|resolve|sync|rotate|revoke|test|retry)$|/onboarding/\{step\}$|/reset-password$|/invite$|/verify-email$`)
+var noBody = regexp.MustCompile(`/(toggle|publish|unpublish|discard-draft|launch|pause|resolve|sync|rotate|revoke|test|retry)$|/onboarding/\{step\}$|/reset-password$|/invite$|/verify-email$|/verify/resend$`)
 
 func TestEveryWriteDocumentsItsBody(t *testing.T) {
 	var doc struct {
@@ -58,7 +58,7 @@ func TestEveryWriteDocumentsItsBody(t *testing.T) {
 		}
 	}
 	// Every reducer action except the job timer (hidden from the contract) is in the document.
-	if want := 56; len(actions) != want {
+	if want := 57; len(actions) != want {
 		t.Errorf("documented %d actions, want %d", len(actions), want)
 	}
 }

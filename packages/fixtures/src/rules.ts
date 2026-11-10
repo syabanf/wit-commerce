@@ -9,6 +9,7 @@ import type {
   ModifierStockLevel,
   Order,
   Page,
+  PageDraft,
   Product,
   Segment,
   Seller,
@@ -36,7 +37,10 @@ export function orderAdvanceBlocker(
   if (next === 'packed') {
     for (const [variantId, qty] of variantDemand(order)) {
       const level = stock.find((s) => s.variantId === variantId && s.warehouseId === order.warehouseId)
-      if (!level && products.some((p) => p.type === 'physical' && p.variants.some((v) => v.id === variantId))) {
+      if (
+        !level &&
+        products.some((p) => p.type === 'physical' && p.variants.some((v) => v.id === variantId))
+      ) {
         return 'A product variant has no stock at this warehouse. Receive stock before packing.'
       }
       if (level && level.onHand < qty) {
@@ -81,14 +85,51 @@ export function productActivateBlocker(
   return null
 }
 
-export function pagePublishBlocker(page: Page): string | null {
+export interface PagePublishCheck {
+  key: 'required' | 'hero' | 'seo'
+  /** What the check asks for, as the store editor's checklist lists it. */
+  label: string
+  /** The blocker sentence when the check fails, else null. */
+  problem: string | null
+}
+
+/** Every check a page passes before it goes live, in the order pagePublishBlocker reports them. */
+export function pagePublishChecks(page: Page): PagePublishCheck[] {
   const hiddenRequired = page.sections.find((s) => s.rule === 'required' && s.hidden)
-  if (hiddenRequired)
-    return `The ${SECTION_KIND_LABEL[hiddenRequired.kind]} section is required. Show it before publishing.`
   const hero = page.sections.find((s) => s.kind === 'hero' && !s.hidden)
-  if (hero && !hero.headline.trim()) return 'The hero needs a headline.'
-  if (!page.seo.title.trim()) return 'Add a meta title so the page can be found in search.'
-  return null
+  return [
+    {
+      key: 'required',
+      label: 'Every section the layout needs is showing',
+      problem: hiddenRequired
+        ? `The ${SECTION_KIND_LABEL[hiddenRequired.kind]} section is required. Show it before publishing.`
+        : null,
+    },
+    {
+      key: 'hero',
+      label: 'The big banner has a title',
+      problem: hero && !hero.headline.trim() ? 'The hero needs a headline.' : null,
+    },
+    {
+      key: 'seo',
+      label: 'The page has a title for search engines',
+      problem: page.seo.title.trim() ? null : 'Add a meta title so the page can be found in search.',
+    },
+  ]
+}
+
+/** The page as it would go live: its unpublished changes laid over it, when it has any. */
+export function pageWithDraft(page: Page, draft: PageDraft | null | undefined): Page {
+  return draft ? { ...page, sections: draft.sections, seo: draft.seo, templateId: draft.templateId } : page
+}
+
+/** Edits wait in a draft while the page is live or scheduled, or already has unpublished changes. */
+export function pageEditsGoToDraft(page: Page, draft: PageDraft | null | undefined): boolean {
+  return page.status !== 'draft' || !!draft
+}
+
+export function pagePublishBlocker(page: Page): string | null {
+  return pagePublishChecks(page).find((c) => c.problem)?.problem ?? null
 }
 
 export function campaignLaunchBlocker(campaign: Campaign, audienceSize: number): string | null {

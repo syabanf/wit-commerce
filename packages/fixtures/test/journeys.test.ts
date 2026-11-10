@@ -20,6 +20,7 @@ import {
   orderAdvanceBlocker,
   orderCancelBlocker,
   pagePublishBlocker,
+  pageWithDraft,
   sellerTemplateBlocker,
 } from '../src/rules.ts'
 import { type AppAction, type AppState, audienceSize, reduce } from '../src/store.ts'
@@ -269,22 +270,24 @@ describe('storefront and brand governance', () => {
       { type: 'pages/save', id: page.id, sections: hidden, note: 'Hid the hero' },
       'usr-maya',
     )
-    const saved = state.pages.find((p) => p.id === page.id)!
-    assert.match(pagePublishBlocker(saved) ?? '', /Hero section is required/)
+    // The page is live, so the change waits in its draft and the blocker reads the draft.
+    const draft = state.pageDrafts.find((d) => d.id === page.id)
+    assert.match(pagePublishBlocker(pageWithDraft(page, draft)) ?? '', /Hero section is required/)
     assert.equal(
       run(state, { type: 'pages/publish', id: page.id }, 'usr-maya').pages.find((p) => p.id === page.id)!
         .publishedAt,
       page.publishedAt,
     )
 
-    state = run(
-      state,
-      { type: 'pages/rollback', id: page.id, revisionId: saved.revisions[1]!.id },
-      'usr-maya',
+    state = run(state, { type: 'pages/rollback', id: page.id, revisionId: page.revisions[0]!.id }, 'usr-maya')
+    const restored = pageWithDraft(
+      page,
+      state.pageDrafts.find((d) => d.id === page.id),
     )
-    assert.equal(pagePublishBlocker(state.pages.find((p) => p.id === page.id)!), null)
+    assert.equal(pagePublishBlocker(restored), null)
     state = run(state, { type: 'pages/publish', id: page.id }, 'usr-maya')
     assert.equal(state.pages.find((p) => p.id === page.id)!.status, 'published')
+    assert.equal(state.pageDrafts.length, 0)
   })
 
   it('keeps seller content when the template changes, and only to an allowed template', () => {
@@ -331,7 +334,11 @@ describe('storefront and brand governance', () => {
       { type: 'pages/setTemplate', id: page.id, templateId: 'tpl-launch' },
       'usr-maya',
     )
-    const after = state.pages.find((p) => p.id === page.id)!
+    // The page is live, so the switch waits in its draft.
+    const after = pageWithDraft(
+      page,
+      state.pageDrafts.find((d) => d.id === page.id),
+    )
     assert.equal(after.templateId, 'tpl-launch')
     assert.deepEqual(
       after.sections.map((s) => s.kind),
@@ -339,7 +346,10 @@ describe('storefront and brand governance', () => {
     )
     const hero = (p: Page) => p.sections.find((s) => s.kind === 'hero')!
     assert.equal(hero(after).headline, hero(page).headline)
-    assert.equal(after.revisions[0]!.note, 'Switched to Editorial Launch')
+    assert.equal(
+      state.pages.find((p) => p.id === page.id),
+      page,
+    )
   })
 
   it('gives an invited seller a draft personal page and syncs featured products into it', () => {

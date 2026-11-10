@@ -38,6 +38,8 @@ export function loadLocalState(key: string): AppState {
       const needsSeed = !stored.state.modifierStock?.length && !stored.state.modifierStockMoves?.length
       return {
         ...stored.state,
+        // Saved before drafts existed.
+        pageDrafts: stored.state.pageDrafts ?? [],
         modifiers,
         modifierStock: needsSeed
           ? seed.modifierStock.filter((s) => activeOptions.has(s.optionId))

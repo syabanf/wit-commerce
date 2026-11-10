@@ -125,7 +125,13 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusUnauthorized, "UNAUTHENTICATED", "This account no longer exists.")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"user": u})
+	writeJSON(w, http.StatusOK, meResponse{User: u, EmailOn: s.notify.On()})
+}
+
+// meResponse says whether email is on, so the console knows to ask an owner to confirm theirs.
+type meResponse struct {
+	User    domain.User `json:"user"`
+	EmailOn bool        `json:"emailOn"`
 }
 
 // demoAccounts lists the users the login page offers, when demo sign-in is on. The password is the
@@ -150,7 +156,28 @@ func (s *Server) demoAccounts(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
+	users, tenants, sellers = withoutSignUps(users, tenants, sellers)
 	writeJSON(w, http.StatusOK, map[string]any{"users": users, "tenants": tenants, "sellers": sellers, "passwordHint": "the shared demo password"})
+}
+
+// withoutSignUps drops the stores people made at sign-up, and the people and sellers who belong only
+// to them: those are real accounts, not demo ones.
+func withoutSignUps(users []domain.User, tenants []domain.Tenant, sellers []domain.Seller) ([]domain.User, []domain.Tenant, []domain.Seller) {
+	signedUp := map[string]bool{}
+	for _, t := range tenants {
+		if t.Source == "signup" {
+			signedUp[t.ID] = true
+		}
+	}
+	if len(signedUp) == 0 {
+		return users, tenants, sellers
+	}
+	tenants = slices.DeleteFunc(tenants, func(t domain.Tenant) bool { return signedUp[t.ID] })
+	sellers = slices.DeleteFunc(sellers, func(s domain.Seller) bool { return signedUp[s.TenantID] })
+	users = slices.DeleteFunc(users, func(u domain.User) bool {
+		return len(u.TenantIDs) > 0 && !slices.ContainsFunc(u.TenantIDs, func(id string) bool { return !signedUp[id] })
+	})
+	return users, tenants, sellers
 }
 
 // shops lists every tenant, for the storefront's brand chooser.
@@ -312,6 +339,12 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.writeError(w, r, err)
 		return
+	}
+	if p.Role != "platform_admin" {
+		if state["users"], err = withoutAdminContacts(state["users"]); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"state": state, "now": s.Clock.NowIso()})
 }
@@ -689,4 +722,24 @@ func (s *Server) shopLead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.publish(d))
+}
+
+// withoutAdminContacts keeps platform admins in a brand's state so screens can name who changed
+// what, but drops their email: anyone can sign up for a brand, and the address is no business of theirs.
+func withoutAdminContacts(rows []json.RawMessage) ([]json.RawMessage, error) {
+	for i, raw := range rows {
+		var u domain.User
+		if err := json.Unmarshal(raw, &u); err != nil {
+			return nil, err
+		}
+		if u.Role != "platform_admin" {
+			continue
+		}
+		out, err := json.Marshal(domain.User{ID: u.ID, Name: u.Name, Title: u.Title, Role: u.Role, Color: u.Color, TenantIDs: []string{}})
+		if err != nil {
+			return nil, err
+		}
+		rows[i] = out
+	}
+	return rows, nil
 }

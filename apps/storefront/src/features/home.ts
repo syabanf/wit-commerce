@@ -1,3 +1,4 @@
+import { sectionsInOrder } from '@rc/fixtures'
 import type { Category, Collection, Page, PageSection, Product, Template } from '@rc/types'
 import { useMemo } from 'react'
 import {
@@ -19,7 +20,7 @@ export interface HomeData {
   /** The published home page, or null when the tenant has not published one (Teknika). */
   page: Page | null
   template: Template | null
-  /** Visible sections in template order, footer left to the layout. */
+  /** Visible sections in the page's order (template order until arranged by hand), footer left to the layout. */
   sections: PageSection[]
   hero: PageSection | null
   heroProduct: Product | null
@@ -31,17 +32,6 @@ export interface HomeData {
   categories: { category: Category; count: number }[]
   showcase: { category: Category; products: Product[] }[]
   collections: { collection: Collection; products: Product[] }[]
-}
-
-/** Section kinds in the order the page's template lays them out; unknown kinds keep their place at the end. */
-function inTemplateOrder(sections: PageSection[], template: Template | null): PageSection[] {
-  if (!template) return sections
-  const order = template.sections.map((s) => s.kind)
-  const rank = (s: PageSection) => {
-    const i = order.indexOf(s.kind)
-    return i < 0 ? order.length : i
-  }
-  return [...sections].sort((a, b) => rank(a) - rank(b))
 }
 
 const section = (
@@ -96,7 +86,7 @@ export function useHomeData(): HomeData {
       (catalog.pages.find((p) => p.kind === 'home' && p.status === 'published') ?? null)
     const template = page ? (catalog.templates.find((t) => t.id === page.templateId) ?? null) : null
     const sections = page
-      ? inTemplateOrder(
+      ? sectionsInOrder(
           page.sections.filter((s) => !s.hidden && s.kind !== 'footer'),
           template,
         )

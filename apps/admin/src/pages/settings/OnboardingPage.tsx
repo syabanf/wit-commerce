@@ -57,6 +57,7 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { StorefrontPreview } from '../../components/StorefrontPreview'
+import { STORE_ROOT } from '../../lib/storefront'
 import { useScoped } from '../../state/scoped'
 import { ONBOARDING_STEPS, SUBDOMAIN_PATTERN, WIZARD_COURIERS, WIZARD_PAYMENTS, tenantCode } from './lib'
 
@@ -257,7 +258,7 @@ function Wizard() {
       await s.dispatchAsync({ type: 'tenants/setup', setup: buildSetup(tenant, template, draft, s.user.id) })
       toast('Tenant created', {
         tone: 'success',
-        description: `${tenant.name} · ${tenant.subdomain}.commerceos.id`,
+        description: `${tenant.name} · ${tenant.subdomain}.${STORE_ROOT}`,
       })
       setCreated(tenant)
     } catch (err) {
@@ -278,7 +279,7 @@ function Wizard() {
           </IconTile>
           <h2 className="mt-5 text-2xl font-bold tracking-tight">{created.name} is set up</h2>
           <p className="mt-2 max-w-xl text-sm text-on-ink-muted">
-            {created.subdomain}.commerceos.id{' '}
+            {created.subdomain}.{STORE_ROOT}{' '}
             {created.onboarding.includes('publish')
               ? 'is live'
               : 'stays unpublished until the team publishes it'}
@@ -373,16 +374,16 @@ function Wizard() {
                   hint={
                     draft.subdomain
                       ? takenSubdomains.has(draft.subdomain)
-                        ? `${draft.subdomain}.commerceos.id is taken.`
-                        : `${draft.subdomain}.commerceos.id is free. A custom domain can follow later.`
+                        ? `${draft.subdomain}.${STORE_ROOT} is taken.`
+                        : `${draft.subdomain}.${STORE_ROOT} is free. A custom domain can follow later.`
                       : 'Filled in from the business name.'
                   }
                 >
                   <Input
                     value={draft.subdomain}
                     inputClassName="font-mono"
-                    rightSlot={<span className="pr-2 text-xs">.commerceos.id</span>}
-                    className="[&_input]:pr-32"
+                    rightSlot={<span className="pr-2 text-xs">.{STORE_ROOT}</span>}
+                    className="[&_input]:pr-40"
                     onChange={(e) =>
                       setDraft((d) => ({
                         ...d,
@@ -575,7 +576,11 @@ function Wizard() {
                       { label: 'Plan', value: TENANT_PLAN_LABEL[draft.plan] },
                       {
                         label: 'Store address',
-                        value: <span className="text-xs font-mono">{draft.subdomain}.commerceos.id</span>,
+                        value: (
+                          <span className="text-xs font-mono">
+                            {draft.subdomain}.{STORE_ROOT}
+                          </span>
+                        ),
                       },
                       { label: 'Template', value: template?.name ?? 'None' },
                       { label: 'Font', value: BRAND_FONT },

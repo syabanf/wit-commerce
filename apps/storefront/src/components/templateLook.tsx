@@ -9,7 +9,7 @@ import { Countdown } from './Countdown'
 import { Underlined } from './ornaments'
 import { Photo } from './product'
 import { CouponCode, PromoValue, Ticket, promoTerms } from './promo'
-import { ButtonLink } from './ui'
+import { SectionButton } from './sections'
 
 export const SPACING: Record<TemplateLook['spacing'], string> = {
   airy: 'space-y-14 md:space-y-20 lg:space-y-28',
@@ -64,7 +64,10 @@ function ImmersiveHero({ section }: { section: PageSection }) {
       aria-label="Featured"
       className="md:min-h-[560px] lg:min-h-[640px] text-white relative flex min-h-[440px] items-end overflow-hidden rounded-[var(--sf-card-radius)]"
     >
-      <Photo id={tenantPhotos(tenant.id)?.hero} width={1800} ratio={0.5} eager className="inset-0 absolute" />
+      <Photo
+        id={tenantPhotos(tenant.id)?.hero}
+        src={section.imageUrl}
+        width={1800} ratio={0.5} eager className="inset-0 absolute" />
       <div
         aria-hidden="true"
         className="inset-0 absolute"
@@ -76,9 +79,14 @@ function ImmersiveHero({ section }: { section: PageSection }) {
           <Underlined text={section.headline || tenant.brand.tagline} />
         </h1>
         {section.body && <p className="mt-4 max-w-xl text-lg opacity-90">{section.body}</p>}
-        <ButtonLink to={paths.search(store, '', { sort: 'best' })} variant="light" size="lg" className="mt-8">
-          {section.ctaLabel || 'Discover the range'}
-        </ButtonLink>
+        <SectionButton
+          section={section}
+          fallback={paths.search(store, '', { sort: 'best' })}
+          label={section.ctaLabel || 'Discover the range'}
+          variant="light"
+          size="lg"
+          className="mt-8"
+        />
       </div>
     </section>
   )
@@ -99,9 +107,13 @@ function OfferHero({ section }: { section: PageSection }) {
         <h1 className="sf-hero-title mt-2">{section.headline || tenant.brand.tagline}</h1>
         {section.body && <p className="mt-3 text-lg opacity-85">{section.body}</p>}
         <div className="mt-6 gap-3 flex flex-wrap items-center">
-          <ButtonLink to={paths.search(store, '', { deals: true })} variant="light" size="lg">
-            {section.ctaLabel || 'Shop the offer'}
-          </ButtonLink>
+          <SectionButton
+            section={section}
+            fallback={paths.search(store, '', { deals: true })}
+            label={section.ctaLabel || 'Shop the offer'}
+            variant="light"
+            size="lg"
+          />
           {promotion?.trigger === 'code' && <CouponCode code={promotion.code} />}
         </div>
       </div>
@@ -144,12 +156,16 @@ function CompactHero({ section }: { section: PageSection }) {
           {section.headline || tenant.brand.tagline}
         </h1>
         {section.body && <p className="mt-2 max-w-2xl text-[color:var(--sf-muted)]">{section.body}</p>}
-        <ButtonLink to={paths.search(store, '', { sort: 'best' })} className="mt-5">
-          {section.ctaLabel || 'Browse the catalog'}
-        </ButtonLink>
+        <SectionButton
+          section={section}
+          fallback={paths.search(store, '', { sort: 'best' })}
+          label={section.ctaLabel || 'Browse the catalog'}
+          className="mt-5"
+        />
       </div>
       <Photo
         id={tenantPhotos(tenant.id)?.hero}
+        src={section.imageUrl}
         width={720}
         ratio={0.5}
         eager

@@ -3,6 +3,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ai"
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
@@ -21,6 +23,8 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
 	aimodule "github.com/syabanf/wit-commerce/apps/api/internal/modules/ai"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -44,6 +48,9 @@ type Options struct {
 	ResendURL string
 	// PublicURL is the site's address, for links in email.
 	PublicURL string
+	// StoreRootDomain is the parent domain of store hosts (STORE_ROOT_DOMAIN): email links and the
+	// payment return go to lari.{StoreRootDomain}. Empty keeps them at PublicURL/shop/{subdomain}.
+	StoreRootDomain string
 	// TrustProxy reads the client address from X-Forwarded-For; set it only behind a proxy.
 	TrustProxy bool
 	Hub        *events.Hub
@@ -53,6 +60,10 @@ type Options struct {
 	DemoLogin bool
 	// AllowedOrigins get CORS headers; empty means same-origin only.
 	AllowedOrigins []string
+	// MediaDir holds uploaded images; empty means ./media-data. MediaPublicURL is where browsers
+	// load them; empty means /media, a path that works on every store host.
+	MediaDir       string
+	MediaPublicURL string
 }
 
 // Server holds the dependencies handlers read.
@@ -64,15 +75,23 @@ type Server struct {
 	limiter                                 *keyLimiter
 	aiClients, aiTotal                      *keyLimiter
 	signInClients, signInEmails, mailEmails *keyLimiter
+	signUpClients, signUpEmails             *keyLimiter
+	subdomainChecks                         *keyLimiter
 	assistant                               *aimodule.AI
+	media                                   *media.Media
+	mediaDisk                               media.Disk
 	spec                                    []byte
 }
 
 // New builds the server and its handler chain.
 func New(o Options) *Server {
 	s := &Server{Options: o, svc: service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}), limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
-	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, Log: o.Log}
+	s.signUpClients, s.signUpEmails = newPeriodLimiter(signUpRatePerIP, time.Hour), newPeriodLimiter(signUpRatePerEmail, time.Hour)
+	s.subdomainChecks = newKeyLimiter(subdomainChecksPerIP)
+	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, StoreRootDomain: o.StoreRootDomain, Log: o.Log}
 	s.assistant = aimodule.New(o.AI, s.svc.Catalog)
+	s.mediaDisk = media.Disk{Dir: cmp.Or(o.MediaDir, "media-data"), PublicURL: strings.TrimRight(cmp.Or(o.MediaPublicURL, "/media"), "/")}
+	s.media = &media.Media{Runtime: s.svc.Runtime, Storage: s.mediaDisk}
 	mux := http.NewServeMux()
 	s.routes(mux)
 	s.handler = s.requestID(s.cors(s.recover(s.logRequests(mux))))
@@ -113,7 +132,13 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var notFound service.NotFound
 	var invalid service.Invalid
 	var forbidden service.Forbidden
+	var conflict service.Conflict
+	if c, ok := uniqueConflict(err); ok {
+		err = c
+	}
 	switch {
+	case errors.As(err, &conflict):
+		writeProblem(w, http.StatusConflict, conflict.Code, conflict.Reason)
 	case errors.As(err, &refusal):
 		writeProblem(w, http.StatusConflict, "REFUSED", refusal.Reason)
 	case errors.As(err, &notFound):
@@ -128,6 +153,22 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 		s.Log.Error("request failed", "path", r.URL.Path, "err", err, "requestId", requestIDOf(r.Context()))
 		writeProblem(w, http.StatusInternalServerError, "INTERNAL", "Something went wrong on our side.")
 	}
+}
+
+// uniqueConflict reads a unique index violation as the conflict a check before the write would have
+// reported, for two requests that both passed the check at once.
+func uniqueConflict(err error) (service.Conflict, bool) {
+	var pg *pgconn.PgError
+	if !errors.As(err, &pg) || pg.Code != "23505" {
+		return service.Conflict{}, false
+	}
+	switch pg.ConstraintName {
+	case "tenants_subdomain_idx":
+		return identity.ErrSubdomainTaken, true
+	case "users_email_idx":
+		return identity.ErrEmailTaken, true
+	}
+	return service.Conflict{}, false
 }
 
 // decode reads a JSON body into v.
@@ -342,6 +383,22 @@ func (s *Server) meta(r *http.Request) service.Meta {
 	return service.Meta{P: p, At: s.Clock.NowIso()}
 }
 
+// rowTenants names the tenants whose streams may carry a row. A user row goes to each brand the
+// person works in; a user in no brand, a platform admin, goes to no stream, since an empty tenant
+// would reach every subscriber, strangers who signed up included.
+func rowTenants(collection, id, tenantID string, tenantIDs []string) []string {
+	switch collection {
+	case "tenants":
+		return []string{id}
+	case "users":
+		if len(tenantIDs) == 0 {
+			return []string{"platform"}
+		}
+		return tenantIDs
+	}
+	return []string{tenantID}
+}
+
 // publish converts a delta to the wire shape, broadcasts it and returns it.
 func (s *Server) publish(d *service.Delta) map[string]any {
 	change := events.Change{Upserts: map[string][]events.Row{}, Removes: map[string][]events.Removed{}}
@@ -353,16 +410,15 @@ func (s *Server) publish(d *service.Delta) map[string]any {
 				continue
 			}
 			var keys struct {
-				ID       string `json:"id"`
-				TenantID string `json:"tenantId"`
+				ID        string   `json:"id"`
+				TenantID  string   `json:"tenantId"`
+				TenantIDs []string `json:"tenantIds"`
 			}
 			_ = json.Unmarshal(raw, &keys)
-			tenantID := keys.TenantID
-			if collection == "tenants" {
-				tenantID = keys.ID
-			}
-			change.Upserts[collection] = append(change.Upserts[collection], events.Row{TenantID: tenantID, Data: raw})
 			upserts[collection] = append(upserts[collection], raw)
+			for _, tenantID := range rowTenants(collection, keys.ID, keys.TenantID, keys.TenantIDs) {
+				change.Upserts[collection] = append(change.Upserts[collection], events.Row{TenantID: tenantID, Data: raw})
+			}
 		}
 	}
 	for collection, ids := range d.Removes {

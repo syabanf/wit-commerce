@@ -106,6 +106,8 @@ export function useScoped() {
       collections: own(state.collections),
       warehouses: own(state.warehouses),
       pages: own(state.pages),
+      /** Unpublished changes to live pages, one per page. */
+      pageDrafts: own(state.pageDrafts),
       // Global templates plus the tenant's own.
       templates: state.templates.filter((t) => t.tenantId === null || t.tenantId === tenantId),
       segments: own(state.segments),

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/orders"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/storefront"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
@@ -51,20 +52,8 @@ func (s *Service) Tick(ctx context.Context, at string) (*Delta, error) {
 				return err
 			}
 		}
-		pages, err := store.List[domain.Page](t.Ctx, t.Tx, "pages", "status = 'scheduled' for update")
-		if err != nil {
+		if err := storefront.PublishDue(t, at); err != nil {
 			return err
-		}
-		for _, p := range pages {
-			if p.ScheduledAt == nil || clock.Ms(*p.ScheduledAt) > now {
-				continue
-			}
-			p.Status = "published"
-			p.PublishedAt = p.ScheduledAt
-			p.ScheduledAt = nil
-			if err := t.Put("pages", p.ID, p); err != nil {
-				return err
-			}
 		}
 		campaigns, err := store.List[domain.Campaign](t.Ctx, t.Tx, "campaigns",
 			"status in ('scheduled', 'running') for update")

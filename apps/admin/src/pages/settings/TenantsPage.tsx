@@ -8,7 +8,8 @@ import { useAuth } from '../../auth/auth'
 import { paths } from '../../components/links'
 import { HTTP } from '../../lib/api'
 import { useStore } from '../../state/store'
-import { ONBOARDING_STEPS, storeHost } from './lib'
+import { storeAddress } from '../../lib/storefront'
+import { ONBOARDING_STEPS } from './lib'
 
 interface TenantStats {
   revenue: number
@@ -152,8 +153,8 @@ export function TenantsPage() {
                       {TENANT_PLAN_LABEL[t.plan]}
                     </Badge>
                   </div>
-                  <p className="mt-3 text-xs truncate font-mono text-muted" title={storeHost(t)}>
-                    {storeHost(t)}
+                  <p className="mt-3 text-xs truncate font-mono text-muted" title={storeAddress(t)}>
+                    {storeAddress(t)}
                     {t.domain && !t.domainVerified && ' · not verified'}
                   </p>
                   <div className="mt-4">

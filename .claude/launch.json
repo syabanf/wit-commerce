@@ -9,7 +9,10 @@
         "@rc/admin",
         "dev"
       ],
-      "port": 5373
+      "port": 5373,
+      "env": {
+        "VITE_STORE_ROOT_DOMAIN": "localhost:5375"
+      }
     },
     {
       "name": "mobile",
@@ -19,7 +22,10 @@
         "@rc/mobile",
         "dev"
       ],
-      "port": 5374
+      "port": 5374,
+      "env": {
+        "VITE_STORE_ROOT_DOMAIN": "localhost:5375"
+      }
     },
     {
       "name": "storefront",
@@ -29,7 +35,10 @@
         "@rc/storefront",
         "dev"
       ],
-      "port": 5375
+      "port": 5375,
+      "env": {
+        "VITE_STORE_ROOT_DOMAIN": "localhost:5375"
+      }
     },
     {
       "name": "api",
@@ -44,7 +53,8 @@
         "DATABASE_URL": "postgres://commerce:commerce@localhost:5433/commerce?sslmode=disable",
         "JWT_SECRET": "local-dev-secret-change-me-please-0123456789",
         "ALLOWED_ORIGINS": "http://localhost:5373,http://localhost:5374,http://localhost:5375,http://localhost:5376",
-        "WEBHOOK_ALLOW_INTERNAL": "true"
+        "WEBHOOK_ALLOW_INTERNAL": "true",
+        "STORE_ROOT_DOMAIN": "localhost:5375"
       }
     },
     {
@@ -61,7 +71,10 @@
         "--mode",
         "api"
       ],
-      "port": 5373
+      "port": 5373,
+      "env": {
+        "VITE_STORE_ROOT_DOMAIN": "localhost:5375"
+      }
     },
     {
       "name": "mobile-api",
@@ -77,7 +90,10 @@
         "--mode",
         "api"
       ],
-      "port": 5374
+      "port": 5374,
+      "env": {
+        "VITE_STORE_ROOT_DOMAIN": "localhost:5375"
+      }
     },
     {
       "name": "storefront-api",
@@ -93,7 +109,10 @@
         "--mode",
         "api"
       ],
-      "port": 5375
+      "port": 5375,
+      "env": {
+        "VITE_STORE_ROOT_DOMAIN": "localhost:5375"
+      }
     }
   ]
 }
