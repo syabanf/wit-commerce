@@ -12,7 +12,7 @@ export function ResetPasswordPage() {
   const [params] = useSearchParams()
   const token = params.get('token')
   return (
-    <div className="px-4 py-8 sm:py-12 flex min-h-dvh items-start justify-center bg-surface">
+    <div className="px-4 py-8 sm:py-12 flex min-h-[var(--admin-viewport-height)] items-start justify-center bg-surface">
       <main className="max-w-md w-full">
         <Card className="p-6 sm:p-8">
           {token ? <NewPassword token={token} invited={params.get('invite') === '1'} /> : <AskForLink />}

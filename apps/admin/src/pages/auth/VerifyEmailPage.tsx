@@ -47,7 +47,7 @@ export function VerifyEmailPage() {
   const shown = missing ?? outcome
 
   return (
-    <div className="px-4 py-8 sm:py-12 flex min-h-dvh items-start justify-center bg-surface">
+    <div className="px-4 py-8 sm:py-12 flex min-h-[var(--admin-viewport-height)] items-start justify-center bg-surface">
       <main className="max-w-md w-full">
         <Card className="p-6 sm:p-8">
           <h1 className="text-3xl font-bold tracking-tight">

@@ -97,7 +97,7 @@ export function useAuth() {
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, tenant, loading } = useAuth()
   const location = useLocation()
-  if (loading) return <div className="h-dvh bg-surface" />
+  if (loading) return <div className="h-[var(--admin-viewport-height)] bg-surface" />
   if (!user || !tenant) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   return children
 }

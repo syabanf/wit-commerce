@@ -60,7 +60,7 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const from = (location.state as { from?: string } | null)?.from ?? '/'
-  if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-dvh bg-surface" />
+  if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-[var(--admin-viewport-height)] bg-surface" />
 
   const enter = async (candidate: User | null, address: string, pass: string) => {
     if (!HTTP) {
@@ -91,7 +91,7 @@ export function LoginPage() {
     ids.length > 1 ? `${ids.length} brands` : (tenants.find((t) => t.id === ids[0])?.name ?? '')
 
   return (
-    <div className="px-4 py-8 sm:py-12 relative min-h-dvh overflow-hidden bg-surface">
+    <div className="px-4 py-8 sm:py-12 relative min-h-[var(--admin-viewport-height)] overflow-hidden bg-surface">
       <div aria-hidden className="inset-0 pointer-events-none absolute overflow-hidden">
         <div
           className="blur-xl absolute -top-[20%] -right-[10%] h-[80%] w-[70%] opacity-70"

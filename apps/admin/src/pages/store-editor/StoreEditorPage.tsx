@@ -259,7 +259,7 @@ function Editor({
 
       <div className="gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px] grid grid-cols-1">
         {wide ? (
-          <Card className="min-w-0 p-3 xl:h-[calc(100dvh-11rem)] overflow-y-auto">{list}</Card>
+          <Card className="min-w-0 p-3 xl:h-[calc(var(--admin-viewport-height)-11rem)] overflow-y-auto">{list}</Card>
         ) : (
           <Card className="min-w-0 p-3">
             <PillTabs
@@ -276,7 +276,7 @@ function Editor({
           </Card>
         )}
 
-        <Card className="min-w-0 p-3 xl:h-[calc(100dvh-11rem)] flex flex-col">
+        <Card className="min-w-0 p-3 xl:h-[calc(var(--admin-viewport-height)-11rem)] flex flex-col">
           <div ref={box} className="min-h-0 flex-1">
             <LiveStorefront
               ref={frame}
@@ -311,7 +311,7 @@ function Editor({
           </div>
         </Card>
 
-        {wide && <Card className="min-w-0 p-4 xl:h-[calc(100dvh-11rem)] overflow-y-auto">{form}</Card>}
+        {wide && <Card className="min-w-0 p-4 xl:h-[calc(var(--admin-viewport-height)-11rem)] overflow-y-auto">{form}</Card>}
       </div>
 
       {dialog === 'publish' && (

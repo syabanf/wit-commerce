@@ -116,7 +116,7 @@ Payment types are master data (`state.paymentTypes`): checkout lists `availableP
 
 ## Admin density
 
-- From lg (1024px) the admin sets `html { font-size: 13px }` (`apps/admin/src/index.css`), so every rem-based size (type, spacing, cards, controls, the 15rem rail) renders at about 81 percent. Breakpoints still use the browser's 16px. Phones and tablets keep 16px.
+- From lg (1024px), the admin applies `html { zoom: 0.8 }` on screen (`apps/admin/src/index.css`). This scales the whole console to 80 percent, including pixel-sized elements. `--admin-viewport-height` compensates full-screen layouts for the zoom. Phones, tablets and print use the default scale. Breakpoints still use the browser's default font size.
 - Write custom sizes in rem (`text-[0.6875rem]`, not `text-[11px]`) so they follow the density. Keep px only for real device frames such as a 375px phone preview.
 - The rail opens from lg and remembers the choice; section pill tabs show only while it is collapsed.
 

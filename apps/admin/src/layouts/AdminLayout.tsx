@@ -63,7 +63,7 @@ export function AdminLayout() {
   const breadcrumb = typeof crumb === 'function' ? crumb({ params: crumbMatch!.params }) : crumb
 
   return (
-    <div className="gap-4 p-3 lg:p-4 print:bg-white print:p-0 relative flex h-dvh overflow-clip bg-surface print:block print:h-auto print:overflow-visible">
+    <div className="gap-4 p-3 lg:p-4 print:bg-white print:p-0 relative flex h-[var(--admin-viewport-height)] overflow-clip bg-surface print:block print:h-auto print:overflow-visible">
       {/* Glow effect */}
       <div aria-hidden className="inset-0 pointer-events-none absolute overflow-hidden print:hidden">
         <div

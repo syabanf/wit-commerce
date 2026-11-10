@@ -106,7 +106,7 @@ export function StartPage() {
   const { user } = useAuth()
   if (user) return <Navigate to="/" replace />
   return (
-    <div className="px-4 py-6 sm:py-12 min-h-dvh bg-surface">
+    <div className="px-4 py-6 sm:py-12 min-h-[var(--admin-viewport-height)] bg-surface">
       <main className="max-w-lg mx-auto w-full">
         <div className="mb-5 gap-3 flex items-center">
           <span className="size-10 rounded-2xl flex items-center justify-center bg-ink">

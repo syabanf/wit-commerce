@@ -3,11 +3,16 @@
 
 @source '../../../packages/ui/src';
 
-/* Desktop density: from lg the console sets 1rem to 13px, so type, spacing, cards and controls scale
-   together. Breakpoints use the browser's 16px, so layouts switch at the same widths; phones keep 16px. */
-@media (min-width: 1024px) {
-  html {
-    font-size: 13px;
+/* Scale the whole desktop console, including pixel-sized elements. Compensate viewport
+   heights so the dashboard still fills the screen after scaling. */
+:root {
+  --admin-viewport-height: 100dvh;
+}
+
+@media screen and (min-width: 1024px) {
+  :root {
+    zoom: 0.8;
+    --admin-viewport-height: 125dvh;
   }
 }
 

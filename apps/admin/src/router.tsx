@@ -26,7 +26,7 @@ export const router = createBrowserRouter([
         <AdminLayout />
       </RequireAuth>
     ),
-    HydrateFallback: () => <div className="h-dvh bg-surface" />,
+    HydrateFallback: () => <div className="h-[var(--admin-viewport-height)] bg-surface" />,
     children: [
       { index: true, lazy: page(() => import('./pages/dashboard/DashboardPage'), 'DashboardPage') },
       ...commerceRoutes,
