@@ -32,6 +32,11 @@ export const settingsRoutes: RouteObject[] = [
     handle: { breadcrumb: t.breadcrumb.email },
     lazy: page(() => import('../pages/settings/EmailSettingsPage'), 'EmailSettingsPage'),
   },
+  {
+    path: 'settings/currencies',
+    handle: { breadcrumb: t.breadcrumb.currencies },
+    lazy: page(() => import('../pages/settings/CurrencySettingsPage'), 'CurrencySettingsPage'),
+  },
 ]
 
 // Miscellaneous redirects and wildcard

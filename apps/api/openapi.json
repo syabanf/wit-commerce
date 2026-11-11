@@ -201,6 +201,102 @@
         ],
         "type": "object"
       },
+      "AssistantAction": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "params",
+          "reason",
+          "type"
+        ],
+        "type": "object"
+      },
+      "AssistantAnswer": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantAction"
+            },
+            "type": "array"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantLink"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "actions",
+          "answer",
+          "links"
+        ],
+        "type": "object"
+      },
+      "AssistantInput": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantMessage"
+            },
+            "type": "array"
+          },
+          "page": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "type": "object"
+      },
+      "AssistantLink": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "path"
+        ],
+        "type": "object"
+      },
+      "AssistantMessage": {
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "type": "object"
+      },
       "AttributeDef": {
         "properties": {
           "categoryIds": {
@@ -2213,6 +2309,95 @@
         ],
         "type": "object"
       },
+      "Rate": {
+        "properties": {
+          "ageSeconds": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "ageSeconds",
+          "code",
+          "rate",
+          "source",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "type": "object"
+      },
+      "RateInput": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "rate": {
+            "nullable": true,
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "source"
+        ],
+        "type": "object"
+      },
+      "Rates": {
+        "properties": {
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/Rate"
+            },
+            "type": "array"
+          },
+          "refresh": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefreshOutcome"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "rates"
+        ],
+        "type": "object"
+      },
+      "RatesInput": {
+        "properties": {
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/RateInput"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rates"
+        ],
+        "type": "object"
+      },
       "ReceiveInput": {
         "properties": {
           "groupId": {
@@ -2245,6 +2430,24 @@
           "qty",
           "tenantId",
           "warehouseId"
+        ],
+        "type": "object"
+      },
+      "RefreshOutcome": {
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "updated": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "updated"
         ],
         "type": "object"
       },
@@ -2512,6 +2715,12 @@
           },
           "createdAt": {
             "type": "string"
+          },
+          "displayCurrencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "domain": {
             "nullable": true,
@@ -2998,6 +3207,20 @@
         },
         "required": [
           "events"
+        ],
+        "type": "object"
+      },
+      "displayCurrenciesInput": {
+        "properties": {
+          "currencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "currencies"
         ],
         "type": "object"
       },
@@ -3835,6 +4058,93 @@
   },
   "openapi": "3.0.3",
   "paths": {
+    "/ai/assistant": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postAiAssistant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantAnswer"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Ask the admin assistant about a brand; it proposes actions and never runs them",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
     "/attributes": {
       "get": {
         "description": "API keys need the scope `catalog:read`.",
@@ -12355,6 +12665,245 @@
         "x-required-scope": "store:write"
       }
     },
+    "/settings/currencies": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getSettingsCurrencies",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rates"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Exchange rates for estimated shopper prices, with source and age (platform admin)",
+        "tags": [
+          "Platform"
+        ]
+      },
+      "put": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "putSettingsCurrencies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatesInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rates"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set manual rates, or switch codes back to the automatic rate (platform admin)",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
+    "/settings/currencies/refresh": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postSettingsCurrenciesRefresh",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rates"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Fetch the automatic rates now; manual rates stay (platform admin)",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
     "/settings/email": {
       "get": {
         "description": "For people signed in to the console. API keys cannot call this.",
@@ -14521,6 +15070,115 @@
           "Credentials"
         ],
         "x-required-permission": "integration.manage"
+      }
+    },
+    "/tenants/{id}/display-currencies": {
+      "put": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "putTenantsIdDisplayCurrencies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/displayCurrenciesInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Choose the extra currencies shoppers see estimated prices in",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "tenants/setDisplayCurrencies",
+        "x-required-permission": "brand.manage",
+        "x-required-scope": "store:write"
       }
     },
     "/tenants/{id}/onboarding/{step}": {

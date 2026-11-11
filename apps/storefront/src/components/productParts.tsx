@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { Check } from 'lucide-react'
 import type { ProductDetail } from '../features/product'
@@ -10,6 +9,7 @@ import { Drawer } from './Drawer'
 import { FreeShippingProgress } from './FreeShipping'
 import { ProductImage, swatchColour } from './product'
 import { Button, ButtonLink, Pill } from './ui'
+import { Money } from './Money'
 
 /** Even rows for pill sizes: 6 sizes sit 3 + 3 on phones and in one row on desktop. */
 const sizeCols = (n: number) =>
@@ -207,7 +207,7 @@ function ChoiceRow({
       </span>
       {price !== null && (
         <span className={cn('font-semibold shrink-0', price === 0 && 'text-[color:var(--sf-muted)]')}>
-          {price ? `+${fmtIdr(price)}` : 'Free'}
+          {price ? <Money idr={price} sign="+" /> : 'Free'}
         </span>
       )}
     </label>
@@ -285,11 +285,16 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
               {item.modifiers.map((m) => (
                 <p key={m.optionId} className="text-xs text-[color:var(--sf-muted)]">
                   {m.groupName}: {m.name}
-                  {m.priceDelta ? ` (+${fmtIdr(m.priceDelta)})` : ''}
+                  {!!m.priceDelta && (
+                    <>
+                      {' ('}
+                      <Money idr={m.priceDelta} sign="+" />)
+                    </>
+                  )}
                 </p>
               ))}
               <p className="mt-1 text-sm">
-                {item.line.qty} × {fmtIdr(item.unit)} = <strong>{fmtIdr(item.total)}</strong>
+                {item.line.qty} × <Money idr={item.unit} /> = <Money idr={item.total} className="font-bold" />
               </p>
             </div>
           </div>
@@ -297,7 +302,7 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
           <div className="space-y-2 text-sm">
             <p className="flex justify-between">
               <span>Cart subtotal</span>
-              <strong>{fmtIdr(totals.subtotal)}</strong>
+              <Money idr={totals.subtotal} className="font-bold" />
             </p>
             {totals.discounts.map((discount) => (
               <p
@@ -305,13 +310,13 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
                 className="flex justify-between text-[color:var(--sf-primary-text)]"
               >
                 <span>{discount.label}</span>
-                <span>−{fmtIdr(discount.amount)}</span>
+                <Money idr={discount.amount} sign="−" />
               </p>
             ))}
             {totals.discounts.length > 0 && (
               <p className="pt-2 flex justify-between border-t border-[color:var(--sf-line)]">
                 <span>After offers, before shipping</span>
-                <strong>{fmtIdr(Math.max(0, totals.subtotal - totals.discount))}</strong>
+                <Money idr={Math.max(0, totals.subtotal - totals.discount)} className="font-bold" />
               </p>
             )}
           </div>

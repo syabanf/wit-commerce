@@ -8,6 +8,7 @@ import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
 import { EMBED } from '../lib/embed'
 import { type Catalog, buildCatalog } from '../lib/catalog'
 import { usePersisted } from '../lib/storage'
+import { CurrencyProvider } from './currency'
 import { useStore } from './store'
 
 export interface ShopValue {
@@ -71,7 +72,7 @@ export function useNow(ms = 60_000) {
 
 /** One tenant's storefront: catalog, cart, wishlist, referral and the signed-in customer. */
 export function ShopProvider({ tenant, children }: { tenant: Tenant; children: ReactNode }) {
-  const { state, send, loadStore, merge, onlinePayments } = useStore()
+  const { state, send, loadStore, merge, onlinePayments, currencyRates } = useStore()
   const now = useNow()
   // API mode: this store's dataset and event stream, and the token requests carry.
   useEffect(() => {
@@ -242,7 +243,13 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     payments,
   ])
 
-  return <ShopContext value={value}>{children}</ShopContext>
+  return (
+    <ShopContext value={value}>
+      <CurrencyProvider tenant={tenant} rates={currencyRates}>
+        {children}
+      </CurrencyProvider>
+    </ShopContext>
+  )
 }
 
 export function useShop() {

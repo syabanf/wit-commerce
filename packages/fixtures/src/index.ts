@@ -1,6 +1,7 @@
 export * from './analytics'
 export * from './brand'
 export * from './clock'
+export * from './currency'
 export * from './data'
 export * from './dates'
 export * from './derive'

@@ -14,6 +14,7 @@ import {
   Building2,
   ChartColumn,
   ChartNoAxesCombined,
+  Coins,
   Crown,
   Gem,
   Globe,
@@ -205,6 +206,7 @@ export const NAV: NavSection[] = [
       { to: '/settings/tenants', code: 'TEN', label: 'Tenants', icon: Building2 },
       { to: '/settings/apps', code: 'APP', label: 'App marketplace', icon: Blocks },
       { to: '/settings/email', code: 'EML', label: 'Email', icon: Mail, platformOnly: true },
+      { to: '/settings/currencies', code: 'FXR', label: 'Currencies', icon: Coins, platformOnly: true },
     ],
   },
 ]

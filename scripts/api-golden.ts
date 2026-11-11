@@ -296,6 +296,11 @@ run('integrations/toggle', { type: 'integrations/toggle', id: integration.id }, 
 hours += 30
 run('system/tick', { type: 'system/tick' }, 'system')
 
+// Added after the timer so the cases above keep their timestamps.
+const currencies = (list: string[]) => ({ type: 'tenants/setDisplayCurrencies' as const, tenantId: lari, currencies: list })
+run('tenants/setDisplayCurrencies', currencies(['USD', 'SGD', 'USD']), 'usr-andi')
+run('tenants/setDisplayCurrencies refused', currencies(['XYZ']), 'usr-andi')
+
 const generated = new Set<string>()
 const seedIds = new Set<string>()
 for (const key of Object.keys(seedState()) as Collection[])

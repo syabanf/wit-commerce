@@ -204,6 +204,13 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		}
 		parse(&a)
 		return s.UpdateBrand(ctx, m, a.TenantID, a.Brand)
+	case "tenants/setDisplayCurrencies":
+		var a struct {
+			TenantID   string
+			Currencies []string
+		}
+		parse(&a)
+		return s.SetDisplayCurrencies(ctx, m, a.TenantID, a.Currencies)
 	case "brand/toggleLock":
 		var a struct{ TenantID, Key string }
 		parse(&a)

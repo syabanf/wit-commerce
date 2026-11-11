@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import { ShoppingBag } from 'lucide-react'
 import { Link } from 'react-router'
 import { PaymentHints, SummaryRows, VoucherForm } from '../../components/cartParts'
@@ -11,6 +10,7 @@ import { variantAvailable } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { ProductGrid, ShowHeading } from './ProductCard'
+import { Money } from '../../components/Money'
 
 /** Theme 2 cart: serif title, hairline rows, a quantity stepper, Edit and Remove as text buttons. */
 export function Cart({ view }: { view: CartView }) {
@@ -69,13 +69,18 @@ export function Cart({ view }: { view: CartView }) {
                   <div className="min-w-0 gap-1 flex flex-1 flex-col">
                     <div className="gap-3 flex items-start justify-between">
                       <p className="sf-display min-w-0 text-lg leading-snug">{item.product.name}</p>
-                      <p className="font-semibold shrink-0">{fmtIdr(item.total)}</p>
+                      <Money idr={item.total} className="font-semibold shrink-0 justify-end" />
                     </div>
                     {optionText && <p className="text-sm text-[color:var(--sf-muted)]">{optionText}</p>}
                     {item.modifiers.map((m) => (
                       <p key={m.optionId} className="text-xs text-[color:var(--sf-muted)]">
                         {m.groupName}: {m.name}
-                        {m.priceDelta ? ` (+${fmtIdr(m.priceDelta)})` : ''}
+                        {!!m.priceDelta && (
+                          <>
+                            {' ('}
+                            <Money idr={m.priceDelta} sign="+" />)
+                          </>
+                        )}
                       </p>
                     ))}
                     <div className="gap-x-3 pt-2 mt-auto flex flex-wrap items-center">

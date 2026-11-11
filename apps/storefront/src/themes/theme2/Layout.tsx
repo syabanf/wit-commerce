@@ -13,6 +13,7 @@ import { usePersisted } from '../../lib/storage'
 import { useIsPhone } from '../../lib/useIsPhone'
 import { useShop } from '../../state/shop'
 import { Intro } from './Intro'
+import { CurrencySwitcher } from '../../components/Money'
 
 function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; menuOpen: boolean }) {
   const { tenant, store, cart, customer } = useShop()
@@ -57,6 +58,7 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
         </Link>
       </nav>
       <div className="gap-2 flex items-center justify-self-end">
+        <CurrencySwitcher className="bg-[var(--sf-bg)] text-[color:var(--sf-text)]" />
         <Link
           to={paths.search(store)}
           aria-label="Search the store"
@@ -134,6 +136,7 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
         aria-label="Shop"
         className="h-11 gap-5 px-4 text-sm no-scrollbar flex items-center overflow-x-auto border-t border-[color:var(--sf-line)] whitespace-nowrap"
       >
+        <CurrencySwitcher className="-ml-3 shrink-0" />
         <Link
           to={paths.search(store)}
           aria-label="Search"

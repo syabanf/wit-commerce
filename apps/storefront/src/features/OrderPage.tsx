@@ -10,6 +10,8 @@ import { DEMO_PAYMENT_NOTE } from '../lib/checkout'
 import { firstName, paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
+import { PayInRupiahNote } from '../components/Money'
+import { RupiahOnlyArea } from '../state/currency'
 
 /** Order confirmation: code, items, totals, payment state and points. */
 export function OrderPage() {
@@ -45,6 +47,7 @@ export function OrderPage() {
           Order <strong className="font-mono text-[color:var(--sf-text)]">{order.code}</strong>, placed{' '}
           {fmtDateTime(order.createdAt)}.
         </p>
+        <PayInRupiahNote className="mt-2" />
         {!online && <p className="mt-2 text-sm font-semibold">{DEMO_PAYMENT_NOTE}</p>}
         <div className="mt-4 gap-2 flex flex-wrap justify-center">
           <Pill tone={paid ? 'primary' : 'accent'}>{PAYMENT_STATUS_LABEL[order.paymentStatus]}</Pill>
@@ -116,18 +119,26 @@ export function OrderPage() {
             )
           })}
         </ul>
-        <SummaryRows
-          className="mt-4"
-          subtotal={order.subtotal}
-          discounts={
-            order.discountLines ??
-            (order.discount
-              ? [{ promotionId: 'discount', label: order.voucherCode ?? 'Discount', amount: order.discount }]
-              : [])
-          }
-          shipping={order.shipping}
-          total={order.total}
-        />
+        <RupiahOnlyArea>
+          <SummaryRows
+            className="mt-4"
+            subtotal={order.subtotal}
+            discounts={
+              order.discountLines ??
+              (order.discount
+                ? [
+                    {
+                      promotionId: 'discount',
+                      label: order.voucherCode ?? 'Discount',
+                      amount: order.discount,
+                    },
+                  ]
+                : [])
+            }
+            shipping={order.shipping}
+            total={order.total}
+          />
+        </RupiahOnlyArea>
         <p className="mt-4 text-sm text-[color:var(--sf-muted)]">Delivering to {order.city}.</p>
       </section>
       <div className="gap-2 flex flex-wrap justify-center">

@@ -48,6 +48,7 @@ import type {
   SellerBuyer,
 } from '@rc/types'
 import { ORDER_STATUS_LABEL } from '@rc/types'
+import { isDisplayCurrency } from './currency'
 import { DAY, HOUR, toIso, toMs } from './dates'
 import {
   attributesFor,
@@ -132,6 +133,7 @@ export type AppAction =
   | { type: 'tenants/create'; tenant: Tenant }
   | { type: 'tenants/setup'; setup: TenantSetup }
   | { type: 'tenants/completeStep'; tenantId: string; step: string }
+  | { type: 'tenants/setDisplayCurrencies'; tenantId: string; currencies: string[] }
   | { type: 'brand/update'; tenantId: string; brand: BrandConfig }
   | { type: 'brand/toggleLock'; tenantId: string; key: BrandLockKey }
   | { type: 'products/save'; product: Product }
@@ -589,6 +591,17 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
           t.onboarding.includes(action.step) ? t : { ...t, onboarding: [...t.onboarding, action.step] },
         ),
       }
+    case 'tenants/setDisplayCurrencies': {
+      // An unknown code refuses the whole change; repeats count once. The API answers the same.
+      if (!action.currencies.every(isDisplayCurrency)) return state
+      const codes = [...new Set(action.currencies)]
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, ({ displayCurrencies: _, ...t }) =>
+          codes.length ? { ...t, displayCurrencies: codes } : t,
+        ),
+      }
+    }
     case 'brand/update':
       return {
         ...state,

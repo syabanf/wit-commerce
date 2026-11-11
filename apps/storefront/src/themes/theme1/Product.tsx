@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -20,6 +19,7 @@ import { useShop } from '../../state/shop'
 import { ProductsBlock } from './blocks'
 import { Crumbs } from './Listing'
 import { BeautyFacts } from '../../components/beauty'
+import { Money } from '../../components/Money'
 
 /** Colour dots above the title on phones; the real picker sits below. */
 function ColourDots({ detail }: { detail: ProductDetail }) {
@@ -120,7 +120,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
               )}
               <div className="gap-2 md:grid lg:flex hidden grid-cols-1">
                 <Button size="lg" className="lg:flex-1" disabled={!!detail.blocker} onClick={add}>
-                  Add to cart · {fmtIdr(detail.lineTotal)}
+                  Add to cart · <Money idr={detail.lineTotal} />
                 </Button>
                 <Button size="lg" variant="dark" disabled={!!detail.blocker} onClick={buyNow}>
                   Buy now
@@ -192,7 +192,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
             <span className="text-[color:var(--sf-muted)]">
               {detail.variant ? 'Selected total' : 'Starting at'}
             </span>
-            <strong>{fmtIdr(detail.lineTotal)}</strong>
+            <Money idr={detail.lineTotal} className="font-bold" />
           </div>
           <div className="gap-2 grid grid-cols-2">
             <Button variant="outline" size="lg" full disabled={!!detail.blocker} onClick={add}>

@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import { ShoppingBag, Trash } from 'lucide-react'
 import { Link } from 'react-router'
 import { PaymentHints, SummaryRows, VoucherForm } from '../../components/cartParts'
@@ -11,6 +10,7 @@ import { MAX_QTY } from '../../lib/cart'
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { ProductsBlock } from './blocks'
+import { Money } from '../../components/Money'
 
 export function Cart({ view }: { view: CartView }) {
   const { store, catalog } = useShop()
@@ -70,7 +70,12 @@ export function Cart({ view }: { view: CartView }) {
                         {item.modifiers.map((m) => (
                           <p key={m.optionId} className="text-xs text-[color:var(--sf-muted)]">
                             {m.groupName}: {m.name}
-                            {m.priceDelta ? ` (+${fmtIdr(m.priceDelta)})` : ''}
+                            {!!m.priceDelta && (
+                              <>
+                                {' ('}
+                                <Money idr={m.priceDelta} sign="+" />)
+                              </>
+                            )}
                           </p>
                         ))}
                       </div>
@@ -86,10 +91,13 @@ export function Cart({ view }: { view: CartView }) {
                         label={`Quantity of ${item.product.name}`}
                       />
                       <p className="ml-auto text-right">
-                        <span className="leading-6 md:leading-11 font-bold block">{fmtIdr(item.total)}</span>
+                        <Money
+                          idr={item.total}
+                          className="leading-6 md:leading-11 font-bold flex justify-end"
+                        />
                         {item.line.qty > 1 && (
                           <span className="text-xs block text-[color:var(--sf-muted)]">
-                            {fmtIdr(item.unit)} each
+                            <Money idr={item.unit} /> each
                           </span>
                         )}
                       </p>

@@ -3,6 +3,7 @@ package identity
 import (
 	"cmp"
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -102,6 +103,31 @@ func (s *Identity) UpdateBrand(ctx context.Context, m kernel.Meta, tenantID stri
 			return err
 		}
 		tenant.Brand = brand
+		return t.Put("tenants", tenant.ID, tenant)
+	})
+}
+
+// SetDisplayCurrencies is tenants/setDisplayCurrencies: the extra currencies a store shows
+// estimated prices in. Unknown codes refuse the whole change; repeats count once.
+func (s *Identity) SetDisplayCurrencies(ctx context.Context, m kernel.Meta, tenantID string, currencies []string) (*kernel.Delta, error) {
+	if err := kernel.Access(m, tenantID); err != nil {
+		return nil, err
+	}
+	var codes []string
+	for _, code := range currencies {
+		if !slices.Contains(domain.DisplayCurrencies, code) {
+			return nil, kernel.Invalid{Reason: code + " is not a currency stores can show."}
+		}
+		if !slices.Contains(codes, code) {
+			codes = append(codes, code)
+		}
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+		if err != nil {
+			return err
+		}
+		tenant.DisplayCurrencies = codes
 		return t.Put("tenants", tenant.ID, tenant)
 	})
 }

@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { Plus, Star } from 'lucide-react'
@@ -16,6 +15,7 @@ import { Pill } from '../../components/ui'
 import { categoryName, fromPrice, quickAddable } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
+import { Money } from '../../components/Money'
 
 /**
  * Theme 1 product card: a 4:5 photo with the discount, a heart and a round quick-add button over it,
@@ -130,7 +130,7 @@ export function CompactCell({ product }: { product: Product }) {
       <span className="min-w-0 flex-1">
         <span className="text-sm leading-snug font-semibold line-clamp-2 text-pretty">{product.name}</span>
         <span className="mt-1 text-xs block text-[color:var(--sf-muted)]">
-          {product.assisted ? 'Price on request' : `From ${fmtIdr(fromPrice(product))}`}
+          {product.assisted ? 'Price on request' : <Money idr={fromPrice(product)} prefix="From " />}
         </span>
       </span>
       <ProductImage

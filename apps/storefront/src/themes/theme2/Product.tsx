@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
@@ -19,6 +18,7 @@ import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { ProductGrid, ShowHeading } from './ProductCard'
 import { BeautyFacts } from '../../components/beauty'
+import { Money } from '../../components/Money'
 
 const SLIDES = [24, 12, 32, 18]
 
@@ -135,7 +135,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
                   </p>
                 )}
                 <Button variant="dark" size="lg" full disabled={!!detail.blocker} onClick={add}>
-                  Add to cart · {fmtIdr(detail.lineTotal)}
+                  Add to cart · <Money idr={detail.lineTotal} />
                 </Button>
               </div>
             </>

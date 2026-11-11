@@ -76,6 +76,12 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       return { method: 'POST', path: '/tenants/setup', body: action.setup }
     case 'tenants/completeStep':
       return { method: 'POST', path: `/tenants/${action.tenantId}/onboarding/${action.step}` }
+    case 'tenants/setDisplayCurrencies':
+      return {
+        method: 'PUT',
+        path: `/tenants/${action.tenantId}/display-currencies`,
+        body: { currencies: action.currencies },
+      }
     case 'brand/update':
       return { method: 'PUT', path: `/tenants/${action.tenantId}/brand`, body: action.brand }
     case 'brand/toggleLock':
@@ -367,6 +373,8 @@ export interface StateResponse {
   now: string
   /** A store's state: the payment types a provider collects online. */
   onlinePayments?: string[]
+  /** A store's state: rates for the store's display currencies, units per 1 IDR. */
+  currencyRates?: ShopRate[]
 }
 
 export interface StaffInput {
@@ -582,6 +590,32 @@ export interface EmailTestResult {
   error?: string
 }
 
+/** One exchange rate as the console shows it: units of the currency per 1 IDR. */
+export interface CurrencyRate {
+  code: string
+  rate: number
+  /** fallback: nothing saved yet, so the built-in rate applies. */
+  source: 'auto' | 'manual' | 'fallback'
+  updatedAt: string | null
+  updatedBy: string | null
+  ageSeconds: number | null
+}
+
+export interface CurrencyRates {
+  rates: CurrencyRate[]
+  /** Set by a refresh: whether Frankfurter answered and how many automatic rates it wrote. */
+  refresh?: { ok: boolean; updated: number; error?: string }
+}
+
+/** A rate a storefront needs: units of the currency per 1 IDR. */
+export interface ShopRate {
+  code: string
+  rate: number
+}
+
+export type CurrencyRateInput =
+  { code: string; source: 'manual'; rate: number } | { code: string; source: 'auto' }
+
 export interface WebhookEndpoint {
   id: string
   tenantId: string
@@ -644,6 +678,32 @@ export interface AIChatAnswer {
   size: string
   payment: string
   productIds: string[]
+}
+
+export interface AssistantInput {
+  messages: { role: 'user' | 'assistant'; text: string }[]
+  /** The admin route the person is on, so the answer can be about it. */
+  page?: string
+}
+
+/** An action the admin assistant proposes. The server checked it; the console runs it on Confirm. */
+export interface AssistantAction {
+  type:
+    | 'promotions/save'
+    | 'promotions/setStatus'
+    | 'campaigns/pause'
+    | 'stock/receive'
+    | 'orders/advance'
+    | 'customers/note'
+  label: string
+  reason: string
+  params: Record<string, string | number>
+}
+
+export interface AssistantAnswer {
+  answer: string
+  actions: AssistantAction[]
+  links: { label: string; path: string }[]
 }
 
 export interface MeResponse {
@@ -775,6 +835,9 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       },
     },
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
+    /** Asks the admin assistant about a brand. It proposes actions and never runs them. */
+    assistant: (tenantId: string, input: AssistantInput) =>
+      call<AssistantAnswer>('POST', `/ai/assistant?tenantId=${encodeURIComponent(tenantId)}`, input),
     state: () => call<StateResponse>('GET', '/state'),
     /** Sends an action; the answer is the delta it produced. */
     send: (action: AppAction, store?: string) => {
@@ -799,6 +862,11 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       /** Calls the provider with the stored values. */
       test: (integrationId: string) =>
         call<ConnectionResult>('POST', `/integrations/${integrationId}/credentials/test`),
+    },
+    currencySettings: {
+      get: () => call<CurrencyRates>('GET', '/settings/currencies'),
+      save: (rates: CurrencyRateInput[]) => call<CurrencyRates>('PUT', '/settings/currencies', { rates }),
+      refresh: () => call<CurrencyRates>('POST', '/settings/currencies/refresh'),
     },
     emailSettings: {
       get: () => call<EmailSettings>('GET', '/settings/email'),

@@ -9974,6 +9974,104 @@
      "page-golden"
     ]
    }
+  },
+  {
+   "name": "tenants/setDisplayCurrencies",
+   "action": {
+    "type": "tenants/setDisplayCurrencies",
+    "tenantId": "ten-lari",
+    "currencies": [
+     "USD",
+     "SGD",
+     "USD"
+    ]
+   },
+   "by": "usr-andi",
+   "at": "2026-10-10T03:41:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ]
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setDisplayCurrencies refused",
+   "action": {
+    "type": "tenants/setDisplayCurrencies",
+    "tenantId": "ten-lari",
+    "currencies": [
+     "XYZ"
+    ]
+   },
+   "by": "usr-andi",
+   "at": "2026-10-10T04:41:00+07:00",
+   "upserts": {},
+   "removes": {}
   }
  ]
 }

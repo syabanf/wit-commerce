@@ -62,6 +62,9 @@ type Tenant struct {
 	Onboarding       []string      `json:"onboarding"`
 	// Source is "signup" for a store its owner created from the public sign-up page.
 	Source string `json:"source,omitempty"`
+	// DisplayCurrencies are the extra currencies shoppers may see estimated prices in. Stores still
+	// sell and charge in rupiah.
+	DisplayCurrencies []string `json:"displayCurrencies,omitempty"`
 }
 
 type User struct {

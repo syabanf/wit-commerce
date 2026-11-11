@@ -41,6 +41,8 @@ import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
 import { useStore } from '../state/store'
+import { PayInRupiahNote } from '../components/Money'
+import { RupiahOnlyArea } from '../state/currency'
 
 const STEPS = ['Contact', 'Delivery', 'Payment', 'Review'] as const
 
@@ -775,12 +777,15 @@ export function CheckoutPage() {
               </li>
             ))}
           </ul>
-          <SummaryRows
-            subtotal={totals.subtotal}
-            discounts={totals.discounts}
-            shipping={shipping}
-            total={total}
-          />
+          <RupiahOnlyArea>
+            <SummaryRows
+              subtotal={totals.subtotal}
+              discounts={totals.discounts}
+              shipping={shipping}
+              total={total}
+            />
+          </RupiahOnlyArea>
+          <PayInRupiahNote />
           {totals.codeError && cart.cart.voucher && (
             <p className="text-sm text-danger">
               {cart.cart.voucher}: {totals.codeError}

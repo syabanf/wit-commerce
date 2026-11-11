@@ -26,6 +26,7 @@ import { IconButton } from '../../components/ui'
 import { paths } from '../../lib/paths'
 import { RETURNS_POLICY } from '../../lib/policy'
 import { useShop } from '../../state/shop'
+import { CurrencySwitcher } from '../../components/Money'
 
 export function Logo({ className }: { className?: string }) {
   const { tenant, store } = useShop()
@@ -301,6 +302,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Logo className="max-w-56 shrink-0" />
             <SearchPill withCategory className="flex-1" key={`d-${pathname}`} />
             <nav aria-label="Your shortcuts" className="flex shrink-0 items-center">
+              <CurrencySwitcher />
               <HeaderAction
                 to={paths.account(store)}
                 icon={<Package className="size-5" aria-hidden="true" />}
@@ -372,6 +374,7 @@ export function Layout({ children }: { children: ReactNode }) {
             </div>
             <div className="gap-2 flex items-center">
               <SearchPill className="flex-1" key={`m-${pathname}`} />
+              <CurrencySwitcher className="bg-[var(--sf-soft)]" />
               <IconButton label="Browse categories" tone="dark" onClick={() => setMenuOpen(true)}>
                 <SlidersHorizontal aria-hidden="true" />
               </IconButton>

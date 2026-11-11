@@ -28,6 +28,7 @@ func (s *Server) platformRoutes(rt *router) {
 	rt.add("PUT", "/settings/email", "", "", "Save the Resend API key and from address (platform admin); an empty key keeps the saved one", s.platformAdmin(s.saveEmailSettings))
 	rt.add("POST", "/settings/email/test", "", "", "Send a test email to the signed-in platform admin", s.platformAdmin(s.sendTestEmail))
 	rt.add("GET", "/views/orders", "", "", "The orders list: filtered, searched, sorted and paged on the server", s.reader("orders:read", s.orderRows))
+	rt.add("POST", "/ai/assistant", "", "", "Ask the admin assistant about a brand; it proposes actions and never runs them", s.user("", s.adminAssistant))
 	rt.add("GET", "/views/customer-events", "", "", "Customer history, newest first: one customer, one kind, or the latest", s.reader("customers:read", s.customerEvents))
 }
 

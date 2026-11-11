@@ -28,6 +28,8 @@ import { type Catalog, compareAtPct, promoFor, quickAddable } from '../lib/catal
 import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
 import { SWATCH } from '../lib/palette'
+import { useCurrency } from '../state/currency'
+import { Money } from './Money'
 
 const TONES = ['--sf-primary', '--sf-accent', '--sf-secondary'] as const
 
@@ -170,6 +172,7 @@ export function PriceTag({
   className?: string
   priceClassName?: string
 }) {
+  const { convert } = useCurrency()
   if (product.assisted)
     return (
       <span className={cn('font-bold text-[color:var(--sf-primary-text)]', className, priceClassName)}>
@@ -178,11 +181,11 @@ export function PriceTag({
     )
   return (
     <span className={cn('gap-x-2 inline-flex flex-wrap items-baseline', className)}>
-      <span className={cn('sf-price font-bold', priceClassName)}>{fmtIdr(price ?? product.price)}</span>
+      <Money idr={price ?? product.price} className={cn('sf-price font-bold', priceClassName)} />
       {product.compareAt && product.compareAt > product.price && (
         <span className="text-xs text-[color:var(--sf-muted)] line-through">
           <span className="sr-only">Was </span>
-          {fmtIdr(product.compareAt)}
+          {convert(product.compareAt) ? `≈ ${convert(product.compareAt)}` : fmtIdr(product.compareAt)}
         </span>
       )}
     </span>

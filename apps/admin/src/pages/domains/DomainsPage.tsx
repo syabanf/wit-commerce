@@ -23,6 +23,7 @@ import {
 import { ArrowRight, Copy, FileCode, Globe, Link2, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { PageStatusBadge } from '../../components/badges'
+import { DisplayCurrenciesCard } from './DisplayCurrenciesCard'
 import { useHistoryState } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
 import { DESCRIPTION_MAX, REDIRECTS, TITLE_MAX, dnsRecords, platformHost, primaryHost, seoFlags } from './lib'
@@ -126,7 +127,7 @@ export function DomainsPage() {
     <>
       <PageHeader
         title="Domains & SEO"
-        description="Where shoppers reach your store, the redirects in front of it, and how its pages show up in search."
+        description="Where shoppers reach your store, the redirects in front of it, the currencies they can browse in, and how its pages show up in search."
       />
       <div className="space-y-4">
         <div className="gap-4 xl:grid-cols-2 grid grid-cols-1">
@@ -193,6 +194,8 @@ export function DomainsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <DisplayCurrenciesCard />
 
         <Card>
           <CardHeader>

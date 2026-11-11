@@ -2,6 +2,7 @@
 import { Banner, Entrance, Spinner, cn, useMediaQuery } from '@rc/ui'
 import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react'
 import { NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router'
+import { AssistantLauncher } from '../assistant/AssistantPanel'
 import { useAuth } from '../auth/auth'
 import { usePersistentState } from '../lib/storage'
 import { useStore } from '../state/store'
@@ -133,6 +134,7 @@ export function AdminLayout() {
 
       <PhoneNav moreOpen={moreOpen} onMoreChange={setMoreOpen} />
       <QuickSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      <AssistantLauncher />
     </div>
   )
 }

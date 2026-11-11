@@ -1,4 +1,4 @@
-import { categoryPhoto, fmtIdr, fmtIdrShort, nowMs, tenantPhotos } from '@rc/fixtures'
+import { categoryPhoto, fmtIdrShort, nowMs, tenantPhotos } from '@rc/fixtures'
 import type { Category, PageSection, Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { ArrowUpRight, ChevronLeft, ChevronRight, Gift, Truck } from 'lucide-react'
@@ -22,6 +22,7 @@ import {
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { CompactCell, ProductGrid } from './ProductCard'
+import { Money } from '../../components/Money'
 
 const glow = `radial-gradient(circle at 85% 15%, ${tint('--sf-accent', 45)}, transparent 55%), radial-gradient(circle at 10% 95%, ${tint('--sf-primary', 30)}, transparent 60%), ${tint('--sf-primary', 10)}` // wit-allow: tenant storefront theme glow from the client references
 
@@ -105,7 +106,7 @@ export function HeroRow({ section }: { section: PageSection }) {
             <ProductImage product={product} className="aspect-square rounded-[var(--sf-tile-radius)]" />
             <span className="mt-2 px-1 text-sm font-bold block truncate">{product.name}</span>
             <span className="px-1 pb-1 text-xs block text-[color:var(--sf-muted)]">
-              {fmtIdr(product.price)}
+              <Money idr={product.price} />
             </span>
           </Link>
         )}

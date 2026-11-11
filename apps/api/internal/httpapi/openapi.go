@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/currency"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
@@ -123,6 +124,9 @@ var routeDocs = map[string]routeDoc{
 	"GET /settings/email":                      {response: notifications.EmailSettings{}},
 	"PUT /settings/email":                      {body: notifications.EmailSettingsInput{}, response: notifications.EmailSettings{}},
 	"POST /settings/email/test":                {response: notifications.EmailTestResult{}},
+	"GET /settings/currencies":                 {response: currency.Rates{}},
+	"PUT /settings/currencies":                 {body: currency.RatesInput{}, response: currency.Rates{}},
+	"POST /settings/currencies/refresh":        {response: currency.Rates{}},
 	"GET /views/orders":                        {response: orderRowsResponse{}},
 	"GET /views/customer-events":               {response: customerEventsResponse{}},
 	"GET /users/events":                        {response: staffEventsResponse{}},
@@ -138,6 +142,7 @@ var routeDocs = map[string]routeDoc{
 	"POST /tenants/setup":                      {body: service.TenantSetup{}},
 	"PUT /tenants/{id}/brand":                  {body: domain.BrandConfig{}},
 	"PUT /tenants/{id}/agent-policy":           {body: domain.AgentPolicy{}},
+	"PUT /tenants/{id}/display-currencies":     {body: displayCurrenciesInput{}},
 	"PUT /products/{id}":                       {body: domain.Product{}},
 	"PUT /products/{id}/attributes":            {body: attributesInput{}},
 	"POST /products/{id}/status":               {body: statusInput{}},
@@ -190,6 +195,7 @@ var routeDocs = map[string]routeDoc{
 	"DELETE /webhooks/{id}":                    {response: okResponse{}},
 	"POST /webhook-deliveries/{id}/retry":      {response: okResponse{}},
 	"POST /shop/{store}/ai/chat":               {body: AIChatInput{}, response: AIChatAnswer{}},
+	"POST /ai/assistant":                       {body: AssistantInput{}, response: AssistantAnswer{}},
 	"POST /shop/{store}/price":                 {body: priceInput{}, response: rules.CartPrice{}},
 	"POST /shop/{store}/orders":                {body: placeOrderInput{}, response: shopOrderResponse{}},
 	"POST /payments/midtrans/notification":     {body: midtransNotificationInput{}, response: okResponse{}},
@@ -350,7 +356,7 @@ func tagOf(path string) string {
 		return "Payments"
 	case "media":
 		return "Media"
-	case "auth", "health", "users", "settings", "signup":
+	case "auth", "health", "users", "settings", "signup", "ai":
 		return "Platform"
 	}
 	panic("openapi: no tag for " + path)

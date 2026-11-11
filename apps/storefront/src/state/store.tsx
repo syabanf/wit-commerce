@@ -1,4 +1,4 @@
-import { ApiError, type Delta, applyDelta, emptyState, mergeState } from '@rc/api'
+import { ApiError, type Delta, type ShopRate, applyDelta, emptyState, mergeState } from '@rc/api'
 import {
   type AppAction,
   type AppState,
@@ -39,6 +39,8 @@ interface StoreValue {
   ready: boolean
   /** API mode: the store's payment types a provider collects online. */
   onlinePayments: string[]
+  /** API mode: rates for the store's display currencies; the local mode uses the built-in ones. */
+  currencyRates: ShopRate[]
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -89,7 +91,15 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
   const preview = usePreview()
   const shown = useMemo(() => (preview ? { ...state, ...preview } : state), [state, preview])
   const value = useMemo<StoreValue>(
-    () => ({ state: shown, send, loadStore: () => noop, merge: noop, ready: true, onlinePayments: [] }),
+    () => ({
+      state: shown,
+      send,
+      loadStore: () => noop,
+      merge: noop,
+      ready: true,
+      onlinePayments: [],
+      currencyRates: [],
+    }),
     [shown, send],
   )
   return <StoreContext value={value}>{children}</StoreContext>
@@ -104,6 +114,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const [offline, setOffline] = useState(false)
   const [onlinePayments, setOnlinePayments] = useState<string[]>([])
+  const [currencyRates, setCurrencyRates] = useState<ShopRate[]>([])
   const current = useRef<{ subdomain: string; tenantId: string } | null>(null)
 
   useEffect(() => {
@@ -134,10 +145,11 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     api.shop
       .state(subdomain)
-      .then(({ state: loaded, now, onlinePayments: online }) => {
+      .then(({ state: loaded, now, onlinePayments: online, currencyRates: rates }) => {
         if (cancelled) return
         syncClock(now)
         setOnlinePayments(online ?? [])
+        setCurrencyRates(rates ?? [])
         // The tenants list stays whole; everything else is this store's.
         const { tenants: _tenants, ...rest } = loaded
         setState((s) => mergeState(s, rest))
@@ -176,8 +188,8 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const preview = usePreview()
   const shown = useMemo(() => (preview ? { ...state, ...preview } : state), [state, preview])
   const value = useMemo<StoreValue>(
-    () => ({ state: shown, send, loadStore, merge, ready, onlinePayments }),
-    [shown, send, loadStore, merge, ready, onlinePayments],
+    () => ({ state: shown, send, loadStore, merge, ready, onlinePayments, currencyRates }),
+    [shown, send, loadStore, merge, ready, onlinePayments, currencyRates],
   )
   // Pages read the tenant list on their first render; the canvas waits for it.
   if (offline) return <StoreOffline />

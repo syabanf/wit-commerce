@@ -11,8 +11,8 @@
 
 @media screen and (min-width: 1024px) {
   :root {
-    zoom: 0.8;
-    --admin-viewport-height: 125dvh;
+    zoom: 0.9;
+    --admin-viewport-height: calc(100dvh / 0.9);
   }
 }
 

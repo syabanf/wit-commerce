@@ -96,6 +96,8 @@ export interface Tenant {
   onboarding: string[]
   /** "signup" for a store its owner created from the public sign-up page. */
   source?: 'signup'
+  /** ISO 4217 codes shoppers may see estimated prices in besides rupiah. Orders stay in rupiah. */
+  displayCurrencies?: string[]
 }
 
 export interface User {

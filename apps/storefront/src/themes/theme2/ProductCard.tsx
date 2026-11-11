@@ -1,4 +1,3 @@
-import { fmtIdr } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { Link } from 'react-router'
@@ -8,6 +7,7 @@ import { Pill } from '../../components/ui'
 import { categoryName, fromPrice } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
+import { Money } from '../../components/Money'
 
 /**
  * Theme 2 card: an editorial 4:5 photo, then the category, name and
@@ -49,7 +49,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
           </Link>
         </h3>
         <p className="sf-price pt-2 font-bold md:text-base mt-auto text-[15px] text-[color:var(--sf-primary-text)]">
-          {product.assisted ? 'Talk to sales' : fmtIdr(fromPrice(product))}
+          {product.assisted ? 'Talk to sales' : <Money idr={fromPrice(product)} />}
         </p>
         {cartDiscountPct && (
           <p className="text-xs font-semibold text-[color:var(--sf-primary-text)]">

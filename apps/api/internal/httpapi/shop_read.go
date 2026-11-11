@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/currency"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 )
 
@@ -21,6 +22,7 @@ var ShopReadRoutes = []string{
 // paths, bodies and headers match cmd/api.
 func NewShopReadHandler(o Options) http.Handler {
 	s := &Server{Options: o, svc: service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock})}
+	s.currency = &currency.Currency{Runtime: s.svc.Runtime, Log: o.Log}
 	all := http.NewServeMux()
 	rt := &router{s: s, mux: all}
 	s.platformRoutes(rt)

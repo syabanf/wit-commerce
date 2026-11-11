@@ -36,6 +36,16 @@ func (s *Server) tenantRoutes(rt *router) {
 			return s.svc.UpdateBrand(r.Context(), m, r.PathValue("id"), brand)
 		})
 	})
+	rt.add("PUT", "/tenants/{id}/display-currencies", "tenants/setDisplayCurrencies", "brand.manage", "Choose the extra currencies shoppers see estimated prices in", func(w http.ResponseWriter, r *http.Request) {
+		var in displayCurrenciesInput
+		if err := decode(r, &in); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+			return s.svc.SetDisplayCurrencies(r.Context(), m, r.PathValue("id"), in.Currencies)
+		})
+	})
 	rt.add("POST", "/tenants/{id}/brand/locks/{key}/toggle", "brand/toggleLock", "brand.manage", "Lock or unlock a brand setting", func(w http.ResponseWriter, r *http.Request) {
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
 			return s.svc.ToggleBrandLock(r.Context(), m, r.PathValue("id"), r.PathValue("key"))

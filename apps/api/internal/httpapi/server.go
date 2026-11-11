@@ -23,6 +23,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
 	aimodule "github.com/syabanf/wit-commerce/apps/api/internal/modules/ai"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/currency"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
@@ -64,6 +65,8 @@ type Options struct {
 	// load them; empty means /media, a path that works on every store host.
 	MediaDir       string
 	MediaPublicURL string
+	// CurrencyURL is the Frankfurter API root for exchange rates; empty means currency.DefaultURL.
+	CurrencyURL string
 }
 
 // Server holds the dependencies handlers read.
@@ -77,9 +80,11 @@ type Server struct {
 	signInClients, signInEmails, mailEmails *keyLimiter
 	signUpClients, signUpEmails             *keyLimiter
 	subdomainChecks                         *keyLimiter
+	assistantUsers, assistantTenants        *keyLimiter
 	assistant                               *aimodule.AI
 	media                                   *media.Media
 	mediaDisk                               media.Disk
+	currency                                *currency.Currency
 	spec                                    []byte
 }
 
@@ -88,10 +93,12 @@ func New(o Options) *Server {
 	s := &Server{Options: o, svc: service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}), limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
 	s.signUpClients, s.signUpEmails = newPeriodLimiter(signUpRatePerIP, time.Hour), newPeriodLimiter(signUpRatePerEmail, time.Hour)
 	s.subdomainChecks = newKeyLimiter(subdomainChecksPerIP)
+	s.assistantUsers, s.assistantTenants = newKeyLimiter(assistantRatePerUser), newPeriodLimiter(assistantDailyPerTenant, 24*time.Hour)
 	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, StoreRootDomain: o.StoreRootDomain, Log: o.Log}
 	s.assistant = aimodule.New(o.AI, s.svc.Catalog)
 	s.mediaDisk = media.Disk{Dir: cmp.Or(o.MediaDir, "media-data"), PublicURL: strings.TrimRight(cmp.Or(o.MediaPublicURL, "/media"), "/")}
 	s.media = &media.Media{Runtime: s.svc.Runtime, Storage: s.mediaDisk}
+	s.currency = &currency.Currency{Runtime: s.svc.Runtime, Log: o.Log, URL: o.CurrencyURL}
 	mux := http.NewServeMux()
 	s.routes(mux)
 	s.handler = s.requestID(s.cors(s.recover(s.logRequests(mux))))

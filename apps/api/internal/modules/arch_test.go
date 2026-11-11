@@ -32,6 +32,8 @@ var owns = map[string][]string{
 	"ai":            {},
 	// media writes the media table.
 	"media": {},
+	// currency writes the currency_rates table.
+	"currency": {},
 }
 
 // mayImport lists the modules each module calls. Calls run one way, so no cycle can form.

@@ -216,6 +216,8 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		TrustProxy:      os.Getenv("TRUST_PROXY") == "true", Hub: hub, Log: log, Version: Version,
 		DemoLogin: cfg.demoLogin, AllowedOrigins: cfg.allowedOrigins,
 		MediaDir: os.Getenv("MEDIA_DIR"), MediaPublicURL: os.Getenv("MEDIA_PUBLIC_URL"),
+		// CURRENCY_RATES_URL points the daily exchange-rate refresh at another Frankfurter host.
+		CurrencyURL: os.Getenv("CURRENCY_RATES_URL"),
 	})
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

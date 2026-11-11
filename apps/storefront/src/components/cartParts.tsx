@@ -1,10 +1,10 @@
-import { fmtIdr } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { BadgePercent, Ticket } from 'lucide-react'
 import { type FormEvent, useId } from 'react'
 import type { CartView } from '../features/cartView'
 import type { AppliedDiscount } from '@rc/fixtures'
 import { Button, describedBy, inputClass } from './ui'
+import { Money } from './Money'
 
 /** Subtotal, each discount by its label, shipping and total. */
 export function SummaryRows({
@@ -26,23 +26,29 @@ export function SummaryRows({
     <dl className={cn('space-y-2 text-sm', className)}>
       <div className="gap-4 flex justify-between">
         <dt>Subtotal</dt>
-        <dd className="font-semibold tabular-nums">{fmtIdr(subtotal)}</dd>
+        <dd className="font-semibold tabular-nums">
+          <Money idr={subtotal} />
+        </dd>
       </div>
       {discounts.map((d) => (
         <div key={d.promotionId} className="gap-4 flex justify-between text-[color:var(--sf-primary-text)]">
           <dt className="min-w-0">{d.label}</dt>
-          <dd className="font-semibold shrink-0 tabular-nums">−{fmtIdr(d.amount)}</dd>
+          <dd className="font-semibold shrink-0 tabular-nums">
+            <Money idr={d.amount} sign="−" />
+          </dd>
         </div>
       ))}
       <div className="gap-4 flex justify-between">
         <dt>{shippingLabel}</dt>
         <dd className="font-semibold tabular-nums">
-          {shipping === null ? 'Chosen at checkout' : shipping ? fmtIdr(shipping) : 'Free'}
+          {shipping === null ? 'Chosen at checkout' : shipping ? <Money idr={shipping} /> : 'Free'}
         </dd>
       </div>
       <div className="gap-4 pt-3 text-base flex justify-between border-t border-[color:var(--sf-line)]">
         <dt className="font-bold">Total</dt>
-        <dd className="font-bold tabular-nums">{fmtIdr(total)}</dd>
+        <dd className="font-bold tabular-nums">
+          <Money idr={total} />
+        </dd>
       </div>
     </dl>
   )

@@ -43,6 +43,7 @@ export const en = {
     newTenant: 'New Tenant',
     apps: 'Apps',
     email: 'Email',
+    currencies: 'Currencies',
     analytics: 'Analytics',
     integrations: 'Integrations',
     credentials: 'API credentials',

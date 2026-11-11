@@ -48,6 +48,7 @@ func (s *Server) tick(w http.ResponseWriter, r *http.Request) {
 
 // RunTick is what the timer calls: the jobs, then a broadcast of what they changed.
 func (s *Server) RunTick(ctx context.Context) error {
+	s.currency.RefreshIfDue(ctx)
 	d, err := s.svc.Tick(ctx, s.Clock.NowIso())
 	if err != nil {
 		return err
@@ -464,7 +465,12 @@ func (s *Server) shopState(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"state": state, "now": s.Clock.NowIso(), "onlinePayments": online})
+	rates, err := s.currency.ForShop(r.Context(), tenant.DisplayCurrencies)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"state": state, "now": s.Clock.NowIso(), "onlinePayments": online, "currencyRates": rates})
 }
 
 func (s *Server) shopEvents(w http.ResponseWriter, r *http.Request) {
