@@ -19,6 +19,18 @@ export const router = createBrowserRouter([
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/start', element: <StartPage /> },
   { path: '/verify-email', element: <VerifyEmailPage /> },
+  // The public company site. Open to everyone, signed in or out; its home page is RequireAuth's
+  // fallback at the root.
+  {
+    lazy: page(() => import('./pages/site/SiteLayout'), 'SiteLayout'),
+    HydrateFallback: () => <div className="h-dvh bg-surface" />,
+    children: [
+      { path: '/product', lazy: page(() => import('./pages/site/ProductPage'), 'ProductPage') },
+      { path: '/solutions', lazy: page(() => import('./pages/site/SolutionsPage'), 'SolutionsPage') },
+      { path: '/about', lazy: page(() => import('./pages/site/AboutPage'), 'AboutPage') },
+      { path: '/contact', lazy: page(() => import('./pages/site/ContactPage'), 'ContactPage') },
+    ],
+  },
   {
     path: '/',
     element: (

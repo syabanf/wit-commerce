@@ -166,7 +166,7 @@ export function CredentialsPage() {
     <>
       <PageHeader
         title="API credentials"
-        description="Keys that let outside systems call Commerce OS for this brand, and the reference they build against."
+        description="Keys that let outside systems call WIT Commerce for this brand, and the reference they build against."
         actions={
           HTTP && manage ? (
             <Button onClick={() => setCreating(true)}>

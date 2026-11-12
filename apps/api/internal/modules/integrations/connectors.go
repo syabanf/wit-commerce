@@ -240,7 +240,7 @@ func (s *Integrations) TestConnector(ctx context.Context, m kernel.Meta, id stri
 	case !state.Complete:
 		return &ConnectionResult{Outcome: "incomplete", Detail: "Save every required value first."}, nil, nil
 	case !supported:
-		return &ConnectionResult{Outcome: "unsupported", Detail: "Commerce OS has no live check for " + state.Provider + " yet. The values are stored."}, nil, nil
+		return &ConnectionResult{Outcome: "unsupported", Detail: "WIT Commerce has no live check for " + state.Provider + " yet. The values are stored."}, nil, nil
 	}
 	values, err := s.ConnectorValues(ctx, id)
 	if err != nil {

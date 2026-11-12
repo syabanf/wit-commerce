@@ -45,7 +45,7 @@ interface StoreValue {
 
 const StoreContext = createContext<StoreValue | null>(null)
 
-/** Holds the Commerce OS dataset: from the API when one is configured, else in a local reducer. */
+/** Holds the WIT Commerce dataset: from the API when one is configured, else in a local reducer. */
 export function AppStateProvider({ children }: { children: ReactNode }) {
   return HTTP ? (
     <ApiStateProvider>{children}</ApiStateProvider>

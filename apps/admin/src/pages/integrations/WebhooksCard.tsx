@@ -184,7 +184,7 @@ export function WebhooksCard({ onChange }: { onChange: () => void }) {
         >
           <CardTitle>Webhooks</CardTitle>
           <CardDescription>
-            Commerce OS tells your systems when something changes. Each delivery is signed in
+            WIT Commerce tells your systems when something changes. Each delivery is signed in
             X-Commerce-Signature and retried for about a day.
           </CardDescription>
         </CardHeader>

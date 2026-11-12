@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploys Commerce OS with the AI shopper chat: Postgres and the API in Docker, then the admin and the
+# Deploys WIT Commerce with the AI shopper chat: Postgres and the API in Docker, then the admin and the
 # storefront built against /api. Run it on the production server from a checkout of this repository:
 #
 #   ./scripts/deploy-prod.sh
@@ -26,7 +26,7 @@
 #   COMPOSE_NAME  commerce-prod
 #   ADMIN_EMAIL   the platform admin's email, instead of asking
 #   RESEND_API_KEY  the key for password and confirmation emails, instead of asking
-#   EMAIL_FROM    the sender, on a domain verified in Resend; Commerce OS <noreply@your-domain> by default
+#   EMAIL_FROM    the sender, on a domain verified in Resend; WIT Commerce <noreply@your-domain> by default
 #   RESET_ADMIN=1 print a new password for the platform admin
 #   DEMO_LOGIN=true  open the demo accounts to everyone; for a public demo only
 #   SKIP_PULL=1   deploy this checkout as it is
@@ -100,7 +100,7 @@ prepare_secrets() {
     if grep -q '^STORE_ROOT_DOMAIN=' "$ENV_FILE"; then STORE_ROOT_DOMAIN="$(stored STORE_ROOT_DOMAIN)"; else STORE_ROOT_DOMAIN=""; fi
   fi
   store STORE_ROOT_DOMAIN "$STORE_ROOT_DOMAIN"
-  [ -n "$(stored EMAIL_FROM)" ] || store EMAIL_FROM "${EMAIL_FROM:-Commerce OS <noreply@$DOMAIN>}"
+  [ -n "$(stored EMAIL_FROM)" ] || store EMAIL_FROM "${EMAIL_FROM:-WIT Commerce <noreply@$DOMAIN>}"
   [ -n "$(stored DEMO_LOGIN)" ] || store DEMO_LOGIN "${DEMO_LOGIN:-false}"
   # Docker Compose reads the file itself, so these must not stay in this shell's environment.
   unset OLLAMA_API_KEY

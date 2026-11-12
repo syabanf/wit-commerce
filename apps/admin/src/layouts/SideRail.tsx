@@ -18,7 +18,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { storeAddress } from '../lib/storefront'
 import { CreateMenu } from './CreateMenu'
-import { LogoMark } from './LogoMark'
+import { WitLogo } from './WitLogo'
 import { leafFor, navFor, sectionFor } from './nav'
 import { useNavCounts } from './useNavCounts'
 
@@ -49,12 +49,12 @@ export function SideRail({
           aria-label="Home"
         >
           <span className="size-11 rounded-2xl bg-white/5 flex shrink-0 items-center justify-center">
-            <LogoMark className="size-7" />
+            <WitLogo onDark className="h-3.5" />
           </span>
           {expanded && (
             <span className="min-w-0">
               <span className="font-bold leading-tight tracking-tight block text-[0.9375rem]">
-                Commerce OS
+                Commerce
               </span>
               <span className="block text-[0.6875rem] text-on-ink-muted">Brand · Commerce · CRM</span>
             </span>

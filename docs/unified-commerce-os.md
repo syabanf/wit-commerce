@@ -1,4 +1,4 @@
-# Unified Commerce OS
+# Unified WIT Commerce
 
 ## 1. Product Vision
 
@@ -21,7 +21,7 @@ Membangun platform e-Commerce seperti Shopify, tetapi sejak awal dirancang untuk
 
 Positioning:
 
-> **A Multi-Tenant Commerce OS with Built-in CRM, Brand Governance, and Personalized Storefronts.**
+> **A Multi-Tenant WIT Commerce with Built-in CRM, Brand Governance, and Personalized Storefronts.**
 
 Platform bukan hanya membantu bisnis membuat toko online.
 
@@ -981,7 +981,7 @@ Order module mendukung:
 
 CRM bukan plugin.
 
-CRM adalah salah satu core domain Commerce OS.
+CRM adalah salah satu core domain WIT Commerce.
 
 Setiap customer mempunyai:
 
@@ -1706,7 +1706,7 @@ Social Commerce
 Offline Store
        ▼
 
-Commerce OS
+WIT Commerce
 
 Product
 Inventory
@@ -2232,7 +2232,7 @@ dan bukan hanya:
 
 Tetapi:
 
-# Commerce OS
+# WIT Commerce
 
 Dengan positioning:
 

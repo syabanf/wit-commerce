@@ -1,0 +1,163 @@
+/* Motion for the public WIT Commerce site. Every rule stops under prefers-reduced-motion. */
+
+/* Page transitions: React Router wraps site navigations in document.startViewTransition. */
+@keyframes site-vt-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes site-vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+::view-transition-old(root) {
+  animation: 160ms ease-in both site-vt-out;
+}
+::view-transition-new(root) {
+  animation: 340ms cubic-bezier(0.2, 0.7, 0.2, 1) 60ms both site-vt-in;
+}
+/* The header and footer hold still while the page moves under them. */
+::view-transition-group(site-header),
+::view-transition-group(site-footer),
+::view-transition-new(site-header),
+::view-transition-new(site-footer) {
+  animation: none;
+}
+::view-transition-old(site-header),
+::view-transition-old(site-footer) {
+  display: none;
+}
+
+.landing-root :is(a, button, input, textarea, summary):focus-visible {
+  outline: 2px solid #ed1c24;
+  outline-offset: 2px;
+}
+
+/* Scroll reveal: Reveal sets data-shown once the element enters the viewport. */
+.landing-root .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.landing-root .reveal[data-shown] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero entrance: children rise in order of --i. */
+@keyframes site-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+.landing-root .rise {
+  animation: site-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 60ms);
+}
+
+/* Cards lift on hover; buttons give a little on press. */
+.landing-root .lift {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.landing-root .lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -18px rgb(16 17 18 / 0.28);
+}
+.landing-root .press {
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.landing-root .press:active {
+  transform: scale(0.97);
+}
+
+/* A slow strip of feature words; the track holds two copies and slides by one. */
+@keyframes site-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.landing-root .marquee {
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.landing-root .marquee-track {
+  animation: site-marquee 48s linear infinite;
+}
+.landing-root .marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* Glossy blobs behind the inner page heroes, in WIT red and the soft blue. */
+@keyframes site-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, -6%, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(-4%, 4%, 0) scale(0.97);
+  }
+}
+.landing-root .blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(8px);
+  animation: site-float 18s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.landing-root .blob-red {
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgb(255 255 255 / 0.7),
+    rgb(237 28 36 / 0.32) 35%,
+    transparent 70%
+  );
+}
+.landing-root .blob-blue {
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgb(255 255 255 / 0.8),
+    rgb(131 179 238 / 0.45) 38%,
+    transparent 70%
+  );
+  animation-duration: 22s;
+  animation-delay: -6s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  .landing-root .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .landing-root .rise,
+  .landing-root .marquee-track,
+  .landing-root .blob {
+    animation: none;
+  }
+  .landing-root .lift,
+  .landing-root .press {
+    transition: none;
+  }
+  .landing-root .lift:hover,
+  .landing-root .press:active {
+    transform: none;
+  }
+}

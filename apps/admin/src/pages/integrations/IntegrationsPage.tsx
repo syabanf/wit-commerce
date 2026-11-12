@@ -231,7 +231,7 @@ export function IntegrationsPage() {
       <div className="space-y-4">
         <Banner tone="neutral" title="Who owns which data">
           Payments settle in the payment gateway, invoices and accounting live in the ERP, and marketplace
-          orders are imported here and fulfilled like any other order. Couriers own tracking; Commerce OS owns
+          orders are imported here and fulfilled like any other order. Couriers own tracking; WIT Commerce owns
           products, stock, customers and orders.
         </Banner>
 
@@ -273,7 +273,7 @@ export function IntegrationsPage() {
           <CardHeader>
             <CardTitle>Webhook and API log</CardTitle>
             <CardDescription>
-              Requests between Commerce OS and connected systems, newest first.
+              Requests between WIT Commerce and connected systems, newest first.
             </CardDescription>
           </CardHeader>
           <TableFilters

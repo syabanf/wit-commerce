@@ -111,7 +111,7 @@ export function EmailSettingsPage() {
     <>
       <PageHeader
         title="Email"
-        description="How Commerce OS sends password resets, staff invitations and email confirmations."
+        description="How WIT Commerce sends password resets, staff invitations and email confirmations."
       />
       <div className="space-y-4">
         {!HTTP && (
@@ -151,7 +151,7 @@ export function EmailSettingsPage() {
               <CardHeader>
                 <CardTitle>Resend</CardTitle>
                 <CardDescription>
-                  Commerce OS sends through Resend. Nobody can read the key back here, so keep the original in
+                  WIT Commerce sends through Resend. Nobody can read the key back here, so keep the original in
                   your password manager.
                 </CardDescription>
               </CardHeader>
@@ -180,7 +180,7 @@ export function EmailSettingsPage() {
                   >
                     <Input
                       id="email-from"
-                      placeholder="Commerce OS <noreply@your-domain.com>"
+                      placeholder="WIT Commerce <noreply@your-domain.com>"
                       value={from}
                       onChange={(e) => setFrom(e.target.value)}
                     />

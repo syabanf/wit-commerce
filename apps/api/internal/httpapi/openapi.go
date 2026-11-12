@@ -501,9 +501,9 @@ func buildSpec(table []Route, version string) []byte {
 	spec := map[string]any{
 		"openapi": "3.0.3",
 		"info": map[string]any{
-			"title":   "Commerce OS API",
+			"title":   "WIT Commerce API",
 			"version": version,
-			"description": "The API behind the Commerce OS console, seller app and storefront.\n\n" +
+			"description": "The API behind the WIT Commerce console, seller app and storefront.\n\n" +
 				"Connected systems authenticate with an API key created under Integrations → API credentials: " +
 				"`Authorization: Bearer rck_…` or `X-Api-Key: rck_…`. A key belongs to one tenant and acts within its scopes. " +
 				"Lists page by id with `limit` and `cursor`; use `updatedSince` for incremental sync. " +
@@ -537,7 +537,7 @@ const docsPage = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Commerce OS API</title>
+<title>WIT Commerce API</title>
 <style>body{margin:0}</style>
 </head>
 <body>

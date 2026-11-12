@@ -6,7 +6,8 @@ import { ArrowRight, Lock, Mail, Palette, ShoppingBag, UsersRound } from 'lucide
 import { type FormEvent, useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
-import { LogoMark } from '../../layouts/LogoMark'
+import { markEntered } from '../../auth/entry'
+import { WitCommerce } from '../../layouts/WitLogo'
 import { DEMO_PASSWORD, HTTP, api } from '../../lib/api'
 import { useStore } from '../../state/store'
 
@@ -60,7 +61,12 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const from = (location.state as { from?: string } | null)?.from ?? '/'
-  if (user || loading) return user ? <Navigate to={from} replace /> : <div className="min-h-[var(--admin-viewport-height)] bg-surface" />
+  if (user) {
+    // Signing in from another tab still counts as entering the console here.
+    markEntered()
+    return <Navigate to={from} replace />
+  }
+  if (loading) return <div className="min-h-[var(--admin-viewport-height)] bg-surface" />
 
   const enter = async (candidate: User | null, address: string, pass: string) => {
     if (!HTTP) {
@@ -100,14 +106,9 @@ export function LoginPage() {
       </div>
       <div className="max-w-5xl gap-4 lg:grid-cols-[minmax(0,1fr)_1.1fr] relative mx-auto grid w-full grid-cols-1">
         <Card variant="ink" className="gap-10 p-8 flex flex-col justify-between">
-          <div className="gap-3 flex items-center">
-            <span className="size-11 rounded-2xl bg-white/5 flex items-center justify-center">
-              <LogoMark className="size-7" />
-            </span>
-            <div>
-              <p className="font-bold leading-tight text-[0.9375rem]">Commerce OS</p>
-              <p className="text-xs text-on-ink-muted">Brand · Commerce · CRM</p>
-            </div>
+          <div>
+            <WitCommerce onDark className="text-lg" />
+            <p className="mt-1 text-xs text-on-ink-muted">Brand · Commerce · CRM</p>
           </div>
           <div>
             <p className="font-semibold tracking-wider text-[0.6875rem] text-on-ink-muted uppercase">

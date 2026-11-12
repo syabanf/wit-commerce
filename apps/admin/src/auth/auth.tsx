@@ -1,11 +1,23 @@
 import { ApiError } from '@rc/api'
 import { type Permission, can } from '@rc/fixtures'
 import type { Tenant, User } from '@rc/types'
-import { type ReactNode, createContext, useContext, useMemo, useState, useSyncExternalStore } from 'react'
+import {
+  type ReactNode,
+  Suspense,
+  createContext,
+  lazy,
+  useContext,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { HTTP, api, tokenStore } from '../lib/api'
 import { readStorage, writeStorage } from '../lib/storage'
 import { useStore } from '../state/store'
+import { hasEntered, markEntered } from './entry'
+
+const PublicHome = lazy(() => import('../pages/site/HomePage').then((m) => ({ default: m.PublicHome })))
 
 export const SESSION_KEY = 'rc.admin.session'
 
@@ -48,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : []
     const tenant = user ? (tenants.find((t) => t.id === session?.tenantId) ?? tenants[0] ?? null) : null
     const persist = (next: Session | null) => {
+      if (next) markEntered()
       writeStorage(SESSION_KEY, next)
       setSession(next)
     }
@@ -98,6 +111,19 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, tenant, loading } = useAuth()
   const location = useLocation()
   if (loading) return <div className="h-[var(--admin-viewport-height)] bg-surface" />
-  if (!user || !tenant) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  const atRoot = location.pathname === '/'
+  // The root shows the public site first in every tab, signed in or not; other pages ask to sign in.
+  if (atRoot && (!user || !tenant || !hasEntered())) {
+    return (
+      <Suspense fallback={<div className="h-dvh bg-surface" />}>
+        <PublicHome />
+      </Suspense>
+    )
+  }
+  if (!user || !tenant) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+  // A deep link into the console counts as entering it, so Home from there stays in the console.
+  if (!atRoot) markEntered()
   return children
 }

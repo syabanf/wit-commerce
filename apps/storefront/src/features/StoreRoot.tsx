@@ -85,13 +85,13 @@ export function StoreRoot() {
 }
 
 export function UnknownStore() {
-  useTitle('Store not found · Commerce OS Store')
+  useTitle('Store not found · WIT Commerce Store')
   return (
     <main className="p-4 flex min-h-dvh items-center justify-center bg-surface">
       <div className="max-w-md p-8 rounded-card bg-card text-center shadow-card">
         <h1 className="text-2xl font-bold">We could not find that store</h1>
         <p className="mt-2 text-sm text-muted">
-          Check the address, or pick one of the stores on Commerce OS.
+          Check the address, or pick one of the stores on WIT Commerce.
         </p>
         <Link
           to={paths.chooser()}
@@ -106,7 +106,7 @@ export function UnknownStore() {
 
 /** A store host whose store is not published yet, or does not exist. */
 function ComingSoon({ name }: { name?: string }) {
-  useTitle(name ? `${name} · Coming soon` : 'Coming soon · Commerce OS Store')
+  useTitle(name ? `${name} · Coming soon` : 'Coming soon · WIT Commerce Store')
   return (
     <main className="p-4 flex min-h-dvh items-center justify-center bg-surface">
       <div className="max-w-md p-8 rounded-card bg-card text-center shadow-card">

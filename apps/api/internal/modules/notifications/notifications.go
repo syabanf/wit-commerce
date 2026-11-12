@@ -169,7 +169,7 @@ func (n *Notifications) storeLink(tenant domain.Tenant, param, token string) str
 func (n *Notifications) MailUserReset(ctx context.Context, u domain.User) {
 	n.queueLink(ctx, kindReset, subjectUser, u.ID, resetLifetime, func(token string) mail.Message {
 		link := n.PublicURL + "/reset-password?token=" + url.QueryEscape(token)
-		return linkMessage(u.Email, "Reset your Commerce OS password", "Use this link within an hour to choose a new password.", "Choose a new password", link)
+		return linkMessage(u.Email, "Reset your WIT Commerce password", "Use this link within an hour to choose a new password.", "Choose a new password", link)
 	})
 }
 
@@ -177,7 +177,7 @@ func (n *Notifications) MailUserReset(ctx context.Context, u domain.User) {
 func (n *Notifications) MailUserVerify(ctx context.Context, u domain.User) {
 	n.queueLink(ctx, kindVerify, subjectUser, u.ID, verifyLifetime, func(token string) mail.Message {
 		link := n.PublicURL + "/verify-email?token=" + url.QueryEscape(token)
-		return linkMessage(u.Email, "Confirm your email for Commerce OS", "Confirm this email within 24 hours so you can publish your store.", "Confirm my email", link)
+		return linkMessage(u.Email, "Confirm your email for WIT Commerce", "Confirm this email within 24 hours so you can publish your store.", "Confirm my email", link)
 	})
 }
 
@@ -227,12 +227,12 @@ func (n *Notifications) mailStaffLink(ctx context.Context, u domain.User, kind s
 
 // MailInvite sends a new staff member the link to choose a first password, and reports whether it went out.
 func (n *Notifications) MailInvite(ctx context.Context, u domain.User) bool {
-	return n.mailStaffLink(ctx, u, kindInvite, inviteLifetime, "You are invited to Commerce OS",
-		"An admin added you to Commerce OS. Use this link within 7 days to choose your password.", "Choose your password", "&invite=1")
+	return n.mailStaffLink(ctx, u, kindInvite, inviteLifetime, "You are invited to WIT Commerce",
+		"An admin added you to WIT Commerce. Use this link within 7 days to choose your password.", "Choose your password", "&invite=1")
 }
 
 // MailAdminReset sends a staff member whose password an admin ended the link to choose a new one.
 func (n *Notifications) MailAdminReset(ctx context.Context, u domain.User) bool {
-	return n.mailStaffLink(ctx, u, kindReset, resetLifetime, "An admin reset your Commerce OS password",
+	return n.mailStaffLink(ctx, u, kindReset, resetLifetime, "An admin reset your WIT Commerce password",
 		"An admin reset your password. Use this link within an hour to choose a new one.", "Choose a new password", "")
 }

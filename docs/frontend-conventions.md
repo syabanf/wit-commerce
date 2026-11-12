@@ -1,4 +1,4 @@
-# Frontend conventions (Commerce OS)
+# Frontend conventions (WIT Commerce)
 
 The day-to-day summary of the WIT house style (`~/.claude/skills/wit-code-agent`) for this repo. Read it before adding a page.
 

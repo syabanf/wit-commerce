@@ -26,7 +26,7 @@ func OutboundClient(allowInternal bool) *http.Client {
 				return err
 			}
 			if ip := net.ParseIP(host); ip == nil || internalIP(ip) {
-				return errors.New("this address is not reachable from Commerce OS")
+				return errors.New("this address is not reachable from WIT Commerce")
 			}
 			return nil
 		}

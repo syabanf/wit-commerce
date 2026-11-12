@@ -1,4 +1,4 @@
-// Command api runs the Commerce OS backend: Postgres behind a JSON API with server-sent events.
+// Command api runs the WIT Commerce backend: Postgres behind a JSON API with server-sent events.
 package main
 
 import (

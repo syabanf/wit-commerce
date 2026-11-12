@@ -1,4 +1,4 @@
-# Commerce OS
+# WIT Commerce
 
 A multi-tenant commerce platform with built-in CRM, brand governance and personal storefronts for every seller. This repository holds the admin console for brand teams, the phone app for sales agents, the shopper storefront and the Go API behind them. Without the API configured, every app runs on its bundled seed data.
 
@@ -45,10 +45,10 @@ pnpm --filter @rc/mobile exec vite --mode api       # the seller app on the API,
 
 - **OpenAPI:** the API publishes its contract at `/api/v1/openapi.json`, with a reference at `/api/v1/docs`; `apps/api/openapi.json` is the same document in the repo for client generators.
 - **API keys (inbound):** Integrations → API credentials creates, rotates and revokes keys per brand, each with its scopes and optional expiry. Send one as `Authorization: Bearer rck_…` or `X-Api-Key`. The secret shows once; the server keeps its SHA-256. Limit: 600 requests a minute per key.
-- **Connector credentials (outbound):** the Credentials button on each connection stores what Commerce OS needs to call that provider, encrypted with AES-256-GCM. Values go in and never come back through the API.
+- **Connector credentials (outbound):** the Credentials button on each connection stores what WIT Commerce needs to call that provider, encrypted with AES-256-GCM. Values go in and never come back through the API.
 
-- **Webhooks (outbound):** the same page adds endpoints per brand. Commerce OS POSTs `{event, tenantId, at, data}` signed in `X-Commerce-Signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `<unix>.<raw body>`), and retries non-2xx answers for about a day. Endpoints must be https and public; `WEBHOOK_ALLOW_INTERNAL=true` relaxes that in development.
-- **Testing a connection:** "Test saved values" makes a real read-only call for Midtrans and Xendit. Other providers store their values without a live check. No provider handles payments or shipments through Commerce OS yet.
+- **Webhooks (outbound):** the same page adds endpoints per brand. WIT Commerce POSTs `{event, tenantId, at, data}` signed in `X-Commerce-Signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `<unix>.<raw body>`), and retries non-2xx answers for about a day. Endpoints must be https and public; `WEBHOOK_ALLOW_INTERNAL=true` relaxes that in development.
+- **Testing a connection:** "Test saved values" makes a real read-only call for Midtrans and Xendit. Other providers store their values without a live check. No provider handles payments or shipments through WIT Commerce yet.
 
 - **AI in the shopper chat:** the buying agent and the store assistant read shoppers' words with DeepSeek on Ollama (`OLLAMA_API_KEY`, `OLLAMA_MODEL`, default `deepseek-v4.1-flash`). The key stays in the API's environment, `apps/api/.env` locally, which git ignores. The model only interprets: it sees the store's public catalog and the shopper's words, and it has no action that pays. Without a key, or when it fails, the chat falls back to the built-in parser. Set `TRUST_PROXY=true` behind a reverse proxy so the limit of 30 messages a minute counts each shopper.
 

@@ -1,4 +1,4 @@
-/* WIT UI style tokens for the Commerce OS apps (Tailwind v4 @theme).
+/* WIT UI style tokens for the WIT Commerce apps (Tailwind v4 @theme).
    One accent (WIT red), one ink, a grey ladder, and a calm blue for informational states.
    Classes: bg-accent, text-ink, bg-surface, bg-card, border-border, text-muted, bg-info-soft … */
 @import 'tw-animate-css';

@@ -106,7 +106,7 @@ type (
 	}
 )
 
-// Payment is what Commerce OS knows about an order's online payment. It carries no key.
+// Payment is what WIT Commerce knows about an order's online payment. It carries no key.
 type Payment struct {
 	OrderID       string  `json:"orderId"`
 	TenantID      string  `json:"tenantId"`
@@ -199,7 +199,7 @@ func (s *Integrations) PaymentFor(ctx context.Context, orderID string) (*Payment
 	return &p, nil
 }
 
-// MidtransNotification is the part of a Midtrans notification or status answer Commerce OS reads.
+// MidtransNotification is the part of a Midtrans notification or status answer WIT Commerce reads.
 type MidtransNotification struct {
 	OrderID           string `json:"order_id"`
 	StatusCode        string `json:"status_code"`

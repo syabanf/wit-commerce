@@ -4052,8 +4052,8 @@
     }
   },
   "info": {
-    "description": "The API behind the Commerce OS console, seller app and storefront.\n\nConnected systems authenticate with an API key created under Integrations → API credentials: `Authorization: Bearer rck_…` or `X-Api-Key: rck_…`. A key belongs to one tenant and acts within its scopes. Lists page by id with `limit` and `cursor`; use `updatedSince` for incremental sync. Writes answer with the rows they changed. Errors are `application/problem+json`.\n\nWebhooks POST `{event, tenantId, at, data}` with `X-Commerce-Signature: t=\u003cunix\u003e,v1=\u003chex\u003e`, the HMAC-SHA256 of `\u003cunix\u003e.\u003craw body\u003e` under the endpoint's secret. Answer 2xx; other answers retry for about a day.",
-    "title": "Commerce OS API",
+    "description": "The API behind the WIT Commerce console, seller app and storefront.\n\nConnected systems authenticate with an API key created under Integrations → API credentials: `Authorization: Bearer rck_…` or `X-Api-Key: rck_…`. A key belongs to one tenant and acts within its scopes. Lists page by id with `limit` and `cursor`; use `updatedSince` for incremental sync. Writes answer with the rows they changed. Errors are `application/problem+json`.\n\nWebhooks POST `{event, tenantId, at, data}` with `X-Commerce-Signature: t=\u003cunix\u003e,v1=\u003chex\u003e`, the HMAC-SHA256 of `\u003cunix\u003e.\u003craw body\u003e` under the endpoint's secret. Answer 2xx; other answers retry for about a day.",
+    "title": "WIT Commerce API",
     "version": "dev"
   },
   "openapi": "3.0.3",

@@ -127,7 +127,7 @@ export function LoginPage() {
           </svg>
         </span>
         <div>
-          <p className="font-bold leading-tight text-[15px]">Commerce OS Seller</p>
+          <p className="font-bold leading-tight text-[15px]">WIT Commerce Seller</p>
           <p className="text-xs text-muted">Your store, leads and customers</p>
         </div>
       </div>

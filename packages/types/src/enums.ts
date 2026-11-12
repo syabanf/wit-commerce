@@ -1,4 +1,4 @@
-// Domain unions for Commerce OS. Each union has a *_LABEL map beside it, and lifecycles a *_FLOW.
+// Domain unions for WIT Commerce. Each union has a *_LABEL map beside it, and lifecycles a *_FLOW.
 
 export type IsoDate = string
 

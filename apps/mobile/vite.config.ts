@@ -15,7 +15,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Commerce OS Seller',
+        name: 'WIT Commerce Seller',
         short_name: 'Seller',
         description: 'Your personal store, your leads and customers, and the sales they bring in.',
         display: 'standalone',

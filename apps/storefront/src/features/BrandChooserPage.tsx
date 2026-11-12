@@ -136,7 +136,7 @@ const otherTheme = (t: Tenant): StorefrontTheme => THEME_IDS.find((id) => id !==
 /** `/`: the demo hub. Both themes, every demo store, and the flows worth trying. */
 export function BrandChooserPage() {
   const { state } = useStore()
-  useTitle('Commerce OS · Storefront demo')
+  useTitle('WIT Commerce · Storefront demo')
   const tenants = HTTP
     ? state.tenants
     : state.tenants.filter((t) =>
@@ -149,7 +149,7 @@ export function BrandChooserPage() {
       <div className="max-w-6xl space-y-12 mx-auto">
         <header>
           <p className="font-semibold tracking-wider text-[11px] text-muted uppercase">
-            Commerce OS · storefront demo
+            WIT Commerce · storefront demo
           </p>
           <h1 className="mt-2 max-w-3xl text-3xl font-bold tracking-tight md:text-5xl">
             Two themes, three brands, one platform<span className="text-accent">.</span>

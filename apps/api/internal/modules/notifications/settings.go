@@ -214,9 +214,9 @@ func (n *Notifications) SendTest(ctx context.Context, to string) EmailTestResult
 	defer cancel()
 	err := r.client.Send(sendCtx, resend.Message{
 		To:      to,
-		Subject: "Commerce OS test email",
-		Text:    "This test shows that Commerce OS can send email from " + r.client.From + ".\n",
-		HTML:    "<p>This test shows that Commerce OS can send email.</p>",
+		Subject: "WIT Commerce test email",
+		Text:    "This test shows that WIT Commerce can send email from " + r.client.From + ".\n",
+		HTML:    "<p>This test shows that WIT Commerce can send email.</p>",
 	})
 	if err == nil {
 		out.Ok = true

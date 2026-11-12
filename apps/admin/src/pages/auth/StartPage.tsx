@@ -4,9 +4,9 @@ import { INDUSTRY_LABEL, type Industry } from '@rc/types'
 import { Banner, Button, Card, Chip, FormField, Input, Steps, cn } from '@rc/ui'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Mail, Store, UserRound } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
-import { LogoMark } from '../../layouts/LogoMark'
+import { WitCommerce } from '../../layouts/WitLogo'
 import { HTTP, api } from '../../lib/api'
 import { SUBDOMAIN_PATTERN } from '../settings/lib'
 
@@ -108,12 +108,9 @@ export function StartPage() {
   return (
     <div className="px-4 py-6 sm:py-12 min-h-[var(--admin-viewport-height)] bg-surface">
       <main className="max-w-lg mx-auto w-full">
-        <div className="mb-5 gap-3 flex items-center">
-          <span className="size-10 rounded-2xl flex items-center justify-center bg-ink">
-            <LogoMark className="size-6" />
-          </span>
-          <p className="font-bold text-[0.9375rem]">Commerce OS</p>
-        </div>
+        <Link to="/" className="mb-5 inline-flex">
+          <WitCommerce className="text-lg" />
+        </Link>
         {HTTP ? <SignUpFlow /> : <NeedsServer />}
         <p className="mt-4 text-sm text-muted">
           Already have a store?{' '}
@@ -169,7 +166,12 @@ function useAvailability(subdomain: string) {
 function SignUpFlow() {
   const { startSession } = useAuth()
   const navigate = useNavigate()
-  const [draft, setDraft] = useState<Draft>(INITIAL)
+  // The landing page passes the name typed in its hero, so the first screen starts filled in.
+  const [params] = useSearchParams()
+  const [draft, setDraft] = useState<Draft>(() => {
+    const storeName = (params.get('name') ?? '').trim().slice(0, 60)
+    return storeName ? { ...INITIAL, storeName, subdomain: toSubdomain(storeName) } : INITIAL
+  })
   const [step, setStep] = useState(0)
   const [tried, setTried] = useState(false)
   const [serverErrors, setServerErrors] = useState<Errors>({})

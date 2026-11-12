@@ -34,7 +34,7 @@ const RESULT_TITLE = {
   unsupported: 'No live check',
 } as const
 
-/** The values Commerce OS uses to call a provider. They go in and never come back out. */
+/** The values WIT Commerce uses to call a provider. They go in and never come back out. */
 export function ConnectorDialog({ integration, onClose }: { integration: Integration; onClose: () => void }) {
   const { userName } = useScoped()
   const now = useNow(30_000)

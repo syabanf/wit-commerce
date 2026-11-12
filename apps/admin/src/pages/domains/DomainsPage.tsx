@@ -313,11 +313,11 @@ function CustomDomain() {
       if (tenant.domainVerified)
         toast('DNS verified', {
           tone: 'success',
-          description: `${domain} points at Commerce OS and SSL is active.`,
+          description: `${domain} points at WIT Commerce and SSL is active.`,
         })
       else
         toast('DNS still pending', {
-          description: `${domain} does not point at Commerce OS yet. DNS changes can take up to 24 hours.`,
+          description: `${domain} does not point at WIT Commerce yet. DNS changes can take up to 24 hours.`,
         })
     }, 800)
   }
