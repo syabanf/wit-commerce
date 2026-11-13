@@ -7,7 +7,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 const INK = '#101112'
 const CANVAS = '#f1f0f1'
 
+// The web image serves the seller app under /seller/ (SELLER_BASE=/seller/). Dev and plain builds stay
+// at the root. The manifest scope, start URL and service worker fallback follow the base.
+const BASE = process.env.SELLER_BASE ?? '/'
+
 export default defineConfig({
+  base: BASE,
   plugins: [
     react(),
     tailwindcss(),
@@ -19,8 +24,8 @@ export default defineConfig({
         short_name: 'Seller',
         description: 'Your personal store, your leads and customers, and the sales they bring in.',
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
+        start_url: BASE,
+        scope: BASE,
         theme_color: INK,
         background_color: CANVAS,
         icons: [
@@ -31,7 +36,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${BASE}index.html`,
         // The seed chunk is large, so leave room for a bigger dataset.
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [

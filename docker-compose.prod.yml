@@ -1,4 +1,9 @@
-# Production stack, started by scripts/deploy-prod.sh. Values come from .env.production, which git ignores.
+# The whole product in Docker: Postgres, the API and the web server that serves the admin, the
+# storefront and the seller app. scripts/deploy-prod.sh starts it on a server with values from
+# .env.production, which git ignores. On a laptop:
+#
+#   cp deploy/.env.docker.example deploy/.env.docker
+#   docker compose -f docker-compose.prod.yml --env-file deploy/.env.docker up --build
 services:
   postgres:
     image: postgres:17-alpine
@@ -44,11 +49,12 @@ services:
       # notifier service sends the queued email in place of the API.
       EVENTS_NOTIFY: ${SPLIT_SERVICES:-false}
       NOTIFIER_EXTERNAL: ${SPLIT_SERVICES:-false}
-    # Uploaded images live on the host, so nginx serves /media/ from the same folder. The API runs as
-    # uid 10001, which must own it; deploy-prod.sh creates it.
+    # Uploaded images, written by the API as uid 10001 with mode 0644 and served by web from the same
+    # place. An absolute path is a host folder, which deploy-prod.sh creates and hands to uid 10001;
+    # a plain name such as "media" is a Docker volume instead.
     volumes:
       - ${MEDIA_ROOT:-/var/lib/commerce/media}:/media
-    # Only the web server on this machine reaches the API.
+    # Health checks and the admin bootstrap on this machine reach the API here; browsers go through web.
     ports:
       - '127.0.0.1:${API_PORT:-8090}:8090'
 
@@ -128,5 +134,38 @@ services:
     ports:
       - '127.0.0.1:${SHOP_PORT:-8093}:8093'
 
+  # The only service that faces the network: nginx with the admin at /, the storefront under /shop/ or
+  # on store hosts, the seller app under /seller/, and /api/ and /media/. The Vite values are compiled
+  # in, so changing PUBLIC_URL, STORE_ROOT_DOMAIN or DEMO_LOGIN needs `up --build`.
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_STORE_ROOT_DOMAIN: ${STORE_ROOT_DOMAIN:-}
+        VITE_STOREFRONT_URL: ${PUBLIC_URL:-http://localhost}/shop
+        VITE_ADMIN_ORIGINS: ${PUBLIC_URL:-http://localhost}
+        # Empty unless DEMO_LOGIN=true; then it is the public demo password.
+        VITE_DEMO_PASSWORD: ${VITE_DEMO_PASSWORD:-}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      STORE_ROOT_DOMAIN: ${STORE_ROOT_DOMAIN:-}
+      SPLIT_SERVICES: ${SPLIT_SERVICES:-false}
+    volumes:
+      - ${MEDIA_ROOT:-/var/lib/commerce/media}:/media:ro
+      # Put fullchain.pem and privkey.pem here to serve HTTPS on 443; without them web serves plain
+      # http on 80 for Cloudflare or another proxy in front.
+      - ${WEB_CERTS:-./deploy/certs}:/etc/nginx/certs:ro
+    # The 443 mapping is harmless while no certificates are mounted: nothing listens behind it.
+    ports:
+      - '${WEB_BIND:-0.0.0.0}:${WEB_PORT:-80}:80'
+      - '${WEB_BIND:-0.0.0.0}:${WEB_TLS_PORT:-443}:443'
+
 volumes:
   pgdata:
+  # Used only when MEDIA_ROOT=media, as on a laptop.
+  media:

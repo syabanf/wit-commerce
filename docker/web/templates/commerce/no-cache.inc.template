@@ -1,0 +1,2 @@
+# index.html and the files beside it change with every release, so browsers check them each time.
+add_header Cache-Control "no-cache" always;

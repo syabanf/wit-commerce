@@ -1,0 +1,4 @@
+# Store hosts: old /shop/{store}/... links go to {store}.${STORE_ROOT_DOMAIN}/...
+location ~ ^/shop/([a-z0-9-]+)(/.*)?$ {
+  return 301 ${STORE_SCHEME}://$1.${STORE_ROOT_DOMAIN}$2$is_args$args;
+}

@@ -1,0 +1,28 @@
+# The health check, the API and uploaded media, shared by the main host and the store hosts.
+set $api http://api:8090;
+
+location = /healthz {
+  access_log off;
+  default_type text/plain;
+  return 200 "ok\n";
+}
+
+${COMMERCE_SPLIT}
+
+location /api/ {
+  proxy_pass $api;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+  # The live event stream must not sit in a buffer.
+  proxy_buffering off;
+  proxy_read_timeout 1h;
+  # Image uploads go up to 5 MB plus the form around them.
+  client_max_body_size 6m;
+}
+
+# Uploaded images, from the volume the api writes. Each file name is a new id, so browsers may keep it
+# for a year; nosniff stops a browser reading an image as a script.
+location /media/ {
+  alias /media/;
+  add_header Cache-Control "public, max-age=31536000, immutable" always;
+  add_header X-Content-Type-Options nosniff always;
+}

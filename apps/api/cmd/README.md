@@ -20,8 +20,8 @@ The API image holds four binaries built from this module. They share one Postgre
   `commerce_events`, so `shop` streams see changes made through `api`. A change over the
   8000-byte NOTIFY limit goes into `event_log`, and the notification carries its id.
 - The API gets `NOTIFIER_EXTERNAL=true` and stops draining `email_outbox` itself.
-- nginx sends the AI chat path to `ai`, and GET requests on the three public shop paths to
-  `shop`. Every other method and path stays on `api`.
+- The `web` container sends the AI chat path to `ai`, and GET requests on the three public shop
+  paths to `shop`. Every other method and path stays on `api`.
 
 Turning it off again is safe: `api` serves every route either way.
 
@@ -43,20 +43,21 @@ variables win.
 
 Each brand's store opens on its own host, `https://{subdomain}.commerce.reddie.id`. The storefront
 reads the store from the host name and still calls `/api/v1/shop/{store}/...`, so the API needs no
-change. `scripts/deploy-prod.sh` sets it up when `STORE_ROOT_DOMAIN` is not empty.
+change. The `web` container (`docker/web/`) serves store hosts when `STORE_ROOT_DOMAIN` is not empty.
 
 Settings:
 
 | Variable | Where | Meaning |
 | --- | --- | --- |
-| `STORE_ROOT_DOMAIN` | API, deploy script | Parent domain of store hosts. Email links and the payment return go to `https://{subdomain}.{root}`. Unset on the API means `commerce.reddie.id`; set but empty keeps `{PUBLIC_URL}/shop/{subdomain}`. The deploy script defaults it to the `PUBLIC_URL` host. |
-| `VITE_STORE_ROOT_DOMAIN` | admin, mobile and storefront builds | The same root. The admin shows `{subdomain}.{root}` as the store address and previews the store on that origin. A storefront build without it serves stores under `/{store}`. |
-| `MEDIA_ROOT` | deploy script | Host folder for uploaded images, `/var/lib/commerce/media` by default, mounted at `/media` in the API (`MEDIA_DIR`) and served by nginx at `/media/`. |
+| `STORE_ROOT_DOMAIN` | API, `web`, deploy script | Parent domain of store hosts. Email links and the payment return go to `https://{subdomain}.{root}`. Unset on the API means `commerce.reddie.id`; set but empty keeps `{PUBLIC_URL}/shop/{subdomain}`. The deploy script saves it in `.env.production` and defaults it to empty. |
+| `VITE_STORE_ROOT_DOMAIN` | `web` image build arg | The same root, compiled into the admin, the seller app and the storefront; Compose passes `STORE_ROOT_DOMAIN`. The admin shows `{subdomain}.{root}` as the store address and previews the store on that origin. |
+| `MEDIA_ROOT` | Compose, deploy script | Host folder for uploaded images, `/var/lib/commerce/media` by default, mounted read-write at `/media` in the API (`MEDIA_DIR`) and read-only in `web`, which serves it at `/media/`. |
 
-nginx gets a second server block for `*.{root}`: the storefront build from `$WEB_ROOT/store`, the same
-`/api/` proxy and `/media/`. The main host keeps the admin and answers old `/shop/{store}/...` links
-with a 301 to `https://{store}.{root}/...`. A store that is not published shows a Coming soon page
-on its host.
+With a root set, `web` adds a server for `*.{root}` that serves the storefront built for the root, with
+the same `/api/` proxy and `/media/`. The main host keeps the admin and answers old `/shop/{store}/...`
+links with a 301 to `https://{store}.{root}/...`. The image holds both storefront builds, so switching
+modes needs only a new `STORE_ROOT_DOMAIN` and `up --build` (the admin compiles the root in). A store
+that is not published shows a Coming soon page on its host.
 
 DNS: add a wildcard record for `*.commerce.reddie.id`, an A record to the server's address or a CNAME
 to the main host.
@@ -75,18 +76,14 @@ wildcard such as `*.commerce.reddie.id`. Pick one:
     -d 'commerce.reddie.id' -d '*.commerce.reddie.id'
   ```
 
-  Then add TLS to the store server block that `deploy-prod.sh` writes:
-
-  ```nginx
-  listen 443 ssl;
-  http2 on;
-  ssl_certificate     /etc/letsencrypt/live/commerce.reddie.id/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/commerce.reddie.id/privkey.pem;
-  ```
+  Then copy `fullchain.pem` and `privkey.pem` from `/etc/letsencrypt/live/commerce.reddie.id/` with `cp -L` (they are symlinks) into
+  `deploy/certs/` (or point `WEB_CERTS` at a folder holding them) and deploy again. `web` then serves
+  HTTPS on 443 for the main host and every store host, and redirects port 80 to it. After each renewal,
+  copy them again and run `docker compose -p commerce-prod restart web`.
 
 Before the wildcard record and certificate exist, deploy with `STORE_ROOT_DOMAIN=` (empty). Every store
-then stays on one host at `{PUBLIC_URL}/shop/{subdomain}`, as before: the storefront builds under
-`/shop/`, nginx serves it there, and the API writes links in that form. The script saves the choice in
+then stays on one host at `{PUBLIC_URL}/shop/{subdomain}`: `web` serves the storefront built under
+`/shop/` there, and the API writes links in that form. The script saves the choice in
 `.env.production`; deploy again with `STORE_ROOT_DOMAIN=commerce.reddie.id` once DNS and TLS are ready.
 
 In development `STORE_ROOT_DOMAIN` and `VITE_STORE_ROOT_DOMAIN` are `localhost:5375`. Browsers resolve

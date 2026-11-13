@@ -1,0 +1,4 @@
+# Vite puts a content hash in every file name under assets/, so a browser may keep each one for a year.
+# A missing file is a 404, never the app's HTML.
+add_header Cache-Control "public, max-age=31536000, immutable" always;
+try_files $uri =404;

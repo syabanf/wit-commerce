@@ -1,0 +1,22 @@
+# SPLIT_SERVICES=true: the AI chat and the storefront's public reads go to their own services. Regex
+# and exact locations win over the /api/ prefix; other methods stay on the API.
+set $ai http://ai:8091;
+set $shop http://shop:8093;
+
+location ~ ^/api/v1/shop/[^/]+/ai/ {
+  proxy_pass $ai;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+  proxy_read_timeout 60s;
+}
+location = /api/v1/shop {
+  limit_except GET { proxy_pass $api; }
+  proxy_pass $shop;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+}
+location ~ ^/api/v1/shop/[^/]+/(state|events)$ {
+  limit_except GET { proxy_pass $api; }
+  proxy_pass $shop;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+  proxy_buffering off;
+  proxy_read_timeout 1h;
+}

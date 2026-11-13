@@ -1,0 +1,56 @@
+#!/bin/sh
+# Sourced by the official /docker-entrypoint.sh before 20-envsubst-on-templates.sh. It turns the
+# runtime settings into the COMMERCE_* values the templates in /etc/nginx/templates use:
+#
+#   STORE_ROOT_DOMAIN  empty: one host, the storefront under /shop/. Set (shop.example.com): every
+#                      store on {store}.shop.example.com, and /shop/{store}/... redirects there.
+#   SPLIT_SERVICES     true: the AI chat and the storefront reads go to the ai and shop services.
+#   /etc/nginx/certs/fullchain.pem and privkey.pem, when mounted: HTTPS on 443, and 80 redirects.
+
+commerce_inc=/etc/nginx/conf.d/commerce
+
+case "$STORE_ROOT_DOMAIN" in
+  *[!a-z0-9.:-]* | .* | *. )
+    echo "18-commerce.envsh: STORE_ROOT_DOMAIN='$STORE_ROOT_DOMAIN' is not a lower-case domain" >&2
+    exit 1
+    ;;
+esac
+case "$SPLIT_SERVICES" in
+  true | false) ;;
+  *)
+    echo "18-commerce.envsh: SPLIT_SERVICES must be true or false, not '$SPLIT_SERVICES'" >&2
+    exit 1
+    ;;
+esac
+
+# nginx matches host names without the port; a localhost root stays on plain http, as the apps do.
+STORE_HOST="${STORE_ROOT_DOMAIN%%:*}"
+case "$STORE_ROOT_DOMAIN" in
+  *localhost*) STORE_SCHEME=http ;;
+  *) STORE_SCHEME=https ;;
+esac
+
+if [ -n "$STORE_ROOT_DOMAIN" ]; then
+  COMMERCE_SHOP="include $commerce_inc/shop-redirect.inc;"
+  COMMERCE_STORES="include $commerce_inc/stores.inc;"
+else
+  COMMERCE_SHOP="include $commerce_inc/shop-path.inc;"
+  COMMERCE_STORES=""
+fi
+
+COMMERCE_SPLIT=""
+[ "$SPLIT_SERVICES" != true ] || COMMERCE_SPLIT="include $commerce_inc/split.inc;"
+
+if [ -f /etc/nginx/certs/fullchain.pem ] && [ -f /etc/nginx/certs/privkey.pem ]; then
+  echo "18-commerce.envsh: certificates found, serving HTTPS on 443 and redirecting 80"
+  COMMERCE_LISTEN="443 ssl"
+  COMMERCE_TLS="include $commerce_inc/tls.inc;"
+  COMMERCE_TLS_REDIRECT="include $commerce_inc/tls-redirect.inc;"
+else
+  COMMERCE_LISTEN="80"
+  COMMERCE_TLS=""
+  COMMERCE_TLS_REDIRECT=""
+fi
+
+export STORE_HOST STORE_SCHEME COMMERCE_SHOP COMMERCE_STORES COMMERCE_SPLIT \
+  COMMERCE_LISTEN COMMERCE_TLS COMMERCE_TLS_REDIRECT

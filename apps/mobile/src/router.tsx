@@ -11,25 +11,28 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { StorePage } from './pages/store/StorePage'
 import { SellerScopeProvider } from './state/scope'
 
-export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  {
-    path: '/',
-    element: (
-      <RequireAuth>
-        <SellerScopeProvider>
-          <MobileLayout />
-        </SellerScopeProvider>
-      </RequireAuth>
-    ),
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: 'leads', element: <LeadsPage /> },
-      { path: 'leads/:id', element: <LeadDetailPage /> },
-      { path: 'customers', element: <CustomersPage /> },
-      { path: 'customers/:id', element: <CustomerDetailPage /> },
-      { path: 'store', element: <StorePage /> },
-      { path: '*', element: <NotFoundPage /> },
-    ],
-  },
-])
+export const router = createBrowserRouter(
+  [
+    { path: '/login', element: <LoginPage /> },
+    {
+      path: '/',
+      element: (
+        <RequireAuth>
+          <SellerScopeProvider>
+            <MobileLayout />
+          </SellerScopeProvider>
+        </RequireAuth>
+      ),
+      children: [
+        { index: true, element: <HomePage /> },
+        { path: 'leads', element: <LeadsPage /> },
+        { path: 'leads/:id', element: <LeadDetailPage /> },
+        { path: 'customers', element: <CustomersPage /> },
+        { path: 'customers/:id', element: <CustomerDetailPage /> },
+        { path: 'store', element: <StorePage /> },
+        { path: '*', element: <NotFoundPage /> },
+      ],
+    },
+  ],
+  { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' },
+)

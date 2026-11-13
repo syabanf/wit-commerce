@@ -1,0 +1,11 @@
+# One host: the storefront under /shop/, which reads the store from the path (/shop/lari).
+location = /shop {
+  return 301 /shop/;
+}
+location /shop/ {
+  include /etc/nginx/conf.d/commerce/no-cache.inc;
+  try_files $uri /shop/index.html;
+  location ^~ /shop/assets/ {
+    include /etc/nginx/conf.d/commerce/immutable.inc;
+  }
+}

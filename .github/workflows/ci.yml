@@ -50,3 +50,32 @@ jobs:
       - run: pnpm test
       - run: pnpm test:api
       - run: pnpm build
+
+  # Builds both production images without pushing them, so a broken Dockerfile fails CI.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/web/Dockerfile
+          push: false
+          load: true
+          tags: web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+      - name: Web config renders and passes nginx -t in both host modes
+        run: |
+          docker run --rm web:ci nginx -t
+          docker run --rm -e STORE_ROOT_DOMAIN=shop.example.com -e SPLIT_SERVICES=true web:ci nginx -t

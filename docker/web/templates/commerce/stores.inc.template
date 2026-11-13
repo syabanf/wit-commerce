@@ -1,0 +1,17 @@
+# Every store host: one storefront build at the root that reads the store from the host name.
+server {
+  listen ${COMMERCE_LISTEN};
+  server_name *.${STORE_HOST};
+  ${COMMERCE_TLS}
+  root /srv/web/store;
+
+  include /etc/nginx/conf.d/commerce/backend.inc;
+
+  location ^~ /assets/ {
+    include /etc/nginx/conf.d/commerce/immutable.inc;
+  }
+  location / {
+    include /etc/nginx/conf.d/commerce/no-cache.inc;
+    try_files $uri /index.html;
+  }
+}

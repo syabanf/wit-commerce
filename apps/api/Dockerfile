@@ -12,7 +12,8 @@ RUN for cmd in api ai shop notifier; do \
     done
 
 FROM alpine:3.21
-RUN adduser -D -u 10001 api
+# /media belongs to the api user, so a fresh Docker volume mounted there starts writable.
+RUN adduser -D -u 10001 api && rm -rf /media && install -d -o api -g api /media
 WORKDIR /app
 COPY --from=build /out/ /app/
 # The demo seed, so a fresh database fills itself on first boot.

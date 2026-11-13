@@ -10,3 +10,5 @@ reports/pengembangan/
 .env.local
 .env.production
 media-data/
+deploy/certs/
+deploy/.env.docker
