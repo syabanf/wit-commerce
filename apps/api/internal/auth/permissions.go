@@ -6,6 +6,7 @@ var all = []string{
 	"tenant.manage", "brand.manage", "store.manage", "product.manage", "inventory.manage", "order.fulfil",
 	"order.refund", "customer.manage", "segment.manage", "lead.manage", "ticket.manage", "campaign.manage",
 	"automation.manage", "promotion.manage", "seller.manage", "integration.manage", "user.manage", "analytics.view",
+	"privacy.manage",
 }
 
 var rolePermissions = map[string][]string{

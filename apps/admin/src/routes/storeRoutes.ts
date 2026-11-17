@@ -18,6 +18,11 @@ export const storeRoutes: RouteObject[] = [
     lazy: page(() => import('../pages/domains/DomainsPage'), 'DomainsPage'),
   },
   {
+    path: 'store/legal',
+    handle: { breadcrumb: t.breadcrumb.legal },
+    lazy: page(() => import('../pages/legal/LegalPage'), 'LegalPage'),
+  },
+  {
     path: 'store/media',
     handle: { breadcrumb: t.breadcrumb.media },
     lazy: page(() => import('../pages/media/MediaPage'), 'MediaPage'),

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
@@ -101,14 +102,21 @@ func (s *Server) returnRoutes(rt *router) {
 			return s.svc.ReceiveReturn(r.Context(), m, r.PathValue("id"), in.Restock)
 		})
 	})
-	rt.add("POST", "/returns/{id}/refund", "returns/refund", "order.refund", "Refund a received return, capped at what its items cost", func(w http.ResponseWriter, r *http.Request) {
-		var in refundInput
+	rt.add("POST", "/returns/{id}/refund", "returns/refund", "order.refund", "Refund a received return through Midtrans when it took the payment, else record the bank transfer", func(w http.ResponseWriter, r *http.Request) {
+		var in service.ReturnRefund
 		if err := decode(r, &in); err != nil {
 			s.writeError(w, r, err)
 			return
 		}
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
-			return s.svc.RefundReturn(r.Context(), m, r.PathValue("id"), in.Amount, in.Note)
+			d, err := s.svc.RefundReturn(r.Context(), m, r.PathValue("id"), in)
+			// A gateway refusal is recorded on the return; publish that before answering with the reason.
+			var failed service.RefundFailed
+			if errors.As(err, &failed) {
+				s.publish(failed.Delta)
+				return nil, service.Refusal{Reason: failed.Reason}
+			}
+			return d, err
 		})
 	})
 	rt.add("PUT", "/tenants/{id}/shop-settings", "tenants/setShopSettings", "brand.manage", "Set the return window and the shopper emails the store sends", func(w http.ResponseWriter, r *http.Request) {

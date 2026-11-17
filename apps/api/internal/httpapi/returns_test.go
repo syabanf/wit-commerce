@@ -55,7 +55,17 @@ func TestShopperReturnRunsToARefund(t *testing.T) {
 	for _, step := range []struct {
 		path string
 		body any
-	}{{"approve", map[string]string{"note": ""}}, {"receive", map[string]bool{"restock": true}}, {"refund", map[string]any{"amount": 100_000_000, "note": ""}}} {
+	}{{"approve", map[string]string{"note": ""}}, {"receive", map[string]bool{"restock": true}}} {
+		if code := e.call("POST", "/returns/ret-http-1/"+step.path, e.admin, step.body, nil); code != 200 {
+			t.Fatalf("%s: %d", step.path, code)
+		}
+	}
+	// Pasal 71: an order paid outside Midtrans is refunded only with the transfer recorded.
+	e.expect(422, "POST", "/returns/ret-http-1/refund", e.admin, map[string]any{"amount": 100_000_000, "note": ""})
+	for _, step := range []struct {
+		path string
+		body any
+	}{{"refund", map[string]any{"amount": 100_000_000, "note": "", "reference": "BCA-889", "refundedOn": "2026-10-06"}}} {
 		if code := e.call("POST", "/returns/ret-http-1/"+step.path, e.admin, step.body, nil); code != 200 {
 			t.Fatalf("%s: %d", step.path, code)
 		}

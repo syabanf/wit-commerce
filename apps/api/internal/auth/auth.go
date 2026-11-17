@@ -133,6 +133,29 @@ func (s *Signer) Verify(token string, now time.Time) (Principal, error) {
 	return c.Principal, nil
 }
 
+// Seal signs a value for one purpose, such as an unsubscribe link. The token never expires and
+// opens only for the same purpose.
+func (s *Signer) Seal(purpose, value string) string {
+	return b64.EncodeToString([]byte(value)) + "." + s.mac(purpose+":"+value)
+}
+
+// Open returns the value a Seal token carries, or false when the token is not one of ours.
+func (s *Signer) Open(purpose, token string) (string, bool) {
+	encoded, mac, ok := strings.Cut(token, ".")
+	if !ok {
+		return "", false
+	}
+	raw, err := b64.DecodeString(encoded)
+	if err != nil {
+		return "", false
+	}
+	value := string(raw)
+	if subtle.ConstantTimeCompare([]byte(s.mac(purpose+":"+value)), []byte(mac)) != 1 {
+		return "", false
+	}
+	return value, true
+}
+
 func (s *Signer) mac(signing string) string {
 	h := hmac.New(sha256.New, s.secret)
 	h.Write([]byte(signing))

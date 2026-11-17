@@ -745,6 +745,11 @@ func (s *Server) shopPlaceOrder(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if why := termsProblem(tenant, in.Order); why != "" {
+		writeProblem(w, http.StatusUnprocessableEntity, "TERMS_NOT_ACCEPTED", why)
+		return
+	}
+	in.Order.TermsAcceptedAt = s.Clock.NowIso()
 	d, err := s.svc.PlaceOrder(r.Context(), service.Meta{P: p, At: s.Clock.NowIso()}, in.Order, in.Customer)
 	if err != nil {
 		s.writeError(w, r, err)

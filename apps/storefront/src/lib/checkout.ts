@@ -1,4 +1,4 @@
-import { newId, nextCode, nowIso } from '@rc/fixtures'
+import { etaLabel, newId, nextCode, nowIso, termsVersion } from '@rc/fixtures'
 import type {
   Courier,
   Customer,
@@ -54,8 +54,21 @@ export const DEFAULT_COURIER = COURIERS.filter((c) => c.fee > 0).reduce((cheapes
 )
 export const CHEAPEST_FEE = DEFAULT_COURIER.fee
 
+/** The order with the shopper's consent to the store's current terms (PP 80/2019 Pasal 46). */
+export const withTerms = (order: Order, tenant: Tenant): Order => ({
+  ...order,
+  termsVersion: termsVersion(tenant),
+  termsAcceptedAt: nowIso(),
+})
+
+/** The couriers the store offers, with the delivery days the brand set in place of the platform's wording. */
 export const couriersFor = (tenant: Tenant) =>
-  COURIERS.filter((c) => !tenant.shippingCouriers?.length || tenant.shippingCouriers.includes(c.id))
+  COURIERS.filter((c) => !tenant.shippingCouriers?.length || tenant.shippingCouriers.includes(c.id)).map(
+    (c) => {
+      const eta = tenant.courierEtaDays?.[c.id]
+      return eta ? { ...c, eta: etaLabel(eta) } : c
+    },
+  )
 
 export const defaultCourierFor = (tenant: Tenant) => {
   const options = couriersFor(tenant)

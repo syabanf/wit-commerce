@@ -15,6 +15,7 @@ import {
   toMs,
   segmentMembers,
 } from '@rc/fixtures'
+import { marketingReach } from '@rc/fixtures'
 import type { OrderRow } from '@rc/api'
 import {
   CAMPAIGN_STATUS_LABEL,
@@ -67,10 +68,13 @@ export function CampaignDetailPage() {
   const segmentId = campaign?.segmentId ?? null
   // From the console's customer metrics, as the segments page counts: with the API the state holds
   // neither every order nor the event history that audienceSize reads.
-  const size = useMemo(() => {
+  const members = useMemo(() => {
     const segment = s.segments.find((seg) => seg.id === segmentId)
-    return segment ? segmentMembers(segment, s.customers, s.crm).length : 0
+    return segment ? segmentMembers(segment, s.customers, s.crm) : []
   }, [s.segments, s.customers, s.crm, segmentId])
+  const size = members.length
+  // Marketing goes only to customers who agreed to it (UU PDP Pasal 20).
+  const reach = useMemo(() => marketingReach(members), [members])
 
   if (!campaign) {
     return (
@@ -343,6 +347,10 @@ export function CampaignDetailPage() {
                   {segment.name}
                 </Link>
                 <p className="mt-0.5 text-sm text-muted">{plural(size, 'customer')} today</p>
+                <p className="mt-0.5 text-sm text-muted">
+                  Reaches {fmtNumber(reach.reach.length)} with marketing consent
+                  {reach.skipped ? ` · skips ${fmtNumber(reach.skipped)} without` : ''}
+                </p>
                 <div className="mt-3 rounded-2xl px-3 py-2 text-sm bg-surface-2">
                   <p className="text-xs text-muted">Matches {segment.match === 'all' ? 'all' : 'any'} of:</p>
                   <ul className="mt-1 space-y-0.5">

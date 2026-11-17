@@ -51,6 +51,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 	s.inventoryRoutes(rt)
 	s.orderRoutes(rt)
 	s.returnRoutes(rt)
+	s.legalRoutes(rt)
 	s.crmRoutes(rt)
 	s.marketingRoutes(rt)
 	s.storefrontRoutes(rt)
@@ -59,6 +60,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 	s.mediaRoutes(rt)
 	s.currencyRoutes(rt)
 	s.planRoutes(rt)
+	s.privacyRoutes(rt)
 
 	// Reads for connected systems, paged by id
 	for _, c := range readable {

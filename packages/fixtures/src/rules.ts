@@ -13,13 +13,16 @@ import type {
   PageDraft,
   Product,
   ReturnItem,
+  ReturnReason,
+  ReturnRefundMethod,
+  ReturnShippingPayer,
   Segment,
   Seller,
   StockLevel,
   Tenant,
 } from '@rc/types'
 import { OPEN_RETURN_STATUSES, RETURN_REASON_LABEL, SECTION_KIND_LABEL } from '@rc/types'
-import { DAY, toMs } from './dates'
+import { DAY, startOfDay, toMs, wib } from './dates'
 import { modifierDemand, nextOrderStatus, variantDemand } from './derive'
 import { listOf } from './format'
 
@@ -236,6 +239,48 @@ export function paymentTypeDisableBlocker(type: PaymentType, all: readonly Payme
 /** Days after delivery a shopper may ask for a return when the brand set none. */
 export const DEFAULT_RETURN_WINDOW_DAYS = 7
 
+/** PP 80/2019 Pasal 69(1): a shopper always gets at least this many working days after delivery. */
+export const LEGAL_RETURN_WORKING_DAYS = 2
+
+/**
+ * The reasons Pasal 69(2) names: wrong or mismatched goods, late delivery, a hidden defect, damage or
+ * expiry. The store must take these inside the legal window and pays their return shipping
+ * (Pasal 69(3-4)). Change of mind and fit follow the brand's own policy.
+ */
+export const LEGAL_RETURN_REASONS: readonly ReturnReason[] = [
+  'damaged',
+  'wrong_item',
+  'not_as_described',
+  'late_delivery',
+  'hidden_defect',
+  'expired',
+]
+
+export const isLegalReturnReason = (reason: ReturnReason) => LEGAL_RETURN_REASONS.includes(reason)
+
+/**
+ * The end of the second working day (Monday to Friday, WIB) after the day the parcel arrived.
+ * Public holidays are not counted out.
+ */
+export function legalReturnDeadline(deliveredMs: number): number {
+  let day = startOfDay(deliveredMs)
+  for (let left = LEGAL_RETURN_WORKING_DAYS; left > 0;) {
+    day += DAY
+    const weekday = wib(day).weekday
+    if (weekday !== 0 && weekday !== 6) left--
+  }
+  return day + DAY - 1
+}
+
+/** Who pays return shipping: the shopper only when every item comes back by their own choice. */
+export function returnShippingPayer(items: readonly Pick<ReturnItem, 'reason'>[]): ReturnShippingPayer {
+  return items.some((i) => isLegalReturnReason(i.reason)) ? 'brand' : 'shopper'
+}
+
+/** The payer a return recorded, or the rule's answer for returns made before it was recorded. */
+export const shippingPayerOf = (ret: Pick<OrderReturn, 'items' | 'shippingPaidBy'>) =>
+  ret.shippingPaidBy ?? returnShippingPayer(ret.items)
+
 export const returnWindowDays = (tenant: Pick<Tenant, 'returnWindowDays'> | undefined) =>
   tenant?.returnWindowDays ?? DEFAULT_RETURN_WINDOW_DAYS
 
@@ -264,17 +309,42 @@ export function deliveredAt(order: Pick<Order, 'events' | 'createdAt'>): string 
   return order.events.find((e) => e.status === 'delivered')?.at ?? order.createdAt
 }
 
-/** The last moment a shopper may ask to return the order, or null when the store takes no requests. */
+/**
+ * The last moment a shopper may ask to return an item for this reason, or null when the store takes
+ * no such requests. A Pasal 69(2) reason gets the brand's window or 2 working days, whichever ends
+ * later; change of mind and fit get the brand's window only.
+ */
 export function returnDeadline(
   order: Pick<Order, 'events' | 'createdAt'>,
   windowDays: number,
+  reason: ReturnReason,
 ): number | null {
-  return windowDays > 0 ? toMs(deliveredAt(order)) + windowDays * DAY : null
+  const delivered = toMs(deliveredAt(order))
+  const brand = windowDays > 0 ? delivered + windowDays * DAY : null
+  if (!isLegalReturnReason(reason)) return brand
+  return Math.max(brand ?? 0, legalReturnDeadline(delivered))
+}
+
+/** Why a shopper may not ask to return an item for this reason now, or null when they may. */
+function returnWindowBlocker(
+  order: Pick<Order, 'events' | 'createdAt'>,
+  windowDays: number,
+  reason: ReturnReason,
+  now: number,
+): string | null {
+  const deadline = returnDeadline(order, windowDays, reason)
+  if (deadline === null)
+    return 'This store takes change-of-mind and fit returns by message. Contact the store.'
+  if (now <= deadline) return null
+  const brandBound = windowDays > 0 && deadline === toMs(deliveredAt(order)) + windowDays * DAY
+  return brandBound
+    ? `The ${windowDays}-day return window for this order has closed.`
+    : `The ${LEGAL_RETURN_WORKING_DAYS}-working-day return window for this order has closed.`
 }
 
 /**
  * Checks a return request. Staff may start one once the parcel has shipped; a shopper once it is
- * delivered, within the store's return window.
+ * delivered, within the window each item's reason allows.
  */
 export function returnRequestBlocker(
   order: Order,
@@ -287,9 +357,6 @@ export function returnRequestBlocker(
   const delivered = order.status === 'delivered' || order.status === 'completed'
   if (who === 'shopper') {
     if (!delivered) return 'You can ask for a return once the order is delivered.'
-    const deadline = returnDeadline(order, windowDays)
-    if (deadline === null) return 'This store takes return requests by message. Contact the store.'
-    if (now > deadline) return `The ${windowDays}-day return window for this order has closed.`
   } else if (!delivered && order.status !== 'shipped') {
     return 'Only a shipped or delivered order can be returned.'
   }
@@ -307,6 +374,8 @@ export function returnRequestBlocker(
     if (seen.has(item.variantId)) return 'List each item once.'
     seen.add(item.variantId)
     if (!(item.reason in RETURN_REASON_LABEL)) return 'Choose a reason for each item.'
+    const closed = who === 'shopper' && returnWindowBlocker(order, windowDays, item.reason, now)
+    if (closed) return closed
     if (!Number.isInteger(item.qty) || item.qty < 1) return 'Enter how many units to return.'
     if (open.has(item.variantId)) return 'One item already has an open return. Finish that one first.'
     const can = left.get(item.variantId) ?? 0
@@ -360,6 +429,42 @@ export function returnItemsPaid(
 /** The most a return may refund: what was paid for its items, and no more than the order still holds. */
 export function returnRefundCap(order: Order, ret: Pick<OrderReturn, 'items'>): number {
   return Math.max(0, Math.min(returnItemsPaid(order, ret.items), order.total - order.refundedAmount))
+}
+
+/**
+ * Splits a refund into the items part, capped by returnRefundCap, and the return shipping the brand
+ * adds when it pays that shipping, capped at what the order still holds after the items.
+ */
+export function returnRefundSplit(
+  order: Order,
+  ret: Pick<OrderReturn, 'items' | 'shippingPaidBy'>,
+  amount: number,
+  shippingCost: number,
+): { items: number; shipping: number } {
+  const items = Math.max(0, Math.min(Math.floor(amount), returnRefundCap(order, ret)))
+  const room = order.total - order.refundedAmount - items
+  const shipping =
+    shippingPayerOf(ret) === 'brand' ? Math.max(0, Math.min(Math.floor(shippingCost), room)) : 0
+  return { items, shipping }
+}
+
+/**
+ * Pasal 71: a return is marked refunded only once the money moved. A gateway refund carries the
+ * gateway's reference; any other refund needs the transfer reference and date staff recorded.
+ */
+export function returnRefundProofBlocker(proof: {
+  method?: ReturnRefundMethod
+  reference?: string
+  refundedOn?: string
+}): string | null {
+  const method = proof.method ?? 'manual'
+  if (method !== 'manual' && method !== 'midtrans') return 'Choose how the money went back.'
+  if (!proof.reference?.trim())
+    return method === 'midtrans'
+      ? 'The gateway gave no refund reference.'
+      : 'Enter the transfer reference so the shopper can trace the money.'
+  if (method === 'manual' && !proof.refundedOn?.trim()) return 'Enter the date the money was sent.'
+  return null
 }
 
 /** True when refunded returns cover every unit of the order. */

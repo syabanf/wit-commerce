@@ -32,6 +32,13 @@ function SideCard({ title, action, children }: { title: string; action?: ReactNo
 const rowClass =
   'flex items-center gap-3 rounded-2xl bg-surface-2 px-3 py-2.5 transition-colors hover:bg-surface'
 
+/** Whether offers may go to the customer, with the proof of their answer. */
+function consentLine(customer: Customer) {
+  const c = customer.marketingConsent
+  if (!c) return 'Not asked, no offers'
+  return `${c.granted ? 'Agreed' : 'Withdrew'} ${fmtDate(c.at)} · ${c.source}${c.granted ? ` · wording ${c.textVersion}` : ''}`
+}
+
 export function IdentityCard({ customer }: { customer: Customer }) {
   const s = useScoped()
   return (
@@ -57,6 +64,7 @@ export function IdentityCard({ customer }: { customer: Customer }) {
             value: customer.birthday ? fmtDate(`${customer.birthday}T12:00:00+07:00`) : 'None',
           },
           { label: 'Source', value: CHANNEL_LABEL[customer.source] },
+          { label: 'Marketing', value: consentLine(customer) },
           {
             label: 'Tags',
             value: customer.tags.length ? (

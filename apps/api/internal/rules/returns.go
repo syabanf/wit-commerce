@@ -3,6 +3,8 @@ package rules
 import (
 	"fmt"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
@@ -17,7 +19,77 @@ import (
 const DefaultReturnWindowDays = 7
 
 // ReturnReasons are the reasons an item may carry.
-var ReturnReasons = []string{"damaged", "wrong_item", "not_as_described", "size_or_fit", "changed_mind"}
+var ReturnReasons = []string{"damaged", "wrong_item", "not_as_described", "size_or_fit", "changed_mind", "late_delivery", "hidden_defect", "expired"}
+
+// LegalReturnWorkingDays mirrors LEGAL_RETURN_WORKING_DAYS: PP 80/2019 Pasal 69(1).
+const LegalReturnWorkingDays = 2
+
+// LegalReturnReasons mirrors LEGAL_RETURN_REASONS: the Pasal 69(2) reasons the store must take
+// inside the legal window and pays return shipping for.
+var LegalReturnReasons = []string{"damaged", "wrong_item", "not_as_described", "late_delivery", "hidden_defect", "expired"}
+
+// IsLegalReturnReason mirrors isLegalReturnReason.
+func IsLegalReturnReason(reason string) bool { return slices.Contains(LegalReturnReasons, reason) }
+
+// LegalReturnDeadline mirrors legalReturnDeadline: the end of the second working day (Monday to
+// Friday, WIB) after the day of delivery, in milliseconds.
+func LegalReturnDeadline(deliveredMs int64) int64 {
+	day := clock.FromMs(deliveredMs)
+	day = time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, clock.WIB)
+	for left := LegalReturnWorkingDays; left > 0; {
+		day = day.AddDate(0, 0, 1)
+		if wd := day.Weekday(); wd != time.Saturday && wd != time.Sunday {
+			left--
+		}
+	}
+	return day.UnixMilli() + clock.Day - 1
+}
+
+// ReturnShippingPayer mirrors returnShippingPayer.
+func ReturnShippingPayer(items []domain.ReturnItem) string {
+	for _, item := range items {
+		if IsLegalReturnReason(item.Reason) {
+			return "brand"
+		}
+	}
+	return "shopper"
+}
+
+// ShippingPayerOf mirrors shippingPayerOf.
+func ShippingPayerOf(r domain.OrderReturn) string {
+	if r.ShippingPaidBy != "" {
+		return r.ShippingPaidBy
+	}
+	return ReturnShippingPayer(r.Items)
+}
+
+// ReturnDeadline mirrors returnDeadline; ok is false when the store takes no such requests.
+func ReturnDeadline(o domain.Order, windowDays int, reason string) (deadline int64, ok bool) {
+	delivered := clock.Ms(DeliveredAt(o))
+	var brand int64
+	if windowDays > 0 {
+		brand, ok = delivered+int64(windowDays)*clock.Day, true
+	}
+	if !IsLegalReturnReason(reason) {
+		return brand, ok
+	}
+	return max(brand, LegalReturnDeadline(delivered)), true
+}
+
+// returnWindowBlocker mirrors returnWindowBlocker.
+func returnWindowBlocker(o domain.Order, windowDays int, reason string, now int64) string {
+	deadline, ok := ReturnDeadline(o, windowDays, reason)
+	if !ok {
+		return "This store takes change-of-mind and fit returns by message. Contact the store."
+	}
+	if now <= deadline {
+		return ""
+	}
+	if windowDays > 0 && deadline == clock.Ms(DeliveredAt(o))+int64(windowDays)*clock.Day {
+		return fmt.Sprintf("The %d-day return window for this order has closed.", windowDays)
+	}
+	return fmt.Sprintf("The %d-working-day return window for this order has closed.", LegalReturnWorkingDays)
+}
 
 // ShopperEmailKinds are the shopper emails a brand may switch off, in display order.
 var ShopperEmailKinds = []string{"order_placed", "payment_received", "order_shipped", "order_cancelled", "return_update"}
@@ -69,12 +141,6 @@ func ReturnRequestBlocker(o domain.Order, returns []domain.OrderReturn, items []
 		if !delivered {
 			return "You can ask for a return once the order is delivered."
 		}
-		if windowDays <= 0 {
-			return "This store takes return requests by message. Contact the store."
-		}
-		if now > clock.Ms(DeliveredAt(o))+int64(windowDays)*clock.Day {
-			return fmt.Sprintf("The %d-day return window for this order has closed.", windowDays)
-		}
 	} else if !delivered && o.Status != "shipped" {
 		return "Only a shipped or delivered order can be returned."
 	}
@@ -95,6 +161,11 @@ func ReturnRequestBlocker(o domain.Order, returns []domain.OrderReturn, items []
 		seen[item.VariantID] = true
 		if !slices.Contains(ReturnReasons, item.Reason) {
 			return "Choose a reason for each item."
+		}
+		if who == "shopper" {
+			if closed := returnWindowBlocker(o, windowDays, item.Reason, now); closed != "" {
+				return closed
+			}
 		}
 		if item.Qty < 1 {
 			return "Enter how many units to return."
@@ -169,6 +240,35 @@ func ReturnItemsPaid(o domain.Order, items []domain.ReturnItem) int {
 // ReturnRefundCap mirrors returnRefundCap.
 func ReturnRefundCap(o domain.Order, r domain.OrderReturn) int {
 	return max(0, min(ReturnItemsPaid(o, r.Items), o.Total-o.RefundedAmount))
+}
+
+// ReturnRefundSplit mirrors returnRefundSplit: the items part and the return shipping part.
+func ReturnRefundSplit(o domain.Order, r domain.OrderReturn, amount, shippingCost int) (items, shipping int) {
+	items = max(0, min(amount, ReturnRefundCap(o, r)))
+	if ShippingPayerOf(r) == "brand" {
+		shipping = max(0, min(shippingCost, o.Total-o.RefundedAmount-items))
+	}
+	return items, shipping
+}
+
+// ReturnRefundProofBlocker mirrors returnRefundProofBlocker (Pasal 71). method "" means manual.
+func ReturnRefundProofBlocker(method, reference, refundedOn string) string {
+	if method == "" {
+		method = "manual"
+	}
+	if method != "manual" && method != "midtrans" {
+		return "Choose how the money went back."
+	}
+	if strings.TrimSpace(reference) == "" {
+		if method == "midtrans" {
+			return "The gateway gave no refund reference."
+		}
+		return "Enter the transfer reference so the shopper can trace the money."
+	}
+	if method == "manual" && strings.TrimSpace(refundedOn) == "" {
+		return "Enter the date the money was sent."
+	}
+	return ""
 }
 
 // OrderFullyReturned mirrors orderFullyReturned.

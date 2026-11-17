@@ -91,6 +91,7 @@ type Server struct {
 	subdomainChecks                         *keyLimiter
 	domainChecks, hostLookups               *keyLimiter
 	assistantUsers, assistantTenants        *keyLimiter
+	complaintClients                        *keyLimiter
 	assistant                               *aimodule.AI
 	segments                                segmentCache
 	media                                   *media.Media
@@ -108,6 +109,7 @@ func New(o Options) *Server {
 	s.domainChecks, s.hostLookups = newKeyLimiter(domainChecksPerTenant), newKeyLimiter(hostLookupsPerIP)
 	s.svc.Identity.Domains = o.domainConfig()
 	s.assistantUsers, s.assistantTenants = newKeyLimiter(assistantRatePerUser), newPeriodLimiter(assistantDailyPerTenant, 24*time.Hour)
+	s.complaintClients = newPeriodLimiter(complaintsPerHour, time.Hour)
 	s.shareLimits()
 	s.antispam = &antispam.Antispam{Runtime: s.svc.Runtime}
 	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, StoreRootDomain: o.StoreRootDomain, Log: o.Log}

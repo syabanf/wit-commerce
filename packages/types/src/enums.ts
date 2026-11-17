@@ -383,6 +383,7 @@ export type CustomerEventKind =
   | 'tier_upgraded'
   | 'points_earned'
   | 'note'
+  | 'privacy'
 export const CUSTOMER_EVENT_LABEL: Record<CustomerEventKind, string> = {
   registered: 'Registered',
   product_viewed: 'Viewed product',
@@ -400,6 +401,7 @@ export const CUSTOMER_EVENT_LABEL: Record<CustomerEventKind, string> = {
   tier_upgraded: 'Tier upgraded',
   points_earned: 'Earned points',
   note: 'Note',
+  privacy: 'Privacy',
 }
 
 export type SegmentField =
@@ -631,14 +633,33 @@ export const RETURN_STATUS_FLOW: ReturnStatus[] = ['requested', 'approved', 'rec
 /** A return still under way: its items cannot join another return. */
 export const OPEN_RETURN_STATUSES: ReturnStatus[] = ['requested', 'approved', 'received']
 
-export type ReturnReason = 'damaged' | 'wrong_item' | 'not_as_described' | 'size_or_fit' | 'changed_mind'
+export type ReturnReason =
+  | 'damaged'
+  | 'wrong_item'
+  | 'not_as_described'
+  | 'size_or_fit'
+  | 'changed_mind'
+  | 'late_delivery'
+  | 'hidden_defect'
+  | 'expired'
 export const RETURN_REASON_LABEL: Record<ReturnReason, string> = {
   damaged: 'Arrived damaged',
   wrong_item: 'Wrong item sent',
   not_as_described: 'Not as described',
   size_or_fit: 'Size or fit',
   changed_mind: 'Changed my mind',
+  late_delivery: 'Arrived later than promised',
+  hidden_defect: 'Hidden defect',
+  expired: 'Expired',
 }
+/** Who pays to send a return back: the brand for its own faults (PP 80/2019 Pasal 69), else the shopper. */
+export type ReturnShippingPayer = 'brand' | 'shopper'
+export const RETURN_SHIPPING_PAYER_LABEL: Record<ReturnShippingPayer, string> = {
+  brand: 'The store pays return shipping',
+  shopper: 'You pay return shipping',
+}
+/** How a return's money went back: through the payment gateway, or a transfer staff recorded. */
+export type ReturnRefundMethod = 'midtrans' | 'manual'
 
 /** Emails a store sends its shoppers. Each is on unless the brand switches it off. */
 export type ShopperEmailKind =
@@ -656,4 +677,38 @@ export const SHOPPER_EMAIL_LABEL: Record<ShopperEmailKind, string> = {
   order_shipped: 'Order shipped',
   order_cancelled: 'Order cancelled or refunded',
   return_update: 'Return approved or refunded',
+}
+
+/** What a shopper may ask about their personal data. */
+export type PrivacyRequestKind = 'access' | 'correction' | 'erasure' | 'withdraw_consent'
+export const PRIVACY_REQUEST_KIND_LABEL: Record<PrivacyRequestKind, string> = {
+  access: 'Copy of data',
+  correction: 'Correction',
+  erasure: 'Erasure',
+  withdraw_consent: 'Stop marketing',
+}
+
+/** Where a shopper gave or withdrew marketing consent. */
+export type ConsentSource = 'checkout' | 'account' | 'staff' | 'unsubscribe' | 'request'
+
+/** The wording of the marketing consent checkbox. A new wording gets a new version. */
+export const MARKETING_CONSENT_TEXT = 'Send me offers and news'
+export const MARKETING_CONSENT_VERSION = '2026-11'
+
+/** The legal form of the business behind a store (PP 80/2019 Pasal 13). */
+export type BusinessType = 'perorangan' | 'cv' | 'pt'
+export const BUSINESS_TYPES: BusinessType[] = ['perorangan', 'cv', 'pt']
+export const BUSINESS_TYPE_LABEL: Record<BusinessType, string> = {
+  perorangan: 'Sole proprietor (perorangan)',
+  cv: 'CV',
+  pt: 'PT',
+}
+
+/** Where a shopper and the brand settle a dispute they cannot resolve together (Pasal 53). */
+export type DisputeForum = 'court' | 'bpsk' | 'arbitration'
+export const DISPUTE_FORUMS: DisputeForum[] = ['court', 'bpsk', 'arbitration']
+export const DISPUTE_FORUM_LABEL: Record<DisputeForum, string> = {
+  court: 'District court',
+  bpsk: 'BPSK (consumer dispute board)',
+  arbitration: 'Arbitration',
 }

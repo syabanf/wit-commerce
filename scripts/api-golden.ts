@@ -366,7 +366,9 @@ run('returns/refund refused not received', { type: 'returns/refund', id: 'ret-go
 run('returns/approve', { type: 'returns/approve', id: 'ret-golden-1', note: '' })
 run('returns/receive restock', { type: 'returns/receive', id: 'ret-golden-1', restock: true })
 run('returns/cancel refused received', { type: 'returns/cancel', id: 'ret-golden-1', note: '' })
-run('returns/refund capped', { type: 'returns/refund', id: 'ret-golden-1', amount: 100_000_000, note: 'Golden refund' })
+// Pasal 71: a refund records how the money went back.
+const transfer = { method: 'manual' as const, reference: 'TRF-GOLDEN-1', refundedOn: '2026-10-06' }
+run('returns/refund capped', { type: 'returns/refund', id: 'ret-golden-1', amount: 100_000_000, note: 'Golden refund', ...transfer })
 run('returns/request staff', ask('ret-golden-2', 2, 'staff', 'size_or_fit'))
 run('returns/reject refused no reason', { type: 'returns/reject', id: 'ret-golden-2', reason: ' ' })
 run('returns/reject', { type: 'returns/reject', id: 'ret-golden-2', reason: 'Worn and washed' })
@@ -375,7 +377,131 @@ run('returns/cancel', { type: 'returns/cancel', id: 'ret-golden-3', note: 'Shopp
 run('returns/request rest', ask('ret-golden-4', 3, 'staff', 'wrong_item'))
 run('returns/approve rest', { type: 'returns/approve', id: 'ret-golden-4', note: 'Golden approval' })
 run('returns/receive no restock', { type: 'returns/receive', id: 'ret-golden-4', restock: false })
-run('returns/refund closes the order', { type: 'returns/refund', id: 'ret-golden-4', amount: 100_000_000, note: '' })
+run('returns/refund closes the order', { type: 'returns/refund', id: 'ret-golden-4', amount: 100_000_000, note: '', ...transfer })
+
+// PP 80/2019 Pasal 69, added at the end. A brand with returns off still takes the legal reasons
+// inside 2 working days and pays their return shipping; change of mind follows its own policy.
+run('tenants/setShopSettings refused under the legal floor', shopSettings(1, []), 'usr-andi')
+run('tenants/setShopSettings returns off', shopSettings(0, []), 'usr-andi')
+const legal = fresh('ord-golden-r2', {
+  lines: [line],
+  subtotal: line.qty * line.price,
+  discount: 0,
+  total: line.qty * line.price + template.shipping,
+})
+run('orders/place for legal returns', { type: 'orders/place', order: legal, customer: null }, 'storefront')
+for (const step of ['confirm', 'pay', 'process', 'pack', 'ship', 'deliver'])
+  run(`orders/advance ${step} for legal returns`, { type: 'orders/advance', id: legal.id })
+const askLegal = (id: string, qty: number, reason: ReturnReason) =>
+  ({
+    type: 'returns/request' as const,
+    id,
+    orderId: legal.id,
+    items: [{ variantId: line.variantId, qty, reason }],
+    note: '',
+    who: 'shopper' as const,
+  })
+run('returns/request refused changed mind with returns off', askLegal('ret-golden-5', 1, 'changed_mind'), 'storefront')
+run('returns/request late delivery with returns off', askLegal('ret-golden-6', 1, 'late_delivery'), 'storefront')
+run('returns/approve late delivery', { type: 'returns/approve', id: 'ret-golden-6', note: '' })
+run('returns/receive late delivery', { type: 'returns/receive', id: 'ret-golden-6', restock: true })
+run('returns/refund refused without a transfer reference', {
+  type: 'returns/refund',
+  id: 'ret-golden-6',
+  amount: 100_000_000,
+  note: '',
+  method: 'manual',
+  reference: ' ',
+  refundedOn: '2026-10-06',
+})
+run('returns/refund with return shipping', {
+  type: 'returns/refund',
+  id: 'ret-golden-6',
+  amount: 100_000_000,
+  note: '',
+  shippingCost: 15_000,
+  method: 'manual',
+  reference: 'TRF-GOLDEN-6',
+  refundedOn: '2026-10-07',
+})
+run('tenants/setShopSettings change of mind', shopSettings(14, []), 'usr-andi')
+run('returns/request size or fit, shopper pays shipping', askLegal('ret-golden-7', 1, 'size_or_fit'), 'storefront')
+
+// Personal data, added at the end so every case above keeps its output. A customer with sold orders,
+// a ticket and a lead gives consent, then is erased; one with an order on its way cannot be.
+const BEFORE_DELIVERY = ['new', 'confirmed', 'paid', 'processing', 'packed', 'shipped']
+const ordersOf = (id: string) => state.orders.filter((o) => o.customerId === id)
+const erasable = find(
+  state.customers,
+  (c) =>
+    c.tenantId === lari &&
+    ordersOf(c.id).length > 0 &&
+    ordersOf(c.id).every((o) => !BEFORE_DELIVERY.includes(o.status)) &&
+    !state.returns.some((r) => r.customerId === c.id) &&
+    state.tickets.some((t) => t.customerId === c.id),
+  'erasable customer',
+)
+const waiting = find(
+  state.customers,
+  (c) => c.tenantId === lari && ordersOf(c.id).some((o) => BEFORE_DELIVERY.includes(o.status)),
+  'customer with an order on its way',
+)
+const consent = (id: string, granted: boolean, source: 'staff' | 'account') =>
+  ({ type: 'customers/setConsent' as const, id, granted, source, textVersion: '2026-11' })
+run('customers/setConsent', consent(erasable.id, true, 'staff'))
+run('customers/setConsent refused unchanged', consent(erasable.id, true, 'staff'))
+run('customers/save keeps consent', {
+  type: 'customers/save',
+  customer: { ...find(state.customers, (c) => c.id === erasable.id, 'customer'), name: 'Golden Rename', marketingConsent: undefined },
+})
+const privacyLead = find(state.leads, (l) => l.tenantId === lari, 'lead')
+run('leads/save for erasure', {
+  type: 'leads/save',
+  lead: { ...privacyLead, id: 'lead-golden-privacy', customerId: erasable.id, note: 'Golden lead note' },
+})
+run('customers/note before erasure', { type: 'customers/note', id: erasable.id, note: 'Golden private note' })
+run('customers/erase refused order on its way', { type: 'customers/erase', id: waiting.id, note: '' })
+run('customers/erase', { type: 'customers/erase', id: erasable.id, note: 'Golden erasure' })
+run('customers/erase refused twice', { type: 'customers/erase', id: erasable.id, note: '' })
+run('customers/setConsent refused erased', consent(erasable.id, true, 'staff'))
+run('customers/setConsent shopper', consent(waiting.id, true, 'account'), 'storefront')
+run('customers/setConsent shopper withdraws', consent(waiting.id, false, 'account'), 'storefront')
+
+// Seller identity, delivery days and complaints, added at the end so every case above keeps its output.
+run('tenants/setLegal', {
+  type: 'tenants/setLegal',
+  tenantId: lari,
+  legal: {
+    entityName: ' PT Lari Nusantara ',
+    businessType: 'pt',
+    nib: '1234567890123',
+    npwp: '01.234.567.8-901.000',
+    address: 'Jl. Senopati 10, Jakarta Selatan',
+    city: 'Jakarta Selatan',
+    phone: '+62 21 555 0101',
+    email: 'help@lari.co.id',
+    hours: '',
+    complaintDays: 5,
+    disputeForum: 'bpsk',
+  },
+}, 'usr-andi')
+run('tenants/setLegal refused', { type: 'tenants/setLegal', tenantId: lari, legal: { nib: '12345' } }, 'usr-andi')
+run('tenants/setCourierEta', { type: 'tenants/setCourierEta', tenantId: lari, courierEtaDays: { jne: { min: 1, max: 2 }, pickup: { min: 0, max: 0 } } }, 'usr-andi')
+run('tenants/setCourierEta refused', { type: 'tenants/setCourierEta', tenantId: lari, courierEtaDays: { jne: { min: 3, max: 1 } } }, 'usr-andi')
+const contact = { name: ' Rina ', email: 'rina@example.com', phone: '' }
+run('tickets/open guest', {
+  type: 'tickets/open',
+  complaint: { id: 'tic-golden-1', tenantId: lari, customerId: null, orderId: null, subject: ' Parcel arrived torn ', message: 'The box was open and one shoe is missing.', contact },
+}, 'storefront')
+const ownOrder = find(state.orders, (o) => o.tenantId === lari && !!o.customerId, 'order with a customer')
+run('tickets/open own order', {
+  type: 'tickets/open',
+  complaint: { id: 'tic-golden-2', tenantId: lari, customerId: ownOrder.customerId, orderId: ownOrder.id, subject: 'Wrong size', message: 'I ordered 42 and got 40 instead.', contact },
+}, 'storefront')
+run('tickets/open refused for another order', {
+  type: 'tickets/open',
+  complaint: { id: 'tic-golden-3', tenantId: lari, customerId: null, orderId: ownOrder.id, subject: 'Wrong size', message: 'I ordered 42 and got 40 instead.', contact },
+}, 'storefront')
 
 const generated = new Set<string>()
 const seedIds = new Set<string>()

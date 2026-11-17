@@ -16,6 +16,7 @@ import { useIsPhone } from '../../lib/useIsPhone'
 import { useShop } from '../../state/shop'
 import { Intro } from './Intro'
 import { CurrencySwitcher } from '../../components/Money'
+import { SellerIdentity } from '../../components/SellerIdentity'
 
 function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; menuOpen: boolean }) {
   const { tenant, store, cart, customer } = useShop()
@@ -289,6 +290,7 @@ function Footer() {
           .
         </li>
       </ul>
+      <SellerIdentity className="mt-6" center />
       <p className="mt-6 text-xs text-[color:var(--sf-muted)]">
         © {tenant.name.replace(/\.$/, '')}. Prices in rupiah, taxes included.
       </p>

@@ -13,6 +13,7 @@ import { useShop } from '../state/shop'
 import { PayInRupiahNote } from '../components/Money'
 import { RupiahOnlyArea } from '../state/currency'
 import { OrderReturns } from './OrderReturns'
+import { ShippingStatus } from '../components/ShippingStatus'
 
 /** Order confirmation: code, items, totals, payment state and points. */
 export function OrderPage() {
@@ -142,6 +143,7 @@ export function OrderPage() {
         </RupiahOnlyArea>
         <p className="mt-4 text-sm text-[color:var(--sf-muted)]">Delivering to {order.city}.</p>
       </section>
+      <ShippingStatus order={order} />
       <OrderReturns order={order} />
       <div className="gap-2 flex flex-wrap justify-center">
         <ButtonLink to={paths.home(store)} size="lg">
@@ -149,6 +151,9 @@ export function OrderPage() {
         </ButtonLink>
         <ButtonLink to={paths.account(store)} variant="outline" size="lg">
           See your orders
+        </ButtonLink>
+        <ButtonLink to={`${paths.help(store)}?order=${order.id}`} variant="outline" size="lg">
+          Help or complaint
         </ButtonLink>
       </div>
     </div>

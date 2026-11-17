@@ -34,6 +34,9 @@ export function makePaths(hostMode: boolean) {
     wishlist: (store: string) => `${base(store)}/wishlist`,
     agent: (store: string) => `${base(store)}/agent`,
     seller: (store: string, slug: string) => `${base(store)}/${slug}`,
+    help: (store: string) => `${base(store)}/help`,
+    terms: (store: string) => `${base(store)}/terms`,
+    privacy: (store: string) => `${base(store)}/privacy`,
   }
 }
 
@@ -52,6 +55,9 @@ export const RESERVED_SEGMENTS = new Set([
   'collections',
   'preview',
   'agent',
+  'help',
+  'terms',
+  'privacy',
 ])
 
 /** "6281210002001" from "+62 812 1000 2001", for wa.me links. */

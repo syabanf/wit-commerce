@@ -142,6 +142,11 @@ func (s *Identity) SetShopSettings(ctx context.Context, m kernel.Meta, tenantID 
 	if returnWindowDays < 0 || returnWindowDays > 90 {
 		return nil, kernel.Invalid{Reason: "Set the return window between 0 and 90 days."}
 	}
+	// PP 80/2019 Pasal 69(1): a window may not be shorter than the legal floor. 0 turns change-of-mind
+	// returns off; the legal reasons keep their 2 working days.
+	if returnWindowDays > 0 && returnWindowDays < rules.LegalReturnWorkingDays {
+		return nil, kernel.Invalid{Reason: "Set the return window to 0 or at least " + strconv.Itoa(rules.LegalReturnWorkingDays) + " days."}
+	}
 	for _, kind := range emailsOff {
 		if !slices.Contains(rules.ShopperEmailKinds, kind) {
 			return nil, kernel.Invalid{Reason: kind + " is not an email stores send."}
@@ -210,6 +215,51 @@ func (s *Identity) SaveMenus(ctx context.Context, m kernel.Meta, tenantID string
 		tenant.Menus = nil
 		if len(menus.Header)+len(menus.Footer) > 0 {
 			tenant.Menus = &menus
+		}
+		return t.Put("tenants", tenant.ID, tenant)
+	})
+}
+
+// SetLegal is tenants/setLegal: the seller's identity, complaint service and terms choices. Fields
+// are trimmed and empty ones dropped; a record with nothing left removes it.
+func (s *Identity) SetLegal(ctx context.Context, m kernel.Meta, tenantID string, legal domain.SellerLegal) (*kernel.Delta, error) {
+	if err := kernel.Access(m, tenantID); err != nil {
+		return nil, err
+	}
+	legal = rules.NormalizeLegal(legal)
+	if why := rules.LegalBlocker(legal); why != "" {
+		return nil, kernel.Invalid{Reason: why}
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+		if err != nil {
+			return err
+		}
+		tenant.Legal = nil
+		if !rules.LegalEmpty(legal) {
+			tenant.Legal = &legal
+		}
+		return t.Put("tenants", tenant.ID, tenant)
+	})
+}
+
+// SetCourierEta is tenants/setCourierEta: delivery days per courier. An empty map brings back the
+// platform's estimates.
+func (s *Identity) SetCourierEta(ctx context.Context, m kernel.Meta, tenantID string, etas map[string]domain.EtaDays) (*kernel.Delta, error) {
+	if err := kernel.Access(m, tenantID); err != nil {
+		return nil, err
+	}
+	if why := rules.CourierEtaBlocker(etas); why != "" {
+		return nil, kernel.Invalid{Reason: why}
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+		if err != nil {
+			return err
+		}
+		tenant.CourierEtaDays = nil
+		if len(etas) > 0 {
+			tenant.CourierEtaDays = etas
 		}
 		return t.Put("tenants", tenant.ID, tenant)
 	})

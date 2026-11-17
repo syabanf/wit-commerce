@@ -1,4 +1,5 @@
 import {
+  fmtDate,
   fmtDateTime,
   fmtIdr,
   fmtNumber,
@@ -7,6 +8,7 @@ import {
   returnCancelBlocker,
   returnRefundBlocker,
   returnRefundCap,
+  shippingPayerOf,
 } from '@rc/fixtures'
 import type { OrderReturn, ReturnStatus } from '@rc/types'
 import { RETURN_REASON_LABEL, RETURN_STATUS_FLOW, RETURN_STATUS_LABEL } from '@rc/types'
@@ -195,6 +197,18 @@ export function ReturnDetailPage() {
         </Card>
       )}
 
+      {ret.status === 'received' && ret.gatewayError && (
+        <Card className="p-4 text-sm" role="status">
+          <span className="font-semibold">
+            {ret.gatewayStatus === 'pending' ? 'Midtrans did not answer:' : 'Midtrans did not refund:'}
+          </span>{' '}
+          {ret.gatewayError}{' '}
+          {ret.gatewayStatus === 'pending'
+            ? 'Refund again: Midtrans is asked first, so the money moves once.'
+            : 'Refund again, or send the money yourself and record the transfer.'}
+        </Card>
+      )}
+
       <Card variant="ink" className="p-5">
         <div className="gap-3 flex flex-wrap items-start justify-between">
           <div className="min-w-0">
@@ -278,6 +292,24 @@ export function ReturnDetailPage() {
               <span className="text-muted">Customer</span>
               <CustomerLink customerId={ret.customerId} />
             </div>
+            <p className="gap-2 flex flex-wrap items-center justify-between">
+              <span className="text-muted">Return shipping</span>
+              <span>
+                {shippingPayerOf(ret) === 'brand' ? 'Paid by the store (Pasal 69)' : 'Paid by the shopper'}
+                {ret.refundShipping ? ` · ${fmtIdr(ret.refundShipping)} refunded` : ''}
+              </span>
+            </p>
+            {ret.refundMethod && (
+              <p className="gap-2 flex flex-wrap items-center justify-between">
+                <span className="text-muted">
+                  {ret.refundMethod === 'midtrans' ? 'Refunded through Midtrans' : 'Bank transfer'}
+                </span>
+                <span className="text-xs font-mono">
+                  {ret.refundReference}
+                  {ret.refundedOn ? ` · ${fmtDate(ret.refundedOn)}` : ''}
+                </span>
+              </p>
+            )}
             {order && (
               <>
                 <p className="gap-2 flex flex-wrap items-center justify-between">

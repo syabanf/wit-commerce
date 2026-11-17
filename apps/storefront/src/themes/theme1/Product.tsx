@@ -20,6 +20,7 @@ import { ProductsBlock } from './blocks'
 import { Crumbs } from './Listing'
 import { BeautyFacts } from '../../components/beauty'
 import { Money } from '../../components/Money'
+import { OfferInfo } from '../../components/OfferInfo'
 
 /** Colour dots above the title on phones; the real picker sits below. */
 function ColourDots({ detail }: { detail: ProductDetail }) {
@@ -126,6 +127,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
                   Buy now
                 </Button>
               </div>
+              <OfferInfo product={product} />
             </>
           )}
         </div>

@@ -24,12 +24,16 @@ export const PERMISSION_LABEL: Record<Permission, string> = {
   'integration.manage': 'Connect and sync integrations',
   'tenant.manage': 'Create and set up tenants',
   'user.manage': 'Add staff and reset their passwords',
+  'privacy.manage': 'Erase customer data and answer privacy requests',
 }
 
 export const PERMISSION_GROUPS: { area: string; permissions: Permission[] }[] = [
   { area: 'Store', permissions: ['brand.manage', 'store.manage'] },
   { area: 'Commerce', permissions: ['product.manage', 'inventory.manage', 'order.fulfil', 'order.refund'] },
-  { area: 'Customers', permissions: ['customer.manage', 'segment.manage', 'lead.manage', 'ticket.manage'] },
+  {
+    area: 'Customers',
+    permissions: ['customer.manage', 'segment.manage', 'lead.manage', 'ticket.manage', 'privacy.manage'],
+  },
   {
     area: 'Growth',
     permissions: [

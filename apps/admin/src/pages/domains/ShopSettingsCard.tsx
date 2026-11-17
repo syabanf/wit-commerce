@@ -1,4 +1,4 @@
-import { DEFAULT_RETURN_WINDOW_DAYS, returnWindowDays } from '@rc/fixtures'
+import { DEFAULT_RETURN_WINDOW_DAYS, LEGAL_RETURN_WORKING_DAYS, returnWindowDays } from '@rc/fixtures'
 import type { ShopperEmailKind } from '@rc/types'
 import { SHOPPER_EMAIL_KINDS, SHOPPER_EMAIL_LABEL } from '@rc/types'
 import {
@@ -34,7 +34,13 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
   const [off, setOff] = useState<ShopperEmailKind[]>(savedOff)
   const [saving, setSaving] = useState(false)
   const value = Number(days)
-  const invalid = days === '' || !Number.isInteger(value) || value < 0 || value > 90
+  // PP 80/2019 Pasal 69(1): a window may not undercut the legal floor; 0 turns change of mind off.
+  const invalid =
+    days === '' ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value > 90 ||
+    (value > 0 && value < LEGAL_RETURN_WORKING_DAYS)
   const dirty = value !== savedDays || off.join() !== savedOff.join()
 
   const toggle = (kind: ShopperEmailKind, on: boolean) =>
@@ -52,7 +58,7 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
         tone: 'success',
         description: value
           ? `Shoppers can ask for a return within ${value} days of delivery.`
-          : 'Shoppers ask for returns by message.',
+          : 'Change-of-mind returns go by message. Damaged, wrong, late, defective or expired items still come back within 2 working days.',
       })
     } catch (err) {
       toast('Not saved', { tone: 'danger', description: (err as Error).message })
@@ -65,15 +71,17 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
       <CardHeader>
         <CardTitle>Returns and shopper emails</CardTitle>
         <CardDescription>
-          Shoppers ask for a return from their order page within the window. Emails go out only when the
-          platform has email set up and the shopper gave an address.
+          Shoppers ask for a return from their order page within the window. Whatever you set, damaged, wrong,
+          late, defective or expired items can come back for at least 2 working days after delivery, and the
+          store pays their return shipping (PP 80/2019 Pasal 69). Emails go out only when the platform has
+          email set up and the shopper gave an address.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <FormField
           label="Return window in days"
-          hint={`0 turns shopper requests off. ${DEFAULT_RETURN_WINDOW_DAYS} unless you change it.`}
-          error={invalid ? 'Enter a whole number from 0 to 90.' : undefined}
+          hint={`0 turns change-of-mind and fit returns off. ${DEFAULT_RETURN_WINDOW_DAYS} unless you change it.`}
+          error={invalid ? `Enter 0, or a whole number from ${LEGAL_RETURN_WORKING_DAYS} to 90.` : undefined}
           htmlFor="return-window"
         >
           <Input

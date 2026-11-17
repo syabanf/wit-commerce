@@ -5,6 +5,7 @@ export const TICKET_CHANNEL_LABEL: Record<Ticket['channel'], string> = {
   whatsapp: 'WhatsApp',
   chat: 'Live chat',
   email: 'Email',
+  web: 'Storefront form',
 }
 
 export const VIEWS: TicketStatus[] = ['open', 'pending', 'resolved']

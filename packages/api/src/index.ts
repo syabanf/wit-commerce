@@ -12,6 +12,7 @@ import type {
   CustomerEvent,
   Industry,
 } from '@rc/types'
+import type { Lead, PrivacyRequest, PrivacyRequestKind, Ticket } from '@rc/types'
 
 // The HTTP client for apps/api. Every reducer action maps to one request (actionRequest), every
 // answer is a Delta the app lays over its AppState (applyDelta), and the event stream delivers the
@@ -101,6 +102,14 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
         method: 'PUT',
         path: `/tenants/${action.tenantId}/shop-settings`,
         body: { returnWindowDays: action.returnWindowDays, shopperEmailsOff: action.shopperEmailsOff },
+      }
+    case 'tenants/setLegal':
+      return { method: 'PUT', path: `/tenants/${action.tenantId}/legal`, body: action.legal }
+    case 'tenants/setCourierEta':
+      return {
+        method: 'PUT',
+        path: `/tenants/${action.tenantId}/courier-eta`,
+        body: { courierEtaDays: action.courierEtaDays },
       }
     case 'tenants/setDomain':
       // The server issues its own token, so the client's never leaves the browser.
@@ -206,12 +215,11 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       }
     case 'returns/receive':
       return { method: 'POST', path: `/returns/${action.id}/receive`, body: { restock: action.restock } }
-    case 'returns/refund':
-      return {
-        method: 'POST',
-        path: `/returns/${action.id}/refund`,
-        body: { amount: action.amount, note: action.note },
-      }
+    case 'returns/refund': {
+      // The API picks the gateway when Midtrans took the payment; method only labels a manual refund.
+      const { type: _type, id: _id, ...body } = action
+      return { method: 'POST', path: `/returns/${action.id}/refund`, body }
+    }
     case 'customers/save':
       return { method: 'PUT', path: `/customers/${action.customer.id}`, body: action.customer }
     case 'customers/note':
@@ -222,6 +230,20 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
         path: `/customers/${action.id}/points`,
         body: { points: action.points, reason: action.reason },
       }
+    case 'customers/setConsent':
+      return store
+        ? {
+            method: 'POST',
+            path: `/shop/${store}/consent`,
+            body: { granted: action.granted, source: action.source, textVersion: action.textVersion },
+          }
+        : {
+            method: 'POST',
+            path: `/customers/${action.id}/consent`,
+            body: { granted: action.granted, textVersion: action.textVersion },
+          }
+    case 'customers/erase':
+      return { method: 'POST', path: `/customers/${action.id}/erase`, body: { note: action.note } }
     case 'segments/save':
       return { method: 'PUT', path: `/segments/${action.segment.id}`, body: action.segment }
     case 'segments/remove':
@@ -236,6 +258,13 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
         path: `/leads/${action.id}/stage`,
         body: { stage: action.stage, lostReason: action.lostReason ?? null },
       }
+    case 'tickets/open': {
+      // A shopper complains through their store; the server knows who is asking from the token.
+      const { customerId: _customerId, tenantId: _tenantId, ...body } = action.complaint
+      return store
+        ? { method: 'POST', path: `/shop/${store}/complaints`, body }
+        : { method: 'POST', path: '/tickets', body: action.complaint }
+    }
     case 'tickets/assign':
       return { method: 'POST', path: `/tickets/${action.id}/assign`, body: { assigneeId: action.assigneeId } }
     case 'tickets/resolve':
@@ -988,6 +1017,29 @@ export interface MediaList {
   offset: number
 }
 
+export interface PrivacyRequestsResponse {
+  requests: PrivacyRequest[]
+}
+
+/** Everything a store holds about one customer, for an access request (UU PDP Pasal 7). */
+export interface CustomerExport {
+  exportedAt: string
+  customer: Customer
+  events: CustomerEvent[]
+  leads: Lead[]
+  tickets: Ticket[]
+  privacyRequests: PrivacyRequest[]
+  orders: Order[]
+  returns: OrderReturn[]
+}
+
+/** Who a campaign reaches now; skipped customers gave no marketing consent or withdrew it. */
+export interface CampaignAudience {
+  inSegment: number
+  reach: number
+  skipped: number
+}
+
 /** Builds the client. Every method throws ApiError on a non-2xx answer. */
 export function createApi({ baseUrl, getToken }: ApiOptions) {
   const root = `${baseUrl.replace(/\/$/, '')}/v1`
@@ -1222,6 +1274,21 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     },
     /** The custom domain and the DNS records it needs, as the server builds them. */
     domain: (tenantId: string) => call<DomainStatus>('GET', `/tenants/${tenantId}/domain`),
+    privacy: {
+      /** A brand's privacy requests, open ones by deadline. */
+      requests: (tenantId: string, status?: PrivacyRequest['status']) =>
+        call<PrivacyRequestsResponse>(
+          'GET',
+          `/customers/privacy-requests?tenantId=${tenantId}${status ? `&status=${status}` : ''}`,
+        ),
+      /** Logs a request a customer made by phone or email. */
+      log: (customerId: string, kind: PrivacyRequestKind, note: string) =>
+        call<PrivacyRequest>('POST', '/customers/privacy-requests', { customerId, kind, note }),
+      complete: (id: string, note: string) =>
+        call<Delta>('POST', `/customers/privacy-requests/${id}/complete`, { note }),
+      export: (customerId: string) => call<CustomerExport>('GET', `/customers/${customerId}/export`),
+      audience: (campaignId: string) => call<CampaignAudience>('GET', `/campaigns/${campaignId}/audience`),
+    },
     shop: {
       tenants: () => call<{ tenants: Tenant[]; now: string }>('GET', '/shop'),
       /** The store a verified custom domain serves; ApiError 404 for any other host. */
@@ -1249,6 +1316,12 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       verifyEmail: (store: string, token: string) => call<void>('POST', `/shop/${store}/verify`, { token }),
       me: (store: string) => call<MeResponse>('GET', `/shop/${store}/me`),
       ai: (store: string, input: AIChatInput) => call<AIChatAnswer>('POST', `/shop/${store}/ai/chat`, input),
+      privacyRequests: (store: string) =>
+        call<PrivacyRequestsResponse>('GET', `/shop/${store}/privacy-requests`),
+      requestPrivacy: (store: string, kind: PrivacyRequestKind, note: string) =>
+        call<PrivacyRequestsResponse>('POST', `/shop/${store}/privacy-requests`, { kind, note }),
+      /** The shopper's data, once the store completed their access request. */
+      exportData: (store: string) => call<CustomerExport>('GET', `/shop/${store}/export`),
     },
   }
 }

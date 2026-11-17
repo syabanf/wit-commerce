@@ -38,6 +38,12 @@ type fakeMidtrans struct {
 	statusOf map[string]string // order id → transaction_status the status check answers
 	grossOf  map[string]string // order id → gross_amount, as Midtrans spells it
 	checks   int
+	// Refunds: what Midtrans holds per refund key, how many refund calls came in, the message of a
+	// refusal to answer with, and whether to drop the next answer after refunding.
+	refunds    map[string]int
+	refundCall int
+	refuseWith string
+	dropNext   bool
 }
 
 // answer sets what the status check says about an order.
@@ -71,10 +77,37 @@ func (f *fakeMidtrans) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v2/") && strings.HasSuffix(r.URL.Path, "/status"):
 		f.checks++
 		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/"), "/status")
-		_ = json.NewEncoder(w).Encode(map[string]string{
+		var refunds []map[string]any
+		for key, amount := range f.refunds {
+			if strings.HasPrefix(key, "ret-") {
+				refunds = append(refunds, map[string]any{"refund_key": key, "refund_amount": amount})
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"order_id": id, "status_code": "200", "gross_amount": f.grossOf[id], "transaction_id": "trx-" + id,
-			"transaction_status": f.statusOf[id], "fraud_status": "accept",
+			"transaction_status": f.statusOf[id], "fraud_status": "accept", "refunds": refunds,
 		})
+	case r.Method == "POST" && strings.HasPrefix(r.URL.Path, "/v2/") && strings.HasSuffix(r.URL.Path, "/refund"):
+		f.refundCall++
+		var body struct {
+			RefundKey string `json:"refund_key"`
+			Amount    int    `json:"amount"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if f.refuseWith != "" {
+			_ = json.NewEncoder(w).Encode(map[string]string{"status_code": "412", "status_message": f.refuseWith})
+			return
+		}
+		// Midtrans refunds a key once; a repeat answers the same refund.
+		if _, done := f.refunds[body.RefundKey]; !done {
+			f.refunds[body.RefundKey] = body.Amount
+		}
+		if f.dropNext {
+			f.dropNext = false
+			panic(http.ErrAbortHandler)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"status_code": "200", "status_message": "Success, refund request is approved",
+			"refund_key": body.RefundKey, "refund_amount": body.Amount})
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -95,7 +128,7 @@ func midtransEnv(t *testing.T) (*env, *fakeMidtrans) {
 	if err := seed.Load(t.Context(), db, testdb.SeedDir(t), password); err != nil {
 		t.Fatal(err)
 	}
-	fake := &fakeMidtrans{statusOf: map[string]string{}, grossOf: map[string]string{}}
+	fake := &fakeMidtrans{statusOf: map[string]string{}, grossOf: map[string]string{}, refunds: map[string]int{}}
 	mt := httptest.NewServer(fake)
 	t.Cleanup(mt.Close)
 	target, _ := url.Parse(mt.URL)
@@ -137,6 +170,7 @@ func (e *env) placeWith(store, tenantID, orderID, paymentTypeID, method string) 
 	customerID := "cus-" + orderID
 	order["id"], order["customerId"], order["code"] = orderID, customerID, strings.ToUpper(store)+"-9"+orderID[len(orderID)-4:]
 	order["status"], order["paymentStatus"], order["paymentMethod"], order["paymentTypeId"] = "paid", "paid", method, paymentTypeID
+	order["termsVersion"] = e.termsVersion(tenantID)
 	order["events"] = []any{
 		map[string]any{"id": "oev-paid-" + orderID, "at": order["createdAt"], "by": "storefront", "status": "paid", "note": "Paid"},
 		map[string]any{"id": "oev-new-" + orderID, "at": order["createdAt"], "by": "storefront", "status": "new", "note": "Order placed on the storefront"},

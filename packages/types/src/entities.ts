@@ -6,6 +6,7 @@ import type {
   AutomationTrigger,
   BrandLockKey,
   BrandPersonality,
+  BusinessType,
   ButtonStyle,
   CampaignStatus,
   CollectionMode,
@@ -13,6 +14,7 @@ import type {
   Channel,
   Courier,
   CustomerEventKind,
+  DisputeForum,
   FunnelStep,
   Industry,
   IntegrationCategory,
@@ -36,6 +38,8 @@ import type {
   PromotionTrigger,
   RadiusScale,
   ReturnReason,
+  ReturnRefundMethod,
+  ReturnShippingPayer,
   ReturnStatus,
   Role,
   SectionKind,
@@ -53,6 +57,7 @@ import type {
   ToneOfVoice,
   WebhookEvent,
 } from './enums'
+import type { ConsentSource, PrivacyRequestKind } from './enums'
 
 // --- platform and tenants ---
 
@@ -111,10 +116,54 @@ export interface Tenant {
   domainCheckFailures?: number
   /** The store's own header and footer links. Without it the theme shows its fixed links. */
   menus?: StoreMenus
-  /** Days after delivery a shopper may ask for a return; 7 when unset, 0 takes no shopper requests. */
+  /**
+   * Days after delivery a shopper may ask for a return; 7 when unset. 0 takes no change-of-mind or fit
+   * returns; the legal reasons always get at least 2 working days.
+   */
   returnWindowDays?: number
   /** Shopper emails the brand switched off; every other kind is sent. */
   shopperEmailsOff?: ShopperEmailKind[]
+  /** Who the seller is, how shoppers complain, and the brand's own terms choices. */
+  legal?: SellerLegal
+  /** Delivery days per courier, overriding the platform's estimate. */
+  courierEtaDays?: Partial<Record<Courier, EtaDays>>
+}
+
+/** Whole days a parcel takes, counted from when it ships. */
+export interface EtaDays {
+  min: number
+  max: number
+}
+
+/**
+ * The seller's identity (PP 80/2019 Pasal 9 and 13), complaint service (Pasal 27) and terms
+ * choices (Pasal 53). Every field is optional; the storefront shows what the brand filled in.
+ */
+export interface SellerLegal {
+  /** The registered name, e.g. "PT Lari Nusantara". */
+  entityName?: string
+  businessType?: BusinessType
+  /** Nomor Induk Berusaha, 13 digits. */
+  nib?: string
+  /** Tax number, 15 or 16 digits. */
+  npwp?: string
+  address?: string
+  /** The city the business is registered in; the default court sits there. */
+  city?: string
+  /** Customer service phone or WhatsApp. */
+  phone?: string
+  email?: string
+  /** Customer service hours, e.g. "Monday to Friday, 09:00 to 17:00 WIB". */
+  hours?: string
+  /** How shoppers complain; empty uses the platform's default text. */
+  complaintProcedure?: string
+  /** Working days the brand takes to resolve a complaint; 3 when unset. */
+  complaintDays?: number
+  disputeForum?: DisputeForum
+  /** The court, BPSK or arbitration body named in the terms; empty uses the brand's city. */
+  disputeVenue?: string
+  /** The brand's own clauses, appended to the generated terms. */
+  termsExtra?: string
 }
 
 /** Where a menu link goes: a store page, a category, a collection, the whole catalog, or a link. */
@@ -478,6 +527,10 @@ export interface Order {
   events: OrderEvent[]
   /** Set when a buying agent placed the order for the customer. */
   agent?: AgentOrderInfo
+  /** The version of the store's terms the shopper agreed to at checkout. */
+  termsVersion?: string
+  /** When the shopper agreed; the API stamps its own clock. */
+  termsAcceptedAt?: IsoDate
 }
 
 /** The mandate chain behind an agent order: what the shopper asked for and how the agent closed it. */
@@ -528,6 +581,18 @@ export interface Customer {
   createdAt: IsoDate
   birthday: string | null
   color: string
+  /** The shopper's last answer about offers and news; absent means never asked. */
+  marketingConsent?: MarketingConsent
+  /** When the customer's personal data was replaced with placeholders. */
+  erasedAt?: IsoDate
+}
+
+/** Proof of marketing consent: the answer, when, where it was given and which wording the shopper saw. */
+export interface MarketingConsent {
+  granted: boolean
+  at: IsoDate
+  source: ConsentSource
+  textVersion: string
 }
 
 export interface CustomerEvent {
@@ -588,11 +653,21 @@ export interface Ticket {
   kind: TicketKind
   status: TicketStatus
   subject: string
-  channel: 'whatsapp' | 'chat' | 'email'
+  channel: 'whatsapp' | 'chat' | 'email' | 'web'
   assigneeId: string | null
   createdAt: IsoDate
   slaDueAt: IsoDate
   resolvedAt: IsoDate | null
+  /** What the shopper wrote, for a ticket opened from the storefront's complaint form. */
+  message?: string
+  /** How to reach the shopper; a guest's ticket has no customer record. */
+  contact?: TicketContact
+}
+
+export interface TicketContact {
+  name: string
+  email: string
+  phone: string
 }
 
 // --- returns ---
@@ -632,6 +707,22 @@ export interface OrderReturn {
   restock: boolean
   /** Why staff rejected it. */
   rejectReason?: string
+  /** Who pays to send it back, fixed when it was requested. */
+  shippingPaidBy?: ReturnShippingPayer
+  /** The return shipping cost the brand added to the refund; part of refundAmount. */
+  refundShipping?: number
+  /** How the money went back. */
+  refundMethod?: ReturnRefundMethod
+  /** The gateway's refund reference, or the bank transfer reference staff recorded. */
+  refundReference?: string
+  /** When the money went back: the gateway's answer, or the transfer date staff recorded. */
+  refundedOn?: string
+  /**
+   * The last gateway refund attempt: succeeded; failed with gatewayError, after which staff may record
+   * a bank transfer; or pending when the gateway did not answer and the refund is retried.
+   */
+  gatewayStatus?: 'succeeded' | 'failed' | 'pending'
+  gatewayError?: string
   events: ReturnEvent[]
   createdAt: IsoDate
 }
@@ -863,4 +954,18 @@ export interface ProductMonth {
   units: number
   revenue: number
   orders: number
+}
+
+/** A shopper's request about their personal data, answered within 3x24 hours (UU PDP). */
+export interface PrivacyRequest {
+  id: string
+  tenantId: string
+  customerId: string
+  kind: PrivacyRequestKind
+  status: 'open' | 'completed'
+  requestedAt: IsoDate
+  dueAt: IsoDate
+  completedAt: IsoDate | null
+  handledBy: string | null
+  note: string
 }

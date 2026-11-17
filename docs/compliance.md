@@ -1,0 +1,157 @@
+# Compliance
+
+How WIT Commerce covers PP 80/2019 (Perdagangan Melalui Sistem Elektronik), UU 27/2022 (Pelindungan Data Pribadi) and related rules. Brands
+on WIT Commerce are the merchants (Pedagang); WIT Commerce is the platform (PPMSE). Each section names
+the Pasal, the code that covers it, and what the brand or the operator still has to do.
+
+## Returns and refunds
+
+### Pasal 69(1): at least 2 working days
+
+A shopper may ask for an exchange or a cancellation for at least 2 working days after the parcel
+arrives, whatever the brand set.
+
+- `legalReturnDeadline` in `packages/fixtures/src/rules.ts` and `LegalReturnDeadline` in
+  `apps/api/internal/rules/returns.go` count 2 working days (Monday to Friday, WIB) from the day
+  after delivery and end at 23:59:59 WIB of the second one. Delivered on a Friday or a Saturday, the
+  window runs to the end of Tuesday.
+- `returnDeadline` takes the later of the brand's window (calendar days) and the legal one for the
+  Pasal 69(2) reasons. The brand's window can only extend it.
+- The return window setting (`tenants/setShopSettings`, `SetShopSettings` in
+  `apps/api/internal/modules/identity/tenants.go`, `ShopSettingsCard` in the admin) accepts 0 or 2 to
+  90 days and refuses 1. 0 turns change-of-mind and fit returns off; the legal reasons stay open.
+  Migration `0027_return_window_floor.sql` lifts any saved 1-day window to 2.
+- The storefront order page (`apps/storefront/src/features/OrderReturns.tsx`) shows both deadlines.
+
+Still to do: public holidays (hari libur nasional, cuti bersama) are counted as working days. Until a
+holiday calendar is added, a brand that wants to be safe sets a window of 7 days or more. The
+deadline counts from the "delivered" step on the order's timeline, so staff or the courier sync must
+mark delivery on the day it happens.
+
+### Pasal 69(2): reasons a store must accept
+
+Reasons: `damaged`, `wrong_item`, `not_as_described`, `late_delivery`, `hidden_defect`, `expired`
+(`LEGAL_RETURN_REASONS`, `LegalReturnReasons`), plus the brand-policy reasons `size_or_fit` and
+`changed_mind`. `returnRequestBlocker` / `ReturnRequestBlocker` accept a legal reason inside the legal
+window even when the brand turned returns off or set a short window. Change of mind and fit follow
+the brand's window only.
+
+Still to do: the brand reviews each request and may still reject one that is not what the shopper
+claims (for example a worn item reported as damaged). The rejection reason is shown to the shopper.
+
+### Pasal 69(3-4): return shipping cost
+
+Each return records `shippingPaidBy` when it is requested (`returnShippingPayer`,
+`ReturnShippingPayer`): the brand when any item carries a Pasal 69(2) reason, the shopper only when
+every item comes back by the shopper's own choice. The shopper sees who pays before submitting and on
+each return; staff see it on the return page. When the brand pays, staff can add the return shipping
+cost to the refund (`shippingCost` on `returns/refund`, split by `returnRefundSplit`, recorded as
+`refundShipping`), capped at what the order still holds.
+
+Still to do: booking the courier pickup is outside the product. The brand tells the shopper how to
+send the parcel back and refunds the receipt the shopper shows.
+
+### Pasal 71: a refund mechanism
+
+- Orders paid through Midtrans: `Service.RefundReturn` in
+  `apps/api/internal/service/returns_refund.go` calls the Midtrans refund API
+  (`POST /v2/{order_id}/refund`, `RefundMidtrans` in
+  `apps/api/internal/modules/integrations/midtrans_refund.go`) with a refund key per attempt, stored
+  in the `payment_refunds` table (migration `0026_payment_refunds.sql`). An attempt Midtrans never
+  answered stays pending; the next try asks Midtrans whether that key already refunded before it
+  calls again, so the money moves once. A refusal keeps the return received, records
+  `gatewayStatus` and `gatewayError` on it and shows the reason to staff.
+- After Midtrans refuses (for example a payment method Midtrans cannot refund, such as a bank
+  virtual account), and for orders paid any other way (manual transfer, COD), staff send the money
+  themselves and record the bank transfer reference and date (`refundMethod: manual`,
+  `refundReference`, `refundedOn`). The shopper sees the reference on the order page and in the
+  refund email.
+- `returnRefundProofBlocker` / `ReturnRefundProofBlocker` refuse to mark a return refunded without a
+  gateway reference or a recorded transfer, in both the TypeScript reducer and the API.
+
+Still to do: the brand keeps its Midtrans account able to refund (balance and enabled refund
+methods). Refunds of whole orders through `orders/refund` (a cancellation before shipping) still
+record the amount only; they do not yet call Midtrans or ask for a transfer reference.
+
+## Seller identity, terms and complaints
+
+| Pasal | What the law asks | Code that covers it |
+| --- | --- | --- |
+| 9, 13 | Clear, documented seller identity | `Tenant.legal` (`SellerLegal` in `packages/types`, `domain.SellerLegal` in Go): legal name, business type (perorangan, CV, PT), NIB, NPWP, address, city, customer service phone, email and hours. Owners edit it at Online store → Legal & policies (`/store/legal`, `brand.manage`), saved with `tenants/setLegal` (`PUT /tenants/{id}/legal`). Every theme footer shows it (`apps/storefront/src/components/SellerIdentity.tsx`). The dashboard and the legal page warn while any identity field is missing (`legalMissing`). |
+| 27 | Complaint service: contact, procedure, follow-up, competent staff, resolution time | `legal.complaintProcedure` (default text `DEFAULT_COMPLAINT_PROCEDURE`) and `legal.complaintDays` (default 3 working days). The storefront page `/help` shows contact, procedure, follow-up and resolution time, and its form sends `tickets/open` to `POST /shop/{store}/complaints` (public, 5 per client per hour in the shared `complaint-client` window). The ticket is a `complaint` on the `web` channel, coded `{TENANT}-T0001`, due `complaintDays` working days later (`addWorkingDays`, Monday to Friday WIB); staff see the shopper's text and contact on the Support sheet. Staff can log one with `POST /tickets` (`ticket.manage`). Migration `0028` makes ticket codes unique per brand. |
+| 39 | Offer information: payment mechanism and deadline, delivery mechanism, conditions | The product page shows payment methods, the 24-hour payment deadline, each courier with delivery days and fee, the return policy and a link to the terms (`components/OfferInfo.tsx`). Delivery days come from `Tenant.courierEtaDays` (`tenants/setCourierEta`, `PUT /tenants/{id}/courier-eta`) or `DEFAULT_COURIER_ETA`. |
+| 46 | Consent before the contract | Checkout requires the box "I agree to the Terms and the Privacy Policy". The order stores `termsVersion` and `termsAcceptedAt`. `POST /shop/{store}/orders` refuses an order without the store's current version (`422 TERMS_NOT_ACCEPTED`) and stamps `termsAcceptedAt` with the server clock. Buying-agent orders carry the same consent: the Approve button says approving means agreeing. |
+| 53, 55, 56 | Contract content, in Bahasa Indonesia, that the shopper can keep | `/terms` (`apps/storefront/src/lib/terms.ts`) writes the Syarat & Ketentuan in Indonesian from tenant data: parties, goods and price, ordering and consent, payment and deadline, delivery, returns (the brand's window and the 2-working-day floor for wrong or damaged goods), cancellation, complaints, dispute forum (`legal.disputeForum`: district court of the brand's city by default, BPSK or arbitration; `legal.disputeVenue` names the body), personal data, and the brand's own clauses (`legal.termsExtra`). The page has a print or save button. `termsVersion` is `TERMS_REVISION` plus an FNV-1a hash of the values it prints, identical in TypeScript and Go (`rules.TermsVersion`); tests pin the same versions on both sides. |
+| 66 | Delivery time and status information | The order page shows courier, tracking number with a copy button, an arrival window from the shipped time and the courier's delivery days, and the status history (status changes only, never staff notes). |
+
+`/privacy` is a placeholder (`apps/storefront/src/features/PrivacyPage.tsx`) that the privacy work fills.
+
+What the brand still has to do:
+
+- Fill in its legal details, NIB and customer service contact, and keep them true.
+- Staff the complaint queue and answer within the working days it set. Public holidays are not
+  skipped when the due time is computed.
+- Check the generated terms, add its own clauses, and pick the dispute forum it accepts.
+- Set realistic delivery days per courier.
+
+What the operator still has to do:
+
+- Have a lawyer review the terms template. Raise `TERMS_REVISION` in `packages/fixtures/src/legal.ts`
+  and `rules.TermsRevision` together whenever the wording changes.
+- Courier rates and live tracking from a courier API need a provider account and are not built yet;
+  delivery days are the brand's estimate.
+- Payment method names on the terms page come from checkout and are not part of the terms version.
+
+## Personal data
+
+Brands are the controllers of their shoppers' data; WIT Commerce processes it for them.
+
+### What the code covers
+
+| Rule | Covered by |
+| --- | --- |
+| PP 80 Pasal 59(3)-(4), UU PDP Pasal 8 and 43-45: erasure on request | `customers/erase` (`POST /customers/{id}/erase`, permission `privacy.manage`, owner roles only). `service.EraseCustomer` runs one transaction: `rules.EraseCustomer` blanks name, email, phone, city, birthday, tags, interests and consent on the customer; `crm.EraseCustomer` replaces the free text of their notes, reviews, support and search events, their leads and their tickets; `orders.EraseCustomer` blanks the city on their orders and the shopper's note on their returns; `identity.RevokeCustomer` ends the password and every token; `notifications.ForgetCustomer` deletes their email links, drops unsent email and blanks the address on sent email; `kernel.Tx.ScrubDeliveries` replaces their email, phone and name in webhook payloads. `order_rows` follows through the read model projection. The test `TestErasureRemovesPersonalDataEverywhere` searches every table for the email, phone and name afterwards. |
+| PP 80 Pasal 25: keep transaction data 10 years, other PMSE data 5 years | Erasure keeps order amounts, items, dates, payment records (`payments`), delivery status and return records. The customer row stays with its code, points and tier, so totals and loyalty still add up. |
+| Erasure blocker | `CustomerEraseBlocker` (Go) and `customerEraseBlocker` (TS) refuse while an order is before delivery or a return is open, because the courier and the refund still need the contact details. |
+| UU PDP Pasal 20-24: lawful basis and proof of consent | `Customer.marketingConsent` holds granted, at, source (checkout, account, staff, unsubscribe, request) and the wording version (`MARKETING_CONSENT_VERSION`). Every change writes a `privacy` event on the customer timeline. `customers/save` keeps the stored consent and `erasedAt`, so an edit cannot forge them. |
+| Optional consent at checkout | An unticked "Send me offers and news" checkbox on the review step; ticking it sends `customers/setConsent` with source checkout after the order is placed. |
+| Marketing goes only to consenting customers | `rules.MarketingAllowed`, `marketing.Recipients` and `GET /campaigns/{id}/audience` (reach and skipped). The campaign page shows how many it skips. Transactional order email does not pass through this check. |
+| Unsubscribe in every marketing email | `notifications.ComposeMarketing` takes the unsubscribe link as a required argument. The link is `/api/v1/unsubscribe?token=` with a token from `auth.Signer.Seal("unsubscribe", customerID)`. GET shows a confirm button, so mail scanners withdraw nothing; POST (also one-click from mail apps) withdraws consent at once and logs a customer event. |
+| UU PDP Pasal 5-13: shopper rights | Account page: "Offers and news" toggle and "Your data" card to ask for a copy, a correction or erasure. `POST /shop/{store}/privacy-requests`. |
+| UU PDP Pasal 30, 32, 40, 41: answer within 3x24 hours | `privacy_requests` (migration 0030) with `due_at = requested_at + 72 hours`. Admin page Customers → Privacy requests lists open requests by deadline, overdue in danger tone, and completes them (`POST /customers/privacy-requests/{id}/complete`). Completing an erasure erases; completing a consent withdrawal withdraws. Staff erasure without a request logs a completed one as a record. |
+| UU PDP Pasal 7: copy of the data | `GET /customers/{id}/export` (admin download as JSON) and `GET /shop/{store}/export` (the shopper, once their access request is completed). |
+| UU PDP Pasal 21: privacy notice | `apps/storefront/src/features/PrivacyPage.tsx`, in Bahasa Indonesia, built from the tenant: controller, data collected, purposes and lawful basis, retention, processors and transfers abroad, rights, response time, breach notice, contact. |
+| UU PDP Pasal 46: breach notice within 3x24 hours | `docs/sop-insiden-data.md`: detect, contain, assess, notify shoppers and the authority with the Pasal 46(2) contents, record, review, with notice templates. |
+
+### Defaults
+
+- Seeded demo customers have no `marketingConsent`, so campaigns reach none of them until one agrees.
+  Consent must be proven, and the demo has no proof. Launching a campaign still works on the segment
+  size, since no campaign sends email yet.
+- The consent wording is "Send me offers and news", version `2026-11`. A new wording needs a new version.
+
+### What the brand still has to do
+
+- Answer each request in the console within 3x24 hours. Access: download the data and send it, or let
+  the shopper download it from their account. Correction: edit the customer, then mark the request done.
+- Add a contact address for privacy questions to the store; the privacy page points to the store's
+  customer service.
+- Keep any data it copies out of WIT Commerce (spreadsheets, chat) under the same rules.
+
+### What the operator still has to do
+
+- Appoint a data protection officer (UU PDP Pasal 53) and name them in the breach SOP. Left out of the
+  code on purpose.
+- Data residency: Resend sends email from the United States, and the AI model provider may sit outside
+  Indonesia. PP 80 Pasal 59(2)(h) and UU PDP Pasal 56 allow transfers only with equal protection.
+  Choosing providers or regions is an operator decision; the code does not change it.
+- Sign data processing agreements with Resend, Midtrans and the AI provider.
+- Delete data when the retention periods end. Nothing prunes orders, events or erased customers after 10
+  and 5 years yet.
+- Pasal 25 asks to keep customer data ("pelanggan") 5 years, while Pasal 59(3)-(4) and UU PDP give the
+  right to erasure. The code keeps the pseudonymous customer row (code, points, dates) and erases the
+  identifying fields. Confirm this reading with counsel.
+- No campaign or automation sends email yet. When one does, it must pick recipients with
+  `marketing.Recipients` and compose with `notifications.ComposeMarketing`.
+- `assistant_log` questions have emails and phone numbers masked but may hold a typed name; it is pruned
+  after 90 days. `request_log` and `staff_events` hold staff ids only.

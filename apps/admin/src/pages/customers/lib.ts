@@ -14,6 +14,7 @@ import {
   MessageSquare,
   MousePointerClick,
   Search,
+  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   Star,
@@ -37,6 +38,7 @@ export const CUSTOMER_EVENT_ICON: Record<CustomerEventKind, LucideIcon> = {
   tier_upgraded: Award,
   points_earned: Coins,
   note: MessageSquare,
+  privacy: ShieldCheck,
 }
 
 /** Next customer code of a tenant: LARI-C10001 → LARI-C10002. */

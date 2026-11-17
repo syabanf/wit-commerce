@@ -19,6 +19,7 @@ import { useShop } from '../../state/shop'
 import { ProductGrid, ShowHeading } from './ProductCard'
 import { BeautyFacts } from '../../components/beauty'
 import { Money } from '../../components/Money'
+import { OfferInfo } from '../../components/OfferInfo'
 
 const SLIDES = [24, 12, 32, 18]
 
@@ -138,6 +139,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
                   Add to cart · <Money idr={detail.lineTotal} />
                 </Button>
               </div>
+              <OfferInfo product={product} />
             </>
           )}
           <section aria-labelledby="best-h" className="py-4 border-y border-[color:var(--sf-line)]">

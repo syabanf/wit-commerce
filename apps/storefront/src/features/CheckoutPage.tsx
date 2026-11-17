@@ -23,6 +23,7 @@ import {
 import { type FormEvent, type ReactNode, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
+import { TERMS_REQUIRED, TermsConsent } from '../components/TermsConsent'
 import { ProductImage } from '../components/product'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
 import { HTTP } from '../lib/api'
@@ -36,6 +37,7 @@ import {
   PHONE_PATTERN,
   buildOrder,
   courierFee,
+  withTerms,
 } from '../lib/checkout'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
@@ -43,6 +45,7 @@ import { useShop } from '../state/shop'
 import { useStore } from '../state/store'
 import { PayInRupiahNote } from '../components/Money'
 import { RupiahOnlyArea } from '../state/currency'
+import { MARKETING_CONSENT_TEXT, MARKETING_CONSENT_VERSION } from '@rc/types'
 
 const STEPS = ['Contact', 'Delivery', 'Payment', 'Review'] as const
 
@@ -248,6 +251,9 @@ export function CheckoutPage() {
   const [qrisPaid, setQrisPaid] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [placeError, setPlaceError] = useState<string | null>(null)
+  const [agreed, setAgreed] = useState(false)
+  // Marketing consent is optional and starts unticked (UU PDP Pasal 20 to 24).
+  const [offers, setOffers] = useState(false)
 
   useLayoutEffect(() => {
     if (previousStep.current === step) return
@@ -339,6 +345,10 @@ export function CheckoutPage() {
 
   const place = () => {
     if (!payment) return
+    if (!agreed) {
+      setPlaceError(TERMS_REQUIRED)
+      return
+    }
     const contactInfo =
       mode === 'account' && account
         ? { name: account.name, email: account.email, phone: account.phone }
@@ -370,9 +380,18 @@ export function CheckoutPage() {
       setPlaceError(blocker)
       return
     }
-    send({ type: 'orders/place', order, customer: created })
+    send({ type: 'orders/place', order: withTerms(order, tenant), customer: created })
       .then(async (answer) => {
         await signIn(order.customerId)
+        // Someone who already agreed is refused as unchanged, which changes nothing here.
+        if (offers)
+          await send({
+            type: 'customers/setConsent',
+            id: order.customerId,
+            granted: true,
+            source: 'checkout',
+            textVersion: MARKETING_CONSENT_VERSION,
+          }).catch(() => undefined)
         cart.clear()
         // The provider's page takes the payment and sends the shopper back to the order page.
         if (answer?.payment) window.location.assign(answer.payment.redirectUrl)
@@ -715,6 +734,21 @@ export function CheckoutPage() {
               {referral && (
                 <p className="text-sm">This order credits {referral.name}, who brought you here.</p>
               )}
+              <TermsConsent checked={agreed} onChange={setAgreed} />
+              <label className="gap-3 text-sm flex items-start">
+                <input
+                  type="checkbox"
+                  checked={offers}
+                  onChange={(e) => setOffers(e.target.checked)}
+                  className="mt-0.5 size-5 shrink-0 accent-[var(--sf-primary)]"
+                />
+                <span>
+                  {MARKETING_CONSENT_TEXT}
+                  <span className="text-xs block text-[color:var(--sf-muted)]">
+                    Optional. Unsubscribe from any offer email or your account.
+                  </span>
+                </span>
+              </label>
               {placeError && (
                 <p
                   role="alert"

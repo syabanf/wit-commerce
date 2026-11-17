@@ -15,6 +15,9 @@ import {
   WishlistPage,
 } from './features/catalogPages'
 import { CheckoutPage } from './features/CheckoutPage'
+import { HelpPage } from './features/HelpPage'
+import { PrivacyPage } from './features/PrivacyPage'
+import { TermsPage } from './features/TermsPage'
 import { OrderPage } from './features/OrderPage'
 import { StoreRoot } from './features/StoreRoot'
 import { HOST_STORE } from './lib/host'
@@ -42,6 +45,9 @@ const storePages: RouteObject[] = [
   { path: 'account', element: <AccountPage /> },
   { path: 'wishlist', element: <WishlistPage /> },
   { path: 'agent', element: <AgentPage /> },
+  { path: 'help', element: <HelpPage /> },
+  { path: 'terms', element: <TermsPage /> },
+  { path: 'privacy', element: <PrivacyPage /> },
   { path: 'preview/:pageId', element: <PagePreviewPage /> },
   { path: ':sellerSlug', element: <PersonalStorePage /> },
   { path: '*', element: <StoreNotFoundPage /> },

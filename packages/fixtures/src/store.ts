@@ -8,10 +8,13 @@ import type {
   Campaign,
   CancelReason,
   Category,
+  Courier,
+  EtaDays,
   Collection,
   Customer,
   CustomerEvent,
   CustomerEventKind,
+  ConsentSource,
   Integration,
   IntegrationLog,
   IsoDate,
@@ -33,10 +36,12 @@ import type {
   PromotionStatus,
   ReturnEvent,
   ReturnItem,
+  ReturnRefundMethod,
   ReturnStatus,
   SearchTerm,
   Segment,
   Seller,
+  SellerLegal,
   SellerStatus,
   ShopperEmailKind,
   StockLevel,
@@ -57,6 +62,16 @@ import { ORDER_STATUS_LABEL, SHOPPER_EMAIL_KINDS } from '@rc/types'
 import { cleanMenus, cleanSellerProfile, menusBlocker, sellerProfileBlocker } from './content'
 import { isDisplayCurrency } from './currency'
 import { domainProblem, domainTaken } from './domains'
+import {
+  type ComplaintInput,
+  addWorkingDays,
+  complaintBlocker,
+  complaintDays,
+  courierEtaBlocker,
+  legalBlocker,
+  normalizeLegal,
+  trimContact,
+} from './legal'
 import { DAY, HOUR, toIso, toMs } from './dates'
 import {
   attributesFor,
@@ -68,6 +83,16 @@ import {
 } from './derive'
 import { newId, nextCode } from './ids'
 import { can } from './permissions'
+import {
+  ERASED_EVENT_KINDS,
+  ERASED_TEXT,
+  consentBlocker,
+  consentLabel,
+  customerEraseBlocker,
+  eraseCustomer,
+  eraseLead,
+  eraseTicket,
+} from './privacy'
 import {
   campaignLaunchBlocker,
   paymentTypeDisableBlocker,
@@ -86,8 +111,11 @@ import {
   returnDecideBlocker,
   returnReceiveBlocker,
   returnRefundBlocker,
-  returnRefundCap,
+  LEGAL_RETURN_WORKING_DAYS,
+  returnRefundProofBlocker,
+  returnRefundSplit,
   returnRequestBlocker,
+  returnShippingPayer,
   returnWindowDays,
   segmentRemoveBlocker,
   sellerTemplateBlocker,
@@ -159,6 +187,10 @@ export type AppAction =
       returnWindowDays: number
       shopperEmailsOff: ShopperEmailKind[]
     }
+  /** The seller's identity, complaint service and terms choices; empty fields are dropped. */
+  | { type: 'tenants/setLegal'; tenantId: string; legal: SellerLegal }
+  /** Delivery days per courier; an empty map brings back the platform's estimates. */
+  | { type: 'tenants/setCourierEta'; tenantId: string; courierEtaDays: Partial<Record<Courier, EtaDays>> }
   /** Connects a custom domain, or disconnects it with null. The API issues its own token. */
   | { type: 'tenants/setDomain'; tenantId: string; domain: string | null; token: string }
   /** Marks the domain verified. The API checks DNS first; the demo has no DNS to ask. */
@@ -216,16 +248,38 @@ export type AppAction =
   | { type: 'returns/reject'; id: string; reason: string }
   | { type: 'returns/cancel'; id: string; note: string }
   | { type: 'returns/receive'; id: string; restock: boolean }
-  | { type: 'returns/refund'; id: string; amount: number; note: string }
+  | {
+      type: 'returns/refund'
+      id: string
+      /** The items part, capped at what they cost. */
+      amount: number
+      note: string
+      /** Return shipping the brand adds when it pays that shipping. */
+      shippingCost?: number
+      /** The API sets midtrans after the gateway refunded; staff record a manual transfer. */
+      method?: ReturnRefundMethod
+      reference?: string
+      refundedOn?: string
+    }
   | { type: 'customers/save'; customer: Customer }
   | { type: 'customers/note'; id: string; note: string }
   | { type: 'customers/addPoints'; id: string; points: number; reason: string }
+  | {
+      type: 'customers/setConsent'
+      id: string
+      granted: boolean
+      source: ConsentSource
+      textVersion: string
+    }
+  | { type: 'customers/erase'; id: string; note: string }
   | { type: 'segments/save'; segment: Segment }
   | { type: 'segments/remove'; id: string }
   | { type: 'leads/save'; lead: Lead }
   | { type: 'leads/move'; id: string; stage: LeadStage; lostReason?: string }
   | { type: 'tickets/assign'; id: string; assigneeId: string | null }
   | { type: 'tickets/resolve'; id: string }
+  /** A shopper's complaint from the storefront form, due in the brand's complaint days. */
+  | { type: 'tickets/open'; complaint: ComplaintInput }
   | { type: 'campaigns/save'; campaign: Campaign }
   | { type: 'campaigns/launch'; id: string }
   | { type: 'campaigns/pause'; id: string }
@@ -682,9 +736,11 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       }
     }
     case 'tenants/setShopSettings': {
-      // A window outside 0 to 90 days or an unknown email kind refuses the whole change.
+      // A window outside 0 to 90 days, a window shorter than the legal floor, or an unknown email
+      // kind refuses the whole change. 0 turns change-of-mind returns off.
       const days = action.returnWindowDays
       if (!Number.isInteger(days) || days < 0 || days > 90) return state
+      if (days > 0 && days < LEGAL_RETURN_WORKING_DAYS) return state
       if (!action.shopperEmailsOff.every((k) => SHOPPER_EMAIL_KINDS.includes(k))) return state
       const off = SHOPPER_EMAIL_KINDS.filter((k) => action.shopperEmailsOff.includes(k))
       return {
@@ -694,6 +750,26 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
           returnWindowDays: days,
           ...(off.length && { shopperEmailsOff: off }),
         })),
+      }
+    }
+    case 'tenants/setLegal': {
+      const legal = normalizeLegal(action.legal)
+      if (legalBlocker(legal)) return state
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, ({ legal: _, ...t }) =>
+          Object.keys(legal).length ? { ...t, legal } : t,
+        ),
+      }
+    }
+    case 'tenants/setCourierEta': {
+      const etas = action.courierEtaDays
+      if (courierEtaBlocker(etas)) return state
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, ({ courierEtaDays: _, ...t }) =>
+          Object.keys(etas).length ? { ...t, courierEtaDays: etas } : t,
+        ),
       }
     }
     case 'tenants/setDomain': {
@@ -1112,6 +1188,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         requestedBy: action.who,
         refundAmount: 0,
         restock: false,
+        shippingPaidBy: returnShippingPayer(action.items),
         events: [],
         createdAt: at,
       }
@@ -1205,12 +1282,26 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     case 'returns/refund': {
       const ret = state.returns.find((r) => r.id === action.id)
       const order = ret && state.orders.find((o) => o.id === ret.orderId)
-      if (!ret || !order || returnRefundBlocker(ret, order)) return state
-      const amount = Math.min(action.amount, returnRefundCap(order, ret))
-      if (!(amount > 0)) return state
-      const refunded = {
-        ...returnStep(ret, 'refunded', `Refunded ${amount}${action.note ? ` · ${action.note}` : ''}`, at, by),
+      if (!ret || !order || returnRefundBlocker(ret, order) || returnRefundProofBlocker(action)) return state
+      const split = returnRefundSplit(order, ret, action.amount, action.shippingCost ?? 0)
+      if (!(split.items > 0)) return state
+      const amount = split.items + split.shipping
+      const method = action.method ?? 'manual'
+      const { gatewayError: _, ...cleared } = ret
+      const refunded: OrderReturn = {
+        ...returnStep(
+          method === 'midtrans' ? cleared : ret,
+          'refunded',
+          `Refunded ${amount}${action.note ? ` · ${action.note}` : ''}`,
+          at,
+          by,
+        ),
         refundAmount: amount,
+        ...(split.shipping > 0 && { refundShipping: split.shipping }),
+        refundMethod: method,
+        refundReference: action.reference!.trim(),
+        refundedOn: method === 'midtrans' ? at : action.refundedOn!.trim(),
+        ...(method === 'midtrans' && { gatewayStatus: 'succeeded' as const }),
       }
       const returns = patch(state.returns, ret.id, () => refunded)
       const note = `Return ${ret.code}${action.note ? ` · ${action.note}` : ''}`
@@ -1223,8 +1314,73 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       }
     }
 
-    case 'customers/save':
-      return { ...state, customers: upsert(state.customers, action.customer) }
+    case 'customers/save': {
+      // Consent and erasure change only through their own actions, so an edit cannot forge them.
+      const { marketingConsent: _consent, erasedAt: _erased, ...edited } = action.customer
+      const prev = state.customers.find((c) => c.id === edited.id)
+      const customer: Customer = { ...edited }
+      if (prev?.marketingConsent) customer.marketingConsent = prev.marketingConsent
+      if (prev?.erasedAt) customer.erasedAt = prev.erasedAt
+      return { ...state, customers: upsert(state.customers, customer) }
+    }
+    case 'customers/setConsent': {
+      const c = state.customers.find((x) => x.id === action.id)
+      if (!c || consentBlocker(c, action.granted, action.source, action.textVersion)) return state
+      const textVersion =
+        !action.granted && c.marketingConsent ? c.marketingConsent.textVersion : action.textVersion
+      const ev: CustomerEvent = {
+        id: newId('ev'),
+        tenantId: c.tenantId,
+        customerId: c.id,
+        kind: 'privacy',
+        at,
+        label: consentLabel(action.granted, action.source),
+        productId: null,
+        orderId: null,
+        campaignId: null,
+        by,
+      }
+      return {
+        ...state,
+        customers: patch(state.customers, c.id, (x) => ({
+          ...x,
+          marketingConsent: { granted: action.granted, at, source: action.source, textVersion },
+        })),
+        customerEvents: [ev, ...state.customerEvents],
+      }
+    }
+    case 'customers/erase': {
+      const c = state.customers.find((x) => x.id === action.id)
+      if (!c) return state
+      const mine = <T extends { customerId: string | null }>(x: T) => x.customerId === c.id
+      if (customerEraseBlocker(c, state.orders.filter(mine), state.returns.filter(mine))) return state
+      const ev: CustomerEvent = {
+        id: newId('ev'),
+        tenantId: c.tenantId,
+        customerId: c.id,
+        kind: 'privacy',
+        at,
+        label: 'Personal data erased',
+        productId: null,
+        orderId: null,
+        campaignId: null,
+        by,
+      }
+      return {
+        ...state,
+        customers: patch(state.customers, c.id, (x) => eraseCustomer(x, at)),
+        customerEvents: [
+          ev,
+          ...state.customerEvents.map((e) =>
+            mine(e) && ERASED_EVENT_KINDS.has(e.kind) ? { ...e, label: ERASED_TEXT } : e,
+          ),
+        ],
+        leads: state.leads.map((l) => (mine(l) ? eraseLead(l) : l)),
+        tickets: state.tickets.map((t) => (mine(t) ? eraseTicket(t) : t)),
+        orders: state.orders.map((o) => (mine(o) && o.city ? { ...o, city: '' } : o)),
+        returns: state.returns.map((r) => (mine(r) && r.note ? { ...r, note: '' } : r)),
+      }
+    }
     case 'customers/note': {
       const c = state.customers.find((x) => x.id === action.id)
       if (!c) return state
@@ -1298,6 +1454,37 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         ...state,
         tickets: patch(state.tickets, action.id, (t) => ({ ...t, status: 'resolved', resolvedAt: at })),
       }
+    case 'tickets/open': {
+      const c = action.complaint
+      const tenant = state.tenants.find((t) => t.id === c.tenantId)
+      if (!tenant || state.tickets.some((t) => t.id === c.id) || complaintBlocker(c)) return state
+      // A shopper names only their own order.
+      const order = c.orderId ? state.orders.find((o) => o.id === c.orderId) : null
+      if (c.orderId && (!order || order.tenantId !== tenant.id || order.customerId !== c.customerId))
+        return state
+      const ticket: Ticket = {
+        id: c.id,
+        tenantId: tenant.id,
+        code: nextCode(
+          state.tickets.filter((t) => t.tenantId === tenant.id).map((t) => t.code),
+          `${tenant.code}-T`,
+          4,
+        ),
+        customerId: c.customerId ?? '',
+        orderId: c.orderId,
+        kind: 'complaint',
+        status: 'open',
+        subject: c.subject.trim(),
+        channel: 'web',
+        assigneeId: null,
+        createdAt: at,
+        slaDueAt: addWorkingDays(at, complaintDays(tenant)),
+        resolvedAt: null,
+        message: c.message.trim(),
+        contact: trimContact(c.contact),
+      }
+      return { ...state, tickets: [...state.tickets, ticket] }
+    }
 
     case 'campaigns/save':
       return { ...state, campaigns: upsert(state.campaigns, action.campaign) }

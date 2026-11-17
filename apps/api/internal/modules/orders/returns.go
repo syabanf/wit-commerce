@@ -98,7 +98,7 @@ func (s *Orders) RequestReturn(ctx context.Context, m kernel.Meta, in ReturnRequ
 		r := domain.OrderReturn{
 			ID: in.ID, TenantID: o.TenantID, Code: ids.NextCode(codes, tenant.Code+"-R", 4), OrderID: o.ID,
 			CustomerID: o.CustomerID, Reason: in.Items[0].Reason, Note: in.Note, RequestedBy: who,
-			Events: []domain.ReturnEvent{}, CreatedAt: m.At,
+			Events: []domain.ReturnEvent{}, CreatedAt: m.At, ShippingPaidBy: rules.ReturnShippingPayer(in.Items),
 		}
 		for _, item := range in.Items {
 			for _, l := range o.Lines {
@@ -207,10 +207,23 @@ func (s *Orders) ReceiveReturn(ctx context.Context, m kernel.Meta, id string, re
 	})
 }
 
+// ReturnRefund is returns/refund. Amount is the items part; ShippingCost is return shipping the
+// brand adds when it pays that shipping. Method is midtrans once the gateway refunded, with its
+// reference; otherwise staff record the bank transfer reference and date.
+type ReturnRefund struct {
+	Amount       int    `json:"amount"`
+	ShippingCost int    `json:"shippingCost,omitempty"`
+	Note         string `json:"note"`
+	Method       string `json:"method,omitempty"`
+	Reference    string `json:"reference,omitempty"`
+	RefundedOn   string `json:"refundedOn,omitempty"`
+}
+
 // RefundReturn is returns/refund: the order's refund path for the chosen amount, capped at what was
-// paid for the returned items and at what the order still holds. It closes the return, and the order
-// too when its last units are now refunded returns.
-func (s *Orders) RefundReturn(ctx context.Context, m kernel.Meta, id string, amount int, note string) (*kernel.Delta, error) {
+// paid for the returned items, plus return shipping when the brand pays it, and at what the order
+// still holds. It closes the return, and the order too when its last units are now refunded returns.
+// It records how the money went back and refuses without that proof (Pasal 71).
+func (s *Orders) RefundReturn(ctx context.Context, m kernel.Meta, id string, in ReturnRefund) (*kernel.Delta, error) {
 	return s.Run(ctx, func(t *kernel.Tx) error {
 		// The return row tells which order to lock; the order goes first, as every other action locks it.
 		found, err := kernel.Get[domain.OrderReturn](t, "returns", id, "return")
@@ -231,10 +244,15 @@ func (s *Orders) RefundReturn(ctx context.Context, m kernel.Meta, id string, amo
 		if why := rules.ReturnRefundBlocker(r, o); why != "" {
 			return kernel.Refuse(why)
 		}
-		amount = min(amount, rules.ReturnRefundCap(o, r))
-		if amount <= 0 {
+		if why := rules.ReturnRefundProofBlocker(in.Method, in.Reference, in.RefundedOn); why != "" {
+			return kernel.Invalid{Reason: why}
+		}
+		items, shipping := rules.ReturnRefundSplit(o, r, in.Amount, in.ShippingCost)
+		if items <= 0 {
 			return kernel.Invalid{Reason: "Enter an amount to refund."}
 		}
+		amount := items + shipping
+		note := in.Note
 		text := fmt.Sprintf("Refunded %d", amount)
 		orderNote := "Return " + r.Code
 		if note != "" {
@@ -242,7 +260,12 @@ func (s *Orders) RefundReturn(ctx context.Context, m kernel.Meta, id string, amo
 			orderNote += " · " + note
 		}
 		r = returnStep(r, "refunded", text, m)
-		r.RefundAmount = amount
+		r.RefundAmount, r.RefundShipping = amount, shipping
+		r.RefundMethod = cmp.Or(in.Method, "manual")
+		r.RefundReference, r.RefundedOn = strings.TrimSpace(in.Reference), strings.TrimSpace(in.RefundedOn)
+		if r.RefundMethod == "midtrans" {
+			r.RefundedOn, r.GatewayStatus, r.GatewayError = m.At, "succeeded", ""
+		}
 		for i := range returns {
 			if returns[i].ID == r.ID {
 				returns[i] = r
@@ -254,5 +277,16 @@ func (s *Orders) RefundReturn(ctx context.Context, m kernel.Meta, id string, amo
 		}
 		t.Notify(kernel.Notice{Kind: "return_refunded", Order: o, Return: &r, Amount: amount})
 		return t.Put("orders", o.ID, o)
+	})
+}
+
+// RecordRefundFailure keeps a gateway refund that did not go through on the return, which stays
+// received, so staff see why the money has not moved. status is failed when the gateway said no, or
+// pending when it did not answer; only a failed one lets staff record a bank transfer instead.
+func (s *Orders) RecordRefundFailure(ctx context.Context, m kernel.Meta, id, status, reason string) (*kernel.Delta, error) {
+	return s.decide(ctx, m, id, func(t *kernel.Tx, r domain.OrderReturn) (domain.OrderReturn, error) {
+		r.GatewayStatus, r.GatewayError = status, reason
+		r.Events = append([]domain.ReturnEvent{{ID: ids.New("oev"), At: m.At, By: m.By(), Note: "Gateway refund failed: " + reason}}, r.Events...)
+		return r, nil
 	})
 }

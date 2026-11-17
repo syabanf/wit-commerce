@@ -355,7 +355,9 @@ func (db *DB) Truncate(ctx context.Context) error {
 		names = append(names, t)
 	}
 	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log", "email_settings", "payments", "media", "currency_rates", "assistant_log",
-		"plan_settings", "plan_requests", "invoices", "rate_limits", "captcha_settings", "sales_months", "product_months", "sales_rollup")
+		"plan_settings", "plan_requests", "invoices", "rate_limits", "captcha_settings", "sales_months", "product_months", "sales_rollup",
+		"privacy_requests")
+	names = append(names, "payment_refunds")
 	_, err := db.Pool.Exec(ctx, `truncate `+strings.Join(names, ", "))
 	return err
 }

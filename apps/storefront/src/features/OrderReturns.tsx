@@ -1,15 +1,18 @@
 import {
+  fmtDate,
   fmtDateTime,
   fmtIdr,
   newId,
   nowMs,
   returnDeadline,
   returnRequestBlocker,
+  returnShippingPayer,
   returnWindowDays,
   returnableQty,
+  shippingPayerOf,
 } from '@rc/fixtures'
-import type { Order, ReturnReason, ReturnStatus } from '@rc/types'
-import { RETURN_REASON_LABEL, RETURN_STATUS_LABEL } from '@rc/types'
+import type { Order, OrderReturn, ReturnReason, ReturnStatus } from '@rc/types'
+import { RETURN_REASON_LABEL, RETURN_SHIPPING_PAYER_LABEL, RETURN_STATUS_LABEL } from '@rc/types'
 import { useId, useState } from 'react'
 import { ApiError } from '@rc/api'
 import { Button, Field, Pill, inputClass } from '../components/ui'
@@ -34,6 +37,16 @@ const STATUS_NOTE: Record<ReturnStatus, string> = {
   cancelled: 'This return was cancelled.',
 }
 
+/** How the money of a refunded return went back, with the reference the shopper can trace. */
+function refundLine(r: OrderReturn): string {
+  const amount = fmtIdr(r.refundAmount)
+  if (r.refundMethod === 'midtrans')
+    return `${amount} refunded to your original payment through Midtrans. Reference ${r.refundReference}.`
+  if (r.refundMethod === 'manual')
+    return `${amount} sent by bank transfer on ${fmtDate(r.refundedOn!)}. Reference ${r.refundReference}.`
+  return `${amount} refunded to your original payment method.`
+}
+
 /** The order's returns and, for a delivered order inside the window, the form to ask for one. */
 export function OrderReturns({ order }: { order: Order }) {
   const { returns, catalog, customer, tenant, send } = useShop()
@@ -48,13 +61,16 @@ export function OrderReturns({ order }: { order: Order }) {
   const windowDays = returnWindowDays(tenant)
   const mine = customer?.id === order.customerId
   const delivered = order.status === 'delivered' || order.status === 'completed'
-  const deadline = returnDeadline(order, windowDays)
+  // A damaged, wrong, late, defective or expired item always gets 2 working days (PP 80/2019 Pasal 69);
+  // change of mind and fit follow the store's own window, which may be off.
+  const deadline = returnDeadline(order, windowDays, 'damaged')!
+  const choiceDeadline = returnDeadline(order, windowDays, 'changed_mind')
   const left = returnableQty(order, own)
   const items = Object.entries(qty)
     .filter(([, n]) => n > 0)
     .map(([variantId, n]) => ({ variantId, qty: n, reason }))
-  const canAsk =
-    mine && delivered && deadline !== null && nowMs() <= deadline && [...left.values()].some((n) => n > 0)
+  const canAsk = mine && delivered && nowMs() <= deadline && [...left.values()].some((n) => n > 0)
+  const choiceOpen = choiceDeadline !== null && nowMs() <= choiceDeadline
   const blocker = items.length
     ? returnRequestBlocker(order, own, items, 'shopper', nowMs(), windowDays)
     : null
@@ -95,9 +111,12 @@ export function OrderReturns({ order }: { order: Order }) {
           </Button>
         )}
       </div>
-      {canAsk && deadline && !open && (
+      {canAsk && (
         <p className="text-sm text-[color:var(--sf-muted)]">
-          You can ask for a return until {fmtDateTime(deadline)}.
+          You can return a damaged, wrong, late, defective or expired item until {fmtDateTime(deadline)}.{' '}
+          {choiceOpen
+            ? `For a change of mind or fit, until ${fmtDateTime(choiceDeadline)}.`
+            : 'This store does not take change-of-mind or fit returns online.'}
         </p>
       )}
       {own.map((r) => (
@@ -112,11 +131,14 @@ export function OrderReturns({ order }: { order: Order }) {
               .join(', ')}
           </p>
           <p className="mt-1 text-[color:var(--sf-muted)]">
-            {r.status === 'refunded'
-              ? `${fmtIdr(r.refundAmount)} refunded to your original payment method.`
-              : STATUS_NOTE[r.status]}
+            {r.status === 'refunded' ? refundLine(r) : STATUS_NOTE[r.status]}
             {r.rejectReason ? ` ${r.rejectReason}` : ''}
           </p>
+          {r.status !== 'rejected' && r.status !== 'cancelled' && (
+            <p className="mt-1 text-[color:var(--sf-muted)]">
+              {RETURN_SHIPPING_PAYER_LABEL[shippingPayerOf(r)]}.
+            </p>
+          )}
         </div>
       ))}
       {open && (
@@ -177,6 +199,11 @@ export function OrderReturns({ order }: { order: Order }) {
               onChange={(e) => setNote(e.target.value)}
             />
           </Field>
+          <p className="text-sm text-[color:var(--sf-muted)]">
+            {returnShippingPayer([{ reason }]) === 'brand'
+              ? 'The store pays to send it back, because the problem is on its side.'
+              : 'You pay to send it back for a change of mind or fit.'}
+          </p>
           {(error || blocker) && (
             <p className="text-sm text-danger" role="alert">
               {error || blocker}

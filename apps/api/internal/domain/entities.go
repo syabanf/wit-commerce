@@ -81,6 +81,35 @@ type Tenant struct {
 	ReturnWindowDays *int `json:"returnWindowDays,omitempty"`
 	// ShopperEmailsOff lists the shopper emails the brand switched off.
 	ShopperEmailsOff []string `json:"shopperEmailsOff,omitempty"`
+	// Legal is who the seller is, how shoppers complain and the brand's terms choices.
+	Legal *SellerLegal `json:"legal,omitempty"`
+	// CourierEtaDays overrides the platform's delivery estimate per courier.
+	CourierEtaDays map[string]EtaDays `json:"courierEtaDays,omitempty"`
+}
+
+// EtaDays is how many whole days a parcel takes after it ships.
+type EtaDays struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// SellerLegal mirrors SellerLegal in packages/types: the seller's identity (PP 80/2019 Pasal 9 and
+// 13), complaint service (Pasal 27) and terms choices (Pasal 53). Empty fields stay out.
+type SellerLegal struct {
+	EntityName         string `json:"entityName,omitempty"`
+	BusinessType       string `json:"businessType,omitempty"`
+	NIB                string `json:"nib,omitempty"`
+	NPWP               string `json:"npwp,omitempty"`
+	Address            string `json:"address,omitempty"`
+	City               string `json:"city,omitempty"`
+	Phone              string `json:"phone,omitempty"`
+	Email              string `json:"email,omitempty"`
+	Hours              string `json:"hours,omitempty"`
+	ComplaintProcedure string `json:"complaintProcedure,omitempty"`
+	ComplaintDays      *int   `json:"complaintDays,omitempty"`
+	DisputeForum       string `json:"disputeForum,omitempty"`
+	DisputeVenue       string `json:"disputeVenue,omitempty"`
+	TermsExtra         string `json:"termsExtra,omitempty"`
 }
 
 // StoreMenus are the links a store shows in its header and footer, in order.
@@ -452,6 +481,10 @@ type Order struct {
 	RefundedAmount int             `json:"refundedAmount"`
 	Events         []OrderEvent    `json:"events"`
 	Agent          *AgentOrderInfo `json:"agent,omitempty"`
+	// TermsVersion is the version of the store's terms the shopper agreed to at checkout, and
+	// TermsAcceptedAt when, by the API's clock.
+	TermsVersion    string  `json:"termsVersion,omitempty"`
+	TermsAcceptedAt IsoDate `json:"termsAcceptedAt,omitempty"`
 }
 
 type AgentPolicy struct {
@@ -484,6 +517,19 @@ type Customer struct {
 	CreatedAt IsoDate  `json:"createdAt"`
 	Birthday  *string  `json:"birthday"`
 	Color     string   `json:"color"`
+	// MarketingConsent is the shopper's last answer about offers and news; nil means never asked.
+	MarketingConsent *MarketingConsent `json:"marketingConsent,omitempty"`
+	// ErasedAt is when the customer's personal data was replaced with placeholders.
+	ErasedAt IsoDate `json:"erasedAt,omitempty"`
+}
+
+// MarketingConsent records whether a shopper agreed to marketing messages, when, where they
+// answered and which wording they saw, as proof of consent.
+type MarketingConsent struct {
+	Granted     bool    `json:"granted"`
+	At          IsoDate `json:"at"`
+	Source      string  `json:"source"`
+	TextVersion string  `json:"textVersion"`
 }
 
 type CustomerEvent struct {
@@ -549,6 +595,16 @@ type Ticket struct {
 	CreatedAt  IsoDate  `json:"createdAt"`
 	SlaDueAt   IsoDate  `json:"slaDueAt"`
 	ResolvedAt *IsoDate `json:"resolvedAt"`
+	// Message is what the shopper wrote in the storefront's complaint form.
+	Message string `json:"message,omitempty"`
+	// Contact is how to reach the shopper; a guest's ticket has no customer record.
+	Contact *TicketContact `json:"contact,omitempty"`
+}
+
+type TicketContact struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
 }
 
 // --- growth ---
@@ -750,4 +806,15 @@ type OrderReturn struct {
 	RejectReason string        `json:"rejectReason,omitempty"`
 	Events       []ReturnEvent `json:"events"`
 	CreatedAt    IsoDate       `json:"createdAt"`
+
+	// ShippingPaidBy is brand or shopper, fixed when the return was requested.
+	ShippingPaidBy string `json:"shippingPaidBy,omitempty"`
+	// RefundShipping is the return shipping the brand added to the refund; part of RefundAmount.
+	RefundShipping  int    `json:"refundShipping,omitempty"`
+	RefundMethod    string `json:"refundMethod,omitempty"`
+	RefundReference string `json:"refundReference,omitempty"`
+	RefundedOn      string `json:"refundedOn,omitempty"`
+	// GatewayStatus is the last gateway refund attempt: succeeded, failed or pending (no answer).
+	GatewayStatus string `json:"gatewayStatus,omitempty"`
+	GatewayError  string `json:"gatewayError,omitempty"`
 }

@@ -19,6 +19,7 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 import { type AgentPlan, type Mandate } from '../lib/agent'
 import { DEMO_PAYMENT_NOTE } from '../lib/checkout'
 import { paths } from '../lib/paths'
+import { ApproveMeansConsent } from './TermsConsent'
 import { type CartItem, type ChoiceItem, type Step, useAgentChat } from '../state/agentChat'
 import { useShop } from '../state/shop'
 import { ProductImage } from './product'
@@ -478,6 +479,7 @@ function CartCard({
                 Not now
               </Button>
             </div>
+            <ApproveMeansConsent />
           </>
         )}
         {status === 'paid' && (

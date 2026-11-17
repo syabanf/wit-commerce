@@ -119,6 +119,7 @@ func (sn ShopperNotices) queue(ctx context.Context, tx pgx.Tx, n kernel.Notice) 
 		key = fmt.Sprintf("%s:%d", key, o.RefundedAmount)
 	case "return_approved", "return_refunded":
 		f.ReturnCode = n.Return.Code
+		f.RefundReference, f.RefundByTransfer = n.Return.RefundReference, n.Return.RefundMethod == "manual"
 		key = n.Kind + ":" + n.Return.ID
 		for _, item := range n.Return.Items {
 			f.Lines = append(f.Lines, names(item.VariantID, item.ProductID, item.Qty, returnReasonLabel[item.Reason]))
@@ -135,4 +136,5 @@ func (sn ShopperNotices) queue(ctx context.Context, tx pgx.Tx, n kernel.Notice) 
 var returnReasonLabel = map[string]string{
 	"damaged": "Arrived damaged", "wrong_item": "Wrong item sent", "not_as_described": "Not as described",
 	"size_or_fit": "Size or fit", "changed_mind": "Changed my mind",
+	"late_delivery": "Arrived later than promised", "hidden_defect": "Hidden defect", "expired": "Expired",
 }

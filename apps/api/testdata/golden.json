@@ -11981,6 +11981,7 @@
       "requestedBy": "shopper",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdchq4kqb",
@@ -12061,6 +12062,7 @@
       "requestedBy": "shopper",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdc2kvghe",
@@ -12139,6 +12141,7 @@
       "requestedBy": "shopper",
       "refundAmount": 0,
       "restock": true,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdc6wnddb",
@@ -12186,7 +12189,10 @@
     "type": "returns/refund",
     "id": "ret-golden-1",
     "amount": 100000000,
-    "note": "Golden refund"
+    "note": "Golden refund",
+    "method": "manual",
+    "reference": "TRF-GOLDEN-1",
+    "refundedOn": "2026-10-06"
    },
    "by": "usr-budi",
    "at": "2026-10-11T10:41:00+07:00",
@@ -12313,6 +12319,7 @@
       "requestedBy": "shopper",
       "refundAmount": 129000,
       "restock": true,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdcs3cshz",
@@ -12343,7 +12350,10 @@
         "note": "Requested by the shopper"
        }
       ],
-      "createdAt": "2026-10-11T04:41:00+07:00"
+      "createdAt": "2026-10-11T04:41:00+07:00",
+      "refundMethod": "manual",
+      "refundReference": "TRF-GOLDEN-1",
+      "refundedOn": "2026-10-06"
      }
     ]
    },
@@ -12497,6 +12507,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "shopper",
       "events": [
        {
         "id": "oev-7sdc6j0qwp",
@@ -12555,6 +12566,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "shopper",
       "events": [
        {
         "id": "oev-7sdckukfbt",
@@ -12733,6 +12745,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdcqm5bq7",
@@ -12779,6 +12792,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdcfsqoh1",
@@ -12963,6 +12977,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdcetxjxn",
@@ -13009,6 +13024,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdczq104u",
@@ -13062,6 +13078,7 @@
       "requestedBy": "staff",
       "refundAmount": 0,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdckrv7r3",
@@ -13097,7 +13114,10 @@
     "type": "returns/refund",
     "id": "ret-golden-4",
     "amount": 100000000,
-    "note": ""
+    "note": "",
+    "method": "manual",
+    "reference": "TRF-GOLDEN-1",
+    "refundedOn": "2026-10-06"
    },
    "by": "usr-budi",
    "at": "2026-10-11T19:41:00+07:00",
@@ -13252,6 +13272,7 @@
       "requestedBy": "staff",
       "refundAmount": 387000,
       "restock": false,
+      "shippingPaidBy": "brand",
       "events": [
        {
         "id": "oev-7sdc5wfyp4",
@@ -13282,10 +13303,2563 @@
         "note": "Return started"
        }
       ],
-      "createdAt": "2026-10-11T16:41:00+07:00"
+      "createdAt": "2026-10-11T16:41:00+07:00",
+      "refundMethod": "manual",
+      "refundReference": "TRF-GOLDEN-1",
+      "refundedOn": "2026-10-06"
      }
     ]
    },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setShopSettings refused under the legal floor",
+   "action": {
+    "type": "tenants/setShopSettings",
+    "tenantId": "ten-lari",
+    "returnWindowDays": 1,
+    "shopperEmailsOff": []
+   },
+   "by": "usr-andi",
+   "at": "2026-10-11T20:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "tenants/setShopSettings returns off",
+   "action": {
+    "type": "tenants/setShopSettings",
+    "tenantId": "ten-lari",
+    "returnWindowDays": 0,
+    "shopperEmailsOff": []
+   },
+   "by": "usr-andi",
+   "at": "2026-10-11T21:41:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 0
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/place for legal returns",
+   "action": {
+    "type": "orders/place",
+    "order": {
+     "id": "ord-golden-r2",
+     "tenantId": "ten-lari",
+     "code": "LARI-9n-r2",
+     "customerId": "cus-lari-0235",
+     "channel": "marketplace",
+     "sellerId": null,
+     "campaignId": null,
+     "status": "new",
+     "paymentStatus": "pending",
+     "paymentMethod": "qris",
+     "courier": "gojek",
+     "trackingNo": null,
+     "warehouseId": "wh-lari-ckr",
+     "city": "Jakarta",
+     "lines": [
+      {
+       "productId": "prd-lr-118",
+       "variantId": "var-lr-118-1",
+       "qty": 4,
+       "price": 129000
+      }
+     ],
+     "subtotal": 516000,
+     "discount": 0,
+     "shipping": 18000,
+     "total": 534000,
+     "voucherCode": null,
+     "pointsEarned": 27,
+     "createdAt": "2026-10-11T21:41:00+07:00",
+     "cancelReason": null,
+     "refundedAmount": 0,
+     "events": [
+      {
+       "id": "oev-ord-golden-r2",
+       "at": "2026-10-11T21:41:00+07:00",
+       "by": "storefront",
+       "status": "new",
+       "note": "Placed"
+      }
+     ],
+     "discountLines": []
+    },
+    "customer": null
+   },
+   "by": "storefront",
+   "at": "2026-10-11T22:41:00+07:00",
+   "upserts": {
+    "stock": [
+     {
+      "id": "stk-var-lr-118-1-ckr",
+      "tenantId": "ten-lari",
+      "productId": "prd-lr-118",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "onHand": 14,
+      "reserved": 7,
+      "safety": 8
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdcc1yoc3",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0235",
+      "kind": "checkout_started",
+      "at": "2026-10-11T22:41:00+07:00",
+      "label": "Checked out on the storefront",
+      "productId": null,
+      "orderId": "ord-golden-r2",
+      "campaignId": null,
+      "by": "storefront"
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "new",
+      "paymentStatus": "pending",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance confirm for legal returns",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-r2"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-11T23:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "confirmed",
+      "paymentStatus": "pending",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance pay for legal returns",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-r2"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T00:41:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0235",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10235",
+      "name": "Teguh Susanto",
+      "email": "teguh.susanto234@mail.id",
+      "phone": "+62 815 3042 4228",
+      "city": "Jakarta",
+      "source": "web",
+      "stage": "at_risk",
+      "tier": "silver",
+      "points": 290,
+      "tags": [
+       "golden"
+      ],
+      "interests": [
+       "cat-lari-acc",
+       "cat-lari-road"
+      ],
+      "sellerId": null,
+      "createdAt": "2026-03-23T17:41:00+07:00",
+      "birthday": "1980-07-12",
+      "color": "#5c5c7a"
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdc4mx60a",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0235",
+      "kind": "purchase",
+      "at": "2026-10-12T00:41:00+07:00",
+      "label": "Order LARI-9n-r2",
+      "productId": null,
+      "orderId": "ord-golden-r2",
+      "campaignId": null,
+      "by": "usr-budi"
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "paid",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance process for legal returns",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-r2"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T01:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "processing",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance pack for legal returns",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-r2"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T02:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "packed",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcfwjkej",
+        "at": "2026-10-12T02:41:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance ship for legal returns",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-r2"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T03:41:00+07:00",
+   "upserts": {
+    "stock": [
+     {
+      "id": "stk-var-lr-118-1-ckr",
+      "tenantId": "ten-lari",
+      "productId": "prd-lr-118",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "onHand": 10,
+      "reserved": 3,
+      "safety": 8
+     }
+    ],
+    "stockMoves": [
+     {
+      "id": "mv-7sdci5e8rs",
+      "tenantId": "ten-lari",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "kind": "sale",
+      "qty": -4,
+      "at": "2026-10-12T03:41:00+07:00",
+      "by": "usr-budi",
+      "note": "LARI-9n-r2"
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "shipped",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdc1cc9j6",
+        "at": "2026-10-12T03:41:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcfwjkej",
+        "at": "2026-10-12T02:41:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance deliver for legal returns",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-r2"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T04:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcgtrpck",
+        "at": "2026-10-12T04:41:00+07:00",
+        "by": "usr-budi",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-7sdc1cc9j6",
+        "at": "2026-10-12T03:41:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcfwjkej",
+        "at": "2026-10-12T02:41:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "returns/request refused changed mind with returns off",
+   "action": {
+    "type": "returns/request",
+    "id": "ret-golden-5",
+    "orderId": "ord-golden-r2",
+    "items": [
+     {
+      "variantId": "var-lr-118-1",
+      "qty": 1,
+      "reason": "changed_mind"
+     }
+    ],
+    "note": "",
+    "who": "shopper"
+   },
+   "by": "storefront",
+   "at": "2026-10-12T05:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "returns/request late delivery with returns off",
+   "action": {
+    "type": "returns/request",
+    "id": "ret-golden-6",
+    "orderId": "ord-golden-r2",
+    "items": [
+     {
+      "variantId": "var-lr-118-1",
+      "qty": 1,
+      "reason": "late_delivery"
+     }
+    ],
+    "note": "",
+    "who": "shopper"
+   },
+   "by": "storefront",
+   "at": "2026-10-12T06:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdco9neg8",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": null,
+        "note": "Return LARI-R0005 requested"
+       },
+       {
+        "id": "oev-7sdcgtrpck",
+        "at": "2026-10-12T04:41:00+07:00",
+        "by": "usr-budi",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-7sdc1cc9j6",
+        "at": "2026-10-12T03:41:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcfwjkej",
+        "at": "2026-10-12T02:41:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ],
+    "returns": [
+     {
+      "id": "ret-golden-6",
+      "tenantId": "ten-lari",
+      "code": "LARI-R0005",
+      "orderId": "ord-golden-r2",
+      "customerId": "cus-lari-0235",
+      "items": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 1,
+        "reason": "late_delivery"
+       }
+      ],
+      "reason": "late_delivery",
+      "note": "",
+      "status": "requested",
+      "requestedBy": "shopper",
+      "refundAmount": 0,
+      "restock": false,
+      "shippingPaidBy": "brand",
+      "events": [
+       {
+        "id": "oev-7sdckuekab",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": "requested",
+        "note": "Requested by the shopper"
+       }
+      ],
+      "createdAt": "2026-10-12T06:41:00+07:00"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "returns/approve late delivery",
+   "action": {
+    "type": "returns/approve",
+    "id": "ret-golden-6",
+    "note": ""
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T07:41:00+07:00",
+   "upserts": {
+    "returns": [
+     {
+      "id": "ret-golden-6",
+      "tenantId": "ten-lari",
+      "code": "LARI-R0005",
+      "orderId": "ord-golden-r2",
+      "customerId": "cus-lari-0235",
+      "items": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 1,
+        "reason": "late_delivery"
+       }
+      ],
+      "reason": "late_delivery",
+      "note": "",
+      "status": "approved",
+      "requestedBy": "shopper",
+      "refundAmount": 0,
+      "restock": false,
+      "shippingPaidBy": "brand",
+      "events": [
+       {
+        "id": "oev-7sdc3d27gf",
+        "at": "2026-10-12T07:41:00+07:00",
+        "by": "usr-budi",
+        "status": "approved",
+        "note": "Approved"
+       },
+       {
+        "id": "oev-7sdckuekab",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": "requested",
+        "note": "Requested by the shopper"
+       }
+      ],
+      "createdAt": "2026-10-12T06:41:00+07:00"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "returns/receive late delivery",
+   "action": {
+    "type": "returns/receive",
+    "id": "ret-golden-6",
+    "restock": true
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T08:41:00+07:00",
+   "upserts": {
+    "stock": [
+     {
+      "id": "stk-var-lr-118-1-ckr",
+      "tenantId": "ten-lari",
+      "productId": "prd-lr-118",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "onHand": 11,
+      "reserved": 3,
+      "safety": 8
+     }
+    ],
+    "stockMoves": [
+     {
+      "id": "mv-7sdctz6kp7",
+      "tenantId": "ten-lari",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "kind": "return",
+      "qty": 1,
+      "at": "2026-10-12T08:41:00+07:00",
+      "by": "usr-budi",
+      "note": "LARI-R0005"
+     }
+    ],
+    "returns": [
+     {
+      "id": "ret-golden-6",
+      "tenantId": "ten-lari",
+      "code": "LARI-R0005",
+      "orderId": "ord-golden-r2",
+      "customerId": "cus-lari-0235",
+      "items": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 1,
+        "reason": "late_delivery"
+       }
+      ],
+      "reason": "late_delivery",
+      "note": "",
+      "status": "received",
+      "requestedBy": "shopper",
+      "refundAmount": 0,
+      "restock": true,
+      "shippingPaidBy": "brand",
+      "events": [
+       {
+        "id": "oev-7sdc2eg3ul",
+        "at": "2026-10-12T08:41:00+07:00",
+        "by": "usr-budi",
+        "status": "received",
+        "note": "Received and restocked"
+       },
+       {
+        "id": "oev-7sdc3d27gf",
+        "at": "2026-10-12T07:41:00+07:00",
+        "by": "usr-budi",
+        "status": "approved",
+        "note": "Approved"
+       },
+       {
+        "id": "oev-7sdckuekab",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": "requested",
+        "note": "Requested by the shopper"
+       }
+      ],
+      "createdAt": "2026-10-12T06:41:00+07:00"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "returns/refund refused without a transfer reference",
+   "action": {
+    "type": "returns/refund",
+    "id": "ret-golden-6",
+    "amount": 100000000,
+    "note": "",
+    "method": "manual",
+    "reference": " ",
+    "refundedOn": "2026-10-06"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T09:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "returns/refund with return shipping",
+   "action": {
+    "type": "returns/refund",
+    "id": "ret-golden-6",
+    "amount": 100000000,
+    "note": "",
+    "shippingCost": 15000,
+    "method": "manual",
+    "reference": "TRF-GOLDEN-6",
+    "refundedOn": "2026-10-07"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T10:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 144000,
+      "events": [
+       {
+        "id": "oev-7sdc6vcx5p",
+        "at": "2026-10-12T10:41:00+07:00",
+        "by": "usr-budi",
+        "status": null,
+        "note": "Refunded 144000 · Return LARI-R0005"
+       },
+       {
+        "id": "oev-7sdco9neg8",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": null,
+        "note": "Return LARI-R0005 requested"
+       },
+       {
+        "id": "oev-7sdcgtrpck",
+        "at": "2026-10-12T04:41:00+07:00",
+        "by": "usr-budi",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-7sdc1cc9j6",
+        "at": "2026-10-12T03:41:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcfwjkej",
+        "at": "2026-10-12T02:41:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ],
+    "returns": [
+     {
+      "id": "ret-golden-6",
+      "tenantId": "ten-lari",
+      "code": "LARI-R0005",
+      "orderId": "ord-golden-r2",
+      "customerId": "cus-lari-0235",
+      "items": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 1,
+        "reason": "late_delivery"
+       }
+      ],
+      "reason": "late_delivery",
+      "note": "",
+      "status": "refunded",
+      "requestedBy": "shopper",
+      "refundAmount": 144000,
+      "restock": true,
+      "shippingPaidBy": "brand",
+      "events": [
+       {
+        "id": "oev-7sdce15ox0",
+        "at": "2026-10-12T10:41:00+07:00",
+        "by": "usr-budi",
+        "status": "refunded",
+        "note": "Refunded 144000"
+       },
+       {
+        "id": "oev-7sdc2eg3ul",
+        "at": "2026-10-12T08:41:00+07:00",
+        "by": "usr-budi",
+        "status": "received",
+        "note": "Received and restocked"
+       },
+       {
+        "id": "oev-7sdc3d27gf",
+        "at": "2026-10-12T07:41:00+07:00",
+        "by": "usr-budi",
+        "status": "approved",
+        "note": "Approved"
+       },
+       {
+        "id": "oev-7sdckuekab",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": "requested",
+        "note": "Requested by the shopper"
+       }
+      ],
+      "createdAt": "2026-10-12T06:41:00+07:00",
+      "refundShipping": 15000,
+      "refundMethod": "manual",
+      "refundReference": "TRF-GOLDEN-6",
+      "refundedOn": "2026-10-07"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setShopSettings change of mind",
+   "action": {
+    "type": "tenants/setShopSettings",
+    "tenantId": "ten-lari",
+    "returnWindowDays": 14,
+    "shopperEmailsOff": []
+   },
+   "by": "usr-andi",
+   "at": "2026-10-12T11:41:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 14
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "returns/request size or fit, shopper pays shipping",
+   "action": {
+    "type": "returns/request",
+    "id": "ret-golden-7",
+    "orderId": "ord-golden-r2",
+    "items": [
+     {
+      "variantId": "var-lr-118-1",
+      "qty": 1,
+      "reason": "size_or_fit"
+     }
+    ],
+    "note": "",
+    "who": "shopper"
+   },
+   "by": "storefront",
+   "at": "2026-10-12T12:41:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-r2",
+      "tenantId": "ten-lari",
+      "code": "LARI-9n-r2",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-10-11T21:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 144000,
+      "events": [
+       {
+        "id": "oev-7sdcyi9xs8",
+        "at": "2026-10-12T12:41:00+07:00",
+        "by": "storefront",
+        "status": null,
+        "note": "Return LARI-R0006 requested"
+       },
+       {
+        "id": "oev-7sdc6vcx5p",
+        "at": "2026-10-12T10:41:00+07:00",
+        "by": "usr-budi",
+        "status": null,
+        "note": "Refunded 144000 · Return LARI-R0005"
+       },
+       {
+        "id": "oev-7sdco9neg8",
+        "at": "2026-10-12T06:41:00+07:00",
+        "by": "storefront",
+        "status": null,
+        "note": "Return LARI-R0005 requested"
+       },
+       {
+        "id": "oev-7sdcgtrpck",
+        "at": "2026-10-12T04:41:00+07:00",
+        "by": "usr-budi",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-7sdc1cc9j6",
+        "at": "2026-10-12T03:41:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcfwjkej",
+        "at": "2026-10-12T02:41:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdc6a6l33",
+        "at": "2026-10-12T01:41:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc2qs1b6",
+        "at": "2026-10-12T00:41:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdcgeozjt",
+        "at": "2026-10-11T23:41:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-r2",
+        "at": "2026-10-11T21:41:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ],
+    "returns": [
+     {
+      "id": "ret-golden-7",
+      "tenantId": "ten-lari",
+      "code": "LARI-R0006",
+      "orderId": "ord-golden-r2",
+      "customerId": "cus-lari-0235",
+      "items": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 1,
+        "reason": "size_or_fit"
+       }
+      ],
+      "reason": "size_or_fit",
+      "note": "",
+      "status": "requested",
+      "requestedBy": "shopper",
+      "refundAmount": 0,
+      "restock": false,
+      "shippingPaidBy": "shopper",
+      "events": [
+       {
+        "id": "oev-7sdc5ycu89",
+        "at": "2026-10-12T12:41:00+07:00",
+        "by": "storefront",
+        "status": "requested",
+        "note": "Requested by the shopper"
+       }
+      ],
+      "createdAt": "2026-10-12T12:41:00+07:00"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "customers/setConsent",
+   "action": {
+    "type": "customers/setConsent",
+    "id": "cus-lari-0032",
+    "granted": true,
+    "source": "staff",
+    "textVersion": "2026-11"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T13:41:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0032",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10032",
+      "name": "Hana Wijaya",
+      "email": "hana.wijaya31@mail.id",
+      "phone": "+62 853 4033 2391",
+      "city": "Surabaya",
+      "source": "whatsapp",
+      "stage": "repeat_buyer",
+      "tier": "member",
+      "points": 93,
+      "tags": [],
+      "interests": [
+       "cat-lari-apparel"
+      ],
+      "sellerId": null,
+      "createdAt": "2026-08-23T05:41:00+07:00",
+      "birthday": "1997-12-14",
+      "color": "#4f6f94",
+      "marketingConsent": {
+       "granted": true,
+       "at": "2026-10-12T13:41:00+07:00",
+       "source": "staff",
+       "textVersion": "2026-11"
+      }
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdczo2yq6",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0032",
+      "kind": "privacy",
+      "at": "2026-10-12T13:41:00+07:00",
+      "label": "Agreed to marketing messages · staff",
+      "productId": null,
+      "orderId": null,
+      "campaignId": null,
+      "by": "usr-budi"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "customers/setConsent refused unchanged",
+   "action": {
+    "type": "customers/setConsent",
+    "id": "cus-lari-0032",
+    "granted": true,
+    "source": "staff",
+    "textVersion": "2026-11"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T14:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "customers/save keeps consent",
+   "action": {
+    "type": "customers/save",
+    "customer": {
+     "id": "cus-lari-0032",
+     "tenantId": "ten-lari",
+     "code": "LARI-C10032",
+     "name": "Golden Rename",
+     "email": "hana.wijaya31@mail.id",
+     "phone": "+62 853 4033 2391",
+     "city": "Surabaya",
+     "source": "whatsapp",
+     "stage": "repeat_buyer",
+     "tier": "member",
+     "points": 93,
+     "tags": [],
+     "interests": [
+      "cat-lari-apparel"
+     ],
+     "sellerId": null,
+     "createdAt": "2026-08-23T05:41:00+07:00",
+     "birthday": "1997-12-14",
+     "color": "#4f6f94"
+    }
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T15:41:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0032",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10032",
+      "name": "Golden Rename",
+      "email": "hana.wijaya31@mail.id",
+      "phone": "+62 853 4033 2391",
+      "city": "Surabaya",
+      "source": "whatsapp",
+      "stage": "repeat_buyer",
+      "tier": "member",
+      "points": 93,
+      "tags": [],
+      "interests": [
+       "cat-lari-apparel"
+      ],
+      "sellerId": null,
+      "createdAt": "2026-08-23T05:41:00+07:00",
+      "birthday": "1997-12-14",
+      "color": "#4f6f94",
+      "marketingConsent": {
+       "granted": true,
+       "at": "2026-10-12T13:41:00+07:00",
+       "source": "staff",
+       "textVersion": "2026-11"
+      }
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "leads/save for erasure",
+   "action": {
+    "type": "leads/save",
+    "lead": {
+     "id": "lead-golden-privacy",
+     "tenantId": "ten-lari",
+     "code": "LD-311",
+     "name": "Dina Hapsari",
+     "company": "Bank Mandala Running Club",
+     "phone": "+62 818 1585 2279",
+     "productId": "prd-lr-128",
+     "value": 48000000,
+     "stage": "proposal",
+     "source": "personal_store",
+     "sellerId": "sel-rizky-lari",
+     "customerId": "cus-lari-0032",
+     "note": "Golden lead note",
+     "createdAt": "2026-09-21T11:00:00+07:00",
+     "updatedAt": "2026-10-03T11:00:00+07:00",
+     "lostReason": null
+    }
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T16:41:00+07:00",
+   "upserts": {
+    "leads": [
+     {
+      "id": "lead-golden-privacy",
+      "tenantId": "ten-lari",
+      "code": "LD-311",
+      "name": "Dina Hapsari",
+      "company": "Bank Mandala Running Club",
+      "phone": "+62 818 1585 2279",
+      "productId": "prd-lr-128",
+      "value": 48000000,
+      "stage": "proposal",
+      "source": "personal_store",
+      "sellerId": "sel-rizky-lari",
+      "customerId": "cus-lari-0032",
+      "note": "Golden lead note",
+      "createdAt": "2026-09-21T11:00:00+07:00",
+      "updatedAt": "2026-10-12T16:41:00+07:00",
+      "lostReason": null
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "customers/note before erasure",
+   "action": {
+    "type": "customers/note",
+    "id": "cus-lari-0032",
+    "note": "Golden private note"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T17:41:00+07:00",
+   "upserts": {
+    "customerEvents": [
+     {
+      "id": "ev-7sdc436gpd",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0032",
+      "kind": "note",
+      "at": "2026-10-12T17:41:00+07:00",
+      "label": "Golden private note",
+      "productId": null,
+      "orderId": null,
+      "campaignId": null,
+      "by": "usr-budi"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "customers/erase refused order on its way",
+   "action": {
+    "type": "customers/erase",
+    "id": "cus-lari-0040",
+    "note": ""
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T18:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "customers/erase",
+   "action": {
+    "type": "customers/erase",
+    "id": "cus-lari-0032",
+    "note": "Golden erasure"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T19:41:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0032",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10032",
+      "name": "Erased customer",
+      "email": "",
+      "phone": "",
+      "city": "",
+      "source": "whatsapp",
+      "stage": "repeat_buyer",
+      "tier": "member",
+      "points": 93,
+      "tags": [],
+      "interests": [],
+      "sellerId": null,
+      "createdAt": "2026-08-23T05:41:00+07:00",
+      "birthday": null,
+      "color": "#4f6f94",
+      "erasedAt": "2026-10-12T19:41:00+07:00"
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdcvccjfv",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0032",
+      "kind": "privacy",
+      "at": "2026-10-12T19:41:00+07:00",
+      "label": "Personal data erased",
+      "productId": null,
+      "orderId": null,
+      "campaignId": null,
+      "by": "usr-budi"
+     },
+     {
+      "id": "ev-7sdc436gpd",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0032",
+      "kind": "note",
+      "at": "2026-10-12T17:41:00+07:00",
+      "label": "Erased",
+      "productId": null,
+      "orderId": null,
+      "campaignId": null,
+      "by": "usr-budi"
+     },
+     {
+      "id": "ev-tic-ten-lari-15",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0032",
+      "kind": "support",
+      "at": "2026-09-19T00:41:00+07:00",
+      "label": "Erased",
+      "productId": null,
+      "orderId": "ord-lari-muj7oz1cv",
+      "campaignId": null,
+      "by": null
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-lari-mtciwwdcv",
+      "tenantId": "ten-lari",
+      "code": "LARI-10501",
+      "customerId": "cus-lari-0032",
+      "channel": "web",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "completed",
+      "paymentStatus": "paid",
+      "paymentMethod": "credit_card",
+      "courier": "pickup",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-sby",
+      "city": "",
+      "lines": [
+       {
+        "productId": "prd-lr-113",
+        "variantId": "var-lr-113-3",
+        "qty": 1,
+        "price": 649000
+       }
+      ],
+      "subtotal": 649000,
+      "discount": 65000,
+      "shipping": 25000,
+      "total": 609000,
+      "voucherCode": "WELCOME10",
+      "pointsEarned": 60,
+      "createdAt": "2026-08-28T12:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-mtciwwdc-7",
+        "at": "2026-09-02T13:05:00+07:00",
+        "by": "system",
+        "status": "completed",
+        "note": "Completed after the return window"
+       },
+       {
+        "id": "oev-mtciwwdc-6",
+        "at": "2026-08-30T13:05:00+07:00",
+        "by": "system",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-mtciwwdc-5",
+        "at": "2026-08-29T10:05:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Handed to courier"
+       },
+       {
+        "id": "oev-mtciwwdc-4",
+        "at": "2026-08-28T23:05:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-mtciwwdc-3",
+        "at": "2026-08-28T19:05:00+07:00",
+        "by": "system",
+        "status": "processing",
+        "note": "Picking started"
+       },
+       {
+        "id": "oev-mtciwwdc-2",
+        "at": "2026-08-28T14:05:00+07:00",
+        "by": "system",
+        "status": "paid",
+        "note": "Payment received"
+       },
+       {
+        "id": "oev-mtciwwdc-1",
+        "at": "2026-08-28T12:52:00+07:00",
+        "by": "system",
+        "status": "confirmed",
+        "note": "Order confirmed"
+       },
+       {
+        "id": "oev-mtciwwdc-0",
+        "at": "2026-08-28T12:41:00+07:00",
+        "by": "system",
+        "status": "new",
+        "note": "Order placed"
+       }
+      ]
+     },
+     {
+      "id": "ord-lari-muj7oz1cv",
+      "tenantId": "ten-lari",
+      "code": "LARI-10790",
+      "customerId": "cus-lari-0032",
+      "channel": "web",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "completed",
+      "paymentStatus": "paid",
+      "paymentMethod": "paylater",
+      "courier": "sicepat",
+      "trackingNo": "SICEPAT23206017",
+      "warehouseId": "wh-lari-sby",
+      "city": "",
+      "lines": [
+       {
+        "productId": "prd-lr-113",
+        "variantId": "var-lr-113-3",
+        "qty": 1,
+        "price": 649000
+       }
+      ],
+      "subtotal": 649000,
+      "discount": 0,
+      "shipping": 25000,
+      "total": 674000,
+      "voucherCode": null,
+      "pointsEarned": 67,
+      "createdAt": "2026-09-27T09:41:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-muj7oz1c-7",
+        "at": "2026-10-03T18:38:00+07:00",
+        "by": "system",
+        "status": "completed",
+        "note": "Completed after the return window"
+       },
+       {
+        "id": "oev-muj7oz1c-6",
+        "at": "2026-09-30T18:38:00+07:00",
+        "by": "system",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-muj7oz1c-5",
+        "at": "2026-09-27T20:38:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Handed to courier · SICEPAT23206017"
+       },
+       {
+        "id": "oev-muj7oz1c-4",
+        "at": "2026-09-27T18:38:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-muj7oz1c-3",
+        "at": "2026-09-27T16:38:00+07:00",
+        "by": "system",
+        "status": "processing",
+        "note": "Picking started"
+       },
+       {
+        "id": "oev-muj7oz1c-2",
+        "at": "2026-09-27T10:38:00+07:00",
+        "by": "system",
+        "status": "paid",
+        "note": "Payment received"
+       },
+       {
+        "id": "oev-muj7oz1c-1",
+        "at": "2026-09-27T09:50:00+07:00",
+        "by": "system",
+        "status": "confirmed",
+        "note": "Order confirmed"
+       },
+       {
+        "id": "oev-muj7oz1c-0",
+        "at": "2026-09-27T09:41:00+07:00",
+        "by": "system",
+        "status": "new",
+        "note": "Order placed"
+       }
+      ]
+     }
+    ],
+    "leads": [
+     {
+      "id": "lead-golden-privacy",
+      "tenantId": "ten-lari",
+      "code": "LD-311",
+      "name": "Erased customer",
+      "company": "",
+      "phone": "",
+      "productId": "prd-lr-128",
+      "value": 48000000,
+      "stage": "proposal",
+      "source": "personal_store",
+      "sellerId": "sel-rizky-lari",
+      "customerId": "cus-lari-0032",
+      "note": "",
+      "createdAt": "2026-09-21T11:00:00+07:00",
+      "updatedAt": "2026-10-12T16:41:00+07:00",
+      "lostReason": null
+     }
+    ],
+    "tickets": [
+     {
+      "id": "tic-lari-16",
+      "tenantId": "ten-lari",
+      "code": "TK-L5016",
+      "customerId": "cus-lari-0032",
+      "orderId": "ord-lari-muj7oz1cv",
+      "kind": "complaint",
+      "status": "open",
+      "subject": "Erased",
+      "channel": "whatsapp",
+      "assigneeId": "usr-sari",
+      "createdAt": "2026-09-19T00:41:00+07:00",
+      "slaDueAt": "2026-09-21T00:41:00+07:00",
+      "resolvedAt": null
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "customers/erase refused twice",
+   "action": {
+    "type": "customers/erase",
+    "id": "cus-lari-0032",
+    "note": ""
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T20:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "customers/setConsent refused erased",
+   "action": {
+    "type": "customers/setConsent",
+    "id": "cus-lari-0032",
+    "granted": true,
+    "source": "staff",
+    "textVersion": "2026-11"
+   },
+   "by": "usr-budi",
+   "at": "2026-10-12T21:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "customers/setConsent shopper",
+   "action": {
+    "type": "customers/setConsent",
+    "id": "cus-lari-0040",
+    "granted": true,
+    "source": "account",
+    "textVersion": "2026-11"
+   },
+   "by": "storefront",
+   "at": "2026-10-12T22:41:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0040",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10040",
+      "name": "Zaki Simanjuntak",
+      "email": "zaki.simanjuntak39@mail.id",
+      "phone": "+62 841 9778 9170",
+      "city": "Bandung",
+      "source": "marketplace",
+      "stage": "first_buyer",
+      "tier": "silver",
+      "points": 222,
+      "tags": [],
+      "interests": [
+       "cat-lari-apparel",
+       "cat-lari-road"
+      ],
+      "sellerId": null,
+      "createdAt": "2026-09-27T13:41:00+07:00",
+      "birthday": "1995-05-14",
+      "color": "#7a6b3f",
+      "marketingConsent": {
+       "granted": true,
+       "at": "2026-10-12T22:41:00+07:00",
+       "source": "account",
+       "textVersion": "2026-11"
+      }
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdcmefqjr",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0040",
+      "kind": "privacy",
+      "at": "2026-10-12T22:41:00+07:00",
+      "label": "Agreed to marketing messages · account",
+      "productId": null,
+      "orderId": null,
+      "campaignId": null,
+      "by": "storefront"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "customers/setConsent shopper withdraws",
+   "action": {
+    "type": "customers/setConsent",
+    "id": "cus-lari-0040",
+    "granted": false,
+    "source": "account",
+    "textVersion": "2026-11"
+   },
+   "by": "storefront",
+   "at": "2026-10-12T23:41:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0040",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10040",
+      "name": "Zaki Simanjuntak",
+      "email": "zaki.simanjuntak39@mail.id",
+      "phone": "+62 841 9778 9170",
+      "city": "Bandung",
+      "source": "marketplace",
+      "stage": "first_buyer",
+      "tier": "silver",
+      "points": 222,
+      "tags": [],
+      "interests": [
+       "cat-lari-apparel",
+       "cat-lari-road"
+      ],
+      "sellerId": null,
+      "createdAt": "2026-09-27T13:41:00+07:00",
+      "birthday": "1995-05-14",
+      "color": "#7a6b3f",
+      "marketingConsent": {
+       "granted": false,
+       "at": "2026-10-12T23:41:00+07:00",
+       "source": "account",
+       "textVersion": "2026-11"
+      }
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdco7ra2z",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0040",
+      "kind": "privacy",
+      "at": "2026-10-12T23:41:00+07:00",
+      "label": "Withdrew marketing consent · account",
+      "productId": null,
+      "orderId": null,
+      "campaignId": null,
+      "by": "storefront"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setLegal",
+   "action": {
+    "type": "tenants/setLegal",
+    "tenantId": "ten-lari",
+    "legal": {
+     "entityName": " PT Lari Nusantara ",
+     "businessType": "pt",
+     "nib": "1234567890123",
+     "npwp": "01.234.567.8-901.000",
+     "address": "Jl. Senopati 10, Jakarta Selatan",
+     "city": "Jakarta Selatan",
+     "phone": "+62 21 555 0101",
+     "email": "help@lari.co.id",
+     "hours": "",
+     "complaintDays": 5,
+     "disputeForum": "bpsk"
+    }
+   },
+   "by": "usr-andi",
+   "at": "2026-10-13T00:41:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 14,
+      "legal": {
+       "entityName": "PT Lari Nusantara",
+       "businessType": "pt",
+       "nib": "1234567890123",
+       "npwp": "01.234.567.8-901.000",
+       "address": "Jl. Senopati 10, Jakarta Selatan",
+       "city": "Jakarta Selatan",
+       "phone": "+62 21 555 0101",
+       "email": "help@lari.co.id",
+       "complaintDays": 5,
+       "disputeForum": "bpsk"
+      }
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setLegal refused",
+   "action": {
+    "type": "tenants/setLegal",
+    "tenantId": "ten-lari",
+    "legal": {
+     "nib": "12345"
+    }
+   },
+   "by": "usr-andi",
+   "at": "2026-10-13T01:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "tenants/setCourierEta",
+   "action": {
+    "type": "tenants/setCourierEta",
+    "tenantId": "ten-lari",
+    "courierEtaDays": {
+     "jne": {
+      "min": 1,
+      "max": 2
+     },
+     "pickup": {
+      "min": 0,
+      "max": 0
+     }
+    }
+   },
+   "by": "usr-andi",
+   "at": "2026-10-13T02:41:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 14,
+      "legal": {
+       "entityName": "PT Lari Nusantara",
+       "businessType": "pt",
+       "nib": "1234567890123",
+       "npwp": "01.234.567.8-901.000",
+       "address": "Jl. Senopati 10, Jakarta Selatan",
+       "city": "Jakarta Selatan",
+       "phone": "+62 21 555 0101",
+       "email": "help@lari.co.id",
+       "complaintDays": 5,
+       "disputeForum": "bpsk"
+      },
+      "courierEtaDays": {
+       "jne": {
+        "min": 1,
+        "max": 2
+       },
+       "pickup": {
+        "min": 0,
+        "max": 0
+       }
+      }
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setCourierEta refused",
+   "action": {
+    "type": "tenants/setCourierEta",
+    "tenantId": "ten-lari",
+    "courierEtaDays": {
+     "jne": {
+      "min": 3,
+      "max": 1
+     }
+    }
+   },
+   "by": "usr-andi",
+   "at": "2026-10-13T03:41:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "tickets/open guest",
+   "action": {
+    "type": "tickets/open",
+    "complaint": {
+     "id": "tic-golden-1",
+     "tenantId": "ten-lari",
+     "customerId": null,
+     "orderId": null,
+     "subject": " Parcel arrived torn ",
+     "message": "The box was open and one shoe is missing.",
+     "contact": {
+      "name": " Rina ",
+      "email": "rina@example.com",
+      "phone": ""
+     }
+    }
+   },
+   "by": "storefront",
+   "at": "2026-10-13T04:41:00+07:00",
+   "upserts": {
+    "tickets": [
+     {
+      "id": "tic-golden-1",
+      "tenantId": "ten-lari",
+      "code": "LARI-T0001",
+      "customerId": "",
+      "orderId": null,
+      "kind": "complaint",
+      "status": "open",
+      "subject": "Parcel arrived torn",
+      "channel": "web",
+      "assigneeId": null,
+      "createdAt": "2026-10-13T04:41:00+07:00",
+      "slaDueAt": "2026-10-20T04:41:00+07:00",
+      "resolvedAt": null,
+      "message": "The box was open and one shoe is missing.",
+      "contact": {
+       "name": "Rina",
+       "email": "rina@example.com",
+       "phone": ""
+      }
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tickets/open own order",
+   "action": {
+    "type": "tickets/open",
+    "complaint": {
+     "id": "tic-golden-2",
+     "tenantId": "ten-lari",
+     "customerId": "cus-lari-0363",
+     "orderId": "ord-lari-mnafu0dca2",
+     "subject": "Wrong size",
+     "message": "I ordered 42 and got 40 instead.",
+     "contact": {
+      "name": " Rina ",
+      "email": "rina@example.com",
+      "phone": ""
+     }
+    }
+   },
+   "by": "storefront",
+   "at": "2026-10-13T05:41:00+07:00",
+   "upserts": {
+    "tickets": [
+     {
+      "id": "tic-golden-2",
+      "tenantId": "ten-lari",
+      "code": "LARI-T0002",
+      "customerId": "cus-lari-0363",
+      "orderId": "ord-lari-mnafu0dca2",
+      "kind": "complaint",
+      "status": "open",
+      "subject": "Wrong size",
+      "channel": "web",
+      "assigneeId": null,
+      "createdAt": "2026-10-13T05:41:00+07:00",
+      "slaDueAt": "2026-10-20T05:41:00+07:00",
+      "resolvedAt": null,
+      "message": "I ordered 42 and got 40 instead.",
+      "contact": {
+       "name": "Rina",
+       "email": "rina@example.com",
+       "phone": ""
+      }
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tickets/open refused for another order",
+   "action": {
+    "type": "tickets/open",
+    "complaint": {
+     "id": "tic-golden-3",
+     "tenantId": "ten-lari",
+     "customerId": null,
+     "orderId": "ord-lari-mnafu0dca2",
+     "subject": "Wrong size",
+     "message": "I ordered 42 and got 40 instead.",
+     "contact": {
+      "name": " Rina ",
+      "email": "rina@example.com",
+      "phone": ""
+     }
+    }
+   },
+   "by": "storefront",
+   "at": "2026-10-13T06:41:00+07:00",
+   "upserts": {},
    "removes": {}
   }
  ]

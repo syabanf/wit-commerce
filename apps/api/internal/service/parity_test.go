@@ -361,6 +361,19 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		}
 		parse(&a)
 		return s.AddPoints(ctx, m, a.ID, a.Points, a.Reason)
+	case "customers/setConsent":
+		var a struct {
+			ID          string
+			Granted     bool
+			Source      string
+			TextVersion string
+		}
+		parse(&a)
+		return s.SetConsent(ctx, m, a.ID, a.Granted, a.Source, a.TextVersion)
+	case "customers/erase":
+		var a struct{ ID, Note string }
+		parse(&a)
+		return s.EraseCustomer(ctx, m, a.ID, a.Note)
 	case "segments/save":
 		var a struct{ Segment domain.Segment }
 		parse(&a)
@@ -498,6 +511,24 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		}
 		parse(&a)
 		return s.SetShopSettings(ctx, m, a.TenantID, a.ReturnWindowDays, a.ShopperEmailsOff)
+	case "tenants/setLegal":
+		var a struct {
+			TenantID string
+			Legal    domain.SellerLegal
+		}
+		parse(&a)
+		return s.SetLegal(ctx, m, a.TenantID, a.Legal)
+	case "tenants/setCourierEta":
+		var a struct {
+			TenantID       string
+			CourierEtaDays map[string]domain.EtaDays
+		}
+		parse(&a)
+		return s.SetCourierEta(ctx, m, a.TenantID, a.CourierEtaDays)
+	case "tickets/open":
+		var a struct{ Complaint service.Complaint }
+		parse(&a)
+		return s.OpenTicket(ctx, m, a.Complaint)
 	case "returns/request":
 		var a struct {
 			service.ReturnRequest
@@ -534,12 +565,11 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		return s.ReceiveReturn(ctx, m, a.ID, a.Restock)
 	case "returns/refund":
 		var a struct {
-			ID     string
-			Amount int
-			Note   string
+			ID string
+			service.ReturnRefund
 		}
 		parse(&a)
-		return s.RefundReturn(ctx, m, a.ID, a.Amount, a.Note)
+		return s.RefundReturn(ctx, m, a.ID, a.ReturnRefund)
 	}
 	return nil, fmt.Errorf("no service method for %s", head.Type)
 }

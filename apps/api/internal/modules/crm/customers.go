@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 
@@ -19,9 +22,14 @@ func (s *CRM) SaveCustomer(ctx context.Context, m kernel.Meta, c domain.Customer
 		return nil, err
 	}
 	return s.Run(ctx, func(t *kernel.Tx) error {
-		if _, err := store.Get[domain.Customer](t.Ctx, t.Tx, "customers", c.ID); errors.Is(err, store.ErrNotFound) {
+		// Consent and erasure change only through their own actions, so an edit cannot forge them.
+		prev, err := store.Get[domain.Customer](t.Ctx, t.Tx, "customers", c.ID)
+		c.MarketingConsent, c.ErasedAt = prev.MarketingConsent, prev.ErasedAt
+		if errors.Is(err, store.ErrNotFound) {
 			t.Created[c.ID] = true
 			t.Emit("customer.created", c)
+		} else if err != nil {
+			return err
 		}
 		return t.Put("customers", c.ID, c)
 	})
@@ -163,6 +171,60 @@ func (s *CRM) ResolveTicket(ctx context.Context, m kernel.Meta, id string) (*ker
 		}
 		tk.Status = "resolved"
 		tk.ResolvedAt = kernel.Ptr(m.At)
+		return t.Put("tickets", tk.ID, tk)
+	})
+}
+
+// Complaint is what a shopper sends with the storefront's complaint form. CustomerID is empty for a
+// guest; OrderID, when set, is one of that shopper's own orders, which the caller checked.
+type Complaint struct {
+	ID         string               `json:"id"`
+	TenantID   string               `json:"tenantId"`
+	CustomerID *string              `json:"customerId"`
+	OrderID    *string              `json:"orderId"`
+	Subject    string               `json:"subject"`
+	Message    string               `json:"message"`
+	Contact    domain.TicketContact `json:"contact"`
+}
+
+// OpenTicket is tickets/open: a complaint ticket due complaintDays working days from now. tenantCode
+// prefixes the ticket's code.
+func (s *CRM) OpenTicket(ctx context.Context, m kernel.Meta, c Complaint, tenantCode string, complaintDays int) (*kernel.Delta, error) {
+	if err := kernel.Access(m, c.TenantID); err != nil {
+		return nil, err
+	}
+	if c.ID == "" {
+		return nil, kernel.Invalid{Reason: "A complaint needs an id."}
+	}
+	if why := rules.ComplaintBlocker(c.Subject, c.Message, c.Contact); why != "" {
+		return nil, kernel.Invalid{Reason: why}
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		if _, err := store.Get[domain.Ticket](t.Ctx, t.Tx, "tickets", c.ID); err == nil {
+			return kernel.Refuse("This complaint was already sent.")
+		} else if !errors.Is(err, store.ErrNotFound) {
+			return err
+		}
+		rows, err := t.Query(t.Ctx, `select data->>'code' from tickets where tenant_id = $1`, c.TenantID)
+		if err != nil {
+			return err
+		}
+		codes, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			return err
+		}
+		customerID := ""
+		if c.CustomerID != nil {
+			customerID = *c.CustomerID
+		}
+		contact := rules.TrimContact(c.Contact)
+		tk := domain.Ticket{
+			ID: c.ID, TenantID: c.TenantID, Code: ids.NextCode(codes, tenantCode+"-T", 4), CustomerID: customerID,
+			OrderID: c.OrderID, Kind: "complaint", Status: "open", Subject: strings.TrimSpace(c.Subject), Channel: "web",
+			CreatedAt: m.At, SlaDueAt: rules.AddWorkingDays(m.At, complaintDays),
+			Message: strings.TrimSpace(c.Message), Contact: &contact,
+		}
+		t.Created[tk.ID] = true
 		return t.Put("tickets", tk.ID, tk)
 	})
 }

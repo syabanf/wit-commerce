@@ -10,6 +10,7 @@ import { HTTP, api } from '../lib/api'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
+import { MarketingCard, PrivacyRequestsCard } from './AccountPrivacy'
 
 /** Sign in and see points and orders. The demo without an API signs in by email alone. */
 export function AccountPage() {
@@ -154,6 +155,8 @@ export function AccountPage() {
       {HTTP && <VerifyNotice />}
       {HTTP && <ConfirmEmailCard />}
       {HTTP && <PasswordCard />}
+      <MarketingCard />
+      {HTTP && <PrivacyRequestsCard />}
       <section className="sf-card p-6" aria-labelledby="orders-h">
         <h2 id="orders-h" className="sf-display mb-3 text-xl font-bold">
           Your orders

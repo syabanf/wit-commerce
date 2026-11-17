@@ -9,4 +9,5 @@ import (
 type (
 	ReturnRequest = orders.ReturnRequest
 	ReturnItem    = domain.ReturnItem
+	ReturnRefund  = orders.ReturnRefund
 )

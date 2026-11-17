@@ -47,6 +47,7 @@ func (s *Server) shareLimits() {
 		"ai-client": s.aiClients, "ai-total": s.aiTotal, "signin-client": s.signInClients, "signin-email": s.signInEmails,
 		"mail-email": s.mailEmails, "signup-client": s.signUpClients, "signup-email": s.signUpEmails,
 		"subdomain-client": s.subdomainChecks, "assistant-user": s.assistantUsers, antispam.AssistantDaily: s.assistantTenants,
+		"complaint-client": s.complaintClients,
 	} {
 		if l != nil {
 			l.bucket, l.srv = bucket, s

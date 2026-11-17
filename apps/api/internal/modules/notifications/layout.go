@@ -82,6 +82,8 @@ type Email struct {
 	Action *Link
 	// Footer is the small print under the content.
 	Footer string
+	// Unsubscribe is the link that ends marketing email, shown in the bottom bar.
+	Unsubscribe *Link
 }
 
 // Render lays out an email as HTML and as plain text.
@@ -171,6 +173,10 @@ func Render(b Branding, e Email) (htmlBody, text string) {
 		t.WriteString("\n" + b.Name + " · " + b.HomeURL + "\n")
 	} else {
 		h.WriteString(esc(b.Name))
+	}
+	if e.Unsubscribe != nil {
+		fmt.Fprintf(&h, ` · <a href="%s" style="color:#6b6b70;">%s</a>`, esc(e.Unsubscribe.URL), esc(e.Unsubscribe.Label))
+		t.WriteString(e.Unsubscribe.Label + ": " + e.Unsubscribe.URL + "\n")
 	}
 	h.WriteString(`</td></tr></table></td></tr></table></body></html>`)
 	return h.String(), t.String()

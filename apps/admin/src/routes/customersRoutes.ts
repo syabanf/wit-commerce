@@ -42,4 +42,9 @@ export const customersRoutes: RouteObject[] = [
     handle: { breadcrumb: t.breadcrumb.support },
     lazy: page(() => import('../pages/support/SupportPage'), 'SupportPage'),
   },
+  {
+    path: 'customers/privacy',
+    handle: { breadcrumb: t.breadcrumb.privacy },
+    lazy: page(() => import('../pages/privacy/PrivacyRequestsPage'), 'PrivacyRequestsPage'),
+  },
 ]

@@ -19,6 +19,7 @@ export type Permission =
   | 'integration.manage'
   | 'user.manage'
   | 'analytics.view'
+  | 'privacy.manage'
 
 const ALL: Permission[] = [
   'tenant.manage',
@@ -39,6 +40,7 @@ const ALL: Permission[] = [
   'integration.manage',
   'user.manage',
   'analytics.view',
+  'privacy.manage',
 ]
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {

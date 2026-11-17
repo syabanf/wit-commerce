@@ -19,6 +19,7 @@ export const en = {
     storeEditor: 'Store editor',
     brand: 'Brand',
     domains: 'Domains',
+    legal: 'Legal & policies',
     media: 'Media',
     // Customers
     allCustomers: 'All Customers',
@@ -29,6 +30,7 @@ export const en = {
     leadDetail: (id: string) => `Lead ${id}`,
     loyalty: 'Loyalty',
     support: 'Support',
+    privacy: 'Privacy requests',
     // Marketing
     campaigns: 'Campaigns',
     campaignDetail: (id: string) => `Campaign ${id}`,

@@ -144,7 +144,7 @@ var routeDocs = map[string]routeDoc{
 	"POST /returns/{id}/reject":                {body: rejectInput{}},
 	"POST /returns/{id}/cancel":                {body: noteInput{}},
 	"POST /returns/{id}/receive":               {body: receiveInput{}},
-	"POST /returns/{id}/refund":                {body: refundInput{}},
+	"POST /returns/{id}/refund":                {body: service.ReturnRefund{}},
 	"PUT /tenants/{id}/shop-settings":          {body: shopSettingsInput{}},
 	"POST /shop/{store}/returns":               {body: returnRequestInput{}},
 	"POST /shop/{store}/returns/{id}/cancel":   {body: noteInput{}},
@@ -248,6 +248,25 @@ var routeDocs = map[string]routeDoc{
 	"DELETE /media/{id}":        {response: okResponse{}, query: [][3]string{mediaTenant}},
 	"PUT /sellers/{id}/profile": {body: service.SellerProfile{}},
 	"PUT /tenants/{id}/menus":   {body: domain.StoreMenus{}},
+
+	// Seller identity, delivery estimates and complaints (PP 80/2019).
+	"PUT /tenants/{id}/legal":       {body: domain.SellerLegal{}},
+	"PUT /tenants/{id}/courier-eta": {body: courierEtaInput{}},
+	"POST /tickets":                 {body: service.Complaint{}},
+	"POST /shop/{store}/complaints": {body: shopComplaintInput{}},
+
+	// Personal data: erasure, consent, privacy requests.
+	"POST /customers/{id}/erase":                     {body: noteInput{}},
+	"POST /customers/{id}/consent":                   {body: consentInput{}},
+	"GET /customers/{id}/export":                     {response: service.CustomerExport{}},
+	"GET /customers/privacy-requests":                {response: privacyRequestsResponse{}},
+	"POST /customers/privacy-requests":               {body: privacyRequestInput{}, response: domain.PrivacyRequest{}},
+	"POST /customers/privacy-requests/{id}/complete": {body: noteInput{}},
+	"GET /campaigns/{id}/audience":                   {response: service.CampaignAudience{}},
+	"POST /shop/{store}/consent":                     {body: consentInput{}},
+	"GET /shop/{store}/privacy-requests":             {response: privacyRequestsResponse{}},
+	"POST /shop/{store}/privacy-requests":            {body: privacyRequestInput{}, response: privacyRequestsResponse{}},
+	"GET /shop/{store}/export":                       {response: service.CustomerExport{}},
 }
 
 // hiddenRoutes are for the demo and for this server's own apps, so the published contract leaves them out.
@@ -262,6 +281,8 @@ var hiddenRoutes = map[string]bool{
 	"GET /shop/{store}/events":         true,
 	"GET /shop/{store}/state":          true,
 	"GET /routes":                      true,
+	"GET /unsubscribe":                 true,
+	"POST /unsubscribe":                true,
 	"GET /openapi.json":                true,
 	"GET /docs":                        true,
 }
@@ -288,6 +309,7 @@ var publicRoutes = map[string]bool{
 	"POST /shop/{store}/orders":            true,
 	"POST /shop/{store}/leads":             true,
 	"POST /payments/midtrans/notification": true,
+	"POST /shop/{store}/complaints":        true,
 }
 
 var pathParam = regexp.MustCompile(`\{([a-zA-Z]+)\}`)

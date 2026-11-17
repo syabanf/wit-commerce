@@ -37,6 +37,10 @@ type ShopperFacts struct {
 	// Amount is the money a refund email reports.
 	Amount     int
 	ReturnCode string
+
+	// RefundReference traces a return's refund; RefundByTransfer says staff sent it by bank transfer.
+	RefundReference  string
+	RefundByTransfer bool
 }
 
 // phrases holds every sentence of the shopper emails per language. A second language adds a map with
@@ -69,6 +73,8 @@ var phrases = map[string]map[string]string{
 		"retrefund.subject": "Refund for return %s",
 		"retrefund.title":   "Your return is refunded",
 		"retrefund.intro":   "We received return %s and refunded %s to your original payment method.",
+		"retrefund.bank":    "We received return %s and sent %s to you by bank transfer.",
+		"label.reference":   "Reference",
 		"label.order":       "Order",
 		"label.subtotal":    "Subtotal",
 		"label.discount":    "Discount",
@@ -156,6 +162,12 @@ func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
 		subject = say("retrefund.subject", f.ReturnCode)
 		e.Title, e.Intro = say("retrefund.title"), say("retrefund.intro", f.ReturnCode, Rupiah(f.Amount))
 		e.Rows = []Row{{say("label.return"), f.ReturnCode}, {say("label.order"), f.OrderCode}, {say("label.refund"), Rupiah(f.Amount)}}
+		if f.RefundByTransfer {
+			e.Intro = say("retrefund.bank", f.ReturnCode, Rupiah(f.Amount))
+		}
+		if f.RefundReference != "" {
+			e.Rows = append(e.Rows, Row{say("label.reference"), f.RefundReference})
+		}
 	default:
 		return mail.Message{}, false
 	}

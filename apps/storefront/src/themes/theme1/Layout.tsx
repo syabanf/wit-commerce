@@ -29,6 +29,7 @@ import { MenuLink } from '../../components/MenuLink'
 import { RETURNS_POLICY } from '../../lib/policy'
 import { useShop } from '../../state/shop'
 import { CurrencySwitcher } from '../../components/Money'
+import { SellerIdentity } from '../../components/SellerIdentity'
 
 export function Logo({ className }: { className?: string }) {
   const { tenant, store } = useShop()
@@ -277,6 +278,7 @@ function Footer() {
           <p className="text-sm text-[color:var(--sf-muted)]">{payNames.join(', ')}.</p>
         </div>
       </div>
+      <SellerIdentity className="px-4 pb-6 md:px-6 lg:px-10" />
       <p className="px-4 py-4 text-xs border-t border-[color:var(--sf-line)] text-center text-[color:var(--sf-muted)]">
         © {tenant.name.replace(/\.$/, '')}. Prices in rupiah, taxes included.
       </p>

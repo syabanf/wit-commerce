@@ -12,7 +12,7 @@ import {
 } from '../lib/agent'
 import { variantAvailable } from '../lib/catalog'
 import { HTTP, api } from '../lib/api'
-import { buildOrder } from '../lib/checkout'
+import { buildOrder, withTerms } from '../lib/checkout'
 import { type ShopValue, useShop } from './shop'
 import { useStore } from './store'
 
@@ -368,7 +368,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       push({ id: id(), kind: 'bot', text: `I could not place it: ${placed}` })
       return
     }
-    send({ type: 'orders/place', order: placed, customer: null }).catch((err: Error) => {
+    send({ type: 'orders/place', order: withTerms(placed, tenant), customer: null }).catch((err: Error) => {
       patch(cart.id, { status: 'failed', note: err.message })
       push({ id: id(), kind: 'bot', text: `I could not place it: ${err.message}` })
     })

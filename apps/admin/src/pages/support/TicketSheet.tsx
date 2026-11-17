@@ -114,17 +114,32 @@ function TicketPanel({ ticket, now }: { ticket: Ticket; now: number }) {
       </div>
 
       <SheetBody className="space-y-5 pt-5">
+        {ticket.message && (
+          <Section title="What the shopper wrote">
+            <p className="text-sm whitespace-pre-line">{ticket.message}</p>
+          </Section>
+        )}
         <Section title="Customer">
-          <div className="rounded-2xl p-3 bg-surface-2">
-            <div className="gap-2 flex flex-wrap items-center justify-between">
-              <CustomerLink customerId={ticket.customerId} />
-              {customer && <TierBadge tier={customer.tier} />}
-            </div>
-            <p className="mt-2 text-xs text-muted">
-              {plural(metrics.orders, 'order')} · {fmtIdr(metrics.spend)} lifetime
-              {customer?.phone ? ` · ${customer.phone}` : ''}
+          {ticket.contact && (
+            <p className="mb-2 text-sm">
+              {ticket.contact.name}
+              {[ticket.contact.email, ticket.contact.phone].filter(Boolean).map((c) => ` · ${c}`)}
             </p>
-          </div>
+          )}
+          {ticket.customerId ? (
+            <div className="rounded-2xl p-3 bg-surface-2">
+              <div className="gap-2 flex flex-wrap items-center justify-between">
+                <CustomerLink customerId={ticket.customerId} />
+                {customer && <TierBadge tier={customer.tier} />}
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                {plural(metrics.orders, 'order')} · {fmtIdr(metrics.spend)} lifetime
+                {customer?.phone ? ` · ${customer.phone}` : ''}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">A guest without a customer record.</p>
+          )}
           {recent.length > 0 && (
             <ul className="mt-3 space-y-1.5">
               {recent.map((e) => (

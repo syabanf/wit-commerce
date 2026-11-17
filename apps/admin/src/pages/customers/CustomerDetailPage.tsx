@@ -26,7 +26,7 @@ import {
   type StepsProps,
   toast,
 } from '@rc/ui'
-import { Coins, Copy, MessageSquarePlus, MoreHorizontal, Pencil } from 'lucide-react'
+import { Coins, Copy, Download, MessageSquarePlus, MoreHorizontal, Pencil, UserX } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
@@ -42,9 +42,11 @@ import { AddPointsDialog } from './AddPointsDialog'
 import { CustomerDialog } from './CustomerDialog'
 import { IdentityCard, LoyaltyCard, RecommendedCard, SegmentsCard, TicketsCard } from './CustomerSideCards'
 import { TimelineCard } from './TimelineCard'
+import { EraseCustomerDialog } from './EraseCustomerDialog'
+import { downloadCustomerData } from '../privacy/lib'
 import { HeroMetric } from '../../components/HeroMetric'
 
-type Pending = 'edit' | 'points' | null
+type Pending = 'edit' | 'points' | 'erase' | null
 
 function lifecycleSteps(customer: Customer, m: CustomerMetrics): StepsProps['steps'] {
   const index = LIFECYCLE_FLOW.indexOf(customer.stage)
@@ -105,6 +107,7 @@ export function CustomerDetailPage() {
 
   const m = metricsFor(s.crm.metrics, customer.id)
   const manage = can('customer.manage')
+  const privacy = can('privacy.manage')
   const gap = nextTierGap(m.spend, s.tenant.loyalty)
   const spendTier = tierFor(m.spend, s.tenant.loyalty)
   const tierFloor = tierMinimum(spendTier, s.tenant.loyalty)
@@ -202,6 +205,28 @@ export function CustomerDetailPage() {
                 disabled: !customer.email,
                 onSelect: copyEmail,
               },
+              ...(privacy && HTTP
+                ? [
+                    {
+                      key: 'export',
+                      label: 'Download data',
+                      description: 'Everything held about them, as JSON',
+                      icon: <Download />,
+                      onSelect: () => void downloadCustomerData(customer.id, customer.code),
+                    },
+                  ]
+                : []),
+              ...(privacy && !customer.erasedAt
+                ? [
+                    {
+                      key: 'erase',
+                      label: 'Erase personal data',
+                      description: 'Keeps order amounts, ends their account',
+                      icon: <UserX />,
+                      onSelect: () => setPending('erase'),
+                    },
+                  ]
+                : []),
             ]}
           />
         </div>
@@ -223,6 +248,7 @@ export function CustomerDetailPage() {
           <div className="gap-2 flex flex-wrap">
             <Badge className={ON_INK}>{LIFECYCLE_STAGE_LABEL[customer.stage]}</Badge>
             <Badge className={ON_INK}>{LOYALTY_TIER_LABEL[customer.tier]}</Badge>
+            {customer.erasedAt && <Badge className={ON_INK}>Erased {fmtDate(customer.erasedAt)}</Badge>}
           </div>
         </div>
         <div className="mt-5 gap-4 sm:grid-cols-3 lg:grid-cols-5 grid grid-cols-2">
@@ -318,6 +344,11 @@ export function CustomerDetailPage() {
       <AddPointsDialog
         customer={customer}
         open={pending === 'points'}
+        onOpenChange={(o) => !o && setPending(null)}
+      />
+      <EraseCustomerDialog
+        customer={customer}
+        open={pending === 'erase'}
         onOpenChange={(o) => !o && setPending(null)}
       />
     </div>

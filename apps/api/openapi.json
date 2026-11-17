@@ -786,6 +786,25 @@
         ],
         "type": "object"
       },
+      "CampaignAudience": {
+        "properties": {
+          "inSegment": {
+            "type": "integer"
+          },
+          "reach": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inSegment",
+          "reach",
+          "skipped"
+        ],
+        "type": "object"
+      },
       "CaptchaInput": {
         "properties": {
           "secret": {
@@ -947,6 +966,43 @@
           "ruleCategoryIds",
           "ruleTags",
           "slug",
+          "tenantId"
+        ],
+        "type": "object"
+      },
+      "Complaint": {
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/TicketContact"
+          },
+          "customerId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "orderId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact",
+          "customerId",
+          "id",
+          "message",
+          "orderId",
+          "subject",
           "tenantId"
         ],
         "type": "object"
@@ -1195,6 +1251,9 @@
           "email": {
             "type": "string"
           },
+          "erasedAt": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -1203,6 +1262,14 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "marketingConsent": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarketingConsent"
+              }
+            ],
+            "nullable": true
           },
           "name": {
             "type": "string"
@@ -1305,6 +1372,63 @@
           "orderId",
           "productId",
           "tenantId"
+        ],
+        "type": "object"
+      },
+      "CustomerExport": {
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/CustomerEvent"
+            },
+            "type": "array"
+          },
+          "exportedAt": {
+            "type": "string"
+          },
+          "leads": {
+            "items": {
+              "$ref": "#/components/schemas/Lead"
+            },
+            "type": "array"
+          },
+          "orders": {
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            },
+            "type": "array"
+          },
+          "privacyRequests": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyRequest"
+            },
+            "type": "array"
+          },
+          "returns": {
+            "items": {
+              "$ref": "#/components/schemas/OrderReturn"
+            },
+            "type": "array"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/Ticket"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "customer",
+          "events",
+          "exportedAt",
+          "leads",
+          "orders",
+          "privacyRequests",
+          "returns",
+          "tickets"
         ],
         "type": "object"
       },
@@ -1488,6 +1612,21 @@
         "required": [
           "ok",
           "to"
+        ],
+        "type": "object"
+      },
+      "EtaDays": {
+        "properties": {
+          "max": {
+            "type": "integer"
+          },
+          "min": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max",
+          "min"
         ],
         "type": "object"
       },
@@ -1706,6 +1845,29 @@
           "gold",
           "platinum",
           "silver"
+        ],
+        "type": "object"
+      },
+      "MarketingConsent": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "granted": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "textVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "granted",
+          "source",
+          "textVersion"
         ],
         "type": "object"
       },
@@ -2049,6 +2211,12 @@
           "tenantId": {
             "type": "string"
           },
+          "termsAcceptedAt": {
+            "type": "string"
+          },
+          "termsVersion": {
+            "type": "string"
+          },
           "total": {
             "type": "integer"
           },
@@ -2190,6 +2358,12 @@
             },
             "type": "array"
           },
+          "gatewayError": {
+            "type": "string"
+          },
+          "gatewayStatus": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -2211,6 +2385,18 @@
           "refundAmount": {
             "type": "integer"
           },
+          "refundMethod": {
+            "type": "string"
+          },
+          "refundReference": {
+            "type": "string"
+          },
+          "refundShipping": {
+            "type": "integer"
+          },
+          "refundedOn": {
+            "type": "string"
+          },
           "rejectReason": {
             "type": "string"
           },
@@ -2219,6 +2405,9 @@
           },
           "restock": {
             "type": "boolean"
+          },
+          "shippingPaidBy": {
+            "type": "string"
           },
           "status": {
             "type": "string"
@@ -2727,6 +2916,55 @@
         ],
         "type": "object"
       },
+      "PrivacyRequest": {
+        "properties": {
+          "completedAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": "string"
+          },
+          "handledBy": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "completedAt",
+          "customerId",
+          "dueAt",
+          "handledBy",
+          "id",
+          "kind",
+          "note",
+          "requestedAt",
+          "status",
+          "tenantId"
+        ],
+        "type": "object"
+      },
       "Problem": {
         "properties": {
           "code": {
@@ -3223,6 +3461,33 @@
         ],
         "type": "object"
       },
+      "ReturnRefund": {
+        "properties": {
+          "amount": {
+            "type": "integer"
+          },
+          "method": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "refundedOn": {
+            "type": "string"
+          },
+          "shippingCost": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount",
+          "note"
+        ],
+        "type": "object"
+      },
       "SalesMonth": {
         "properties": {
           "campaignId": {
@@ -3453,6 +3718,54 @@
         ],
         "type": "object"
       },
+      "SellerLegal": {
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "businessType": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "complaintDays": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "complaintProcedure": {
+            "type": "string"
+          },
+          "disputeForum": {
+            "type": "string"
+          },
+          "disputeVenue": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "entityName": {
+            "type": "string"
+          },
+          "hours": {
+            "type": "string"
+          },
+          "nib": {
+            "type": "string"
+          },
+          "npwp": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "termsExtra": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SellerProfile": {
         "properties": {
           "bio": {
@@ -3561,6 +3874,12 @@
           "code": {
             "type": "string"
           },
+          "courierEtaDays": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EtaDays"
+            },
+            "type": "object"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -3594,6 +3913,14 @@
           },
           "industry": {
             "type": "string"
+          },
+          "legal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SellerLegal"
+              }
+            ],
+            "nullable": true
           },
           "loyalty": {
             "$ref": "#/components/schemas/LoyaltyConfig"
@@ -3716,6 +4043,14 @@
           "code": {
             "type": "string"
           },
+          "contact": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketContact"
+              }
+            ],
+            "nullable": true
+          },
           "createdAt": {
             "type": "string"
           },
@@ -3726,6 +4061,9 @@
             "type": "string"
           },
           "kind": {
+            "type": "string"
+          },
+          "message": {
             "type": "string"
           },
           "orderId": {
@@ -3763,6 +4101,25 @@
           "status",
           "subject",
           "tenantId"
+        ],
+        "type": "object"
+      },
+      "TicketContact": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "phone"
         ],
         "type": "object"
       },
@@ -4134,6 +4491,39 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ],
+        "type": "object"
+      },
+      "consentInput": {
+        "properties": {
+          "granted": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "textVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "granted",
+          "source",
+          "textVersion"
+        ],
+        "type": "object"
+      },
+      "courierEtaInput": {
+        "properties": {
+          "courierEtaDays": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EtaDays"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "courierEtaDays"
         ],
         "type": "object"
       },
@@ -4760,6 +5150,38 @@
         ],
         "type": "object"
       },
+      "privacyRequestInput": {
+        "properties": {
+          "customerId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "note"
+        ],
+        "type": "object"
+      },
+      "privacyRequestsResponse": {
+        "properties": {
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyRequest"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "requests"
+        ],
+        "type": "object"
+      },
       "publicConfig": {
         "properties": {
           "turnstileSiteKey": {
@@ -4967,6 +5389,30 @@
         },
         "required": [
           "at"
+        ],
+        "type": "object"
+      },
+      "shopComplaintInput": {
+        "properties": {
+          "contact": {
+            "$ref": "#/components/schemas/TicketContact"
+          },
+          "message": {
+            "type": "string"
+          },
+          "orderId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact",
+          "message",
+          "orderId",
+          "subject"
         ],
         "type": "object"
       },
@@ -7017,6 +7463,104 @@
         "x-required-scope": "marketing:write"
       }
     },
+    "/campaigns/{id}/audience": {
+      "get": {
+        "description": "API keys need the scope `marketing:write`.",
+        "operationId": "getCampaignsIdAudience",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignAudience"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Who a campaign reaches now, and how many it skips without marketing consent",
+        "tags": [
+          "Marketing"
+        ],
+        "x-required-permission": "campaign.manage",
+        "x-required-scope": "marketing:write"
+      }
+    },
     "/campaigns/{id}/launch": {
       "post": {
         "description": "API keys need the scope `marketing:write`.",
@@ -8318,6 +8862,268 @@
         "x-required-scope": "customers:read"
       }
     },
+    "/customers/privacy-requests": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getCustomersPrivacyRequests",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/privacyRequestsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "A brand's privacy requests, open ones by deadline; ?status=open|completed",
+        "tags": [
+          "Customers"
+        ],
+        "x-required-permission": "privacy.manage"
+      },
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postCustomersPrivacyRequests",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/privacyRequestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyRequest"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Log a privacy request a customer made by phone or email",
+        "tags": [
+          "Customers"
+        ],
+        "x-required-permission": "privacy.manage"
+      }
+    },
+    "/customers/privacy-requests/{id}/complete": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postCustomersPrivacyRequestsIdComplete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/noteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Answer a privacy request: an erasure erases, a consent withdrawal withdraws",
+        "tags": [
+          "Customers"
+        ],
+        "x-required-permission": "privacy.manage"
+      }
+    },
     "/customers/{id}": {
       "get": {
         "description": "API keys need the scope `customers:read`.",
@@ -8520,6 +9326,302 @@
         "x-action": "customers/save",
         "x-required-permission": "customer.manage",
         "x-required-scope": "customers:write"
+      }
+    },
+    "/customers/{id}/consent": {
+      "post": {
+        "description": "API keys need the scope `customers:write`.",
+        "operationId": "postCustomersIdConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/consentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Record a customer's answer about marketing messages, as told to staff",
+        "tags": [
+          "Customers"
+        ],
+        "x-action": "customers/setConsent",
+        "x-required-permission": "customer.manage",
+        "x-required-scope": "customers:write"
+      }
+    },
+    "/customers/{id}/erase": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postCustomersIdErase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/noteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Replace a customer's personal data with placeholders, keep their orders' amounts, and end their account",
+        "tags": [
+          "Customers"
+        ],
+        "x-action": "customers/erase",
+        "x-required-permission": "privacy.manage"
+      }
+    },
+    "/customers/{id}/export": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getCustomersIdExport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerExport"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Everything the store holds about a customer, as JSON",
+        "tags": [
+          "Customers"
+        ],
+        "x-required-permission": "privacy.manage"
       }
     },
     "/customers/{id}/notes": {
@@ -14605,7 +15707,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/refundInput"
+                "$ref": "#/components/schemas/ReturnRefund"
               }
             }
           },
@@ -14687,7 +15789,7 @@
             "session": []
           }
         ],
-        "summary": "Refund a received return, capped at what its items cost",
+        "summary": "Refund a received return through Midtrans when it took the payment, else record the bank transfer",
         "tags": [
           "Orders"
         ],
@@ -16753,6 +17855,264 @@
         ]
       }
     },
+    "/shop/{store}/complaints": {
+      "post": {
+        "operationId": "postShopStoreComplaints",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/shopComplaintInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Send the store a complaint; it opens a ticket due in the store's complaint days",
+        "tags": [
+          "Storefront"
+        ],
+        "x-action": "tickets/open"
+      }
+    },
+    "/shop/{store}/consent": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postShopStoreConsent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/consentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Give or withdraw the signed-in shopper's marketing consent",
+        "tags": [
+          "Storefront"
+        ],
+        "x-action": "customers/setConsent"
+      }
+    },
+    "/shop/{store}/export": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getShopStoreExport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerExport"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The signed-in shopper's data as JSON, once the store completed their access request",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
     "/shop/{store}/forgot": {
       "post": {
         "operationId": "postShopStoreForgot",
@@ -17182,6 +18542,188 @@
         },
         "security": [],
         "summary": "Price a cart with the store's promotions",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
+    "/shop/{store}/privacy-requests": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getShopStorePrivacyRequests",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/privacyRequestsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The signed-in shopper's privacy requests",
+        "tags": [
+          "Storefront"
+        ]
+      },
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postShopStorePrivacyRequests",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/privacyRequestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/privacyRequestsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Ask the store for a copy, a correction or the erasure of your data, or to stop marketing",
         "tags": [
           "Storefront"
         ]
@@ -18578,6 +20120,115 @@
         "x-required-scope": "store:write"
       }
     },
+    "/tenants/{id}/courier-eta": {
+      "put": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "putTenantsIdCourierEta",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/courierEtaInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set delivery days per courier; an empty map brings back the platform's estimates",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "tenants/setCourierEta",
+        "x-required-permission": "brand.manage",
+        "x-required-scope": "store:write"
+      }
+    },
     "/tenants/{id}/credentials": {
       "get": {
         "description": "For people signed in to the console. API keys cannot call this.",
@@ -19171,6 +20822,115 @@
           "Store"
         ],
         "x-action": "tenants/verifyDomain",
+        "x-required-permission": "brand.manage",
+        "x-required-scope": "store:write"
+      }
+    },
+    "/tenants/{id}/legal": {
+      "put": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "putTenantsIdLegal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SellerLegal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set the seller's identity, complaint service and terms choices",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "tenants/setLegal",
         "x-required-permission": "brand.manage",
         "x-required-scope": "store:write"
       }
@@ -20107,6 +21867,103 @@
           "Customers"
         ],
         "x-required-scope": "tickets:read"
+      },
+      "post": {
+        "description": "API keys need the scope `tickets:write`.",
+        "operationId": "postTickets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Complaint"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Log a shopper's complaint, due in the store's complaint days",
+        "tags": [
+          "Customers"
+        ],
+        "x-action": "tickets/open",
+        "x-required-permission": "ticket.manage",
+        "x-required-scope": "tickets:write"
       }
     },
     "/tickets/{id}": {

@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { usePersistentState } from '../../lib/storage'
 import { useNow, useScoped } from '../../state/scoped'
 import { GoLiveCard } from './GoLiveCard'
+import { LegalChecklist } from '../legal/LegalChecklist'
 import { GrowthView } from './GrowthView'
 import { OverviewView } from './OverviewView'
 import { RoleHome } from './RoleHome'
@@ -23,6 +24,7 @@ export function DashboardPage() {
     <div className="space-y-4">
       <h1 className="sr-only">Home</h1>
       {s.user.role === 'tenant_admin' && <GoLiveCard s={s} />}
+      <LegalChecklist />
       <div className="gap-2 flex flex-wrap items-center justify-between">
         <PillTabs
           value={view}

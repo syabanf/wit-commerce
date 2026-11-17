@@ -1,0 +1,45 @@
+package notifications
+
+import (
+	"context"
+	"net/url"
+	"strings"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
+)
+
+// ForgetCustomer removes what email holds about an erased customer: their links, the email still
+// waiting to go to them, and their address on email already sent.
+func ForgetCustomer(ctx context.Context, tx pgx.Tx, customerID, email string) error {
+	if _, err := tx.Exec(ctx, `delete from email_tokens where subject_type = $1 and subject_id = $2`, subjectCustomer, customerID); err != nil {
+		return err
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `delete from email_outbox where lower("to") = $1 and sent_at is null`, email); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `update email_outbox set "to" = 'erased', subject = '', html = '', text = '' where lower("to") = $1`, email)
+	return err
+}
+
+// UnsubscribeURL is the public page that ends a shopper's marketing email.
+func (n *Notifications) UnsubscribeURL(token string) string {
+	return n.PublicURL + "/api/v1/unsubscribe?token=" + url.QueryEscape(token)
+}
+
+// ComposeMarketing lays out a marketing email. It takes the unsubscribe link as a required
+// argument, so no marketing email goes out without one. Callers pick recipients with
+// rules.MarketingAllowed.
+func ComposeMarketing(b Branding, to string, e Email, unsubscribeURL string) mail.Message {
+	e.Unsubscribe = &Link{Label: "Unsubscribe", URL: unsubscribeURL}
+	if e.Footer == "" {
+		e.Footer = "You get this email because you agreed to offers and news from " + b.Name + "."
+	}
+	body, text := Render(b, e)
+	return mail.Message{To: to, Subject: e.Title, Text: text, HTML: body}
+}
