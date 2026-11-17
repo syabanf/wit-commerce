@@ -17,6 +17,8 @@ import { useShop } from '../../state/shop'
 import { Intro } from './Intro'
 import { CurrencySwitcher } from '../../components/Money'
 import { SellerIdentity } from '../../components/SellerIdentity'
+import { t, tp } from '../../i18n'
+import { LanguageSwitch } from '../../i18n/LanguageSwitch'
 
 function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; menuOpen: boolean }) {
   const { tenant, store, cart, customer } = useShop()
@@ -36,11 +38,11 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
       <Link to={paths.home(store)} className="min-h-11 min-w-0 flex items-center justify-self-start">
         <BrandLogo tenant={tenant} inverse />
       </Link>
-      <nav aria-label="Main" className="flex items-center">
+      <nav aria-label={t('shell.nav.main')} className="flex items-center">
         {menu.length ? (
           <>
             <button type="button" onClick={onCategories} aria-expanded={menuOpen} className={link(menuOpen)}>
-              Categories
+              {t('shell.nav.categories')}
             </button>
             {/* Tablets show two links, lg four, xl all; the categories drawer lists every one. */}
             {menu.map((l, i) => (
@@ -61,26 +63,26 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
               className={link(shopActive)}
               aria-current={shopActive ? 'page' : undefined}
             >
-              Shop
+              {t('shell.nav.shop')}
             </Link>
             <button type="button" onClick={onCategories} aria-expanded={menuOpen} className={link(menuOpen)}>
-              Categories
+              {t('shell.nav.categories')}
             </button>
             <Link to={paths.agent(store)} className={link(pathname.endsWith('/agent'))}>
-              Agent
+              {t('shell.nav.agent')}
             </Link>
             {/* Tablets keep Shop and Categories; the rest returns from lg up so the bar never overflows. */}
             <Link
               to={`${paths.home(store)}#testimonials`}
               className={cn(link(false), 'lg:inline-flex hidden')}
             >
-              Testimonials
+              {t('shell.nav.testimonials')}
             </Link>
             <Link
               to={paths.account(store)}
               className={cn(link(pathname.endsWith('/account')), 'lg:inline-flex hidden')}
             >
-              Rewards
+              {t('shell.nav.rewards')}
             </Link>
           </>
         )}
@@ -89,14 +91,14 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
         <CurrencySwitcher className="bg-[var(--sf-bg)] text-[color:var(--sf-text)]" />
         <Link
           to={paths.search(store)}
-          aria-label="Search the store"
+          aria-label={t('shell.search.store')}
           className="size-11 inline-flex items-center justify-center rounded-full bg-[var(--sf-bg)] text-[color:var(--sf-text)]"
         >
           <Search className="size-5" aria-hidden="true" />
         </Link>
         <Link
           to={paths.cart(store)}
-          aria-label={`Cart, ${cart.count} items`}
+          aria-label={`${t('shell.nav.cart')}, ${tp('shell.items', cart.count)}`}
           className="size-11 relative inline-flex items-center justify-center rounded-full bg-[var(--sf-bg)] text-[color:var(--sf-text)]"
         >
           <ShoppingBag className="size-5" aria-hidden="true" />
@@ -114,7 +116,7 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
             to={paths.account(store)}
             className="min-h-11 px-5 text-sm font-semibold inline-flex items-center rounded-full bg-[var(--sf-bg)] text-[color:var(--sf-text)]"
           >
-            Hi, {firstName(customer.name)}
+            {t('shell.hi', { name: firstName(customer.name) })}
           </Link>
         ) : (
           <>
@@ -122,13 +124,13 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
               to={paths.account(store)}
               className="min-h-11 px-5 text-sm font-semibold inline-flex items-center rounded-full bg-[var(--sf-bg)] text-[color:var(--sf-text)]"
             >
-              Sign in
+              {t('shell.nav.signIn')}
             </Link>
             <Link
               to={`${paths.account(store)}?join=1`}
               className="min-h-11 px-5 text-sm font-semibold lg:inline-flex hidden items-center rounded-full border border-current"
             >
-              Sign up
+              {t('shell.nav.signUp')}
             </Link>
           </>
         )}
@@ -146,7 +148,7 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
         <button
           type="button"
           onClick={onMenu}
-          aria-label="Open the menu"
+          aria-label={t('shell.nav.openMenu')}
           className="size-11 inline-flex items-center justify-center justify-self-start"
         >
           <Menu className="size-5" aria-hidden="true" />
@@ -158,17 +160,17 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
           to={paths.cart(store)}
           className="min-h-11 px-2 text-sm font-semibold inline-flex items-center justify-self-end whitespace-nowrap"
         >
-          Cart ({cart.count})
+          {t('shell.nav.cart')} ({cart.count})
         </Link>
       </div>
       <nav
-        aria-label="Shop"
+        aria-label={t('shell.footer.shop')}
         className="h-11 gap-5 px-4 text-sm no-scrollbar flex items-center overflow-x-auto border-t border-[color:var(--sf-line)] whitespace-nowrap"
       >
         <CurrencySwitcher className="-ml-3 shrink-0" />
         <Link
           to={paths.search(store)}
-          aria-label="Search"
+          aria-label={t('shell.search')}
           className="-ml-3.5 min-h-11 min-w-11 inline-flex items-center justify-center"
         >
           <Search className="size-4" aria-hidden="true" />
@@ -183,13 +185,13 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
               to={paths.search(store, '', { sort: 'best' })}
               className="min-h-11 inline-flex items-center"
             >
-              Shop
+              {t('shell.nav.shop')}
             </Link>
             <Link to={paths.search(store, '', { sort: 'new' })} className="min-h-11 inline-flex items-center">
-              New arrivals
+              {t('shell.nav.newArrivals')}
             </Link>
             <Link to={paths.agent(store)} className="min-h-11 inline-flex items-center">
-              Agent
+              {t('shell.nav.agent')}
             </Link>
           </>
         )}
@@ -207,15 +209,15 @@ function TabBar() {
   const { store, cart } = useShop()
   const { pathname } = useLocation()
   const tabs: { label: string; icon: LucideIcon; to: string; count?: number }[] = [
-    { label: 'Shop', icon: Store, to: paths.home(store) },
-    { label: 'Search', icon: Search, to: paths.search(store) },
-    { label: 'Wishlist', icon: Heart, to: paths.wishlist(store) },
-    { label: 'Cart', icon: ShoppingBag, to: paths.cart(store), count: cart.count },
-    { label: 'Account', icon: UserRound, to: paths.account(store) },
+    { label: t('shell.nav.shop'), icon: Store, to: paths.home(store) },
+    { label: t('shell.search'), icon: Search, to: paths.search(store) },
+    { label: t('shell.nav.wishlist'), icon: Heart, to: paths.wishlist(store) },
+    { label: t('shell.nav.cart'), icon: ShoppingBag, to: paths.cart(store), count: cart.count },
+    { label: t('shell.nav.account'), icon: UserRound, to: paths.account(store) },
   ]
   return (
     <nav
-      aria-label="Shop sections"
+      aria-label={t('shell.nav.sections')}
       className="inset-x-0 bottom-0 md:hidden fixed z-40 grid grid-cols-5 border-t border-[color:var(--sf-line)] bg-[var(--sf-bg)] pb-[env(safe-area-inset-bottom)]"
     >
       {tabs.map(({ label, icon: Icon, to, count }) => {
@@ -242,7 +244,7 @@ function TabBar() {
               )}
             </span>
             {label}
-            {!!count && <span className="sr-only">, {count} items</span>}
+            {!!count && <span className="sr-only">, {tp('shell.items', count)}</span>}
           </Link>
         )
       })}
@@ -261,7 +263,7 @@ function Footer() {
       <p className="sf-display text-2xl font-bold">{tenant.name}</p>
       <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{tenant.brand.tagline}</p>
       {!!menu.length && (
-        <nav aria-label="Store links" className="mt-5">
+        <nav aria-label={t('shell.footer.storeLinks')} className="mt-5">
           <ul className="gap-x-5 text-sm font-semibold flex flex-wrap justify-center">
             {menu.map((l, i) => (
               <li key={`${i}-${l.label}`}>
@@ -273,12 +275,12 @@ function Footer() {
       )}
       <ul className="mt-6 max-w-2xl space-y-1 text-sm mx-auto text-[color:var(--sf-muted)]">
         <li>
-          Free shipping on orders from{' '}
+          {t('shell.footer.freeShipping')}{' '}
           <span className="whitespace-nowrap">{fmtIdr(tenant.loyalty.freeShippingMin)}</span>.
         </li>
         <li>{RETURNS_POLICY[tenant.industry]}</li>
         <li>
-          Pay with{' '}
+          {t('shell.footer.payWith')}{' '}
           {catalog.paymentTypes
             .filter((t) => t.enabled)
             .map((t, i) => (
@@ -292,8 +294,9 @@ function Footer() {
       </ul>
       <SellerIdentity className="mt-6" center />
       <p className="mt-6 text-xs text-[color:var(--sf-muted)]">
-        © {tenant.name.replace(/\.$/, '')}. Prices in rupiah, taxes included.
+        © {tenant.name.replace(/\.$/, '')}. {t('shell.footer.prices')}
       </p>
+      <LanguageSwitch className="mt-3 text-[color:var(--sf-muted)]" />
     </footer>
   )
 }
@@ -317,7 +320,7 @@ export function Layout({ children }: { children: ReactNode }) {
         href="#main"
         className="px-4 py-2 focus:top-2 focus:left-2 sr-only z-50 bg-[var(--sf-text)] text-[color:var(--sf-bg)] focus:not-sr-only focus:fixed"
       >
-        Skip to content
+        {t('shell.skip')}
       </a>
       {isHome && <GreetingBar className="bg-[var(--sf-text)] text-[color:var(--sf-bg)]" />}
       <ReferralBanner className="border-b border-[color:var(--sf-line)]" />

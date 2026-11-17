@@ -133,9 +133,10 @@ func (s *Identity) SetDisplayCurrencies(ctx context.Context, m kernel.Meta, tena
 	})
 }
 
-// SetShopSettings is tenants/setShopSettings: the return window in days and the shopper emails the
-// brand switched off. A window outside 0 to 90 or an unknown email kind refuses the whole change.
-func (s *Identity) SetShopSettings(ctx context.Context, m kernel.Meta, tenantID string, returnWindowDays int, emailsOff []string) (*kernel.Delta, error) {
+// SetShopSettings is tenants/setShopSettings: the return window in days, the shopper emails the
+// brand switched off and the store language ("" keeps it). A window outside 0 to 90, an unknown email
+// kind or an unknown language refuses the whole change.
+func (s *Identity) SetShopSettings(ctx context.Context, m kernel.Meta, tenantID string, returnWindowDays int, emailsOff []string, storeLanguage string) (*kernel.Delta, error) {
 	if err := kernel.Access(m, tenantID); err != nil {
 		return nil, err
 	}
@@ -152,6 +153,9 @@ func (s *Identity) SetShopSettings(ctx context.Context, m kernel.Meta, tenantID 
 			return nil, kernel.Invalid{Reason: kind + " is not an email stores send."}
 		}
 	}
+	if storeLanguage != "" && !slices.Contains(rules.StoreLanguages, storeLanguage) {
+		return nil, kernel.Invalid{Reason: storeLanguage + " is not a language stores show."}
+	}
 	var off []string
 	for _, kind := range rules.ShopperEmailKinds {
 		if slices.Contains(emailsOff, kind) {
@@ -164,6 +168,9 @@ func (s *Identity) SetShopSettings(ctx context.Context, m kernel.Meta, tenantID 
 			return err
 		}
 		tenant.ReturnWindowDays, tenant.ShopperEmailsOff = &returnWindowDays, off
+		if storeLanguage != "" {
+			tenant.StoreLanguage = storeLanguage
+		}
 		return t.Put("tenants", tenant.ID, tenant)
 	})
 }

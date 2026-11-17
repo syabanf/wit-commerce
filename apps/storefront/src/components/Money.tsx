@@ -2,6 +2,7 @@ import { fmtIdr } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { Coins } from 'lucide-react'
 import { IDR, useCurrency } from '../state/currency'
+import { t } from '../i18n'
 
 /**
  * A rupiah amount. With a foreign currency chosen it reads "≈ US$12.40" with the rupiah price smaller
@@ -41,7 +42,7 @@ export function CurrencySwitcher({ className }: { className?: string }) {
       )}
     >
       <Coins className="size-4" aria-hidden="true" />
-      <span className="sr-only">Show prices in</span>
+      <span className="sr-only">{t('checkout.money.showPricesIn')}</span>
       <select
         value={code}
         onChange={(e) => setCode(e.target.value)}
@@ -63,7 +64,7 @@ export function PayInRupiahNote({ className }: { className?: string }) {
   if (code === IDR) return null
   return (
     <p className={cn('text-sm text-[color:var(--sf-muted)]', className)}>
-      You pay in Indonesian rupiah. {code} prices are estimates.
+      {t('checkout.money.payInRupiah', { code })}
     </p>
   )
 }

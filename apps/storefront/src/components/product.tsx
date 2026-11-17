@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router'
+import { t } from '../i18n'
 import { tint } from '../lib/brand'
 import { type Catalog, compareAtPct, promoFor, quickAddable } from '../lib/catalog'
 import { paths } from '../lib/paths'
@@ -133,7 +134,7 @@ export function Rating({ product, className }: { product: Product; className?: s
     <span
       className={cn('gap-1 text-xs inline-flex items-center', className)}
       role="img"
-      aria-label={`Rated ${product.rating.toFixed(1)} of 5 from ${product.reviewCount} reviews`}
+      aria-label={t('catalog.rating.aria', { rating: product.rating.toFixed(1), count: product.reviewCount })}
     >
       <span className="flex text-[color:var(--sf-accent)]" aria-hidden="true">
         {Array.from({ length: 5 }, (_, i) => (
@@ -176,7 +177,7 @@ export function PriceTag({
   if (product.assisted)
     return (
       <span className={cn('font-bold text-[color:var(--sf-primary-text)]', className, priceClassName)}>
-        Talk to sales
+        {t('catalog.price.talkToSales')}
       </span>
     )
   return (
@@ -184,7 +185,7 @@ export function PriceTag({
       <Money idr={price ?? product.price} className={cn('sf-price font-bold', priceClassName)} />
       {product.compareAt && product.compareAt > product.price && (
         <span className="text-xs text-[color:var(--sf-muted)] line-through">
-          <span className="sr-only">Was </span>
+          <span className="sr-only">{t('catalog.price.was')} </span>
           {convert(product.compareAt) ? `≈ ${convert(product.compareAt)}` : fmtIdr(product.compareAt)}
         </span>
       )}
@@ -220,11 +221,13 @@ export function HeartButton({
     <button
       type="button"
       aria-pressed={saved}
-      aria-label={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
+      aria-label={
+        saved ? t('catalog.wishlist.remove', { name: product.name }) : t('catalog.wishlist.save', { name: product.name })
+      }
       onClick={(e) => {
         e.preventDefault()
         const added = wishlist.toggle(product.id)
-        toast(added ? 'Saved to wishlist' : 'Removed from wishlist', { description: product.name })
+        toast(added ? t('catalog.wishlist.saved') : t('catalog.wishlist.removed'), { description: product.name })
       }}
       className={cn(
         'size-11 inline-flex shrink-0 items-center justify-center rounded-full transition',
@@ -251,7 +254,7 @@ export function useQuickAdd() {
         return
       }
       cart.add({ productId: product.id, variantId: product.variants[0]!.id, qty: 1, modifiers: [] })
-      toast('Added to cart', {
+      toast(t('catalog.cart.added'), {
         tone: 'success',
         description: `${product.name}, ${fmtIdr(product.variants[0]!.price)}`,
       })

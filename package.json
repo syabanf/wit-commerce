@@ -13,7 +13,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck && tsc -p scripts",
     "lint": "eslint .",
-    "test": "tsx --test packages/fixtures/test/*.test.ts",
+    "test": "tsx --test packages/fixtures/test/*.test.ts apps/storefront/test/*.test.ts",
     "format": "prettier --write .",
     "gen:fixtures": "tsx scripts/generate-fixtures.ts",
     "dev:api": "pnpm --filter @rc/server dev",

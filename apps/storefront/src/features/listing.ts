@@ -1,6 +1,7 @@
-import { formatAttribute } from '@rc/fixtures'
 import type { AttributeDef, Product } from '@rc/types'
 import { useMemo, useState } from 'react'
+import { t } from '../i18n'
+import { formatAttribute } from '../i18n/format'
 import { type SortKey, sortProducts } from '../lib/catalog'
 
 export interface FacetOption {
@@ -41,7 +42,7 @@ function buildFacets(products: readonly Product[], defs: readonly AttributeDef[]
           kind: 'max',
           options: distinct.map((n) => ({
             value: String(n),
-            label: `Up to ${formatAttribute(def, String(n))}`,
+            label: t('catalog.filter.upTo', { value: formatAttribute(def, String(n)) }),
             count: values.filter((v) => Number(v) <= n).length,
           })),
         }
@@ -54,7 +55,7 @@ function buildFacets(products: readonly Product[], defs: readonly AttributeDef[]
         options: choices
           .map((v) => ({
             value: v,
-            label: def.type === 'boolean' ? `With ${def.name.toLowerCase()}` : v,
+            label: def.type === 'boolean' ? t('catalog.filter.with', { name: def.name.toLowerCase() }) : v,
             count: count(v),
           }))
           .filter((o) => o.count > 0),

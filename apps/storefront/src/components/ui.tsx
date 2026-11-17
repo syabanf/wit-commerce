@@ -2,6 +2,7 @@ import { cn } from '@rc/ui'
 import { Minus, Plus } from 'lucide-react'
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from 'react'
 import { Link } from 'react-router'
+import { t } from '../i18n'
 
 // Theme-neutral controls. Colours and corners come from the --sf-* variables the theme and brand set,
 // so the same control reads as a pill in Theme 1 and a hairline rectangle on a Theme 2 phone.
@@ -146,7 +147,7 @@ export function QtyStepper({
   onChange,
   min = 1,
   max = 99,
-  label = 'Quantity',
+  label = t('shell.qty'),
   className,
 }: {
   value: number
@@ -159,7 +160,7 @@ export function QtyStepper({
   return (
     <div role="group" aria-label={label} className={cn('gap-1 inline-flex items-center', className)}>
       <IconButton
-        label="Decrease quantity"
+        label={t('shell.qty.decrease')}
         tone="outline"
         disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}
@@ -170,7 +171,7 @@ export function QtyStepper({
         {value}
       </output>
       <IconButton
-        label="Increase quantity"
+        label={t('shell.qty.increase')}
         tone="outline"
         disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + 1))}

@@ -7,6 +7,7 @@ import { Link } from 'react-router'
 import { couriersFor } from '../lib/checkout'
 import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
+import { t } from '../i18n'
 
 /**
  * What the offer includes besides the price (PP 80/2019 Pasal 39): how to pay and by when, how it
@@ -20,12 +21,12 @@ export function OfferInfo({ product, className }: { product: Product; className?
   const ships = product.type !== 'digital' && product.type !== 'service'
   return (
     <dl className={cn('space-y-3 pt-4 text-sm border-t border-[color:var(--sf-line)]', className)}>
-      <Row icon={<CreditCard />} term="Payment">
-        {pays.map((t) => t.name).join(', ')}.
-        {online && ` Pay within ${PAYMENT_WINDOW_HOURS} hours of ordering, or the order cancels.`}
+      <Row icon={<CreditCard />} term={t('checkout.offer.payment')}>
+        {pays.map((p) => p.name).join(', ')}.
+        {online && ` ${t('checkout.offer.payWithin', { hours: PAYMENT_WINDOW_HOURS })}`}
       </Row>
       {ships && (
-        <Row icon={<Truck />} term="Delivery">
+        <Row icon={<Truck />} term={t('checkout.offer.delivery')}>
           <ul>
             {couriersFor(tenant).map((c) => (
               <li key={c.id}>
@@ -35,18 +36,15 @@ export function OfferInfo({ product, className }: { product: Product; className?
             ))}
           </ul>
           <span className="text-[color:var(--sf-muted)]">
-            Days count from when the parcel ships. Free shipping from {fmtIdr(tenant.loyalty.freeShippingMin)}
-            .
+            {t('checkout.offer.daysCount', { amount: fmtIdr(tenant.loyalty.freeShippingMin) })}
           </span>
         </Row>
       )}
-      <Row icon={<Undo2 />} term="Returns">
-        {days > 0
-          ? `Ask for a return within ${days} days of delivery from your order page.`
-          : 'Ask the store for a return by message.'}{' '}
-        You can always return a wrong or damaged item if you ask within 2 working days of delivery.{' '}
+      <Row icon={<Undo2 />} term={t('checkout.offer.returns')}>
+        {days > 0 ? t('checkout.offer.returnWithin', { days }) : t('checkout.offer.returnByMessage')}{' '}
+        {t('checkout.offer.returnAlways')}{' '}
         <Link to={paths.terms(store)} className="font-semibold underline underline-offset-4">
-          Terms of sale
+          {t('checkout.offer.termsOfSale')}
         </Link>
       </Row>
     </dl>

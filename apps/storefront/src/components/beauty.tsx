@@ -1,4 +1,4 @@
-import { fmtIdr, plural, tenantPhotos } from '@rc/fixtures'
+import { fmtIdr, tenantPhotos } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { LOYALTY_TIER_FLOW, LOYALTY_TIER_LABEL } from '@rc/types'
 import { cn } from '@rc/ui'
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { type ReactNode, useId, useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { type MessageKey, t, tp } from '../i18n'
 import { type Catalog, isBuyable, variantAvailable } from '../lib/catalog'
 import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
@@ -36,31 +37,41 @@ export const isBeauty = (catalog: Catalog) => catalog.tenant.industry === 'beaut
 
 interface Concern {
   key: string
-  label: string
+  label: MessageKey
   /** The product tag that treats it. */
   tag: string
-  text: string
+  text: MessageKey
 }
 
 const CONCERNS: Concern[] = [
   {
     key: 'sensitive',
-    label: 'Sensitive & redness',
+    label: 'catalog.beauty.concern.sensitive',
     tag: 'sensitive',
-    text: 'Calm the barrier, skip fragrance.',
+    text: 'catalog.beauty.concern.sensitive.text',
   },
-  { key: 'dull', label: 'Dullness & dark spots', tag: 'brightening', text: 'Vitamin C and a daily SPF.' },
-  { key: 'oily', label: 'Acne & oily skin', tag: 'oily', text: 'Clear pores without stripping.' },
-  { key: 'dry', label: 'Dry & tight', tag: 'hydrating', text: 'Layer water, then seal it in.' },
-  { key: 'ageing', label: 'Fine lines', tag: 'anti-aging', text: 'Retinal at night, SPF by day.' },
+  {
+    key: 'dull',
+    label: 'catalog.beauty.concern.dull',
+    tag: 'brightening',
+    text: 'catalog.beauty.concern.dull.text',
+  },
+  { key: 'oily', label: 'catalog.beauty.concern.oily', tag: 'oily', text: 'catalog.beauty.concern.oily.text' },
+  { key: 'dry', label: 'catalog.beauty.concern.dry', tag: 'hydrating', text: 'catalog.beauty.concern.dry.text' },
+  {
+    key: 'ageing',
+    label: 'catalog.beauty.concern.ageing',
+    tag: 'anti-aging',
+    text: 'catalog.beauty.concern.ageing.text',
+  },
 ]
 
 /** The four steps of a routine; the treat step follows the concern. */
-const STEPS: { key: string; label: string; when: string; tag: string | null }[] = [
-  { key: 'cleanse', label: 'Cleanse', when: 'AM and PM', tag: 'daily' },
-  { key: 'tone', label: 'Tone', when: 'AM and PM', tag: 'hydrating' },
-  { key: 'treat', label: 'Treat', when: 'Your concern', tag: null },
-  { key: 'protect', label: 'Protect', when: 'Every morning', tag: 'spf' },
+const STEPS: { key: string; label: MessageKey; when: MessageKey; tag: string | null }[] = [
+  { key: 'cleanse', label: 'catalog.beauty.step.cleanse', when: 'catalog.beauty.when.amPm', tag: 'daily' },
+  { key: 'tone', label: 'catalog.beauty.step.tone', when: 'catalog.beauty.when.amPm', tag: 'hydrating' },
+  { key: 'treat', label: 'catalog.beauty.step.treat', when: 'catalog.beauty.when.concern', tag: null },
+  { key: 'protect', label: 'catalog.beauty.step.protect', when: 'catalog.beauty.when.morning', tag: 'spf' },
 ]
 
 const firstInStock = (catalog: Catalog, p: Product) =>
@@ -126,11 +137,11 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
 
   return (
     <section aria-labelledby={`${id}-h`} id="routine" className="scroll-mt-24">
-      <Heading id={`${id}-h`} title="Find your routine" />
+      <Heading id={`${id}-h`} title={t('catalog.beauty.finder.title')} />
       <div className="sf-card gap-6 p-5 md:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] grid grid-cols-1">
         <div className="space-y-5">
           <fieldset className="min-w-0">
-            <legend className="text-sm font-bold">1. Your skin type</legend>
+            <legend className="text-sm font-bold">{t('catalog.beauty.finder.skin')}</legend>
             <div className="mt-2 gap-2 flex flex-wrap">
               {skins.map((s) => (
                 <button
@@ -140,13 +151,13 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
                   className={choice(skin === s)}
                   onClick={() => (setSkin(s), setAdded(false))}
                 >
-                  {s === 'All' ? 'Normal' : s}
+                  {s === 'All' ? t('catalog.beauty.normal') : s}
                 </button>
               ))}
             </div>
           </fieldset>
           <fieldset className="min-w-0">
-            <legend className="text-sm font-bold">2. What bothers you most</legend>
+            <legend className="text-sm font-bold">{t('catalog.beauty.finder.concern')}</legend>
             <div className="mt-2 gap-2 flex flex-wrap">
               {CONCERNS.map((c) => (
                 <button
@@ -156,37 +167,37 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
                   className={choice(concernKey === c.key)}
                   onClick={() => (setConcernKey(c.key), setAdded(false))}
                 >
-                  {c.label}
+                  {t(c.label)}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-sm text-[color:var(--sf-muted)]">{concern.text}</p>
+            <p className="mt-2 text-sm text-[color:var(--sf-muted)]">{t(concern.text)}</p>
           </fieldset>
           <div className="p-4 rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]">
-            <p className="text-sm text-[color:var(--sf-muted)]">Your routine, {picks.length} products</p>
+            <p className="text-sm text-[color:var(--sf-muted)]">{tp('catalog.beauty.finder.count', picks.length)}</p>
             <p className="sf-display mt-1 text-2xl font-bold">{fmtIdr(total)}</p>
             {added ? (
               <div role="status" className="mt-3 gap-3 text-sm font-semibold flex flex-wrap items-center">
                 <Check className="size-4" aria-hidden="true" />
-                Added to your cart
+                {t('catalog.added.title')}
                 <Link to={paths.cart(store)} className="underline underline-offset-4">
-                  View cart
+                  {t('catalog.added.viewCart')}
                 </Link>
               </div>
             ) : (
               <Button variant="primary" full className="mt-3" onClick={addAll} disabled={!picks.length}>
-                Add routine to cart
+                {t('catalog.beauty.finder.addAll')}
               </Button>
             )}
           </div>
         </div>
-        <ol className="gap-3 md:grid-cols-4 grid grid-cols-2" aria-label="Routine steps">
+        <ol className="gap-3 md:grid-cols-4 grid grid-cols-2" aria-label={t('catalog.beauty.finder.steps')}>
           {routine.map(({ step, product }, i) => (
             <li key={step.key} className="min-w-0 flex flex-col">
               <p className="sf-kicker">
-                {i + 1}. {step.label}
+                {i + 1}. {t(step.label)}
               </p>
-              <p className="mb-2 text-[11px] text-[color:var(--sf-muted)]">{step.when}</p>
+              <p className="mb-2 text-[11px] text-[color:var(--sf-muted)]">{t(step.when)}</p>
               {product ? (
                 <Link
                   to={paths.product(store, product.id)}
@@ -202,14 +213,14 @@ export function RoutineFinder({ Heading = PlainHeading }: { Heading?: Heading })
                   </span>
                   {attr(catalog, product, 'key_ingredient') && (
                     <span className="mt-1 truncate text-[11px] text-[color:var(--sf-muted)]">
-                      with {attr(catalog, product, 'key_ingredient')}
+                      {t('catalog.beauty.with', { ingredient: attr(catalog, product, 'key_ingredient')! })}
                     </span>
                   )}
                   <span className="pt-1 text-sm mt-auto">{fmtIdr(product.price)}</span>
                 </Link>
               ) : (
                 <p className="p-3 text-xs flex-1 rounded-[var(--sf-tile-radius)] border border-dashed border-[color:var(--sf-line)] text-[color:var(--sf-muted)]">
-                  Nothing in stock for this step yet.
+                  {t('catalog.beauty.finder.empty')}
                 </p>
               )}
             </li>
@@ -226,7 +237,7 @@ export function ConcernTiles({ Heading = PlainHeading }: { Heading?: Heading }) 
   const id = useId()
   return (
     <section aria-labelledby={`${id}-h`}>
-      <Heading id={`${id}-h`} title="Shop by skin concern" />
+      <Heading id={`${id}-h`} title={t('catalog.beauty.concerns.title')} />
       <ul className={cn(RAIL, 'py-1 lg:py-0', lgCols(CONCERNS.length))}>
         {CONCERNS.map((c, i) => {
           const count = catalog.products.filter((p) => p.tags.includes(c.tag)).length
@@ -246,8 +257,8 @@ export function ConcernTiles({ Heading = PlainHeading }: { Heading?: Heading }) 
                 }
               >
                 <Droplets className="size-5" aria-hidden="true" />
-                <span className="sf-display mt-3 leading-tight font-bold">{c.label}</span>
-                <span className="pt-2 text-xs mt-auto opacity-75">{plural(count, 'product')}</span>
+                <span className="sf-display mt-3 leading-tight font-bold">{t(c.label)}</span>
+                <span className="pt-2 text-xs mt-auto opacity-75">{tp('catalog.products', count)}</span>
               </Link>
             </li>
           )
@@ -257,17 +268,17 @@ export function ConcernTiles({ Heading = PlainHeading }: { Heading?: Heading }) 
   )
 }
 
-const INGREDIENT_NOTE: Record<string, string> = {
-  Ceramide: 'Rebuilds the skin barrier so it holds water.',
-  'Vitamin C': 'Brightens dull skin and fades dark spots.',
-  Centella: 'Soothes redness and irritated skin.',
-  Niacinamide: 'Evens tone and calms oil.',
-  'Hyaluronic acid': 'Draws water in for plump, hydrated skin.',
-  Retinal: 'Smooths fine lines; start slowly, use at night.',
-  'Kaolin clay': 'Lifts excess oil from pores.',
-  'Salicylic acid': 'Clears oil and flakes on the scalp.',
-  'Argan oil': 'Tames frizz and adds shine.',
-  Peptides: 'Firms the thin skin around the eyes.',
+const INGREDIENT_NOTE: Record<string, MessageKey> = {
+  Ceramide: 'catalog.beauty.ingredient.ceramide',
+  'Vitamin C': 'catalog.beauty.ingredient.vitaminC',
+  Centella: 'catalog.beauty.ingredient.centella',
+  Niacinamide: 'catalog.beauty.ingredient.niacinamide',
+  'Hyaluronic acid': 'catalog.beauty.ingredient.hyaluronic',
+  Retinal: 'catalog.beauty.ingredient.retinal',
+  'Kaolin clay': 'catalog.beauty.ingredient.kaolin',
+  'Salicylic acid': 'catalog.beauty.ingredient.salicylic',
+  'Argan oil': 'catalog.beauty.ingredient.argan',
+  Peptides: 'catalog.beauty.ingredient.peptides',
 }
 
 /** One card per key ingredient in the catalog, with what it does and the products that carry it. */
@@ -283,7 +294,7 @@ export function IngredientSpotlight({ Heading = PlainHeading }: { Heading?: Head
   if (!list.length) return null
   return (
     <section aria-labelledby={`${id}-h`}>
-      <Heading id={`${id}-h`} title="Ingredient spotlight" />
+      <Heading id={`${id}-h`} title={t('catalog.beauty.ingredients.title')} />
       <ul
         className={cn(
           '-mx-4 px-4 gap-3 scroll-px-4 md:-mx-6 md:px-6 md:scroll-px-6 lg:-mx-10 lg:px-10 lg:scroll-px-10 xl:mx-0 xl:px-0 xl:grid xl:overflow-visible no-scrollbar flex snap-x overflow-x-auto',
@@ -300,7 +311,7 @@ export function IngredientSpotlight({ Heading = PlainHeading }: { Heading?: Head
               </span>
               <p className="sf-display mt-3 text-lg font-bold">{name}</p>
               <p className="mt-1 text-sm text-[color:var(--sf-muted)]">
-                {INGREDIENT_NOTE[name] ?? 'A key active in our formulas.'}
+                {INGREDIENT_NOTE[name] ? t(INGREDIENT_NOTE[name]) : t('catalog.beauty.ingredient.default')}
               </p>
               <ul className="pt-3 space-y-1 text-sm mt-auto">
                 {products.slice(0, 3).map((p) => (
@@ -327,15 +338,15 @@ export function TrustBar() {
   const items = [
     {
       icon: ShieldCheck,
-      title: `${skincare.length} products BPOM registered`,
-      text: 'Registration number on every product page',
+      title: t('catalog.benefit.bpom', { count: skincare.length }),
+      text: t('catalog.benefit.bpomText'),
     },
-    { icon: Leaf, title: `${free} fragrance-free formulas`, text: 'Marked on the product and in filters' },
-    { icon: BadgeCheck, title: 'Made for tropical skin', text: 'Tested in Bandung heat and humidity' },
-    { icon: CalendarHeart, title: 'Free skin consultation', text: 'With a beauty advisor, online' },
+    { icon: Leaf, title: t('catalog.beauty.trust.free', { count: free }), text: t('catalog.beauty.trust.freeText') },
+    { icon: BadgeCheck, title: t('catalog.beauty.trust.tropical'), text: t('catalog.beauty.trust.tropicalText') },
+    { icon: CalendarHeart, title: t('catalog.benefit.consult'), text: t('catalog.benefit.consultText') },
   ]
   return (
-    <ul aria-label="Why our skincare" className="gap-3 lg:grid-cols-4 grid grid-cols-2">
+    <ul aria-label={t('catalog.beauty.trust.aria')} className="gap-3 lg:grid-cols-4 grid grid-cols-2">
       {items.map(({ icon: Icon, title, text }) => (
         <li
           key={title}
@@ -364,17 +375,17 @@ export function RewardsLadder({ Heading = PlainHeading }: { Heading?: Heading })
     platinum: thresholds.platinum,
   }
   const perk: Record<string, string> = {
-    member: `${pointsPer10k} points per Rp 10.000 and a birthday gift`,
-    silver: 'Free shipping on every order',
-    gold: 'Early access to launches and 5% back',
-    platinum: 'A personal beauty advisor and event invitations',
+    member: t('catalog.beauty.perk.member', { count: pointsPer10k }),
+    silver: t('catalog.beauty.perk.silver'),
+    gold: t('catalog.beauty.perk.gold'),
+    platinum: t('catalog.beauty.perk.platinum'),
   }
   return (
     <section aria-labelledby={`${id}-h`}>
       <Heading
         id={`${id}-h`}
-        title={`${tenant.name.split(' ')[0]} Rewards`}
-        action={{ label: 'Join or sign in', to: paths.account(store) }}
+        title={t('catalog.beauty.rewards.title', { name: tenant.name.split(' ')[0]! })}
+        action={{ label: t('catalog.beauty.rewards.join'), to: paths.account(store) }}
       />
       <ol className="gap-3 lg:grid-cols-4 grid grid-cols-2">
         {LOYALTY_TIER_FLOW.map((tier, i) => (
@@ -390,7 +401,9 @@ export function RewardsLadder({ Heading = PlainHeading }: { Heading?: Heading })
             <Sparkles className="size-5 text-[color:var(--sf-accent)]" aria-hidden="true" />
             <p className="sf-display mt-3 text-xl font-bold">{LOYALTY_TIER_LABEL[tier]}</p>
             <p className="text-xs min-h-[2lh] opacity-75">
-              {spend[tier] ? `From ${fmtIdr(spend[tier])} a year` : 'When you join'}
+              {spend[tier]
+                ? t('catalog.beauty.rewards.from', { amount: fmtIdr(spend[tier]) })
+                : t('catalog.beauty.rewards.onJoin')}
             </p>
             <p className="mt-3 text-sm">{perk[tier]}</p>
           </li>
@@ -413,15 +426,15 @@ export function ConsultationBand() {
       style={{ background: 'color-mix(in srgb, var(--sf-accent) 14%, var(--sf-bg))' }}
     >
       <div className="p-2">
-        <p className="sf-kicker">Not sure where to start?</p>
+        <p className="sf-kicker">{t('catalog.beauty.consult.kicker')}</p>
         <h2 id="consult-h" className="sf-display mt-2 text-2xl font-bold md:text-3xl text-balance">
-          Book a 30-minute skin consultation
+          {t('catalog.beauty.consult.title')}
         </h2>
         <p className="mt-2 text-sm text-[color:var(--sf-muted)]">
-          {service.description} {fmtIdr(service.price)}, credited back on your first order over Rp 500.000.
+          {service.description} {t('catalog.beauty.consult.price', { price: fmtIdr(service.price) })}
         </p>
         <ButtonLink to={paths.product(store, service.id)} variant="dark" className="mt-4">
-          Book a consultation
+          {t('catalog.beauty.consult.cta')}
         </ButtonLink>
       </div>
       <Photo
@@ -443,7 +456,7 @@ export function GlowWall({ Heading = PlainHeading }: { Heading?: Heading }) {
   const picks = [...catalog.products].sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 6)
   return (
     <section aria-labelledby={`${id}-h`} id="testimonials" className="scroll-mt-24">
-      <Heading id={`${id}-h`} title={`Real routines ${tag}`} />
+      <Heading id={`${id}-h`} title={t('catalog.beauty.glow.title', { tag })} />
       <ul className="gap-3 md:grid-cols-3 lg:grid-cols-6 grid grid-cols-2">
         {picks.map((p, i) => (
           <li key={p.id}>
@@ -485,25 +498,29 @@ export function BeautyFacts({ product }: { product: Product }) {
   return (
     <div className="space-y-4">
       <div className="gap-2 flex flex-wrap">
-        {skin && <Pill className={FACT}>{skin === 'All' ? 'All skin types' : `${skin} skin`}</Pill>}
-        {free && <Pill className={FACT}>Fragrance-free</Pill>}
-        {key && <Pill className={FACT}>With {key}</Pill>}
+        {skin && (
+          <Pill className={FACT}>
+            {skin === 'All' ? t('catalog.beauty.fact.allSkin') : t('catalog.beauty.fact.skin', { skin })}
+          </Pill>
+        )}
+        {free && <Pill className={FACT}>{t('catalog.beauty.fact.free')}</Pill>}
+        {key && <Pill className={FACT}>{t('catalog.beauty.fact.with', { ingredient: key })}</Pill>}
         {bpom && <Pill className={FACT}>BPOM {bpom}</Pill>}
       </div>
       {key && INGREDIENT_NOTE[key] && (
         <p className="text-sm">
-          <span className="font-bold">{key}:</span> {INGREDIENT_NOTE[key]}
+          <span className="font-bold">{key}:</span> {t(INGREDIENT_NOTE[key])}
         </p>
       )}
       {use && (
         <div className="p-4 rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-soft)]">
-          <p className="text-sm font-bold">How to use</p>
+          <p className="text-sm font-bold">{t('catalog.beauty.howTo')}</p>
           <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{use}</p>
         </div>
       )}
       {others.length > 0 && product.categoryId === 'cat-aruna-skin' && (
         <div>
-          <p className="text-sm font-bold">Complete your routine</p>
+          <p className="text-sm font-bold">{t('catalog.beauty.complete')}</p>
           <ul className="mt-2 gap-2 md:grid md:grid-cols-3 md:overflow-visible no-scrollbar flex snap-x overflow-x-auto">
             {others.slice(0, 3).map(({ step, product: p }) => (
               <li key={step.key} className="md:w-auto w-[160px] shrink-0 snap-start">
@@ -512,7 +529,7 @@ export function BeautyFacts({ product }: { product: Product }) {
                   className="p-2 block h-full rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]"
                 >
                   <span className="font-bold tracking-widest text-[10px] text-[color:var(--sf-primary-text)] uppercase">
-                    {step.label}
+                    {t(step.label)}
                   </span>
                   <span className="mt-1 text-xs font-semibold line-clamp-2 block min-h-[2lh]">{p!.name}</span>
                   <span className="text-xs">{fmtIdr(p!.price)}</span>

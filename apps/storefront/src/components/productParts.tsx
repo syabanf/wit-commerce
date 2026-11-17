@@ -1,6 +1,7 @@
 import { cn } from '@rc/ui'
 import { Check } from 'lucide-react'
 import type { ProductDetail } from '../features/product'
+import { t, tp } from '../i18n'
 import type { CartItem } from '../lib/cart'
 import { stockNote } from '../lib/catalog'
 import { paths } from '../lib/paths'
@@ -50,7 +51,7 @@ export function OptionPickers({ detail, look = 'pill' }: { detail: ProductDetail
           >
             {o.values.map((v) => {
               const swatch = o.kind === 'colour' ? swatchColour(v.value) : null
-              const label = v.available ? v.value : `${v.value}, sold out`
+              const label = v.available ? v.value : t('catalog.option.soldOut', { value: v.value })
               if (o.kind === 'colour')
                 return (
                   <button
@@ -123,10 +124,10 @@ export function ModifierGroups({ detail }: { detail: ProductDetail }) {
           <fieldset key={g.id}>
             <legend className="gap-2 text-sm font-semibold flex w-full flex-wrap items-center">
               {g.name}
-              {g.required ? <Pill tone="accent">Required</Pill> : <Pill>Optional</Pill>}
+              {g.required ? <Pill tone="accent">{t('catalog.addon.required')}</Pill> : <Pill>{t('catalog.addon.optional')}</Pill>}
               {g.selection === 'multiple' && (
                 <span className="text-xs font-normal text-[color:var(--sf-muted)]">
-                  Pick up to {g.maxChoices}
+                  {t('catalog.addon.pickUpTo', { count: g.maxChoices })}
                 </span>
               )}
             </legend>
@@ -135,7 +136,7 @@ export function ModifierGroups({ detail }: { detail: ProductDetail }) {
                 <ChoiceRow
                   name={g.id}
                   type="radio"
-                  label="None"
+                  label={t('catalog.addon.none')}
                   price={null}
                   checked={!picked.length}
                   onChange={() => detail.toggleChoice(g, '')}
@@ -150,7 +151,11 @@ export function ModifierGroups({ detail }: { detail: ProductDetail }) {
                     type={g.selection === 'single' ? 'radio' : 'checkbox'}
                     label={o.name}
                     hint={
-                      left === 0 ? 'Sold out' : left !== null && left <= 5 ? `Only ${left} left` : undefined
+                      left === 0
+                        ? t('catalog.stock.soldOut')
+                        : left !== null && left <= 5
+                          ? t('catalog.stock.few', { count: left })
+                          : undefined
                     }
                     price={o.priceDelta}
                     checked={picked.includes(o.id)}
@@ -207,7 +212,7 @@ function ChoiceRow({
       </span>
       {price !== null && (
         <span className={cn('font-semibold shrink-0', price === 0 && 'text-[color:var(--sf-muted)]')}>
-          {price ? <Money idr={price} sign="+" /> : 'Free'}
+          {price ? <Money idr={price} sign="+" /> : t('catalog.addon.free')}
         </span>
       )}
     </label>
@@ -218,7 +223,7 @@ export function StockLine({ detail, className }: { detail: ProductDetail; classN
   if (detail.product.assisted) return null
   if (!detail.variant && detail.options.length)
     return (
-      <p className={cn('text-sm text-[color:var(--sf-muted)]', className)}>Choose options to see stock</p>
+      <p className={cn('text-sm text-[color:var(--sf-muted)]', className)}>{t('catalog.stock.chooseOptions')}</p>
     )
   const out = detail.available !== null && detail.available <= 0
   return (
@@ -253,15 +258,15 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
     <Drawer
       open={!!item}
       onOpenChange={(open) => !open && onClose()}
-      title="Added to your cart"
-      description={item ? `${totals.count} ${totals.count === 1 ? 'item' : 'items'} in your cart` : undefined}
+      title={t('catalog.added.title')}
+      description={item ? tp('catalog.added.count', totals.count) : undefined}
       footer={
         <>
           <Button variant="outline" onClick={onClose} className="flex-1">
-            Keep shopping
+            {t('catalog.added.keepShopping')}
           </Button>
           <ButtonLink to={paths.cart(store)} variant="primary" className="flex-1">
-            View cart
+            {t('catalog.added.viewCart')}
           </ButtonLink>
         </>
       }
@@ -276,7 +281,7 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
             />
             <div className="min-w-0 flex-1">
               <p className="gap-1.5 text-xs font-semibold flex items-center text-[color:var(--sf-primary-text)]">
-                <Check className="size-4" aria-hidden="true" /> Added
+                <Check className="size-4" aria-hidden="true" /> {t('catalog.added.badge')}
               </p>
               <p className="sf-display mt-1 font-bold">{item.product.name}</p>
               {item.variant.name !== 'Standard' && (
@@ -301,7 +306,7 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
           <FreeShippingProgress />
           <div className="space-y-2 text-sm">
             <p className="flex justify-between">
-              <span>Cart subtotal</span>
+              <span>{t('catalog.added.subtotal')}</span>
               <Money idr={totals.subtotal} className="font-bold" />
             </p>
             {totals.discounts.map((discount) => (
@@ -315,7 +320,7 @@ export function AddedDrawer({ item, onClose }: { item: CartItem | null; onClose:
             ))}
             {totals.discounts.length > 0 && (
               <p className="pt-2 flex justify-between border-t border-[color:var(--sf-line)]">
-                <span>After offers, before shipping</span>
+                <span>{t('catalog.added.afterOffers')}</span>
                 <Money idr={Math.max(0, totals.subtotal - totals.discount)} className="font-bold" />
               </p>
             )}

@@ -1,11 +1,13 @@
 import { fmtIdrShort, formatAttribute } from '@rc/fixtures'
 import type { Category, Product } from '@rc/types'
+import { type MessageKey, t } from '../i18n'
 import { type Catalog, categoryIdsUnder, fromPrice, giftable, isBuyable, popularCategories } from './catalog'
 
 // Intent search (spec 20 and 43): read a shopper's sentence in Indonesian or English, then rank the
 // catalog against it. Pure functions, no network: answers come from this store's catalog only.
 
 export interface UseCase {
+  /** A stable English name, used to compare use cases; `labelOfUseCase` shows it in the shopper's language. */
   label: string
   terms: string[]
 }
@@ -15,6 +17,7 @@ export interface Intent {
   categoryId: string | null
   useCases: UseCase[]
   gift: boolean
+  /** Who the gift is for, a GIFT_FOR id such as "mum"; `giftForLabel` shows it. */
   giftFor: string | null
   /** Words of the request, Indonesian ones translated, for matching names, tags and attributes. */
   terms: string[]
@@ -113,6 +116,10 @@ export const SYNONYMS: Record<string, string[]> = {
   kering: ['dry'],
   berminyak: ['oily'],
   pemula: ['beginner'],
+  kemeja: ['shirt'],
+  kopi: ['coffee'],
+  biji: ['bean'],
+  udara: ['air'],
 }
 
 const STOP = new Set(
@@ -165,14 +172,46 @@ const USE_CASES: { re: RegExp; label: string; terms: string[] }[] = [
 ]
 
 const GIFT_FOR: [RegExp, string][] = [
-  [/\b(ibu|mama|mum|mom|mother)\b/i, 'Mum'],
-  [/\b(ayah|bapak|papa|dad|father)\b/i, 'Dad'],
-  [/\b(pacar|partner|girlfriend|boyfriend)\b/i, 'a partner'],
-  [/\b(istri|wife)\b/i, 'a wife'],
-  [/\b(suami|husband)\b/i, 'a husband'],
-  [/\b(teman|friend)\b/i, 'a friend'],
-  [/\b(kakak|adik|sister|brother)\b/i, 'a sibling'],
+  [/\b(ibu|mama|mum|mom|mother)\b/i, 'mum'],
+  [/\b(ayah|bapak|papa|dad|father)\b/i, 'dad'],
+  [/\b(pacar|partner|girlfriend|boyfriend)\b/i, 'partner'],
+  [/\b(istri|wife)\b/i, 'wife'],
+  [/\b(suami|husband)\b/i, 'husband'],
+  [/\b(teman|friend)\b/i, 'friend'],
+  [/\b(kakak|adik|sister|brother)\b/i, 'sibling'],
 ]
+
+const USE_CASE_KEY: Record<string, MessageKey> = {
+  'Half marathon': 'agent.useCase.half',
+  Marathon: 'agent.useCase.marathon',
+  Beginner: 'agent.useCase.beginner',
+  'Sensitive skin': 'agent.useCase.sensitive',
+  'Dry skin': 'agent.useCase.dry',
+  'Oily skin': 'agent.useCase.oily',
+  Trail: 'agent.useCase.trail',
+  'Race day': 'agent.useCase.race',
+}
+
+const GIFT_FOR_KEY: Record<string, MessageKey> = {
+  mum: 'agent.giftFor.mum',
+  dad: 'agent.giftFor.dad',
+  partner: 'agent.giftFor.partner',
+  wife: 'agent.giftFor.wife',
+  husband: 'agent.giftFor.husband',
+  friend: 'agent.giftFor.friend',
+  sibling: 'agent.giftFor.sibling',
+}
+
+/** A use case's name in the shopper's language; "5K" and "10K" read the same in both. */
+export const labelOfUseCase = (u: UseCase) => {
+  const key = USE_CASE_KEY[u.label]
+  return key ? t(key) : u.label
+}
+
+const giftForLabel = (who: string) => {
+  const key = GIFT_FOR_KEY[who]
+  return key ? t(key) : who
+}
 
 // --- understanding ---
 
@@ -241,10 +280,20 @@ export const hasCriteria = (i: Intent) =>
 /** "Category: Road running shoes", "Use case: 10K", "Budget ≤ Rp 1,5 jt". */
 export function describeIntent(intent: Intent, catalog: Catalog): string[] {
   const out: string[] = []
-  if (intent.categoryId) out.push(`Category: ${catalog.categoryMap.get(intent.categoryId)?.name ?? 'Any'}`)
-  for (const u of intent.useCases) out.push(`Use case: ${u.label}`)
-  if (intent.gift) out.push(intent.giftFor ? `Gift for ${intent.giftFor}` : 'Gift')
-  if (intent.budgetMax !== null) out.push(`Budget ≤ ${fmtIdrShort(intent.budgetMax)}`)
+  if (intent.categoryId)
+    out.push(
+      t('agent.intent.category', {
+        name: catalog.categoryMap.get(intent.categoryId)?.name ?? t('agent.intent.any'),
+      }),
+    )
+  for (const u of intent.useCases) out.push(t('agent.intent.useCase', { label: labelOfUseCase(u) }))
+  if (intent.gift)
+    out.push(
+      intent.giftFor
+        ? t('agent.intent.giftFor', { who: giftForLabel(intent.giftFor) })
+        : t('agent.intent.gift'),
+    )
+  if (intent.budgetMax !== null) out.push(t('agent.intent.budget', { amount: fmtIdrShort(intent.budgetMax) }))
   return out
 }
 
@@ -323,14 +372,14 @@ export function openingReplies(catalog: Catalog): QuickReply[] {
     ...popularCategories(catalog)
       .slice(0, 4)
       .map((c) => ({ label: c.name, action: { kind: 'category', categoryId: c.id } as ReplyAction })),
-    { label: 'Gift ideas', action: { kind: 'gift' } },
+    { label: t('agent.ask.giftIdeas'), action: { kind: 'gift' } },
   ]
 }
 
 /** Refining pills after an answer: cheaper, a sibling category, a lower budget, start over. */
 export function followUps(intent: Intent, rec: Recommendation, catalog: Catalog): QuickReply[] {
   const out: QuickReply[] = []
-  if (rec.picks.length > 1) out.push({ label: 'Cheaper', action: { kind: 'cheaper' } })
+  if (rec.picks.length > 1) out.push({ label: t('agent.ask.cheaper'), action: { kind: 'cheaper' } })
   const current = intent.categoryId ? catalog.categoryMap.get(intent.categoryId) : undefined
   const siblings = current?.parentId
     ? (catalog.childrenOf.get(current.parentId) ?? []).filter((c) => c.id !== current.id)
@@ -340,7 +389,7 @@ export function followUps(intent: Intent, rec: Recommendation, catalog: Catalog)
   )
   if (sibling)
     out.push({
-      label: `Show ${sibling.name.toLowerCase()} options`,
+      label: t('agent.ask.showOptions', { name: sibling.name.toLowerCase() }),
       action: { kind: 'category', categoryId: sibling.id },
     })
   const cap =
@@ -348,8 +397,11 @@ export function followUps(intent: Intent, rec: Recommendation, catalog: Catalog)
       ? 500_000
       : Math.max(50_000, Math.round(intent.budgetMax / 2 / 50_000) * 50_000)
   if (intent.budgetMax === null || cap < intent.budgetMax)
-    out.push({ label: `Under ${fmtIdrShort(cap)}`, action: { kind: 'budget', max: cap } })
-  out.push({ label: 'Something else', action: { kind: 'reset' } })
+    out.push({
+      label: t('agent.ask.under', { amount: fmtIdrShort(cap) }),
+      action: { kind: 'budget', max: cap },
+    })
+  out.push({ label: t('agent.ask.somethingElse'), action: { kind: 'reset' } })
   return out
 }
 

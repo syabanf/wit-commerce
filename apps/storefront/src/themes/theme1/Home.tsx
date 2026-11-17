@@ -1,4 +1,5 @@
 import { nowMs } from '@rc/fixtures'
+import { t } from '../../i18n'
 import type { HomeData } from '../../features/home'
 import { currentDeal, isBuyable } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
@@ -113,7 +114,7 @@ export function Home({ data }: { data: HomeData }) {
       <SellersRow />
       {beauty && <GlowWall />}
       {!beauty && !has('testimonials') && (
-        <Testimonials section={extraSection('testimonials', 'Customer stories')} />
+        <Testimonials section={extraSection('testimonials', t('theme.customerStories'))} />
       )}
       {!story && <BrandStory section={extraSection('brand_story')} />}
       <OfferBand />
@@ -122,7 +123,7 @@ export function Home({ data }: { data: HomeData }) {
           id="recommended-h"
           title={data.recommendedTitle}
           products={recommended}
-          action={{ label: 'Browse all products', to: paths.search(store) }}
+          action={{ label: t('theme.browseAll'), to: paths.search(store) }}
         />
       )}
       <Newsletter />

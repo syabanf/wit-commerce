@@ -16,6 +16,7 @@ import { categoryName, fromPrice, quickAddable } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { Money } from '../../components/Money'
+import { t } from '../../i18n'
 
 /**
  * Theme 1 product card: a 4:5 photo with the discount, a heart and a round quick-add button over it,
@@ -29,10 +30,10 @@ export function ProductCard({ product, className }: { product: Product; classNam
   const to = paths.product(store, product.id)
   const direct = quickAddable(catalog, product)
   const addLabel = product.assisted
-    ? `Talk to sales about ${product.name}`
+    ? t('theme.quickAdd.sales', { name: product.name })
     : direct
-      ? `Add ${product.name} to cart`
-      : `Choose options for ${product.name}`
+      ? t('theme.quickAdd.add', { name: product.name })
+      : t('theme.quickAdd.options', { name: product.name })
   return (
     <article className={cn('group min-w-0 relative flex flex-col', className)}>
       <div className="relative overflow-hidden rounded-[var(--sf-tile-radius)] bg-[var(--sf-soft)]">
@@ -82,7 +83,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
             <span
               className="gap-1 pb-0.5 text-xs inline-flex shrink-0 items-center text-[color:var(--sf-muted)]"
               role="img"
-              aria-label={`Rated ${product.rating.toFixed(1)} of 5`}
+              aria-label={t('theme.rated', { rating: product.rating.toFixed(1) })}
             >
               <Star className="size-3.5 fill-current text-[color:var(--sf-accent)]" aria-hidden="true" />
               <span aria-hidden="true">{product.rating.toFixed(1)}</span>
@@ -91,7 +92,7 @@ export function ProductCard({ product, className }: { product: Product; classNam
         </div>
         {cartDiscountPct && (
           <p className="text-xs font-semibold text-[color:var(--sf-primary-text)]">
-            {cartDiscountPct}% off applied in cart
+            {t('theme.cartDiscount', { pct: cartDiscountPct })}
           </p>
         )}
       </div>
@@ -130,7 +131,7 @@ export function CompactCell({ product }: { product: Product }) {
       <span className="min-w-0 flex-1">
         <span className="text-sm leading-snug font-semibold line-clamp-2 text-pretty">{product.name}</span>
         <span className="mt-1 text-xs block text-[color:var(--sf-muted)]">
-          {product.assisted ? 'Price on request' : <Money idr={fromPrice(product)} prefix="From " />}
+          {product.assisted ? t('theme.priceOnRequest') : <Money idr={fromPrice(product)} prefix={t('theme.fromPrefix')} />}
         </span>
       </span>
       <ProductImage

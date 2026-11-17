@@ -1,6 +1,8 @@
-import { attributesFor, formatAttribute, nowMs } from '@rc/fixtures'
+import { attributesFor, nowMs } from '@rc/fixtures'
 import type { AttributeDef, Category, ModifierGroup, Product, Variant } from '@rc/types'
 import { useMemo, useState } from 'react'
+import { t } from '../i18n'
+import { formatAttribute } from '../i18n/format'
 import { type CartItem, MAX_QTY, priceItem } from '../lib/cart'
 import {
   categoryPath,
@@ -117,20 +119,22 @@ export function useProductDetail(product: Product): ProductDetail {
   }, MAX_QTY)
   const maxQty = variant ? Math.max(1, Math.min(MAX_QTY, available ?? MAX_QTY, modifierLimit)) : 1
   let blocker: string | null = null
-  if (product.assisted) blocker = 'This product is sold through our sales team.'
+  if (product.assisted) blocker = t('catalog.blocker.assisted')
   else if (missingOptions.length)
-    blocker = `Choose ${missingOptions.map((option) => option.name.toLowerCase()).join(' and ')} to continue.`
-  else if (!variant) blocker = 'This combination is not made. Choose another option.'
+    blocker = t('catalog.blocker.choose', {
+      what: missingOptions.map((option) => option.name.toLowerCase()).join(t('catalog.and')),
+    })
+  else if (!variant) blocker = t('catalog.blocker.noCombination')
   else if (available !== null && available <= 0)
     blocker = product.options.length
-      ? `${variant.name} is sold out. Choose another option.`
-      : 'This product is sold out.'
+      ? t('catalog.blocker.variantSoldOut', { variant: variant.name })
+      : t('catalog.blocker.soldOut')
   else if (available !== null && qty > available)
-    blocker = `Only ${available} left. Lower the quantity to continue.`
+    blocker = t('catalog.blocker.fewLeft', { count: available })
   else if (deltas.some((option) => (modifierAvailable(catalog, option) ?? Infinity) < qty)) {
     const option = deltas.find((o) => (modifierAvailable(catalog, o) ?? Infinity) < qty)!
-    blocker = `Only ${modifierAvailable(catalog, option)} left of ${option.name}. Lower the quantity or choose another option.`
-  } else if (missing) blocker = `Choose ${missing.name.toLowerCase()} to continue.`
+    blocker = t('catalog.blocker.fewAddOn', { count: modifierAvailable(catalog, option) ?? 0, option: option.name })
+  } else if (missing) blocker = t('catalog.blocker.choose', { what: missing.name.toLowerCase() })
 
   const unitPrice = (variant?.price ?? product.price) + deltas.reduce((n, o) => n + o.priceDelta, 0)
   const promo = promoFor(catalog, product, nowMs())

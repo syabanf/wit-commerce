@@ -45,6 +45,7 @@ import type {
   SectionKind,
   SectionRule,
   ShopperEmailKind,
+  StoreLanguage,
   SegmentField,
   SegmentOp,
   SellerKind,
@@ -123,6 +124,8 @@ export interface Tenant {
   returnWindowDays?: number
   /** Shopper emails the brand switched off; every other kind is sent. */
   shopperEmailsOff?: ShopperEmailKind[]
+  /** The language shoppers see the store and its emails in; Bahasa Indonesia when unset. */
+  storeLanguage?: StoreLanguage
   /** Who the seller is, how shoppers complain, and the brand's own terms choices. */
   legal?: SellerLegal
   /** Delivery days per courier, overriding the platform's estimate. */

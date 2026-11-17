@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import type { ReactNode } from 'react'
 import { useBrand } from './BrandRoot'
+import { t } from '../i18n'
 
 const SIDE = {
   /** Bottom sheet on phones, floating right panel from md up. */
@@ -70,7 +71,7 @@ export function Drawer({
               </div>
               <Dialog.Close className="size-11 inline-flex shrink-0 items-center justify-center rounded-full hover:bg-[var(--sf-soft)]">
                 <X className="size-5" aria-hidden="true" />
-                <span className="sr-only">Close</span>
+                <span className="sr-only">{t('shell.close')}</span>
               </Dialog.Close>
             </div>
             <div className={cn('min-h-0 px-5 pb-5 flex-1 overflow-y-auto', bodyClassName)}>{children}</div>

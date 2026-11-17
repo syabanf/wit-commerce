@@ -7,6 +7,7 @@ import { useShop } from '../state/shop'
 import { useStore } from '../state/store'
 import { Button, Field, describedBy, inputClass } from './ui'
 import { firstName } from '../lib/paths'
+import { t } from '../i18n'
 
 type Errors = Partial<Record<'name' | 'company' | 'phone' | 'note', string>>
 
@@ -27,10 +28,9 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const next: Errors = {}
-    if (!form.name.trim()) next.name = 'Enter your name so the team knows who to call.'
-    if (!form.company.trim()) next.company = 'Enter your company name, or write "Personal".'
-    if (!PHONE_PATTERN.test(form.phone.trim()))
-      next.phone = 'Enter a phone number with 9 to 16 digits, such as +62 812 3456 7890.'
+    if (!form.name.trim()) next.name = t('account.sales.needName')
+    if (!form.company.trim()) next.company = t('account.sales.needCompany')
+    if (!PHONE_PATTERN.test(form.phone.trim())) next.phone = t('account.sales.needPhone')
     setErrors(next)
     if (Object.keys(next).length) return
     const at = nowIso()
@@ -70,15 +70,20 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
         <span className="size-12 flex items-center justify-center rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]">
           <CircleCheck className="size-6" aria-hidden="true" />
         </span>
-        <h3 className="sf-display text-xl font-bold">Thank you, {firstName(form.name.trim())}.</h3>
+        <h3 className="sf-display text-xl font-bold">
+          {t('account.sales.thanks', { name: firstName(form.name.trim()) })}
+        </h3>
         <p className="text-sm text-[color:var(--sf-muted)]">
-          {referral ? `${referral.name} will call you` : 'Our sales team will call you'} on{' '}
-          {form.phone.trim()} within one working day{product ? ` about ${product.name}` : ''}. Your reference
-          is {sentCode}.
+          {t(referral ? 'account.sales.callSeller' : 'account.sales.callTeam', {
+            seller: referral?.name ?? '',
+            phone: form.phone.trim(),
+            about: product ? t('account.sales.about', { product: product.name }) : '',
+            code: sentCode,
+          })}
         </p>
         {onDone && (
           <Button variant="outline" onClick={onDone}>
-            Close
+            {t('account.close')}
           </Button>
         )}
       </div>
@@ -92,7 +97,7 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
 
   return (
     <form onSubmit={submit} noValidate className="gap-4 sm:grid-cols-2 grid grid-cols-1">
-      <Field id={`${uid}-name`} label="Your name" error={errors.name}>
+      <Field id={`${uid}-name`} label={t('account.yourName')} error={errors.name}>
         <input
           {...field('name')}
           autoComplete="name"
@@ -100,7 +105,7 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
           {...describedBy(`${uid}-name`, errors.name)}
         />
       </Field>
-      <Field id={`${uid}-company`} label="Company" error={errors.company}>
+      <Field id={`${uid}-company`} label={t('account.sales.company')} error={errors.company}>
         <input
           {...field('company')}
           autoComplete="organization"
@@ -108,7 +113,12 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
           {...describedBy(`${uid}-company`, errors.company)}
         />
       </Field>
-      <Field id={`${uid}-phone`} label="Phone or WhatsApp" error={errors.phone} className="sm:col-span-2">
+      <Field
+        id={`${uid}-phone`}
+        label={t('account.phoneOrWa')}
+        error={errors.phone}
+        className="sm:col-span-2"
+      >
         <input
           {...field('phone')}
           type="tel"
@@ -121,8 +131,8 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
       </Field>
       <Field
         id={`${uid}-note`}
-        label="What do you need?"
-        hint="Quantity, timeline or site details help us prepare."
+        label={t('account.sales.need')}
+        hint={t('account.sales.needHint')}
         error={errors.note}
         className="sm:col-span-2"
       >
@@ -135,7 +145,7 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
       </Field>
       <div className="sm:col-span-2">
         <Button type="submit" size="lg" full>
-          Send to sales
+          {t('account.sales.send')}
         </Button>
       </div>
     </form>

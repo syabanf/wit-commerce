@@ -1,13 +1,5 @@
-import {
-  availablePaymentTypes,
-  describePromotion,
-  fmtIdr,
-  nowMs,
-  orderPlaceBlocker,
-  plural,
-} from '@rc/fixtures'
-import type { Courier, PaymentMethod, PaymentType } from '@rc/types'
-import { LOYALTY_TIER_LABEL } from '@rc/types'
+import { availablePaymentTypes, fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
+import type { Courier, LoyaltyTier, PaymentMethod, PaymentType } from '@rc/types'
 import { cn } from '@rc/ui'
 import {
   Banknote,
@@ -23,13 +15,13 @@ import {
 import { type FormEvent, type ReactNode, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
-import { TERMS_REQUIRED, TermsConsent } from '../components/TermsConsent'
+import { TermsConsent, termsRequired } from '../components/TermsConsent'
 import { ProductImage } from '../components/product'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
 import { HTTP } from '../lib/api'
 import { cartTotals } from '../lib/cart'
 import {
-  DEMO_PAYMENT_NOTE,
+  demoPaymentNote,
   CITIES,
   couriersFor,
   defaultCourierFor,
@@ -45,9 +37,24 @@ import { useShop } from '../state/shop'
 import { useStore } from '../state/store'
 import { PayInRupiahNote } from '../components/Money'
 import { RupiahOnlyArea } from '../state/currency'
-import { MARKETING_CONSENT_TEXT, MARKETING_CONSENT_VERSION } from '@rc/types'
+import { MARKETING_CONSENT_VERSION } from '@rc/types'
+import { type MessageKey, t, tp, tx } from '../i18n'
+import { codeErrorText, describePromotion } from '../i18n/format'
 
-const STEPS = ['Contact', 'Delivery', 'Payment', 'Review'] as const
+const STEP_KEYS: MessageKey[] = [
+  'checkout.step.contact',
+  'checkout.step.delivery',
+  'checkout.step.payment',
+  'checkout.step.review',
+]
+const stepName = (i: number) => t(STEP_KEYS[i]!)
+
+const TIER_KEY: Record<LoyaltyTier, MessageKey> = {
+  member: 'checkout.tier.member',
+  silver: 'checkout.tier.silver',
+  gold: 'checkout.tier.gold',
+  platinum: 'checkout.tier.platinum',
+}
 
 const METHOD_ICON: Record<PaymentMethod, LucideIcon> = {
   qris: QrCode,
@@ -66,12 +73,12 @@ function StepProgress({ step }: { step: number }) {
   return (
     <div className="md:hidden w-full">
       <p className="text-sm font-semibold">
-        Step {step + 1} of {STEPS.length} · {STEPS[step]}
+        {t('checkout.stepOf', { n: step + 1, total: STEP_KEYS.length, name: stepName(step) })}
       </p>
       <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--sf-line)]">
         <div
           className="h-full rounded-full bg-[var(--sf-text)] transition-[width]"
-          style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          style={{ width: `${((step + 1) / STEP_KEYS.length) * 100}%` }}
         />
       </div>
     </div>
@@ -80,8 +87,9 @@ function StepProgress({ step }: { step: number }) {
 
 function Stepper({ step, onBack }: { step: number; onBack: (i: number) => void }) {
   return (
-    <ol className="min-w-0 gap-2 md:flex no-scrollbar hidden overflow-x-auto" aria-label="Checkout steps">
-      {STEPS.map((label, i) => {
+    <ol className="min-w-0 gap-2 md:flex no-scrollbar hidden overflow-x-auto" aria-label={t('checkout.steps')}>
+      {STEP_KEYS.map((key, i) => {
+        const label = t(key)
         const done = i < step
         const current = i === step
         const content = (
@@ -103,7 +111,7 @@ function Stepper({ step, onBack }: { step: number; onBack: (i: number) => void }
               )}
             >
               {label}
-              {done && <span className="sr-only">, done</span>}
+              {done && <span className="sr-only">{t('checkout.stepDone')}</span>}
             </span>
           </>
         )
@@ -156,7 +164,7 @@ function FakeQr({ seed }: { seed: string }) {
       viewBox={`-1 -1 ${n + 2} ${n + 2}`}
       className="size-44 bg-white text-black"
       role="img"
-      aria-label="QRIS code to scan"
+      aria-label={t('checkout.qrisLabel')}
     >
       {cells.map(([x, y]) => (
         <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="currentColor" />
@@ -230,7 +238,7 @@ export function CheckoutPage() {
   const { catalog, cart, customer, customers, referral, store, tenant, send, signIn, paysOnline } = shop
   const navigate = useNavigate()
   const uid = useId()
-  useTitle(`Checkout · ${tenant.name}`)
+  useTitle(t('checkout.pageTitle', { store: tenant.name }))
 
   const [step, setStep] = useState(0)
   const previousStep = useRef(step)
@@ -287,12 +295,12 @@ export function CheckoutPage() {
   if (!totals.items.length)
     return (
       <div className="max-w-xl space-y-6 md:pt-12 mx-auto">
-        <h1 className="sf-display text-3xl font-bold">Checkout</h1>
+        <h1 className="sf-display text-3xl font-bold">{t('checkout.title')}</h1>
         <EmptyState
           icon={<ShoppingBag aria-hidden="true" />}
-          title="Your cart is empty"
-          text="Add a product before you check out."
-          action={<ButtonLink to={paths.home(store)}>Start shopping</ButtonLink>}
+          title={t('checkout.cart.empty')}
+          text={t('checkout.emptyText')}
+          action={<ButtonLink to={paths.home(store)}>{t('checkout.cart.startShopping')}</ButtonLink>}
         />
       </div>
     )
@@ -302,9 +310,7 @@ export function CheckoutPage() {
     setAccountId(match?.id ?? null)
     setErrors((e) => ({
       ...e,
-      lookup: match
-        ? undefined
-        : 'We could not find an account with that email. Check the spelling, or check out as a guest.',
+      lookup: match ? undefined : t('checkout.error.noAccount'),
     }))
     if (match && (CITIES as readonly string[]).includes(match.city) && !city) setCity(match.city)
   }
@@ -313,24 +319,24 @@ export function CheckoutPage() {
     const e: Errors = {}
     if (s === 0) {
       if (mode === 'account') {
-        if (!account) e.lookup = 'Find your account by email first, or check out as a guest.'
+        if (!account) e.lookup = t('checkout.error.findAccount')
       } else {
-        if (!contact.name.trim()) e.name = 'Enter your full name for the delivery label.'
+        if (!contact.name.trim()) e.name = t('checkout.error.name')
         if (!EMAIL_PATTERN.test(contact.email.trim()))
-          e.email = 'Enter an email address such as name@example.com, so we can send your receipt.'
+          e.email = t('checkout.error.email')
         if (!PHONE_PATTERN.test(contact.phone.trim()))
-          e.phone = 'Enter a phone number with 9 to 16 digits, so the courier can call you.'
+          e.phone = t('checkout.error.phone')
       }
     }
     if (s === 1) {
-      if (!city) e.city = 'Choose the city we deliver to.'
+      if (!city) e.city = t('checkout.error.city')
       if (courier.id !== 'pickup' && address.trim().length < 8)
-        e.address = 'Enter the street, number and area so the courier can find you.'
+        e.address = t('checkout.error.address')
     }
     if (s === 2) {
-      if (!payment) e.payment = 'Choose how you want to pay.'
+      if (!payment) e.payment = t('checkout.error.payment')
       else if (payment.method === 'qris' && !qrisPaid && !paysOnline(payment.id))
-        e.payment = 'Scan the QR code, then choose I have paid to continue.'
+        e.payment = t('checkout.error.qris')
     }
     return e
   }
@@ -346,7 +352,7 @@ export function CheckoutPage() {
   const place = () => {
     if (!payment) return
     if (!agreed) {
-      setPlaceError(TERMS_REQUIRED)
+      setPlaceError(termsRequired())
       return
     }
     const contactInfo =
@@ -419,48 +425,44 @@ export function CheckoutPage() {
   return (
     <div className="space-y-6 md:pt-12">
       <div className="gap-3 flex flex-wrap items-center justify-between">
-        <h1 className="sf-display text-3xl font-bold">Checkout</h1>
+        <h1 className="sf-display text-3xl font-bold">{t('checkout.title')}</h1>
         <StepProgress step={step} />
         <Stepper step={step} onBack={setStep} />
       </div>
       <div className="gap-6 lg:grid-cols-[minmax(0,1fr)_380px] grid grid-cols-1">
         <form onSubmit={next} noValidate className="sf-card min-w-0 space-y-6 p-5 md:p-6">
           <h2 ref={stepHeading} tabIndex={-1} className="sf-display text-2xl font-bold">
-            {step + 1}. {STEPS[step]}
+            {step + 1}. {stepName(step)}
           </h2>
 
           {step === 0 && (
             <>
               <fieldset className="gap-2 sm:grid-cols-2 grid grid-cols-1">
-                <legend className="sr-only">How do you want to check out?</legend>
+                <legend className="sr-only">{t('checkout.mode.legend')}</legend>
                 <Choice
                   name="mode"
                   checked={mode === 'guest'}
                   onChange={() => setMode('guest')}
-                  title="Create an account with this order"
-                  note={
-                    HTTP
-                      ? 'Track orders and earn points. Set a password afterward.'
-                      : 'Track orders and earn points. No password needed.'
-                  }
+                  title={t('checkout.mode.guest')}
+                  note={HTTP ? t('checkout.mode.guestNoteApi') : t('checkout.mode.guestNoteDemo')}
                 />
                 <Choice
                   name="mode"
                   checked={mode === 'account'}
                   onChange={() => setMode('account')}
-                  title="I have an account"
-                  note={HTTP ? 'Sign in, and your cart stays here.' : 'Find it by the email you shop with.'}
+                  title={t('checkout.mode.account')}
+                  note={HTTP ? t('checkout.mode.accountNoteApi') : t('checkout.mode.accountNoteDemo')}
                 />
               </fieldset>
               {mode === 'guest' ? (
                 <div className="gap-4 sm:grid-cols-2 grid grid-cols-1">
-                  <Field id={`${uid}-name`} label="Full name" error={errors.name} className="sm:col-span-2">
+                  <Field id={`${uid}-name`} label={t('checkout.field.name')} error={errors.name} className="sm:col-span-2">
                     <input {...field('name')} autoComplete="name" />
                   </Field>
-                  <Field id={`${uid}-email`} label="Email" error={errors.email}>
+                  <Field id={`${uid}-email`} label={t('checkout.field.email')} error={errors.email}>
                     <input {...field('email')} type="email" inputMode="email" autoComplete="email" />
                   </Field>
-                  <Field id={`${uid}-phone`} label="Phone" error={errors.phone}>
+                  <Field id={`${uid}-phone`} label={t('checkout.field.phone')} error={errors.phone}>
                     <input
                       {...field('phone')}
                       type="tel"
@@ -477,7 +479,7 @@ export function CheckoutPage() {
                       <ButtonLink
                         to={`${paths.account(store)}?next=${encodeURIComponent(paths.checkout(store))}`}
                       >
-                        Sign in to your account
+                        {t('checkout.signIn')}
                       </ButtonLink>
                       {errors.lookup && (
                         <p role="alert" className="text-sm font-semibold text-danger">
@@ -488,7 +490,7 @@ export function CheckoutPage() {
                   ) : (
                     <>
                       {!HTTP && (
-                        <Field id={`${uid}-lookup`} label="Account email" error={errors.lookup}>
+                        <Field id={`${uid}-lookup`} label={t('checkout.field.accountEmail')} error={errors.lookup}>
                           <div className="gap-2 flex">
                             <input
                               id={`${uid}-lookup`}
@@ -501,7 +503,7 @@ export function CheckoutPage() {
                               {...describedBy(`${uid}-lookup`, errors.lookup)}
                             />
                             <Button variant="dark" onClick={() => findAccount(lookup)}>
-                              Find
+                              {t('checkout.find')}
                             </Button>
                           </div>
                         </Field>
@@ -516,15 +518,18 @@ export function CheckoutPage() {
                             aria-hidden="true"
                           />
                           <span>
-                            Checking out as <strong>{account.name}</strong>,{' '}
-                            {LOYALTY_TIER_LABEL[account.tier]} member with {account.points} points.
+                            {tx(
+                              'checkout.checkingOutAs',
+                              { name: <strong key="name">{account.name}</strong> },
+                              { tier: t(TIER_KEY[account.tier]), points: account.points },
+                            )}
                           </span>
                         </p>
                       ) : (
                         demo.length > 0 && (
                           <div>
                             <p className="mb-2 text-sm text-[color:var(--sf-muted)]">
-                              Demo accounts for this store:
+                              {t('checkout.demoAccounts')}
                             </p>
                             <ul className="gap-2 flex flex-wrap">
                               {demo.map((c) => (
@@ -537,7 +542,7 @@ export function CheckoutPage() {
                                       findAccount(c.email)
                                     }}
                                   >
-                                    {c.name} · {LOYALTY_TIER_LABEL[c.tier]}
+                                    {c.name} · {t(TIER_KEY[c.tier])}
                                   </Button>
                                 </li>
                               ))}
@@ -555,7 +560,7 @@ export function CheckoutPage() {
           {step === 1 && (
             <>
               <div className="gap-4 grid grid-cols-1">
-                <Field id={`${uid}-city`} label="City" error={errors.city}>
+                <Field id={`${uid}-city`} label={t('checkout.field.city')} error={errors.city}>
                   <select
                     id={`${uid}-city`}
                     value={city}
@@ -566,7 +571,7 @@ export function CheckoutPage() {
                     className={inputClass}
                     {...describedBy(`${uid}-city`, errors.city)}
                   >
-                    <option value="">Choose a city</option>
+                    <option value="">{t('checkout.chooseCity')}</option>
                     {CITIES.map((c) => (
                       <option key={c}>{c}</option>
                     ))}
@@ -575,9 +580,9 @@ export function CheckoutPage() {
                 {courier.id !== 'pickup' && (
                   <Field
                     id={`${uid}-address`}
-                    label="Street address"
+                    label={t('checkout.field.address')}
                     error={errors.address}
-                    hint="Street, number, RT/RW, district and postcode."
+                    hint={t('checkout.field.addressHint')}
                   >
                     <textarea
                       id={`${uid}-address`}
@@ -592,7 +597,7 @@ export function CheckoutPage() {
                 )}
               </div>
               <fieldset className="space-y-2">
-                <legend className="mb-2 text-sm font-semibold">Courier</legend>
+                <legend className="mb-2 text-sm font-semibold">{t('checkout.courierLegend')}</legend>
                 {availableCouriers.map((c) => {
                   const fee = courierFee(c, totals.freeShipping)
                   const blocked = !!c.jakartaOnly && city !== 'Jakarta'
@@ -606,9 +611,9 @@ export function CheckoutPage() {
                       title={c.label}
                       note={
                         blocked
-                          ? 'Same-day delivery reaches Jakarta addresses only.'
+                          ? t('checkout.jakartaOnly')
                           : c.id === 'pickup' && pickup
-                            ? `${c.eta} at ${pickup.name}, ${pickup.city}`
+                            ? t('checkout.pickupAt', { eta: c.eta, place: `${pickup.name}, ${pickup.city}` })
                             : c.eta
                       }
                       aside={
@@ -619,7 +624,7 @@ export function CheckoutPage() {
                                 {fmtIdr(c.fee)}
                               </span>
                             )}
-                            Free
+                            {t('checkout.free')}
                           </>
                         ) : (
                           fmtIdr(fee)
@@ -637,58 +642,62 @@ export function CheckoutPage() {
               className="space-y-2"
               aria-describedby={errors.payment ? `${uid}-payment-error` : undefined}
             >
-              <legend className="mb-2 text-sm font-semibold">Payment method</legend>
-              {payable.map((t) => {
-                const Icon = METHOD_ICON[t.method]
-                const offers = offersFor(t.id)
+              <legend className="mb-2 text-sm font-semibold">{t('checkout.paymentLegend')}</legend>
+              {payable.map((pt) => {
+                const Icon = METHOD_ICON[pt.method]
+                const offers = offersFor(pt.id)
                 return (
                   <Choice
-                    key={t.id}
+                    key={pt.id}
                     name="payment"
-                    checked={paymentId === t.id}
+                    checked={paymentId === pt.id}
                     onChange={() => {
-                      setPaymentId(t.id)
+                      setPaymentId(pt.id)
                       setQrisPaid(false)
                     }}
                     icon={<Icon aria-hidden="true" />}
-                    title={t.name}
-                    note={offers.length ? offers.join(' · ') : t.provider}
+                    title={pt.name}
+                    note={offers.length ? offers.join(' · ') : pt.provider}
                   >
-                    <p className="text-sm text-[color:var(--sf-muted)]">{t.instructions}</p>
-                    {paysOnline(t.id) && (
-                      <p className="mt-3 text-sm">
-                        You pay on the secure Midtrans page after you place the order.
-                      </p>
-                    )}
-                    {t.method === 'qris' && !paysOnline(t.id) && (
+                    <p className="text-sm text-[color:var(--sf-muted)]">{pt.instructions}</p>
+                    {paysOnline(pt.id) && <p className="mt-3 text-sm">{t('checkout.payOnMidtrans')}</p>}
+                    {pt.method === 'qris' && !paysOnline(pt.id) && (
                       <div className="mt-4 gap-3 sm:flex-row sm:items-center flex flex-col items-center">
                         <div className="bg-white p-3 rounded-[var(--sf-tile-radius)] border border-[color:var(--sf-line)]">
                           <FakeQr seed={`${tenant.id}-${totals.subtotal}`} />
                         </div>
                         <div className="space-y-2 sm:text-left text-center">
                           <p className="text-sm">
-                            Pay <strong>{fmtIdr(total)}</strong> to {tenant.name}. This is a simulation, no
-                            money moves.
+                            {tx(
+                              'checkout.qrisPay',
+                              { amount: <strong key="amount">{fmtIdr(total)}</strong> },
+                              { store: tenant.name },
+                            )}
                           </p>
                           {qrisPaid ? (
                             <p
                               role="status"
                               className="gap-2 text-sm font-semibold flex items-center text-[color:var(--sf-primary-text)]"
                             >
-                              <Check className="size-4" aria-hidden="true" /> Payment received
+                              <Check className="size-4" aria-hidden="true" /> {t('checkout.paymentReceived')}
                             </p>
                           ) : (
                             <Button variant="dark" onClick={() => setQrisPaid(true)}>
-                              I have paid
+                              {t('checkout.iHavePaid')}
                             </Button>
                           )}
                         </div>
                       </div>
                     )}
-                    {t.method === 'va' && !paysOnline(t.id) && (
+                    {pt.method === 'va' && !paysOnline(pt.id) && (
                       <p className="mt-3 text-sm">
-                        Account number <strong className="tracking-wider font-mono">8808 {vaDigits}</strong>,
-                        shown again on your receipt.
+                        {tx('checkout.vaNumber', {
+                          number: (
+                            <strong key="number" className="tracking-wider font-mono">
+                              8808 {vaDigits}
+                            </strong>
+                          ),
+                        })}
                       </p>
                     )}
                   </Choice>
@@ -706,12 +715,12 @@ export function CheckoutPage() {
             <div className="space-y-5">
               <dl className="gap-4 text-sm sm:grid-cols-3 grid grid-cols-1">
                 <div>
-                  <dt className="text-[color:var(--sf-muted)]">Contact</dt>
+                  <dt className="text-[color:var(--sf-muted)]">{t('checkout.review.contact')}</dt>
                   <dd className="font-semibold">{mode === 'account' ? account?.name : contact.name}</dd>
                   <dd>{mode === 'account' ? account?.email : contact.email}</dd>
                 </div>
                 <div>
-                  <dt className="text-[color:var(--sf-muted)]">Delivery</dt>
+                  <dt className="text-[color:var(--sf-muted)]">{t('checkout.review.delivery')}</dt>
                   <dd className="font-semibold">{courier.label}</dd>
                   <dd>
                     {courier.id === 'pickup'
@@ -720,19 +729,19 @@ export function CheckoutPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[color:var(--sf-muted)]">Payment</dt>
+                  <dt className="text-[color:var(--sf-muted)]">{t('checkout.review.payment')}</dt>
                   <dd className="font-semibold">{payment?.name}</dd>
                   <dd>
                     {payment?.method === 'cod'
-                      ? 'Pay the courier on arrival'
+                      ? t('checkout.review.cod')
                       : paysOnline(payment?.id)
-                        ? 'You pay on the Midtrans page next'
-                        : DEMO_PAYMENT_NOTE}
+                        ? t('checkout.review.midtrans')
+                        : demoPaymentNote()}
                   </dd>
                 </div>
               </dl>
               {referral && (
-                <p className="text-sm">This order credits {referral.name}, who brought you here.</p>
+                <p className="text-sm">{t('checkout.referral', { name: referral.name })}</p>
               )}
               <TermsConsent checked={agreed} onChange={setAgreed} />
               <label className="gap-3 text-sm flex items-start">
@@ -743,10 +752,8 @@ export function CheckoutPage() {
                   className="mt-0.5 size-5 shrink-0 accent-[var(--sf-primary)]"
                 />
                 <span>
-                  {MARKETING_CONSENT_TEXT}
-                  <span className="text-xs block text-[color:var(--sf-muted)]">
-                    Optional. Unsubscribe from any offer email or your account.
-                  </span>
+                  {t('checkout.offers')}
+                  <span className="text-xs block text-[color:var(--sf-muted)]">{t('checkout.offersNote')}</span>
                 </span>
               </label>
               {placeError && (
@@ -763,30 +770,30 @@ export function CheckoutPage() {
           <div className="gap-2 pt-5 md:flex-row md:flex-wrap md:items-center md:justify-between flex flex-col-reverse items-stretch border-t border-[color:var(--sf-line)]">
             {step > 0 ? (
               <Button variant="ghost" className="px-0" onClick={() => setStep((s) => s - 1)}>
-                Back to {STEPS[step - 1]!.toLowerCase()}
+                {t('checkout.backTo', { step: stepName(step - 1).toLowerCase() })}
               </Button>
             ) : (
               <ButtonLink to={paths.cart(store)} variant="ghost" className="px-0">
-                Back to cart
+                {t('checkout.backToCart')}
               </ButtonLink>
             )}
             {step < 3 ? (
               <Button type="submit" size="lg" className="md:w-auto w-full">
-                Continue to {STEPS[step + 1]!.toLowerCase()}
+                {t('checkout.continueTo', { step: stepName(step + 1).toLowerCase() })}
               </Button>
             ) : (
               <Button size="lg" onClick={place} className="md:w-auto w-full">
-                Place order · {fmtIdr(total)}
+                {t('checkout.placeOrder', { amount: fmtIdr(total) })}
               </Button>
             )}
           </div>
         </form>
 
         <aside
-          aria-label="Order summary"
+          aria-label={t('checkout.cart.orderSummary')}
           className="sf-card space-y-5 p-5 md:p-6 lg:sticky lg:top-[var(--sf-sticky-top)] self-start"
         >
-          <h2 className="sf-display text-xl font-bold">{plural(totals.count, 'item')}</h2>
+          <h2 className="sf-display text-xl font-bold">{tp('checkout.items', totals.count)}</h2>
           <ul className="space-y-3">
             {totals.items.map((i) => (
               <li key={i.line.key} className="gap-3 flex">
@@ -803,8 +810,8 @@ export function CheckoutPage() {
                       ...i.modifiers.map((m) => m.name),
                     ]
                       .filter(Boolean)
-                      .join(' · ') || 'Standard'}{' '}
-                    · Qty {i.line.qty}
+                      .join(' · ') || t('checkout.standard')}{' '}
+                    · {t('checkout.qty', { qty: i.line.qty })}
                   </p>
                 </div>
                 <p className="text-sm font-semibold shrink-0">{fmtIdr(i.total)}</p>
@@ -822,11 +829,11 @@ export function CheckoutPage() {
           <PayInRupiahNote />
           {totals.codeError && cart.cart.voucher && (
             <p className="text-sm text-danger">
-              {cart.cart.voucher}: {totals.codeError}
+              {cart.cart.voucher}: {codeErrorText(totals.codeError)}
             </p>
           )}
           <p className="text-sm text-[color:var(--sf-muted)]">
-            You earn {Math.floor(total / 10_000) * tenant.loyalty.pointsPer10k} points with this order.
+            {t('checkout.earnPoints', { points: Math.floor(total / 10_000) * tenant.loyalty.pointsPer10k })}
           </p>
         </aside>
       </div>

@@ -1,6 +1,7 @@
 import { toMs } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { useNow } from '../state/shop'
+import { t } from '../i18n'
 
 const DAY = 86_400_000
 
@@ -17,16 +18,16 @@ export function Countdown({
   const now = useNow(1000)
   const left = Math.max(0, toMs(endAt) - now)
   const parts: [string, number][] = [
-    ['Days', Math.floor(left / DAY)],
-    ['Hours', Math.floor((left % DAY) / 3_600_000)],
-    ['Min', Math.floor((left % 3_600_000) / 60_000)],
-    ['Sec', Math.floor((left % 60_000) / 1000)],
+    [t('shell.countdown.days'), Math.floor(left / DAY)],
+    [t('shell.countdown.hours'), Math.floor((left % DAY) / 3_600_000)],
+    [t('shell.countdown.min'), Math.floor((left % 3_600_000) / 60_000)],
+    [t('shell.countdown.sec'), Math.floor((left % 60_000) / 1000)],
   ]
   return (
     <div
       className={cn('gap-2 flex', className)}
       role="timer"
-      aria-label={`Ends in ${parts[0]![1]} days and ${parts[1]![1]} hours`}
+      aria-label={t('shell.countdown.label', { days: parts[0]![1], hours: parts[1]![1] })}
     >
       {parts.map(([label, value]) => (
         <div

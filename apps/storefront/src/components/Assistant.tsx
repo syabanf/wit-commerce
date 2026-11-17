@@ -4,6 +4,7 @@ import { cn } from '@rc/ui'
 import { Bot, SendHorizontal, Sparkles } from 'lucide-react'
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
+import { t, tp } from '../i18n'
 import {
   type Intent,
   type QuickReply,
@@ -88,7 +89,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
   const greeting = (id: number): Message => ({
     id,
     from: 'bot',
-    text: `Hi, I'm the ${tenant.name} assistant. Tell me what you need, or pick one below.`,
+    text: t('agent.ask.greeting', { store: tenant.name }),
     replies: openingReplies(catalog),
     categories: true,
   })
@@ -110,7 +111,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
           {
             id: startId,
             from: 'bot',
-            text: 'I could not tell what you are looking for. Name a product type and a budget, such as "serum under 300rb" or "running shoes max 1,5 juta".',
+            text: t('agent.ask.unclear'),
             replies: openingReplies(catalog),
           },
         ],
@@ -124,15 +125,15 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
             from: 'bot',
             text:
               rec.picks.length === 1
-                ? 'Here is the best match in stock.'
-                : `Here are ${rec.picks.length} picks in stock.`,
+                ? t('agent.ask.bestMatch')
+                : t('agent.ask.picks', { count: rec.picks.length }),
             chips,
             productIds: rec.picks.map((p) => p.id),
           },
           {
             id: startId + 1,
             from: 'bot',
-            text: 'Want me to narrow it down?',
+            text: t('agent.ask.narrow'),
             replies: followUps(intent, rec, catalog),
           },
         ],
@@ -144,10 +145,13 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
         {
           id: startId,
           from: 'bot',
-          text: `Nothing in stock matches all of that.${closest ? ` The closest is ${closest.name}` : ''}${
+          text: `${t('agent.ask.none')}${closest ? t('agent.ask.closest', { name: closest.name }) : ''}${
             rec.cheapest
-              ? `, where the cheapest pick is ${rec.cheapest.name} at ${fmtIdr(fromPrice(rec.cheapest))}.`
-              : '.'
+              ? t('agent.ask.cheapest', {
+                  product: rec.cheapest.name,
+                  price: fmtIdr(fromPrice(rec.cheapest)),
+                })
+              : t('agent.ask.end')
           }`,
           chips,
           productIds: rec.cheapest ? [rec.cheapest.id] : [],
@@ -155,12 +159,12 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
             ...(closest
               ? [
                   {
-                    label: `Show all ${closest.name.toLowerCase()}`,
+                    label: t('agent.ask.showAll', { name: closest.name.toLowerCase() }),
                     action: { kind: 'category', categoryId: closest.id } as ReplyAction,
                   },
                 ]
               : []),
-            { label: 'Something else', action: { kind: 'reset' } },
+            { label: t('agent.ask.somethingElse'), action: { kind: 'reset' } },
           ],
         },
       ],
@@ -250,13 +254,13 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
           hidden && 'hidden',
         )}
         aria-haspopup="dialog"
-        title={`Ask ${tenant.name}`}
+        title={t('agent.ask.title', { store: tenant.name })}
       >
         <Bot className="size-5 md:size-6" aria-hidden="true" />
-        <span className="sr-only">Ask {tenant.name}</span>
+        <span className="sr-only">{t('agent.ask.title', { store: tenant.name })}</span>
         {waiting && (
           <span className="-top-0.5 -right-0.5 size-3.5 absolute rounded-full border-2 border-[var(--sf-bg)] bg-[var(--sf-primary)]">
-            <span className="sr-only">, your agent is waiting for your approval</span>
+            <span className="sr-only">{t('agent.ask.waiting')}</span>
           </span>
         )}
       </button>
@@ -264,17 +268,17 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
         open={open}
         onOpenChange={setOpen}
         autoFocusSelector="form input"
-        title={mode === 'agent' ? 'Your shopping agent' : `Ask ${tenant.name}`}
+        title={mode === 'agent' ? t('agent.ask.agentTitle') : t('agent.ask.title', { store: tenant.name })}
         description={
           mode === 'agent' ? (
             <>
-              Suggests options and pays only when you approve.{' '}
+              {t('agent.ask.agentNote')}{' '}
               <Link to={paths.agent(store)} className="font-semibold underline underline-offset-4">
-                Settings
+                {t('agent.ask.settings')}
               </Link>
             </>
           ) : (
-            "Answers come from this store's catalog."
+            t('agent.ask.source')
           )
         }
         bodyClassName="pb-2"
@@ -284,20 +288,20 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
           ) : (
             <form onSubmit={submit} className="gap-2 flex w-full">
               <label htmlFor={inputId} className="sr-only">
-                Message the assistant
+                {t('agent.ask.messageLabel')}
               </label>
               <input
                 id={inputId}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Sepatu lari untuk 10K, maksimal 1,5 juta"
+                placeholder={t('agent.ask.placeholder')}
                 autoComplete="off"
                 className="h-12 min-w-0 px-4 text-base md:text-sm flex-1 rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)]"
               />
               <Button
                 type="submit"
                 variant={hairline ? 'dark' : 'primary'}
-                aria-label="Send"
+                aria-label={t('agent.thread.send')}
                 disabled={pending !== null}
                 className="w-12 px-0"
               >
@@ -315,11 +319,13 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
             {messages.map((m) => (
               <div key={m.id} className="space-y-2">
                 <p className={bubble(m.from)}>
-                  <span className="sr-only">{m.from === 'me' ? 'You: ' : 'Assistant: '}</span>
+                  <span className="sr-only">
+                    {m.from === 'me' ? t('agent.thread.you') : t('agent.ask.assistantPrefix')}
+                  </span>
                   {m.text}
                 </p>
                 {m.chips && m.chips.length > 0 && (
-                  <ul className="gap-1.5 flex flex-wrap" aria-label="What I understood">
+                  <ul className="gap-1.5 flex flex-wrap" aria-label={t('agent.ask.understood')}>
                     {m.chips.map((c) => (
                       <li
                         key={c}
@@ -331,7 +337,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                   </ul>
                 )}
                 {m.categories && (
-                  <Scroller label="Categories">
+                  <Scroller label={t('agent.ask.categories')}>
                     {popularCategories(catalog)
                       .slice(0, 6)
                       .map((c) => (
@@ -346,14 +352,14 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                           </span>
                           <span className="text-sm leading-tight font-semibold">{c.name}</span>
                           <span className="text-xs text-[color:var(--sf-muted)]">
-                            {productsIn(catalog, c.id).length} products
+                            {tp('agent.ask.products', productsIn(catalog, c.id).length)}
                           </span>
                         </button>
                       ))}
                   </Scroller>
                 )}
                 {m.productIds && m.productIds.length > 0 && (
-                  <Scroller label="Suggested products">
+                  <Scroller label={t('agent.ask.suggested')}>
                     {m.productIds
                       .map((id) => catalog.productMap.get(id))
                       .filter((p): p is Product => !!p)
@@ -374,11 +380,11 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                               to={paths.product(store, p.id)}
                               className="min-h-11 text-sm font-semibold inline-flex items-center justify-center underline underline-offset-4"
                             >
-                              View item
+                              {t('agent.ask.viewItem')}
                             </Link>
                             {quickAddable(catalog, p) && (
                               <Button variant="dark" size="sm" onClick={() => quickAdd(p)}>
-                                Add to cart
+                                {t('agent.ask.addToCart')}
                               </Button>
                             )}
                           </div>
@@ -393,7 +399,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
                     onClick={() => buy(askedFor(m.id)!)}
                     className="min-h-11 gap-2 text-sm font-semibold inline-flex items-center underline underline-offset-4 disabled:opacity-50"
                   >
-                    <Sparkles className="size-4" aria-hidden="true" /> Let my agent help me choose
+                    <Sparkles className="size-4" aria-hidden="true" /> {t('agent.ask.letAgent')}
                   </button>
                 )}
                 {m.replies && m.id === lastReplyId && (
@@ -415,7 +421,7 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
             {pending !== null && (
               <div className="space-y-3">
                 <p className={bubble('me')}>{pending}</p>
-                <p className={bubble('bot')}>Reading your message…</p>
+                <p className={bubble('bot')}>{t('agent.thread.reading')}</p>
               </div>
             )}
           </div>
@@ -428,13 +434,13 @@ export function Assistant({ look, hidden }: { look: 'rounded' | 'hairline'; hidd
 /** Switches the drawer between answering questions and the buying agent. */
 function ModeSwitch({ mode, onMode, waiting }: { mode: Mode; onMode: (m: Mode) => void; waiting: boolean }) {
   const tabs: [Mode, string][] = [
-    ['ask', 'Ask'],
-    ['agent', 'Buy for me'],
+    ['ask', t('agent.ask.modeAsk')],
+    ['agent', t('agent.ask.modeAgent')],
   ]
   return (
     <div
       role="tablist"
-      aria-label="Assistant mode"
+      aria-label={t('agent.ask.mode')}
       className="mb-4 p-1 grid grid-cols-2 rounded-[var(--sf-pill)] bg-[var(--sf-soft)]"
     >
       {tabs.map(([m, label]) => (
@@ -455,7 +461,7 @@ function ModeSwitch({ mode, onMode, waiting }: { mode: Mode; onMode: (m: Mode) =
           {label}
           {m === 'agent' && waiting && (
             <span className="size-2 rounded-full bg-[var(--sf-primary)]">
-              <span className="sr-only">, waiting for your approval</span>
+              <span className="sr-only">{t('agent.ask.modeWaiting')}</span>
             </span>
           )}
         </button>

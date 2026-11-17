@@ -712,3 +712,11 @@ export const DISPUTE_FORUM_LABEL: Record<DisputeForum, string> = {
   bpsk: 'BPSK (consumer dispute board)',
   arbitration: 'Arbitration',
 }
+
+/** The language a store shows its shoppers. Bahasa Indonesia is the default (PP 80/2019 Pasal 55). */
+export type StoreLanguage = 'id' | 'en'
+export const STORE_LANGUAGES: StoreLanguage[] = ['id', 'en']
+export const STORE_LANGUAGE_LABEL: Record<StoreLanguage, string> = {
+  id: 'Bahasa Indonesia',
+  en: 'English',
+}

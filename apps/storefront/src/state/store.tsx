@@ -23,6 +23,7 @@ import {
 import { HTTP, api, shopperToken } from '../lib/api'
 import { ADMIN_ORIGINS, EMBED, EMBED_HOST, type PreviewState, cleanPreview } from '../lib/embed'
 import { StoreOffline } from '../components/StoreOffline'
+import { t } from '../i18n'
 
 const STATE_KEY = 'rc.storefront.state.v1'
 
@@ -181,7 +182,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
       setState((s) => applyDelta(s, delta))
       return delta
     } catch (err) {
-      throw err instanceof ApiError ? err : new Error('The store did not answer. Try again in a moment.')
+      throw err instanceof ApiError ? err : new Error(t('shell.noAnswer'))
     }
   }, [])
 

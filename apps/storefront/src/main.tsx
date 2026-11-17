@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { HTTP, api } from './lib/api'
 import { HOST_STORE, STORE_ROOT, customDomainHost, setHostStore, storeHostUrl } from './lib/host'
+import { t } from './i18n'
 
 // Builds serve the store under STOREFRONT_BASE (vite.config.ts); dev serves it at the root.
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -14,13 +15,13 @@ const render = (node: ReactNode) =>
 
 /** A host no verified custom domain matches. */
 function NoStore({ host }: { host: string }) {
-  document.title = 'No store at this address'
+  document.title = t('shell.noStore.title')
   return (
     <main className="p-4 flex min-h-dvh items-center justify-center bg-surface">
       <div className="max-w-md p-8 rounded-card bg-card text-center shadow-card">
-        <h1 className="text-2xl font-bold">No store at this address</h1>
+        <h1 className="text-2xl font-bold">{t('shell.noStore.title')}</h1>
         <p className="mt-2 text-sm break-all text-muted">
-          {host} is not connected to a store, or its owner has not finished setting it up.
+          {t('shell.noStore.text', { host })}
         </p>
       </div>
     </main>
@@ -55,15 +56,18 @@ async function boot() {
     return window.location.replace(moved + window.location.search + window.location.hash)
   }
   // The routes and paths read HOST_STORE when they load, so they load after it is settled.
-  const [{ RouterProvider, createBrowserRouter }, { routes }, { AppStateProvider }] = await Promise.all([
+  const [{ RouterProvider, createBrowserRouter }, { routes }, { AppStateProvider }, { LanguageRoot }] = await Promise.all([
     import('react-router'),
     import('./router'),
     import('./state/store'),
+    import('./i18n/LanguageRoot'),
   ])
   const router = createBrowserRouter(routes, { basename: basename || '/' })
   render(
     <AppStateProvider>
-      <RouterProvider router={router} />
+      <LanguageRoot>
+        <RouterProvider router={router} />
+      </LanguageRoot>
       <Toaster />
     </AppStateProvider>,
   )

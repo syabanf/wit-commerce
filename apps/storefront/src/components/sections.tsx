@@ -1,6 +1,5 @@
 import {
   fmtIdr,
-  fmtNumber,
   initials,
   isExternalHref,
   nowMs,
@@ -9,12 +8,13 @@ import {
   tenantPhotos,
   toMs,
 } from '@rc/fixtures'
-import type { Industry, PageSection, Product, Promotion, Seller } from '@rc/types'
-import { SELLER_KIND_LABEL } from '@rc/types'
+import type { Industry, PageSection, Product, Promotion, Seller, SellerKind } from '@rc/types'
 import { cn, toast } from '@rc/ui'
 import { ArrowRight, AtSign, ChevronDown, MessageCircle, Quote } from 'lucide-react'
 import { Children, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { type MessageKey, t } from '../i18n'
+import { fmtNumber } from '../i18n/format'
 import { tint } from '../lib/brand'
 import { type Catalog, bestSellers } from '../lib/catalog'
 import { EMBED_FRAME, useFocusedSection } from '../lib/embed'
@@ -44,46 +44,56 @@ export function sectionProducts(catalog: Catalog, section: PageSection, limit: n
   return [...named, ...extra].slice(0, limit)
 }
 
-const QUOTES: Record<Industry, { quote: string; name: string }[]> = {
+const QUOTES: Record<Industry, { quote: MessageKey; name: string }[]> = {
   sport: [
-    { quote: 'The fitting advice got me to my first half marathon without blisters.', name: 'Dewi, Bandung' },
-    { quote: 'Ordered on Monday, ran in them on Wednesday.', name: 'Andre, Surabaya' },
-    { quote: 'Honest about which shoe suits my pace. I will be back.', name: 'Rina, Jakarta' },
-    { quote: 'The gels and the plan made race day easy.', name: 'Yoga, Semarang' },
+    { quote: 'catalog.quote.sport.1', name: 'Dewi, Bandung' },
+    { quote: 'catalog.quote.sport.2', name: 'Andre, Surabaya' },
+    { quote: 'catalog.quote.sport.3', name: 'Rina, Jakarta' },
+    { quote: 'catalog.quote.sport.4', name: 'Yoga, Semarang' },
   ],
   beauty: [
-    { quote: 'My skin calmed down within two weeks.', name: 'Salsa, Jakarta' },
-    { quote: 'Gentle enough for my sensitive skin.', name: 'Maya, Bandung' },
-    { quote: 'The consultation picked the right routine for me.', name: 'Tiara, Medan' },
-    { quote: 'Beautiful gift box, my mother loved it.', name: 'Nanda, Surabaya' },
+    { quote: 'catalog.quote.beauty.1', name: 'Salsa, Jakarta' },
+    { quote: 'catalog.quote.beauty.2', name: 'Maya, Bandung' },
+    { quote: 'catalog.quote.beauty.3', name: 'Tiara, Medan' },
+    { quote: 'catalog.quote.beauty.4', name: 'Nanda, Surabaya' },
   ],
   industrial: [
-    { quote: 'Commissioning finished a day early.', name: 'PT Presisi Logam' },
-    { quote: 'Spare parts arrive the next morning.', name: 'CV Sinar Teknik' },
-    { quote: 'The service contract cut our downtime in half.', name: 'PT Mitra Plastik' },
-    { quote: 'Clear quotes and a sales engineer who answers.', name: 'PT Baja Utama' },
+    { quote: 'catalog.quote.industrial.1', name: 'PT Presisi Logam' },
+    { quote: 'catalog.quote.industrial.2', name: 'CV Sinar Teknik' },
+    { quote: 'catalog.quote.industrial.3', name: 'PT Mitra Plastik' },
+    { quote: 'catalog.quote.industrial.4', name: 'PT Baja Utama' },
   ],
   fnb: [
-    { quote: 'Fresh, fast and well packed.', name: 'Lia, Jakarta' },
-    { quote: 'My weekly order never misses.', name: 'Bima, Depok' },
-    { quote: 'Great taste at a fair price.', name: 'Sari, Bogor' },
-    { quote: 'Lovely for gifting.', name: 'Rudi, Bekasi' },
+    { quote: 'catalog.quote.fnb.1', name: 'Lia, Jakarta' },
+    { quote: 'catalog.quote.fnb.2', name: 'Bima, Depok' },
+    { quote: 'catalog.quote.fnb.3', name: 'Sari, Bogor' },
+    { quote: 'catalog.quote.fnb.4', name: 'Rudi, Bekasi' },
   ],
   fashion: [
-    { quote: 'Fits exactly as the size guide says.', name: 'Ayu, Jakarta' },
-    { quote: 'Quality matches the photos.', name: 'Dimas, Bandung' },
-    { quote: 'Easy exchange when I needed a size up.', name: 'Laras, Surabaya' },
-    { quote: 'My new favourite store.', name: 'Fajar, Medan' },
+    { quote: 'catalog.quote.fashion.1', name: 'Ayu, Jakarta' },
+    { quote: 'catalog.quote.fashion.2', name: 'Dimas, Bandung' },
+    { quote: 'catalog.quote.fashion.3', name: 'Laras, Surabaya' },
+    { quote: 'catalog.quote.fashion.4', name: 'Fajar, Medan' },
   ],
   electronics: [
-    { quote: 'Arrived sealed with the full warranty.', name: 'Kevin, Jakarta' },
-    { quote: 'Helpful setup advice from the team.', name: 'Wina, Bandung' },
-    { quote: 'Fair price and quick delivery.', name: 'Reza, Surabaya' },
-    { quote: 'Will buy my next laptop here.', name: 'Putu, Denpasar' },
+    { quote: 'catalog.quote.electronics.1', name: 'Kevin, Jakarta' },
+    { quote: 'catalog.quote.electronics.2', name: 'Wina, Bandung' },
+    { quote: 'catalog.quote.electronics.3', name: 'Reza, Surabaya' },
+    { quote: 'catalog.quote.electronics.4', name: 'Putu, Denpasar' },
   ],
 }
 
-export const quotesFor = (industry: Industry) => QUOTES[industry] ?? QUOTES.sport
+/** Sample quotes from the store's industry, in the shopper's language. */
+export const quotesFor = (industry: Industry) =>
+  (QUOTES[industry] ?? QUOTES.sport).map((q) => ({ quote: t(q.quote), name: q.name }))
+
+const SELLER_KIND: Record<SellerKind, MessageKey> = {
+  sales: 'catalog.sellerKind.sales',
+  agent: 'catalog.sellerKind.agent',
+  reseller: 'catalog.sellerKind.reseller',
+  affiliate: 'catalog.sellerKind.affiliate',
+}
+export const sellerKindLabel = (kind: SellerKind) => t(SELLER_KIND[kind])
 
 /**
  * A row that scrolls on phones and tablets, bleeding to the edge of a px-4 / md:px-6 container, and
@@ -166,7 +176,7 @@ export function Testimonials({
     quotesFor(tenant.industry).slice(0, 3)
   return (
     <section aria-labelledby={`${section.id}-h`} id="testimonials" className="scroll-mt-24">
-      <Heading id={`${section.id}-h`} title={section.headline || 'What customers say'} />
+      <Heading id={`${section.id}-h`} title={section.headline || t('catalog.section.testimonials')} />
       {section.body && <p className="-mt-2 mb-4 text-sm text-[color:var(--sf-muted)]">{section.body}</p>}
       <ul className="gap-3 md:grid-cols-3 grid grid-cols-1">
         {quotes.map((q, i) => (
@@ -192,19 +202,22 @@ export function Comparison({
   const products = sectionProducts(catalog, section, 2)
   if (products.length < 2) return null
   const rows: { label: string; value: (p: Product) => string }[] = [
-    { label: 'Price', value: (p) => (p.assisted ? 'Talk to sales' : fmtIdr(p.price)) },
-    { label: 'Rating', value: (p) => `${p.rating.toFixed(1)} of 5 (${p.reviewCount} reviews)` },
-    { label: 'Best for', value: (p) => p.bestFor || 'Everyday use' },
+    { label: t('catalog.compare.price'), value: (p) => (p.assisted ? t('catalog.price.talkToSales') : fmtIdr(p.price)) },
+    {
+      label: t('catalog.compare.rating'),
+      value: (p) => t('catalog.compare.ratingValue', { rating: p.rating.toFixed(1), count: p.reviewCount }),
+    },
+    { label: t('catalog.compare.bestFor'), value: (p) => p.bestFor || t('catalog.compare.everyday') },
   ]
   return (
     <section aria-labelledby={`${section.id}-h`}>
-      <Heading id={`${section.id}-h`} title={section.headline || 'Compare'} />
+      <Heading id={`${section.id}-h`} title={section.headline || t('catalog.section.compare')} />
       <div className="sf-card overflow-x-auto">
         <table className="text-sm w-full min-w-[480px] table-fixed text-left">
           <thead>
             <tr className="bg-[var(--sf-soft)]">
               <th scope="col" className="p-4 font-semibold w-1/4 text-[color:var(--sf-muted)]">
-                <span className="sr-only">Feature</span>
+                <span className="sr-only">{t('catalog.compare.feature')}</span>
               </th>
               {products.map((p) => (
                 <th key={p.id} scope="col" className="p-4">
@@ -239,9 +252,9 @@ export function Comparison({
 export function BrandStory({ section }: { section: PageSection }) {
   const { tenant, catalog, customers, orders, store } = useShop()
   const stats = [
-    { value: catalog.products.length, label: 'products' },
-    { value: customers.length, label: 'customers' },
-    { value: new Set(orders.map((o) => o.city)).size, label: 'cities we ship to' },
+    { value: catalog.products.length, label: t('catalog.story.products') },
+    { value: customers.length, label: t('catalog.story.customers') },
+    { value: new Set(orders.map((o) => o.city)).size, label: t('catalog.story.cities') },
   ].filter((s) => s.value > 0)
   return (
     <section
@@ -256,12 +269,14 @@ export function BrandStory({ section }: { section: PageSection }) {
           ratio={0.75}
           className="aspect-[4/3] rounded-[var(--sf-tile-radius)]"
         />
-        <Sticker className="bottom-4 left-4 absolute">Since {tenant.createdAt.slice(0, 4)}</Sticker>
+        <Sticker className="bottom-4 left-4 absolute">
+          {t('catalog.story.since', { year: tenant.createdAt.slice(0, 4) })}
+        </Sticker>
       </div>
       <div className="min-w-0">
-        <p className="sf-kicker">Our story</p>
+        <p className="sf-kicker">{t('catalog.story.kicker')}</p>
         <h2 id={`${section.id}-h`} className="sf-display mt-2 text-2xl font-bold md:text-3xl text-balance">
-          {section.headline || `About ${tenant.name}`}
+          {section.headline || t('catalog.story.about', { name: tenant.name })}
         </h2>
         <p className="mt-3 max-w-xl leading-relaxed text-[color:var(--sf-muted)]">
           {section.body || tenant.brand.tagline}
@@ -277,7 +292,7 @@ export function BrandStory({ section }: { section: PageSection }) {
           </dl>
         )}
         <Link to={paths.search(store, '', { sort: 'best' })} className={cn(buttonClass('outline'), 'mt-6')}>
-          Shop the range
+          {t('catalog.story.shop')}
         </Link>
       </div>
     </section>
@@ -300,21 +315,21 @@ export function Faq({
     : [
         ...(q?.trim() && rest.join('?').trim() ? [{ q: `${q.trim()}?`, a: rest.join('?').trim() }] : []),
         {
-          q: 'How long does delivery take?',
-          a: `Two to four days with JNE or SiCepat, the same day with GoSend in Jakarta. Orders from ${fmtIdr(tenant.loyalty.freeShippingMin)} ship free.`,
+          q: t('catalog.faq.deliveryQ'),
+          a: t('catalog.faq.deliveryA', { amount: fmtIdr(tenant.loyalty.freeShippingMin) }),
         },
         {
-          q: 'Can I return an item?',
+          q: t('catalog.faq.returnQ'),
           a: RETURNS_POLICY[tenant.industry],
         },
         {
-          q: 'How can I pay?',
-          a: 'QRIS, virtual account, e-wallet, card, and cash on delivery where the store offers it.',
+          q: t('catalog.faq.payQ'),
+          a: t('catalog.faq.payA'),
         },
       ]
   return (
     <section aria-labelledby={`${section.id}-h`}>
-      <Heading id={`${section.id}-h`} title={section.headline || 'Questions'} />
+      <Heading id={`${section.id}-h`} title={section.headline || t('catalog.section.faq')} />
       <div className="space-y-2">
         {items.map((item, i) => (
           <details key={`${i}-${item.q}`} className="group sf-card px-5">
@@ -360,7 +375,7 @@ export function SectionButton({
         className={cn(buttonClass(variant, size), className)}
       >
         {label}
-        <span className="sr-only"> (opens in a new tab)</span>
+        <span className="sr-only"> {t('catalog.newTab')}</span>
       </a>
     )
   return (
@@ -415,7 +430,7 @@ export function CtaBand({ section, action }: { section: PageSection; action: Rea
       className="px-6 py-10 md:py-14 rounded-[var(--sf-card-radius)] bg-[var(--sf-text)] text-center text-[color:var(--sf-bg)]"
     >
       <h2 id={`${section.id}-h`} className="sf-display text-2xl font-bold md:text-3xl">
-        {section.headline || 'Questions before you buy?'}
+        {section.headline || t('catalog.section.cta')}
       </h2>
       {section.body && <p className="mt-2 max-w-md mx-auto opacity-80">{section.body}</p>}
       <div className="mt-6 flex justify-center">{action}</div>
@@ -440,36 +455,42 @@ export function PromoBlock({ section, seller }: { section: PageSection; seller?:
   const own = sellerPromotion(catalog, seller)
   const code = own?.code ?? section.headline.trim()
   const text = own
-    ? `${offerText(own)} with ${firstName(seller?.name ?? '')}'s code${own.minSpend ? ` on orders from ${fmtIdr(own.minSpend)}` : ''}.`
+    ? own.minSpend
+      ? t('catalog.promoBlock.textMin', {
+          offer: offerText(own),
+          name: firstName(seller?.name ?? ''),
+          amount: fmtIdr(own.minSpend),
+        })
+      : t('catalog.promoBlock.text', { offer: offerText(own), name: firstName(seller?.name ?? '') })
     : section.body
   if (!code) return null
   const promotion = own ?? catalog.promotions.find((p) => p.code === code) ?? null
   const use = () => {
     cart.setVoucher(code)
-    toast(`Code ${code} added to your cart`, {
+    toast(t('catalog.promoBlock.added', { code }), {
       tone: 'success',
-      description: 'It applies when your cart qualifies.',
+      description: t('catalog.promoBlock.addedText'),
     })
   }
   const body = (
     <div className="gap-5 lg:flex-row lg:items-center lg:justify-between flex flex-col">
       <div className="min-w-0">
         <p className="font-bold text-[11px] tracking-[0.16em] uppercase">
-          {seller ? `${firstName(seller.name)}'s code` : 'Limited offer'}
+          {seller ? t('catalog.promoBlock.sellerCode', { name: firstName(seller.name) }) : t('catalog.promoBlock.limited')}
         </p>
-        <p className="sf-title mt-1">{text || 'A code for this store'}</p>
+        <p className="sf-title mt-1">{text || t('catalog.promoBlock.fallback')}</p>
         {promotion && <p className="mt-2 text-sm">{promoTerms(promotion)}</p>}
       </div>
       <div className="gap-3 flex shrink-0 flex-wrap items-center">
         <CouponCode code={code} />
         <Button variant="light" onClick={use}>
-          Use code
+          {t('catalog.promoBlock.use')}
         </Button>
       </div>
     </div>
   )
   return (
-    <section aria-label="Offer">
+    <section aria-label={t('catalog.promoBlock.aria')}>
       {promotion ? (
         <Ticket
           className="bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]"
@@ -524,7 +545,7 @@ export function SellerHero({
       <div className="min-w-0">
         <p className="sf-kicker">{seller.name}</p>
         <p className="mt-1 text-xs text-[color:var(--sf-muted)]">
-          {SELLER_KIND_LABEL[seller.kind]}, {seller.city}
+          {sellerKindLabel(seller.kind)}, {seller.city}
         </p>
         <h1
           id="seller-h"
@@ -536,14 +557,14 @@ export function SellerHero({
         <p className="mt-3 max-w-xl text-[color:var(--sf-muted)]">{section.body || seller.bio}</p>
         <div className="mt-6 gap-2 md:justify-start flex flex-wrap justify-center">
           <a
-            href={waLink(seller.whatsapp, `Hi ${firstName(seller.name)}, I found your ${tenant.name} store.`)}
+            href={waLink(seller.whatsapp, t('catalog.seller.waText', { name: firstName(seller.name), store: tenant.name }))}
             target="_blank"
             rel="noopener noreferrer"
             className={buttonClass('primary', 'lg')}
           >
             <MessageCircle aria-hidden="true" />
-            {section.ctaLabel || 'Chat on WhatsApp'}
-            <span className="sr-only"> (opens WhatsApp)</span>
+            {section.ctaLabel || t('catalog.seller.chat')}
+            <span className="sr-only"> {t('catalog.seller.opensWa')}</span>
           </a>
           {seller.instagram && (
             <span className="min-h-12 gap-1.5 px-2 text-sm inline-flex items-center text-[color:var(--sf-muted)]">

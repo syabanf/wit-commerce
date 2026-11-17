@@ -21,6 +21,7 @@ import { Crumbs } from './Listing'
 import { BeautyFacts } from '../../components/beauty'
 import { Money } from '../../components/Money'
 import { OfferInfo } from '../../components/OfferInfo'
+import { t } from '../../i18n'
 
 /** Colour dots above the title on phones; the real picker sits below. */
 function ColourDots({ detail }: { detail: ProductDetail }) {
@@ -58,7 +59,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
     <div>
       <Crumbs
         crumbs={[
-          { label: 'Home', to: paths.home(store) },
+          { label: t('theme.home'), to: paths.home(store) },
           ...detail.path.map((c) => ({ label: c.name, to: paths.category(store, c.id) })),
         ]}
       />
@@ -86,13 +87,13 @@ export function Product({ detail }: { detail: ProductDetail }) {
             <Rating product={product} className="mt-2" />
           </div>
           {product.assisted ? (
-            <p className="text-lg font-bold text-[color:var(--sf-primary-text)]">Price on request</p>
+            <p className="text-lg font-bold text-[color:var(--sf-primary-text)]">{t('theme.priceOnRequest')}</p>
           ) : (
             <div className="space-y-1">
               <PriceTag product={product} price={detail.variant?.price} priceClassName="text-3xl" />
               {detail.cartDiscountPct && (
                 <p className="text-sm font-semibold text-[color:var(--sf-primary-text)]">
-                  {detail.cartDiscountPct}% off applied in cart
+                  {t('theme.cartDiscount', { pct: detail.cartDiscountPct })}
                 </p>
               )}
               {detail.codeOffer && <CodeOfferStrip {...detail.codeOffer} />}
@@ -100,9 +101,9 @@ export function Product({ detail }: { detail: ProductDetail }) {
           )}
           {product.assisted ? (
             <div className="pt-5 border-t border-[color:var(--sf-line)]">
-              <h2 className="sf-display mb-1 text-xl font-bold">Talk to sales</h2>
+              <h2 className="sf-display mb-1 text-xl font-bold">{t('theme.talkToSales')}</h2>
               <p className="mb-4 text-sm text-[color:var(--sf-muted)]">
-                Get a quote sized to your line, with delivery and installation.
+                {t('theme.talkToSalesIntro')}
               </p>
               <TalkToSalesForm product={product} />
             </div>
@@ -121,10 +122,10 @@ export function Product({ detail }: { detail: ProductDetail }) {
               )}
               <div className="gap-2 md:grid lg:flex hidden grid-cols-1">
                 <Button size="lg" className="lg:flex-1" disabled={!!detail.blocker} onClick={add}>
-                  Add to cart · <Money idr={detail.lineTotal} />
+                  {t('theme.addToCart')} · <Money idr={detail.lineTotal} />
                 </Button>
                 <Button size="lg" variant="dark" disabled={!!detail.blocker} onClick={buyNow}>
-                  Buy now
+                  {t('theme.buyNow')}
                 </Button>
               </div>
               <OfferInfo product={product} />
@@ -136,7 +137,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
       <div className="mt-6 gap-4 md:grid-cols-2 lg:grid-cols-3 grid grid-cols-1 items-stretch">
         <section className="sf-card p-6" aria-labelledby="love-h">
           <h2 id="love-h" className="sf-display text-xl font-bold">
-            Why you'll love it
+            {t('theme.whyLove')}
           </h2>
           <p className="mt-2 leading-relaxed text-[color:var(--sf-muted)]">{product.description}</p>
           <div className="mt-4">
@@ -159,19 +160,19 @@ export function Product({ detail }: { detail: ProductDetail }) {
         </section>
         <section className="sf-card p-6" aria-labelledby="best-h">
           <h2 id="best-h" className="sf-display text-xl font-bold">
-            Best for
+            {t('theme.bestFor')}
           </h2>
-          <p className="mt-2 text-lg font-semibold">{product.bestFor || 'Everyday use'}</p>
+          <p className="mt-2 text-lg font-semibold">{product.bestFor || t('theme.everydayUse')}</p>
         </section>
         <section className="sf-card p-6 md:col-span-2 lg:col-span-1" aria-labelledby="spec-h">
           <h2 id="spec-h" className="sf-display text-xl font-bold">
-            Specifications
+            {t('theme.specs')}
           </h2>
           {detail.specs.length ? (
             <SpecTable detail={detail} className="mt-2" />
           ) : (
             <p className="mt-2 text-sm text-[color:var(--sf-muted)]">
-              No specifications listed for this product.
+              {t('theme.noSpecs')}
             </p>
           )}
         </section>
@@ -180,7 +181,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
       <div className="mt-8">
         <ProductsBlock
           id="related-h"
-          title={detail.path.length ? `More in ${detail.path.at(-1)!.name}` : 'You may also like'}
+          title={detail.path.length ? t('theme.moreIn', { category: detail.path.at(-1)!.name }) : t('theme.alsoLike')}
           products={detail.related}
         />
       </div>
@@ -192,16 +193,16 @@ export function Product({ detail }: { detail: ProductDetail }) {
           )}
           <div className="mb-2 text-sm flex items-center justify-between">
             <span className="text-[color:var(--sf-muted)]">
-              {detail.variant ? 'Selected total' : 'Starting at'}
+              {detail.variant ? t('theme.selectedTotal') : t('theme.startingAt')}
             </span>
             <Money idr={detail.lineTotal} className="font-bold" />
           </div>
           <div className="gap-2 grid grid-cols-2">
             <Button variant="outline" size="lg" full disabled={!!detail.blocker} onClick={add}>
-              Add to cart
+              {t('theme.addToCart')}
             </Button>
             <Button variant="dark" size="lg" full disabled={!!detail.blocker} onClick={buyNow}>
-              Buy now
+              {t('theme.buyNow')}
             </Button>
           </div>
         </div>

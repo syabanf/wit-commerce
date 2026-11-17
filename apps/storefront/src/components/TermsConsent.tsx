@@ -1,9 +1,10 @@
 import { Link } from 'react-router'
 import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
+import { t, tx } from '../i18n'
 
 /** Shown when a shopper places an order without ticking the consent box. */
-export const TERMS_REQUIRED = 'Agree to the Terms and the Privacy Policy to place your order.'
+export const termsRequired = () => t('checkout.terms.required')
 
 /**
  * The checkout's required consent (PP 80/2019 Pasal 46). The API refuses a shopper order that does
@@ -27,19 +28,23 @@ export function TermsConsent({
         onChange={(e) => onChange(e.target.checked)}
       />
       <span>
-        I agree to the{' '}
-        <Link to={paths.terms(store)} target="_blank" className="font-semibold underline underline-offset-4">
-          Terms
-        </Link>{' '}
-        and the{' '}
-        <Link
-          to={paths.privacy(store)}
-          target="_blank"
-          className="font-semibold underline underline-offset-4"
-        >
-          Privacy Policy
-        </Link>
-        .
+        {tx('checkout.terms.agree', {
+          terms: (
+            <Link key="terms" to={paths.terms(store)} target="_blank" className="font-semibold underline underline-offset-4">
+              {t('checkout.terms.terms')}
+            </Link>
+          ),
+          privacy: (
+            <Link
+              key="privacy"
+              to={paths.privacy(store)}
+              target="_blank"
+              className="font-semibold underline underline-offset-4"
+            >
+              {t('checkout.terms.privacy')}
+            </Link>
+          ),
+        })}
       </span>
     </label>
   )
@@ -50,15 +55,18 @@ export function ApproveMeansConsent() {
   const { store } = useShop()
   return (
     <p className="mt-2 text-xs">
-      Approving means you agree to the{' '}
-      <Link to={paths.terms(store)} target="_blank" className="font-semibold underline underline-offset-4">
-        Terms
-      </Link>{' '}
-      and the{' '}
-      <Link to={paths.privacy(store)} target="_blank" className="font-semibold underline underline-offset-4">
-        Privacy Policy
-      </Link>
-      .
+      {tx('checkout.terms.approving', {
+        terms: (
+          <Link key="terms" to={paths.terms(store)} target="_blank" className="font-semibold underline underline-offset-4">
+            {t('checkout.terms.terms')}
+          </Link>
+        ),
+        privacy: (
+          <Link key="privacy" to={paths.privacy(store)} target="_blank" className="font-semibold underline underline-offset-4">
+            {t('checkout.terms.privacy')}
+          </Link>
+        ),
+      })}
     </p>
   )
 }

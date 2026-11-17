@@ -81,6 +81,8 @@ type Tenant struct {
 	ReturnWindowDays *int `json:"returnWindowDays,omitempty"`
 	// ShopperEmailsOff lists the shopper emails the brand switched off.
 	ShopperEmailsOff []string `json:"shopperEmailsOff,omitempty"`
+	// StoreLanguage is the language shoppers see the store and its emails in: "id" or "en"; empty means "id".
+	StoreLanguage string `json:"storeLanguage,omitempty"`
 	// Legal is who the seller is, how shoppers complain and the brand's terms choices.
 	Legal *SellerLegal `json:"legal,omitempty"`
 	// CourierEtaDays overrides the platform's delivery estimate per courier.

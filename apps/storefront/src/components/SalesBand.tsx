@@ -4,6 +4,7 @@ import { Drawer } from './Drawer'
 import { CtaBand } from './sections'
 import { TalkToSalesForm } from './TalkToSales'
 import { Button } from './ui'
+import { t } from '../i18n'
 
 /** Talk to sales band: opens the lead form in a drawer. */
 export function SalesBand({ section }: { section: PageSection }) {
@@ -14,15 +15,15 @@ export function SalesBand({ section }: { section: PageSection }) {
         section={section}
         action={
           <Button variant="light" size="lg" onClick={() => setOpen(true)}>
-            {section.ctaLabel || 'Talk to sales'}
+            {section.ctaLabel || t('shell.sales.title')}
           </Button>
         }
       />
       <Drawer
         open={open}
         onOpenChange={setOpen}
-        title="Talk to sales"
-        description="Tell us what you need and a sales engineer calls you back."
+        title={t('shell.sales.title')}
+        description={t('shell.sales.text')}
       >
         <TalkToSalesForm product={null} onDone={() => setOpen(false)} />
       </Drawer>

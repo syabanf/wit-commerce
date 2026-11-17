@@ -1,6 +1,7 @@
-import { describePromotion } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { useMemo, useState } from 'react'
+import { t } from '../i18n'
+import { codeErrorText, describePromotion } from '../i18n/format'
 import type { CartItem, CartTotals } from '../lib/cart'
 import { defaultCourierFor } from '../lib/checkout'
 import { isBuyable } from '../lib/catalog'
@@ -44,7 +45,7 @@ export function useCartView(): CartView {
       .slice(0, 4)
   }, [catalog, totals.items])
   const paymentName = (id: string) =>
-    catalog.paymentTypes.find((t) => t.id === id)?.name ?? 'another payment type'
+    catalog.paymentTypes.find((p) => p.id === id)?.name ?? t('checkout.voucher.otherPayment')
   return {
     items: totals.items,
     totals,
@@ -59,7 +60,7 @@ export function useCartView(): CartView {
       apply: () => {
         const code = input.trim().toUpperCase()
         if (!code) {
-          setLocalError('Enter a voucher code, such as the one in your welcome email.')
+          setLocalError(t('checkout.voucher.enterCode'))
           return
         }
         cart.setVoucher(code)
@@ -69,7 +70,7 @@ export function useCartView(): CartView {
         setInput('')
       },
       code: cart.cart.voucher,
-      error: localError ?? (cart.cart.voucher ? totals.codeError : null),
+      error: localError ?? (cart.cart.voucher && totals.codeError ? codeErrorText(totals.codeError) : null),
     },
     shipping,
     total: Math.max(0, totals.subtotal - totals.discount + shipping),

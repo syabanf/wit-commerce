@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { MenuItem } from '../lib/menus'
+import { t } from '../i18n'
 
 /** One store menu link: a Link inside the store, or a plain link that opens a new tab. */
 export function MenuLink({
@@ -18,7 +19,7 @@ export function MenuLink({
     return (
       <a href={item.to} target="_blank" rel="noopener noreferrer" className={className} onClick={onClick}>
         {children ?? item.label}
-        <span className="sr-only"> (opens in a new tab)</span>
+        <span className="sr-only"> ({t('shell.newTab')})</span>
       </a>
     )
   return (

@@ -34,11 +34,11 @@ func (n *Notifications) UnsubscribeURL(token string) string {
 
 // ComposeMarketing lays out a marketing email. It takes the unsubscribe link as a required
 // argument, so no marketing email goes out without one. Callers pick recipients with
-// rules.MarketingAllowed.
-func ComposeMarketing(b Branding, to string, e Email, unsubscribeURL string) mail.Message {
-	e.Unsubscribe = &Link{Label: "Unsubscribe", URL: unsubscribeURL}
+// rules.MarketingAllowed. lang is the store's language, as in ShopperFacts.
+func ComposeMarketing(b Branding, lang, to string, e Email, unsubscribeURL string) mail.Message {
+	e.Unsubscribe = &Link{Label: Say(lang, "unsubscribe"), URL: unsubscribeURL}
 	if e.Footer == "" {
-		e.Footer = "You get this email because you agreed to offers and news from " + b.Name + "."
+		e.Footer = Say(lang, "marketing.footer", b.Name)
 	}
 	body, text := Render(b, e)
 	return mail.Message{To: to, Subject: e.Title, Text: text, HTML: body}

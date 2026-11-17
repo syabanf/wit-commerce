@@ -18,6 +18,7 @@ import { sellsThroughSales } from '../../lib/catalog'
 import { firstName, paths, waLink } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import type { SectionsProps } from '../types'
+import { t } from '../../i18n'
 import { CategoryTiles, DealsStrip, EditorialChips, HeroRow, ProductsBlock } from './blocks'
 
 /** Theme 1 renderer for a page's sections, in the order the page and its template set. */
@@ -50,11 +51,11 @@ export function Sections({ sections, seller }: SectionsProps) {
               <ProductsBlock
                 key={s.id}
                 id={`${s.id}-h`}
-                title={s.headline || (seller ? `${firstName(seller.name)}'s picks` : 'Featured products')}
+                title={s.headline || (seller ? t('theme.picks', { name: firstName(seller.name) }) : t('theme.featuredProducts'))}
                 products={sectionProducts(catalog, s, layout.limit)}
                 rail={layout.rail}
                 gridClassName={layout.className}
-                action={{ label: 'Browse all products', to: paths.search(store) }}
+                action={{ label: t('theme.browseAll'), to: paths.search(store) }}
               />
             )
           case 'promotion':
@@ -82,8 +83,8 @@ export function Sections({ sections, seller }: SectionsProps) {
                     className={buttonClass('light', 'lg')}
                   >
                     <MessageCircle aria-hidden="true" />
-                    {s.ctaLabel || 'Message me'}
-                    <span className="sr-only"> on WhatsApp (opens WhatsApp)</span>
+                    {s.ctaLabel || t('theme.messageMe')}
+                    <span className="sr-only">{t('theme.onWhatsApp')}</span>
                   </a>
                 }
               />
@@ -97,7 +98,7 @@ export function Sections({ sections, seller }: SectionsProps) {
                   <SectionButton
                     section={s}
                     fallback={paths.search(store, '', { sort: 'best' })}
-                    label={s.ctaLabel || 'Shop best sellers'}
+                    label={s.ctaLabel || t('theme.shopBest')}
                     variant="light"
                     size="lg"
                   />

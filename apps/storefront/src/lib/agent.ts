@@ -1,7 +1,8 @@
 import { fmtIdr, toMs } from '@rc/fixtures'
 import type { AgentKind, AgentPolicy, Customer, PaymentType, Product, Variant } from '@rc/types'
 import { AGENT_KIND_LABEL } from '@rc/types'
-import { SYNONYMS, describeIntent, type Intent, recommend, understand } from './assistant'
+import { type MessageKey, t } from '../i18n'
+import { SYNONYMS, describeIntent, type Intent, recommend, understand, labelOfUseCase } from './assistant'
 import { type CartTotals, cartTotals } from './cart'
 import { type Catalog, categoryIdsUnder, fromPrice, isBuyable, variantAvailable } from './catalog'
 import { couriersFor, defaultCourierFor, type CourierOption, courierFee } from './checkout'
@@ -10,10 +11,22 @@ import { couriersFor, defaultCourierFor, type CourierOption, courierFee } from '
 // stock, promotions and the store's agent policy, and returns every step it took. Pure functions; the
 // page animates the steps and places the order through the normal order path.
 
+const KIND_KEY: Record<AgentKind, MessageKey> = {
+  chat_assistant: 'agent.kind.chat_assistant',
+  browser_agent: 'agent.kind.browser_agent',
+  wallet_agent: 'agent.kind.wallet_agent',
+  procurement_agent: 'agent.kind.procurement_agent',
+}
+
+/** "chat assistants", in the shopper's language. */
+export const agentKindName = (kind: AgentKind) => t(KIND_KEY[kind])
+
 /** "chat assistants, browser agents and wallet agents" */
 export function agentKindList(kinds: readonly AgentKind[]): string {
-  const names = kinds.map((k) => `${AGENT_KIND_LABEL[k].toLowerCase()}s`)
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : (names[0] ?? 'no agents')
+  const names = kinds.map(agentKindName)
+  return names.length > 1
+    ? `${names.slice(0, -1).join(', ')}${t('agent.and')}${names.at(-1)}`
+    : (names[0] ?? t('agent.kind.none'))
 }
 
 /** What the shopper hands the agent: the task and the limits it must stay inside. */
@@ -45,11 +58,17 @@ export interface ShippingChoice {
   fee: number
 }
 
+/** One thing the agent checked; `kind` lets the chat pick which to quote. */
+export interface Reason {
+  kind: 'budget' | 'fit' | 'rating' | 'stock'
+  text: string
+}
+
 export interface Candidate {
   product: Product
   variant: Variant | null
   price: number
-  reasons: string[]
+  reasons: Reason[]
   /** Why the agent passed on it; null for the pick and the runners-up it kept. */
   rejected: string | null
 }
@@ -129,15 +148,31 @@ const words = (p: Product) => `${p.name} ${p.tags.join(' ')} ${p.bestFor} ${p.de
 
 /** One reason per thing the agent checked, so the shopper sees why it chose. */
 function reasonsFor(catalog: Catalog, p: Product, v: Variant | null, intent: Intent, budget: number | null) {
-  const out: string[] = []
+  const out: Reason[] = []
   const price = v?.price ?? fromPrice(p)
-  if (budget) out.push(`${fmtIdr(price)} of ${fmtIdr(budget)} budget`)
+  if (budget)
+    out.push({
+      kind: 'budget',
+      text: t('agent.reason.budget', { price: fmtIdr(price), budget: fmtIdr(budget) }),
+    })
   for (const u of intent.useCases)
-    if (u.terms.some((t) => words(p).includes(t))) out.push(`Fits ${u.label.toLowerCase()}`)
-  if (p.reviewCount) out.push(`Rated ${p.rating.toFixed(1)} from ${p.reviewCount} reviews`)
+    if (u.terms.some((term) => words(p).includes(term)))
+      out.push({ kind: 'fit', text: t('agent.reason.fits', { useCase: labelOfUseCase(u).toLowerCase() }) })
+  if (p.reviewCount)
+    out.push({
+      kind: 'rating',
+      text: t('agent.reason.rated', { rating: p.rating.toFixed(1), count: p.reviewCount }),
+    })
   if (v && Object.keys(v.optionValues).length) {
     const n = variantAvailable(catalog, p, v.id)
-    out.push(`${Object.values(v.optionValues).join(' / ')} ${n === null ? 'available' : `in stock (${n})`}`)
+    const options = Object.values(v.optionValues).join(' / ')
+    out.push({
+      kind: 'stock',
+      text:
+        n === null
+          ? t('agent.reason.available', { options })
+          : t('agent.reason.inStock', { options, count: n }),
+    })
   }
   return out
 }
@@ -242,7 +277,7 @@ export function planAgentRun(
     // A budget given outside the task replaces the one the task names.
     ...describeIntent(input.budget ? { ...intent, budgetMax: null } : intent, catalog),
     ...Object.entries(wanted).map(([k, v]) => `${k} ${v}`),
-    ...(input.budget ? [`Budget ${fmtIdr(input.budget)}`] : []),
+    ...(input.budget ? [t('agent.constraint.budget', { amount: fmtIdr(input.budget) })] : []),
   ]
   const intentMandate: Mandate = {
     id: id('im', `${customer.id}${input.task}${now}`),
@@ -276,12 +311,15 @@ export function planAgentRun(
     checkNote: '',
     mandates: { intent: intentMandate, cart: null, payment: null },
   }
-  if (!policy?.enabled)
-    return { ...empty, refusal: `${catalog.tenant.name} does not take orders from buying agents yet.` }
+  if (!policy?.enabled) return { ...empty, refusal: t('agent.refuse.off', { store: catalog.tenant.name }) }
   if (!policy.kinds.includes(input.kind))
     return {
       ...empty,
-      refusal: `${catalog.tenant.name} accepts ${agentKindList(policy.kinds)}, not ${AGENT_KIND_LABEL[input.kind].toLowerCase()}s.`,
+      refusal: t('agent.refuse.kind', {
+        store: catalog.tenant.name,
+        kinds: agentKindList(policy.kinds),
+        kind: agentKindName(input.kind),
+      }),
     }
 
   // Search and shortlist: the store's own ranking, then the agent's checks.
@@ -298,8 +336,12 @@ export function planAgentRun(
     const v = fits.find((x) => x.id === input.variantId) ?? fits[0] ?? null
     const price = v?.price ?? fromPrice(p)
     let rejected: string | null = null
-    if (!v) rejected = `No ${Object.values(wanted).join(' / ') || 'variant'} in stock`
-    else if (budget && price > budget) rejected = `${fmtIdr(price - budget)} over budget`
+    if (!v)
+      rejected = t('agent.reject.noVariant', {
+        wanted: Object.values(wanted).join(' / ') || t('agent.reject.variant'),
+      })
+    else if (budget && price > budget)
+      rejected = t('agent.reject.overBudget', { amount: fmtIdr(price - budget) })
     candidates.push({
       product: p,
       variant: v,
@@ -361,7 +403,7 @@ export function planAgentRun(
   const best =
     trials.find((t) => t.code === input.offer?.code && t.paymentType.id === input.offer?.paymentTypeId) ??
     trials[0]
-  if (!best) return { ...empty, refusal: 'No payment type the store allows for agents can take this order.' }
+  if (!best) return { ...empty, refusal: t('agent.refuse.payment') }
 
   const grantedPct = policy.negotiation ? Math.min(ASK_PCT, policy.maxAutoDiscountPct) : 0
   const negotiated = Math.round((best.payable * grantedPct) / 100 / 1000) * 1000
@@ -372,9 +414,9 @@ export function planAgentRun(
     amount: negotiated,
     note: policy.negotiation
       ? grantedPct
-        ? `Asked for ${ASK_PCT}% off. The store agent granted ${grantedPct}%, its limit for agents.`
-        : 'The store agent declined: its agent discount limit is 0%.'
-      : `${catalog.tenant.name} does not negotiate with agents. List price stands.`,
+        ? t('agent.negotiation.granted', { asked: ASK_PCT, granted: grantedPct })
+        : t('agent.negotiation.declined')
+      : t('agent.negotiation.none', { store: catalog.tenant.name }),
   }
   const shippingOptions = couriersFor(catalog.tenant)
     .filter((c) => !c.jakartaOnly || customer.city === 'Jakarta')
@@ -442,7 +484,7 @@ export function planAgentRun(
     total,
     overBudget,
     checkNote: overBudget
-      ? `With shipping, the total is ${fmtIdr(total - budget!)} over your ${fmtIdr(budget!)} budget.`
+      ? t('agent.checkNote', { over: fmtIdr(total - budget!), budget: fmtIdr(budget!) })
       : '',
     mandates: { intent: intentMandate, cart: cartMandate, payment: paymentMandate },
   }

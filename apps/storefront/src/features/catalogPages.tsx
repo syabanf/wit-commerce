@@ -4,6 +4,7 @@ import { Heart, PackageSearch } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router'
 import { NotFound } from '../components/NotFound'
+import { t } from '../i18n'
 import { sellerPromotion } from '../components/sections'
 import { TemplateLookProvider } from '../components/templateLook'
 import { SearchSuggestions } from '../components/shell'
@@ -18,7 +19,7 @@ import {
   matchesQuery,
   productsIn,
   promoFor,
-  SORT_LABEL,
+  sortLabel,
 } from '../lib/catalog'
 import { EMBED, usePreviewPageId } from '../lib/embed'
 import { RESERVED_SEGMENTS, paths } from '../lib/paths'
@@ -47,20 +48,20 @@ function NoResults({ listing }: { listing: ListingState }) {
   return listing.activeCount ? (
     <EmptyState
       icon={<PackageSearch aria-hidden="true" />}
-      title="No products match these filters"
-      text="Remove a filter or two to see more products."
+      title={t('catalog.empty.filteredTitle')}
+      text={t('catalog.empty.filteredText')}
       action={
         <Button variant="dark" onClick={listing.clear}>
-          Clear all filters
+          {t('catalog.filter.clearAll')}
         </Button>
       }
     />
   ) : (
     <EmptyState
       icon={<PackageSearch aria-hidden="true" />}
-      title="Nothing here yet"
-      text="New products land here soon. Browse the rest of the store in the meantime."
-      action={<ButtonLink to={paths.search(store)}>Browse all products</ButtonLink>}
+      title={t('catalog.empty.title')}
+      text={t('catalog.empty.text')}
+      action={<ButtonLink to={paths.search(store)}>{t('catalog.empty.browseAll')}</ButtonLink>}
     />
   )
 }
@@ -82,7 +83,7 @@ function CategoryListing({ category }: { category: Category }) {
   const chips: ListingChip[] = subs.length
     ? [
         {
-          label: 'All',
+          label: t('catalog.chip.all'),
           to: paths.category(store, top.id),
           active: category.id === top.id,
           count: productsIn(catalog, top.id).length,
@@ -100,7 +101,7 @@ function CategoryListing({ category }: { category: Category }) {
       title={category.name}
       description={category.description}
       crumbs={[
-        { label: 'Home', to: paths.home(store) },
+        { label: t('catalog.crumb.home'), to: paths.home(store) },
         ...(top.id !== category.id ? [{ label: top.name, to: paths.category(store, top.id) }] : []),
         { label: category.name, to: paths.category(store, category.id) },
       ]}
@@ -115,7 +116,7 @@ export function CategoryPage() {
   const { categoryId = '' } = useParams()
   const { catalog } = useShop()
   const category = catalog.categoryMap.get(categoryId)
-  if (!category) return <NotFound title="We could not find that category" />
+  if (!category) return <NotFound title={t('catalog.notFound.category')} />
   return <CategoryListing key={category.id} category={category} />
 }
 
@@ -144,7 +145,7 @@ function CollectionListing({ collection }: { collection: Collection }) {
     <theme.Listing
       title={collection.name}
       description={collection.description}
-      crumbs={[{ label: 'Home', to: paths.home(store) }]}
+      crumbs={[{ label: t('catalog.crumb.home'), to: paths.home(store) }]}
       chips={chips}
       listing={listing}
       empty={<NoResults listing={listing} />}
@@ -156,7 +157,7 @@ export function CollectionPage() {
   const { slug = '' } = useParams()
   const { catalog } = useShop()
   const collection = catalog.collections.find((c) => c.slug === slug)
-  if (!collection) return <NotFound title="We could not find that collection" />
+  if (!collection) return <NotFound title={t('catalog.notFound.collection')} />
   return <CollectionListing key={collection.id} collection={collection} />
 }
 
@@ -188,16 +189,16 @@ function SearchListing() {
   )
   const listing = useListing(products, defs, isSortKey(sortParam) ? sortParam : q ? 'featured' : 'best')
   const title = q
-    ? `Results for "${q}"`
+    ? t('catalog.search.resultsFor', { query: q })
     : deals
-      ? 'Hot offers'
+      ? t('catalog.search.deals')
       : gifts
-        ? 'Gift ideas'
+        ? t('catalog.search.gifts')
         : isSortKey(sortParam) && sortParam !== 'featured'
-          ? SORT_LABEL[sortParam]
-          : 'All products'
+          ? sortLabel(sortParam)
+          : t('catalog.search.all')
   useTitle(`${title} · ${catalog.tenant.name}`)
-  const all: ListingChip = { label: 'All', to: paths.search(store, q), active: !cat }
+  const all: ListingChip = { label: t('catalog.chip.all'), to: paths.search(store, q), active: !cat }
   const chips: ListingChip[] = [
     all,
     ...catalog.topCategories.map((c) => ({
@@ -212,7 +213,7 @@ function SearchListing() {
   return (
     <theme.Listing
       title={title}
-      crumbs={[{ label: 'Home', to: paths.home(store) }]}
+      crumbs={[{ label: t('catalog.crumb.home'), to: paths.home(store) }]}
       chips={chips}
       listing={listing}
       query={q}
@@ -242,8 +243,8 @@ export function ProductPage() {
   if (!product || product.status !== 'active')
     return (
       <NotFound
-        title="This product is not on sale"
-        text="It may have sold out for good or moved. Search the store for something similar."
+        title={t('catalog.notFound.product')}
+        text={t('catalog.notFound.productText')}
       />
     )
   return <ProductView key={product.id} product={product} />
@@ -254,28 +255,30 @@ export function ProductPage() {
 export function CartPage() {
   const theme = useTheme()
   const view = useCartView()
-  useTitle(`Cart · ${useShop().tenant.name}`)
+  useTitle(`${t('catalog.title.cart')} · ${useShop().tenant.name}`)
   return <theme.Cart view={view} />
 }
 
 export function WishlistPage() {
   const theme = useTheme()
   const { wishlist, catalog, store } = useShop()
-  useTitle(`Wishlist · ${catalog.tenant.name}`)
+  useTitle(`${t('catalog.title.wishlist')} · ${catalog.tenant.name}`)
   const products = wishlist.ids
     .map((id) => catalog.productMap.get(id))
     .filter((p): p is Product => !!p && p.status === 'active')
   return (
     <div className="space-y-6">
-      <h1 className="sf-display text-3xl font-bold md:text-4xl">Wishlist</h1>
+      <h1 className="sf-display text-3xl font-bold md:text-4xl">{t('catalog.title.wishlist')}</h1>
       {products.length ? (
         <theme.ProductGrid products={products} />
       ) : (
         <EmptyState
           icon={<Heart aria-hidden="true" />}
-          title="Nothing saved yet"
-          text="Tap the heart on any product to keep it here for later."
-          action={<ButtonLink to={paths.search(store, '', { sort: 'best' })}>See best sellers</ButtonLink>}
+          title={t('catalog.wishlist.emptyTitle')}
+          text={t('catalog.wishlist.emptyText')}
+          action={
+            <ButtonLink to={paths.search(store, '', { sort: 'best' })}>{t('catalog.wishlist.bestSellers')}</ButtonLink>
+          }
         />
       )}
     </div>
@@ -320,8 +323,8 @@ export function PersonalStorePage() {
   if (!seller || !page)
     return (
       <NotFound
-        title="This page is not open"
-        text="The store you are looking for is not published yet, or the link has a typo."
+        title={t('catalog.notFound.page')}
+        text={t('catalog.notFound.pageText')}
       />
     )
   const visible = page.sections.filter((s) => !s.hidden && s.kind !== 'footer')
@@ -352,7 +355,7 @@ export function PersonalStorePage() {
 }
 
 export function StoreNotFoundPage() {
-  useTitle(`Page not found · ${useShop().tenant.name}`)
+  useTitle(`${t('catalog.title.notFound')} · ${useShop().tenant.name}`)
   return <NotFound />
 }
 
@@ -363,7 +366,7 @@ export function PagePreviewPage() {
   const page = EMBED ? catalog.pages.find((p) => p.id === pageId) : undefined
   const seller = page?.sellerId ? catalog.sellers.find((s) => s.id === page.sellerId) : null
   useTitle(page ? `${page.title} · ${catalog.tenant.name}` : catalog.tenant.name)
-  if (!page) return <NotFound title="Nothing to preview" text="Open this page from the admin console." />
+  if (!page) return <NotFound title={t('catalog.preview.title')} text={t('catalog.preview.text')} />
   return <ContentPage page={page} seller={seller} />
 }
 

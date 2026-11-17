@@ -8,6 +8,7 @@ import { popularCategories } from '../../lib/catalog'
 import { paths } from '../../lib/paths'
 import { useTitle } from '../../lib/useTitle'
 import { useShop } from '../../state/shop'
+import { t } from '../../i18n'
 
 const BUBBLES = ['size-32', 'size-24 mt-10', 'size-28', 'size-36 -mt-4', 'size-24', 'size-28 mt-6']
 const BUBBLE_SIZE = [32, 24, 28, 36, 24, 28]
@@ -24,7 +25,7 @@ export function Intro({ onDone }: { onDone: () => void }) {
   return (
     <main className="px-5 pt-10 pb-8 flex min-h-dvh flex-col" style={{ background: tint('--sf-primary', 8) }}>
       <p className="sf-serif text-sm font-bold text-center tracking-[0.2em] uppercase">{tenant.name}</p>
-      <ul className="gap-3 py-8 my-auto flex flex-wrap items-start justify-center" aria-label="Categories">
+      <ul className="gap-3 py-8 my-auto flex flex-wrap items-start justify-center" aria-label={t('shell.nav.categories')}>
         {categories.map((c, i) => (
           <li key={c.id}>
             <Link
@@ -44,11 +45,11 @@ export function Intro({ onDone }: { onDone: () => void }) {
         ))}
       </ul>
       <h1 className="sf-serif text-3xl leading-tight text-center">
-        Bringing you the products our members love
+        {t('shell.intro.title')}
       </h1>
       <p className="mt-3 text-sm text-center text-[color:var(--sf-muted)]">{tenant.brand.tagline}</p>
       <Button variant="dark" size="lg" full onClick={onDone} className="mt-8 rounded-full">
-        Get started
+        {t('shell.intro.start')}
       </Button>
     </main>
   )

@@ -15,6 +15,7 @@ import { ShopProvider, useShop } from '../state/shop'
 import { useStore } from '../state/store'
 import { DemoBar } from '../components/DemoBar'
 import { isTheme, useThemeChoice } from '../themes/registry'
+import { t } from '../i18n'
 
 /** Remembers `?ref=<slug>` on any store URL, so later orders credit that seller. */
 function useReferralParam() {
@@ -85,19 +86,19 @@ export function StoreRoot() {
 }
 
 export function UnknownStore() {
-  useTitle('Store not found · WIT Commerce Store')
+  useTitle(t('shell.unknown.pageTitle'))
   return (
     <main className="p-4 flex min-h-dvh items-center justify-center bg-surface">
       <div className="max-w-md p-8 rounded-card bg-card text-center shadow-card">
-        <h1 className="text-2xl font-bold">We could not find that store</h1>
+        <h1 className="text-2xl font-bold">{t('shell.unknown.title')}</h1>
         <p className="mt-2 text-sm text-muted">
-          Check the address, or pick one of the stores on WIT Commerce.
+          {t('shell.unknown.text')}
         </p>
         <Link
           to={paths.chooser()}
           className="mt-6 min-h-11 px-5 text-sm font-semibold inline-flex items-center rounded-full bg-ink text-on-ink"
         >
-          See all stores
+          {t('shell.unknown.all')}
         </Link>
       </div>
     </main>
@@ -106,22 +107,22 @@ export function UnknownStore() {
 
 /** A store host whose store is not published yet, or does not exist. */
 function ComingSoon({ name }: { name?: string }) {
-  useTitle(name ? `${name} · Coming soon` : 'Coming soon · WIT Commerce Store')
+  useTitle(name ? `${name} · ${t('shell.soon')}` : t('shell.soon.pageTitle'))
   return (
     <main className="p-4 flex min-h-dvh items-center justify-center bg-surface">
       <div className="max-w-md p-8 rounded-card bg-card text-center shadow-card">
-        <p className="font-semibold tracking-wider text-[11px] text-muted uppercase">Coming soon</p>
-        <h1 className="mt-2 text-2xl font-bold">{name ?? 'This store'} opens soon</h1>
+        <p className="font-semibold tracking-wider text-[11px] text-muted uppercase">{t('shell.soon')}</p>
+        <h1 className="mt-2 text-2xl font-bold">{t('shell.soon.title', { name: name ?? t('shell.soon.thisStore') })}</h1>
         <p className="mt-2 text-sm text-muted">
-          The owner is still setting it up. Come back in a little while.
+          {t('shell.soon.text')}
         </p>
         <p className="mt-6 text-sm text-muted">
-          Are you the owner?{' '}
+          {t('shell.soon.owner')}{' '}
           <a
             href={`${ADMIN_ORIGINS[0]}/login`}
             className="font-semibold text-foreground underline underline-offset-4"
           >
-            Sign in
+            {t('shell.nav.signIn')}
           </a>
         </p>
       </div>

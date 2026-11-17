@@ -44,6 +44,7 @@ import type {
   SellerLegal,
   SellerStatus,
   ShopperEmailKind,
+  StoreLanguage,
   StockLevel,
   StockMove,
   StoreMenus,
@@ -58,7 +59,7 @@ import type {
   SalesDay,
   SellerBuyer,
 } from '@rc/types'
-import { ORDER_STATUS_LABEL, SHOPPER_EMAIL_KINDS } from '@rc/types'
+import { ORDER_STATUS_LABEL, SHOPPER_EMAIL_KINDS, STORE_LANGUAGES } from '@rc/types'
 import { cleanMenus, cleanSellerProfile, menusBlocker, sellerProfileBlocker } from './content'
 import { isDisplayCurrency } from './currency'
 import { domainProblem, domainTaken } from './domains'
@@ -186,6 +187,8 @@ export type AppAction =
       tenantId: string
       returnWindowDays: number
       shopperEmailsOff: ShopperEmailKind[]
+      /** Omitted keeps the store's language. */
+      storeLanguage?: StoreLanguage
     }
   /** The seller's identity, complaint service and terms choices; empty fields are dropped. */
   | { type: 'tenants/setLegal'; tenantId: string; legal: SellerLegal }
@@ -743,12 +746,15 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       if (days > 0 && days < LEGAL_RETURN_WORKING_DAYS) return state
       if (!action.shopperEmailsOff.every((k) => SHOPPER_EMAIL_KINDS.includes(k))) return state
       const off = SHOPPER_EMAIL_KINDS.filter((k) => action.shopperEmailsOff.includes(k))
+      const language = action.storeLanguage
+      if (language !== undefined && !STORE_LANGUAGES.includes(language)) return state
       return {
         ...state,
         tenants: patch(state.tenants, action.tenantId, ({ shopperEmailsOff: _, ...t }) => ({
           ...t,
           returnWindowDays: days,
           ...(off.length && { shopperEmailsOff: off }),
+          ...(language && { storeLanguage: language }),
         })),
       }
     }

@@ -508,9 +508,10 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 			TenantID         string
 			ReturnWindowDays int
 			ShopperEmailsOff []string
+			StoreLanguage    string
 		}
 		parse(&a)
-		return s.SetShopSettings(ctx, m, a.TenantID, a.ReturnWindowDays, a.ShopperEmailsOff)
+		return s.SetShopSettings(ctx, m, a.TenantID, a.ReturnWindowDays, a.ShopperEmailsOff, a.StoreLanguage)
 	case "tenants/setLegal":
 		var a struct {
 			TenantID string

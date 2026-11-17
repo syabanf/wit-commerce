@@ -1,6 +1,5 @@
-import { fmtIdr, plural } from '@rc/fixtures'
+import { fmtIdr } from '@rc/fixtures'
 import type { Industry, PageSection, PaymentMethod, Product } from '@rc/types'
-import { SELLER_KIND_LABEL } from '@rc/types'
 import { cn } from '@rc/ui'
 import {
   ArrowRight,
@@ -15,30 +14,31 @@ import {
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useId, useState } from 'react'
 import { Link } from 'react-router'
+import { type MessageKey, t, tp } from '../i18n'
 import { isBuyable, sortProducts } from '../lib/catalog'
 import { paths } from '../lib/paths'
 import { readRaw, writeStored } from '../lib/storage'
 import { useShop } from '../state/shop'
 import { useTheme } from '../themes/registry'
-import { type HeadingProps, PlainHeading, RAIL, lgCols } from './sections'
+import { type HeadingProps, PlainHeading, RAIL, lgCols, sellerKindLabel } from './sections'
 
 type Heading = (p: HeadingProps) => ReactNode
 
-const RETURNS: Partial<Record<Industry, { title: string; text: string }>> = {
-  sport: { title: '14-day returns', text: 'Unused items in the original box' },
-  beauty: { title: '14-day returns', text: 'Unopened products, within 14 days' },
-  industrial: { title: 'Parts returns', text: 'Per your quote and warranty terms' },
+const RETURNS: Partial<Record<Industry, { title: MessageKey; text: MessageKey }>> = {
+  sport: { title: 'catalog.benefit.returns14', text: 'catalog.benefit.returns.sport' },
+  beauty: { title: 'catalog.benefit.returns14', text: 'catalog.benefit.returns.beauty' },
+  industrial: { title: 'catalog.benefit.returnsParts', text: 'catalog.benefit.returns.industrial' },
 }
 
 /** Short method names, so the ways-to-pay line fits one line in the strip. */
-const PAY_SHORT: Record<PaymentMethod, string> = {
-  qris: 'QRIS',
-  va: 'VA',
-  bank_transfer: 'transfer',
-  credit_card: 'card',
-  ewallet: 'e-wallet',
-  paylater: 'PayLater',
-  cod: 'COD',
+const PAY_SHORT: Record<PaymentMethod, MessageKey> = {
+  qris: 'catalog.pay.qris',
+  va: 'catalog.pay.va',
+  bank_transfer: 'catalog.pay.transfer',
+  credit_card: 'catalog.pay.card',
+  ewallet: 'catalog.pay.ewallet',
+  paylater: 'catalog.pay.paylater',
+  cod: 'catalog.pay.cod',
 }
 
 /**
@@ -47,39 +47,54 @@ const PAY_SHORT: Record<PaymentMethod, string> = {
  */
 export function BenefitsStrip() {
   const { catalog, tenant } = useShop()
-  const pays = catalog.paymentTypes.filter((t) => t.enabled).sort((a, b) => a.sort - b.sort)
+  const pays = catalog.paymentTypes.filter((p) => p.enabled).sort((a, b) => a.sort - b.sort)
   const points = tenant.loyalty.pointsPer10k
   const bpom = catalog.attributes.find((a) => a.code === 'bpom_number')
+  const returns = RETURNS[tenant.industry] ?? RETURNS.sport!
   const items = [
-    { icon: Truck, title: 'Free shipping', text: `On orders from ${fmtIdr(tenant.loyalty.freeShippingMin)}` },
-    { icon: RotateCcw, ...(RETURNS[tenant.industry] ?? RETURNS.sport!) },
+    {
+      icon: Truck,
+      title: t('catalog.benefit.freeShipping'),
+      text: t('catalog.benefit.freeShippingText', { amount: fmtIdr(tenant.loyalty.freeShippingMin) }),
+    },
+    { icon: RotateCcw, title: t(returns.title), text: t(returns.text) },
     ...(tenant.industry === 'beauty'
       ? [
           {
             icon: ShieldCheck,
-            title: `${catalog.products.filter((p) => bpom && p.attributes[bpom.id]).length} products BPOM registered`,
-            text: 'Registration number on every product page',
+            title: t('catalog.benefit.bpom', {
+              count: catalog.products.filter((p) => bpom && p.attributes[bpom.id]).length,
+            }),
+            text: t('catalog.benefit.bpomText'),
           },
-          { icon: CalendarHeart, title: 'Free skin consultation', text: 'With a beauty advisor, online' },
+          {
+            icon: CalendarHeart,
+            title: t('catalog.benefit.consult'),
+            text: t('catalog.benefit.consultText'),
+          },
         ]
       : [
           {
             icon: CreditCard,
-            title: `${pays.length} ways to pay`,
-            text: [...new Set(pays.map((t) => PAY_SHORT[t.method]))].slice(0, 4).join(', '),
+            title: tp('catalog.benefit.ways', pays.length),
+            text: [...new Set(pays.map((p) => t(PAY_SHORT[p.method])))].slice(0, 4).join(', '),
           },
           points > 0
             ? {
                 icon: Crown,
-                title: 'Member points',
-                text: `${plural(points, 'point')} per Rp 10.000 spent`,
+                title: t('catalog.benefit.points'),
+                text: tp('catalog.benefit.pointsText', points),
               }
-            : { icon: MessageCircle, title: 'Talk to sales', text: 'Quotes and site visits for big orders' },
+            : {
+                icon: MessageCircle,
+                title: t('catalog.price.talkToSales'),
+                text: t('catalog.benefit.salesText'),
+              },
         ]),
   ]
   return (
     <ul
-      aria-label="Why shop with us"
+      aria-label={t('catalog.benefit.aria')}
       className="sf-card md:grid-cols-2 lg:grid-cols-4 grid grid-cols-1 gap-px overflow-hidden"
     >
       {items.map(({ icon: Icon, title, text }) => (
@@ -98,11 +113,11 @@ export function BenefitsStrip() {
 }
 
 type TabKey = 'trending' | 'new' | 'best' | 'deals'
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'trending', label: 'Trending' },
-  { key: 'new', label: 'New arrivals' },
-  { key: 'best', label: 'Best sellers' },
-  { key: 'deals', label: 'On sale' },
+const TABS: { key: TabKey; label: MessageKey }[] = [
+  { key: 'trending', label: 'catalog.tabs.trending' },
+  { key: 'new', label: 'catalog.sort.new' },
+  { key: 'best', label: 'catalog.tabs.best' },
+  { key: 'deals', label: 'catalog.tabs.deals' },
 ]
 
 /**
@@ -125,7 +140,7 @@ export function ProductTabs({ Heading = PlainHeading }: { Heading?: Heading }) {
     best: sortProducts(buyable, 'best'),
     deals: buyable.filter((p) => p.compareAt !== null && p.compareAt > p.price),
   }
-  const tabs = TABS.filter((t) => lists[t.key].length > 0)
+  const tabs = TABS.filter((tab) => lists[tab.key].length > 0)
   const sortFor: Record<TabKey, 'best' | 'new'> = {
     trending: 'best',
     new: 'new',
@@ -136,31 +151,31 @@ export function ProductTabs({ Heading = PlainHeading }: { Heading?: Heading }) {
     <section aria-labelledby={`${id}-h`}>
       <Heading
         id={`${id}-h`}
-        title="Discover"
+        title={t('catalog.tabs.title')}
         action={{
-          label: 'Shop all',
+          label: t('catalog.tabs.shopAll'),
           to: paths.search(store, '', { sort: sortFor[tab], deals: tab === 'deals' }),
         }}
       />
-      <div role="tablist" aria-label="Product lists" className="mb-4 gap-2 no-scrollbar flex overflow-x-auto">
-        {tabs.map((t) => (
+      <div role="tablist" aria-label={t('catalog.tabs.aria')} className="mb-4 gap-2 no-scrollbar flex overflow-x-auto">
+        {tabs.map((item) => (
           <button
-            key={t.key}
+            key={item.key}
             type="button"
             role="tab"
-            id={`${id}-${t.key}`}
-            aria-selected={tab === t.key}
+            id={`${id}-${item.key}`}
+            aria-selected={tab === item.key}
             aria-controls={`${id}-panel`}
-            onClick={() => setTab(t.key)}
+            onClick={() => setTab(item.key)}
             className={cn(
               'min-h-11 px-4 text-sm font-semibold shrink-0 rounded-[var(--sf-pill)] transition',
-              tab === t.key
+              tab === item.key
                 ? 'bg-[var(--sf-text)] text-[color:var(--sf-bg)]'
                 : 'border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)]',
             )}
           >
-            {t.label}
-            <sup className="ml-0.5 text-[10px] opacity-70">{lists[t.key].length}</sup>
+            {t(item.label)}
+            <sup className="ml-0.5 text-[10px] opacity-70">{lists[item.key].length}</sup>
           </button>
         ))}
       </div>
@@ -172,26 +187,26 @@ export function ProductTabs({ Heading = PlainHeading }: { Heading?: Heading }) {
 }
 
 /** Search shortcuts by what the shopper is doing, per industry (spec 19: shop by use case and mood). */
-const USE_CASES: Record<Industry, { label: string; q: string; hint: string }[]> = {
+const USE_CASES: Record<Industry, { label: MessageKey; q: string; hint: MessageKey }[]> = {
   sport: [
-    { label: 'My first 5K', q: 'beginner', hint: 'Forgiving shoes and a plan' },
-    { label: '10K training', q: 'daily trainer', hint: 'Daily miles, steady pace' },
-    { label: 'Race day', q: 'race', hint: 'Racers, gels and belts' },
-    { label: 'Trail weekend', q: 'trail', hint: 'Grip, vests and water' },
-    { label: 'Recovery', q: 'recovery', hint: 'Socks, shakes and rest days' },
+    { label: 'catalog.useCase.sport.1', q: 'beginner', hint: 'catalog.useCase.sport.1.hint' },
+    { label: 'catalog.useCase.sport.2', q: 'daily trainer', hint: 'catalog.useCase.sport.2.hint' },
+    { label: 'catalog.useCase.sport.3', q: 'race', hint: 'catalog.useCase.sport.3.hint' },
+    { label: 'catalog.useCase.sport.4', q: 'trail', hint: 'catalog.useCase.sport.4.hint' },
+    { label: 'catalog.useCase.sport.5', q: 'recovery', hint: 'catalog.useCase.sport.5.hint' },
   ],
   beauty: [
-    { label: 'Calm sensitive skin', q: 'sensitive', hint: 'Fragrance-free routines' },
-    { label: 'Glow up', q: 'brightening', hint: 'Vitamin C and toners' },
-    { label: 'Everyday makeup', q: 'lip', hint: 'Lips, brows and base' },
-    { label: 'Gifts', q: 'bundle', hint: 'Sets and gift boxes' },
-    { label: 'Hair days', q: 'frizz', hint: 'Scalp care and oils' },
+    { label: 'catalog.useCase.beauty.1', q: 'sensitive', hint: 'catalog.useCase.beauty.1.hint' },
+    { label: 'catalog.useCase.beauty.2', q: 'brightening', hint: 'catalog.useCase.beauty.2.hint' },
+    { label: 'catalog.useCase.beauty.3', q: 'lip', hint: 'catalog.useCase.beauty.3.hint' },
+    { label: 'catalog.useCase.beauty.4', q: 'bundle', hint: 'catalog.useCase.beauty.4.hint' },
+    { label: 'catalog.useCase.beauty.5', q: 'frizz', hint: 'catalog.useCase.beauty.5.hint' },
   ],
   industrial: [
-    { label: 'Set up a mould shop', q: 'cnc', hint: 'Machining centers and lathes' },
-    { label: 'Compressed air', q: 'compressor', hint: 'Compressors and dryers' },
-    { label: 'Quarterly service', q: 'filter', hint: 'Filters, oils and coolant' },
-    { label: 'Keep it running', q: 'service', hint: 'Contracts and commissioning' },
+    { label: 'catalog.useCase.industrial.1', q: 'cnc', hint: 'catalog.useCase.industrial.1.hint' },
+    { label: 'catalog.useCase.industrial.2', q: 'compressor', hint: 'catalog.useCase.industrial.2.hint' },
+    { label: 'catalog.useCase.industrial.3', q: 'filter', hint: 'catalog.useCase.industrial.3.hint' },
+    { label: 'catalog.useCase.industrial.4', q: 'service', hint: 'catalog.useCase.industrial.4.hint' },
   ],
   fnb: [],
   fashion: [],
@@ -205,10 +220,10 @@ export function UseCases({ Heading = PlainHeading }: { Heading?: Heading }) {
   if (!cases.length) return null
   return (
     <section aria-labelledby={`${id}-h`}>
-      <Heading id={`${id}-h`} title="Shop by what you are doing" />
+      <Heading id={`${id}-h`} title={t('catalog.useCase.title')} />
       <ul className={cn(RAIL, 'py-1 lg:py-0', lgCols(cases.length))}>
         {cases.map((c, i) => (
-          <li key={c.label} className="md:w-[30%] lg:w-auto w-[180px] shrink-0 snap-start">
+          <li key={c.q} className="md:w-[30%] lg:w-auto w-[180px] shrink-0 snap-start">
             <Link
               to={paths.search(store, c.q)}
               className="sf-card group min-h-32 p-4 hover:-translate-y-0.5 flex h-full flex-col transition"
@@ -222,9 +237,9 @@ export function UseCases({ Heading = PlainHeading }: { Heading?: Heading }) {
                   : undefined
               }
             >
-              <span className="sf-display text-lg leading-tight font-bold">{c.label}</span>
+              <span className="sf-display text-lg leading-tight font-bold">{t(c.label)}</span>
               <span className="gap-2 pt-3 text-xs mt-auto flex items-end justify-between">
-                {c.hint}
+                {t(c.hint)}
                 <ArrowRight
                   className="size-4 group-hover:translate-x-0.5 shrink-0 transition"
                   aria-hidden="true"
@@ -249,7 +264,7 @@ export function SellersRow({ Heading = PlainHeading }: { Heading?: Heading }) {
   if (!sellers.length) return null
   return (
     <section aria-labelledby={`${id}-h`}>
-      <Heading id={`${id}-h`} title="Shop with our team" />
+      <Heading id={`${id}-h`} title={t('catalog.sellers.title')} />
       <ul className={cn(RAIL, 'py-1 lg:py-0', lgCols(sellers.length, 4))}>
         {sellers.map((s) => (
           <li key={s.id} className="md:w-[40%] lg:w-auto w-[72%] shrink-0 snap-start">
@@ -271,7 +286,7 @@ export function SellersRow({ Heading = PlainHeading }: { Heading?: Heading }) {
               <span className="min-w-0">
                 <span className="font-bold block truncate">{s.name}</span>
                 <span className="text-xs block text-[color:var(--sf-muted)]">
-                  {SELLER_KIND_LABEL[s.kind]} · {s.city}
+                  {sellerKindLabel(s.kind)} · {s.city}
                 </span>
                 <span className="mt-1.5 text-sm line-clamp-2 block min-h-[2lh]">{s.headline || s.bio}</span>
               </span>
@@ -296,7 +311,7 @@ export function Newsletter() {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter an email address like name@mail.com.')
+      setError(t('catalog.news.invalid'))
       return
     }
     writeStored('local', key, email.trim())
@@ -312,15 +327,13 @@ export function Newsletter() {
       <div>
         <p className="gap-2 text-xs font-bold tracking-widest flex items-center text-[color:var(--sf-primary-text)] uppercase">
           <BadgePercent className="size-4" aria-hidden="true" />
-          Members first
+          {t('catalog.news.kicker')}
         </p>
         <h2 id={`${inputId}-h`} className="sf-display mt-2 text-2xl font-bold md:text-3xl text-balance">
-          New drops and member offers, once a week
+          {t('catalog.news.title')}
         </h2>
         <p className="mt-1 text-sm text-[color:var(--sf-muted)]">
-          {welcome
-            ? `Join and get ${welcome.code} for your first order.`
-            : 'Join to hear about launches first.'}
+          {welcome ? t('catalog.news.welcome', { code: welcome.code }) : t('catalog.news.noWelcome')}
         </p>
       </div>
       {done ? (
@@ -328,12 +341,13 @@ export function Newsletter() {
           role="status"
           className="p-4 text-sm font-semibold rounded-[var(--sf-tile-radius)] bg-[var(--sf-bg)]"
         >
-          You are on the list. {welcome ? `Use ${welcome.code} at checkout.` : 'Watch your inbox.'}
+          {t('catalog.news.done')}{' '}
+          {welcome ? t('catalog.code.use', { code: welcome.code }) : t('catalog.news.inbox')}
         </p>
       ) : (
         <form onSubmit={submit} noValidate className="gap-2 sm:flex-row flex flex-col">
           <label htmlFor={inputId} className="sr-only">
-            Email address
+            {t('catalog.news.email')}
           </label>
           <input
             id={inputId}
@@ -354,7 +368,7 @@ export function Newsletter() {
             className="h-12 px-6 text-sm font-semibold shrink-0 rounded-[var(--sf-cta-radius)]"
             style={{ background: 'var(--sf-primary)', color: 'var(--sf-on-primary)' }}
           >
-            Join
+            {t('catalog.news.join')}
           </button>
           {error && (
             <p

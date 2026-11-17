@@ -30,6 +30,8 @@ import { RETURNS_POLICY } from '../../lib/policy'
 import { useShop } from '../../state/shop'
 import { CurrencySwitcher } from '../../components/Money'
 import { SellerIdentity } from '../../components/SellerIdentity'
+import { t, tp } from '../../i18n'
+import { LanguageSwitch } from '../../i18n/LanguageSwitch'
 
 export function Logo({ className }: { className?: string }) {
   const { tenant, store } = useShop()
@@ -63,7 +65,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
       {withCategory && (
         <>
           <label htmlFor={`${id}-cat`} className="sr-only">
-            Search in
+            {t('shell.search.in')}
           </label>
           <select
             id={`${id}-cat`}
@@ -71,7 +73,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
             onChange={(e) => setCat(e.target.value)}
             className="h-10 max-w-44 min-w-0 pr-2 pl-3 text-sm font-semibold lg:block hidden truncate rounded-full bg-transparent"
           >
-            <option value="">All categories</option>
+            <option value="">{t('shell.allCategories')}</option>
             {catalog.topCategories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -86,14 +88,14 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
         aria-hidden="true"
       />
       <label htmlFor={`${id}-q`} className="sr-only">
-        Search products
+        {t('shell.search.products')}
       </label>
       <input
         id={`${id}-q`}
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder={withCategory ? 'Search products and brands' : 'Search products'}
+        placeholder={withCategory ? t('shell.search.productsAndBrands') : t('shell.search.products')}
         className="h-10 min-w-0 px-3 text-base md:text-sm flex-1 bg-transparent placeholder:text-[color:var(--sf-muted)]"
       />
       {withCategory && (
@@ -101,7 +103,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
           type="submit"
           className="h-10 px-4 text-sm font-semibold lg:px-6 shrink-0 rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]"
         >
-          Search
+          {t('shell.search')}
         </button>
       )}
     </form>
@@ -122,7 +124,7 @@ function HeaderAction({
   return (
     <Link
       to={to}
-      aria-label={count ? `${label}, ${count} items` : label}
+      aria-label={count ? `${label}, ${tp('shell.items', count)}` : label}
       className="min-h-11 min-w-11 gap-0.5 rounded-2xl px-2 py-1 font-semibold lg:min-w-16 relative flex flex-col items-center justify-center text-[11px] hover:bg-[var(--sf-soft)]"
     >
       {icon}
@@ -149,22 +151,22 @@ function BottomBar({ onCategories, categoriesOpen }: { onCategories: () => void;
   }[] = [
     {
       key: 'home',
-      label: 'Home',
+      label: t('shell.nav.home'),
       icon: House,
       to: paths.home(store),
       active: pathname === paths.home(store),
     },
-    { key: 'cat', label: 'Categories', icon: LayoutGrid, active: categoriesOpen || pathname.includes('/c/') },
+    { key: 'cat', label: t('shell.nav.categories'), icon: LayoutGrid, active: categoriesOpen || pathname.includes('/c/') },
     {
       key: 'wish',
-      label: 'Wishlist',
+      label: t('shell.nav.wishlist'),
       icon: Heart,
       to: paths.wishlist(store),
       active: pathname === paths.wishlist(store),
     },
     {
       key: 'cart',
-      label: 'Cart',
+      label: t('shell.nav.cart'),
       icon: ShoppingBag,
       to: paths.cart(store),
       active: pathname === paths.cart(store),
@@ -172,7 +174,7 @@ function BottomBar({ onCategories, categoriesOpen }: { onCategories: () => void;
     },
     {
       key: 'me',
-      label: 'Account',
+      label: t('shell.nav.account'),
       icon: UserRound,
       to: paths.account(store),
       active: pathname === paths.account(store),
@@ -180,7 +182,7 @@ function BottomBar({ onCategories, categoriesOpen }: { onCategories: () => void;
   ]
   return (
     <nav
-      aria-label="Shop sections"
+      aria-label={t('shell.nav.sections')}
       className="inset-x-3 bottom-3 px-2 py-1.5 md:hidden fixed z-40 flex items-center justify-between rounded-full bg-[var(--sf-text)] text-[color:var(--sf-bg)] shadow-float"
     >
       {items.map(({ key, label, icon: Icon, to, active, count }) => {
@@ -201,7 +203,7 @@ function BottomBar({ onCategories, categoriesOpen }: { onCategories: () => void;
             </span>
             <span className="sr-only">
               {label}
-              {count ? `, ${count} items` : ''}
+              {count ? `, ${tp('shell.items', count)}` : ''}
             </span>
           </>
         )
@@ -241,8 +243,8 @@ function Footer() {
           <Logo />
           <p className="mt-2 text-sm text-[color:var(--sf-muted)]">{tenant.brand.tagline}</p>
         </div>
-        <nav aria-label="Shop" className="min-w-0">
-          <h2 className="mb-2 text-sm font-bold">Shop</h2>
+        <nav aria-label={t('shell.footer.shop')} className="min-w-0">
+          <h2 className="mb-2 text-sm font-bold">{t('shell.footer.shop')}</h2>
           <ul className="gap-x-4 text-sm sm:block grid grid-cols-2">
             {menu.length
               ? menu.map((l, i) => (
@@ -263,25 +265,28 @@ function Footer() {
           </ul>
         </nav>
         <div id="help" className="min-w-0 scroll-mt-24">
-          <h2 className="mb-2 text-sm font-bold">Help</h2>
+          <h2 className="mb-2 text-sm font-bold">{t('shell.footer.help')}</h2>
           <ul className="space-y-2 text-sm text-[color:var(--sf-muted)]">
             <li>
-              Free shipping on orders from{' '}
+              {t('shell.footer.freeShipping')}{' '}
               <span className="whitespace-nowrap">{fmtIdr(tenant.loyalty.freeShippingMin)}</span>.
             </li>
-            <li>Couriers: JNE, SiCepat, GoSend same day in Jakarta, or pick up at our warehouse.</li>
+            <li>{t('shell.footer.couriers')}</li>
             <li>{RETURNS_POLICY[tenant.industry]}</li>
           </ul>
         </div>
         <div className="min-w-0">
-          <h2 className="mb-2 text-sm font-bold">Pay with</h2>
+          <h2 className="mb-2 text-sm font-bold">{t('shell.footer.payWith')}</h2>
           <p className="text-sm text-[color:var(--sf-muted)]">{payNames.join(', ')}.</p>
         </div>
       </div>
       <SellerIdentity className="px-4 pb-6 md:px-6 lg:px-10" />
-      <p className="px-4 py-4 text-xs border-t border-[color:var(--sf-line)] text-center text-[color:var(--sf-muted)]">
-        © {tenant.name.replace(/\.$/, '')}. Prices in rupiah, taxes included.
-      </p>
+      <div className="gap-x-4 gap-y-1 px-4 py-4 text-xs flex flex-wrap items-center justify-center border-t border-[color:var(--sf-line)] text-center text-[color:var(--sf-muted)]">
+        <p>
+          © {tenant.name.replace(/\.$/, '')}. {t('shell.footer.prices')}
+        </p>
+        <LanguageSwitch />
+      </div>
     </footer>
   )
 }
@@ -295,11 +300,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const pinnedBar = pathname.includes('/p/') || pathname.endsWith('/checkout')
   const menu = useStoreMenu('header')
   const themeLinks = [
-    { label: 'Hot offers', to: paths.search(store, '', { deals: true }) },
-    { label: 'New arrivals', to: paths.search(store, '', { sort: 'new' }) },
-    { label: 'Best sellers', to: paths.search(store, '', { sort: 'best' }) },
-    { label: 'Gift ideas', to: paths.search(store, '', { gifts: true }) },
-    { label: 'Shop with an agent', to: paths.agent(store) },
+    { label: t('shell.nav.hotOffers'), to: paths.search(store, '', { deals: true }) },
+    { label: t('shell.nav.newArrivals'), to: paths.search(store, '', { sort: 'new' }) },
+    { label: t('shell.nav.bestSellers'), to: paths.search(store, '', { sort: 'best' }) },
+    { label: t('shell.nav.gifts'), to: paths.search(store, '', { gifts: true }) },
+    { label: t('shell.nav.withAgent'), to: paths.agent(store) },
   ]
   // The store's own header links replace the theme's, Help included.
   const navLinks = menu.length ? menu : themeLinks
@@ -309,7 +314,7 @@ export function Layout({ children }: { children: ReactNode }) {
         href="#main"
         className="px-4 py-2 focus:top-2 focus:left-2 sr-only z-50 rounded-full bg-[var(--sf-text)] text-[color:var(--sf-bg)] focus:not-sr-only focus:fixed"
       >
-        Skip to content
+        {t('shell.skip')}
       </a>
       {isHome && <GreetingBar className="bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]" />}
       <ReferralBanner className="border-b border-[color:var(--sf-line)] bg-[var(--sf-soft)]" />
@@ -318,40 +323,40 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="gap-4 px-6 py-4 lg:gap-6 md:flex hidden items-center">
             <Logo className="max-w-56 shrink-0" />
             <SearchPill withCategory className="flex-1" key={`d-${pathname}`} />
-            <nav aria-label="Your shortcuts" className="flex shrink-0 items-center">
+            <nav aria-label={t('shell.nav.shortcuts')} className="flex shrink-0 items-center">
               <CurrencySwitcher />
               <HeaderAction
                 to={paths.account(store)}
                 icon={<Package className="size-5" aria-hidden="true" />}
-                label="Orders"
+                label={t('shell.nav.orders')}
               />
               <HeaderAction
                 to={paths.wishlist(store)}
                 icon={<Heart className="size-5" aria-hidden="true" />}
-                label="Wishlist"
+                label={t('shell.nav.wishlist')}
               />
               <HeaderAction
                 to={paths.cart(store)}
                 icon={<ShoppingBag className="size-5" aria-hidden="true" />}
-                label="Cart"
+                label={t('shell.nav.cart')}
                 count={cart.count}
               />
               <HeaderAction
                 to={paths.account(store)}
                 icon={<AccountGlyph />}
-                label={customer ? 'Account' : 'Sign in'}
+                label={customer ? t('shell.nav.account') : t('shell.nav.signIn')}
               />
             </nav>
           </div>
           <div className="md:block hidden border-t border-[color:var(--sf-line)]">
-            <nav aria-label="Browse" className="gap-1 px-6 py-1.5 flex items-center">
+            <nav aria-label={t('shell.nav.browse')} className="gap-1 px-6 py-1.5 flex items-center">
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
                 aria-expanded={menuOpen}
                 className="mr-3 h-10 gap-2 pr-4 pl-3 text-sm font-semibold inline-flex items-center rounded-full border border-[color:var(--sf-line)] transition-colors hover:bg-[var(--sf-soft)]"
               >
-                <Menu className="size-4" aria-hidden="true" /> All categories
+                <Menu className="size-4" aria-hidden="true" /> {t('shell.allCategories')}
               </button>
               {navLinks.map((l, i) => (
                 <MenuLink
@@ -365,7 +370,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   href="#help"
                   className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
                 >
-                  Help
+                  {t('shell.footer.help')}
                 </a>
               )}
             </nav>
@@ -376,7 +381,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <Link
                 to={paths.cart(store)}
                 className="size-11 relative inline-flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-soft)]"
-                aria-label={`Cart, ${cart.count} items`}
+                aria-label={`${t('shell.nav.cart')}, ${tp('shell.items', cart.count)}`}
               >
                 <ShoppingBag className="size-5" aria-hidden="true" />
                 {!!cart.count && (
@@ -392,7 +397,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="gap-2 flex items-center">
               <SearchPill className="flex-1" key={`m-${pathname}`} />
               <CurrencySwitcher className="bg-[var(--sf-soft)]" />
-              <IconButton label="Browse categories" tone="dark" onClick={() => setMenuOpen(true)}>
+              <IconButton label={t('shell.nav.browseCategories')} tone="dark" onClick={() => setMenuOpen(true)}>
                 <SlidersHorizontal aria-hidden="true" />
               </IconButton>
             </div>

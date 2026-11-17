@@ -5,12 +5,28 @@ import { theme2 } from './theme2'
 import type { ThemeModule } from './types'
 import { usePersisted } from '../lib/storage'
 import { useShop } from '../state/shop'
+import { type MessageKey, t } from '../i18n'
 
 /** Theme metadata. Add a theme here and in THEME_MODULES; tenants pick one in brand.theme. */
 export const THEMES: Record<StorefrontTheme, { id: StorefrontTheme; name: string }> = {
   theme1: { id: 'theme1', name: STOREFRONT_THEME_LABEL.theme1 },
   theme2: { id: 'theme2', name: STOREFRONT_THEME_LABEL.theme2 },
 }
+
+const THEME_LABEL: Record<StorefrontTheme, MessageKey> = {
+  theme1: 'shell.theme.theme1',
+  theme2: 'shell.theme.theme2',
+}
+const THEME_DESCRIPTION: Record<StorefrontTheme, MessageKey> = {
+  theme1: 'shell.theme.theme1.description',
+  theme2: 'shell.theme.theme2.description',
+}
+
+/** "Theme 1 · Marketplace" in the shopper's language. */
+export const themeLabel = (theme: StorefrontTheme) => t(THEME_LABEL[theme] ?? THEME_LABEL.theme1)
+/** "Theme 1". */
+export const themeShortName = (theme: StorefrontTheme) => themeLabel(theme).split(' · ')[0]!
+export const themeDescription = (theme: StorefrontTheme) => t(THEME_DESCRIPTION[theme] ?? THEME_DESCRIPTION.theme1)
 
 const THEME_MODULES: Record<StorefrontTheme, ThemeModule> = { theme1, theme2 }
 

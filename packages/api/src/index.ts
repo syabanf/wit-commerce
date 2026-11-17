@@ -101,7 +101,11 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       return {
         method: 'PUT',
         path: `/tenants/${action.tenantId}/shop-settings`,
-        body: { returnWindowDays: action.returnWindowDays, shopperEmailsOff: action.shopperEmailsOff },
+        body: {
+          returnWindowDays: action.returnWindowDays,
+          shopperEmailsOff: action.shopperEmailsOff,
+          ...(action.storeLanguage && { storeLanguage: action.storeLanguage }),
+        },
       }
     case 'tenants/setLegal':
       return { method: 'PUT', path: `/tenants/${action.tenantId}/legal`, body: action.legal }

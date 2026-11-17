@@ -1,5 +1,4 @@
-import { fmtDate, fmtIdr, initials } from '@rc/fixtures'
-import { LIFECYCLE_STAGE_LABEL, LOYALTY_TIER_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
+import { fmtIdr, initials } from '@rc/fixtures'
 import { Package } from 'lucide-react'
 import { ApiError } from '@rc/api'
 import { Turnstile } from '@rc/ui'
@@ -10,7 +9,10 @@ import { HTTP, api } from '../lib/api'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
+import { t } from '../i18n'
+import { fmtDate } from '../i18n/format'
 import { MarketingCard, PrivacyRequestsCard } from './AccountPrivacy'
+import { orderStatusLabel, stageLabel, tierLabel } from './accountLabels'
 
 /** Sign in and see points and orders. The demo without an API signs in by email alone. */
 export function AccountPage() {
@@ -20,7 +22,7 @@ export function AccountPage() {
   const [error, setError] = useState<string | null>(null)
   const [params] = useSearchParams()
   const joining = params.get('join') === '1'
-  useTitle(`${customer ? 'Your account' : 'Sign in'} · ${tenant.name}`)
+  useTitle(`${customer ? t('account.yourAccount') : t('account.signIn')} · ${tenant.name}`)
   const demo = useMemo(
     () =>
       [
@@ -45,9 +47,7 @@ export function AccountPage() {
     e.preventDefault()
     const match = customers.find((c) => c.email.toLowerCase() === email.trim().toLowerCase())
     if (!match) {
-      setError(
-        'We could not find an account with that email. Check the spelling, or place an order as a guest to create one.',
-      )
+      setError(t('account.demo.notFound'))
       return
     }
     setError(null)
@@ -61,24 +61,16 @@ export function AccountPage() {
     return (
       <div className="max-w-md space-y-6 md:pt-12 mx-auto">
         {!HTTP && (
-          <h1 className="sf-display text-3xl font-bold">{joining ? `Join ${tenant.name}` : 'Sign in'}</h1>
+          <h1 className="sf-display text-3xl font-bold">
+            {joining ? t('account.join', { store: tenant.name }) : t('account.signIn')}
+          </h1>
         )}
         {HTTP && <VerifyNotice />}
         {HTTP && <AccountForm joining={joining} />}
-        {!HTTP && joining && (
-          <p className="text-[color:var(--sf-muted)]">
-            Your member account is created with your first order, and you earn points from day one. Already
-            shop with us? Sign in below.
-          </p>
-        )}
+        {!HTTP && joining && <p className="text-[color:var(--sf-muted)]">{t('account.demo.firstOrder')}</p>}
         {!HTTP && (
           <form onSubmit={submit} noValidate className="sf-card space-y-4 p-6">
-            <Field
-              id={id}
-              label="Email"
-              error={error}
-              hint="Use the email you shop with. This demo store has no passwords."
-            >
+            <Field id={id} label={t('account.email')} error={error} hint={t('account.demo.emailHint')}>
               <input
                 id={id}
                 type="email"
@@ -91,14 +83,14 @@ export function AccountPage() {
               />
             </Field>
             <Button type="submit" size="lg" full>
-              Sign in
+              {t('account.signIn')}
             </Button>
           </form>
         )}
         {demo.length > 0 && (
           <section className="sf-card p-6" aria-labelledby="demo-h">
             <h2 id="demo-h" className="text-sm font-bold">
-              Demo accounts
+              {t('account.demo.accounts')}
             </h2>
             <ul className="mt-3 -mx-2 space-y-2">
               {demo.map((c) => (
@@ -116,9 +108,11 @@ export function AccountPage() {
                       {initials(c.name)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="text-sm font-semibold block truncate">Sign in as {c.name}</span>
+                      <span className="text-sm font-semibold block truncate">
+                        {t('account.demo.signInAs', { name: c.name })}
+                      </span>
                       <span className="text-xs block truncate text-[color:var(--sf-muted)]">
-                        {LIFECYCLE_STAGE_LABEL[c.stage]} · {LOYALTY_TIER_LABEL[c.tier]}
+                        {stageLabel(c.stage)} · {tierLabel(c.tier)}
                       </span>
                       <span className="text-xs block truncate text-[color:var(--sf-muted)]">{c.email}</span>
                     </span>
@@ -144,12 +138,15 @@ export function AccountPage() {
         <div className="min-w-0 flex-1">
           <h1 className="sf-display text-2xl font-bold">{customer.name}</h1>
           <p className="text-sm text-[color:var(--sf-muted)]">
-            {LOYALTY_TIER_LABEL[customer.tier]} member · {customer.points} points ·{' '}
-            {LIFECYCLE_STAGE_LABEL[customer.stage]}
+            {t('account.memberLine', {
+              tier: tierLabel(customer.tier),
+              points: customer.points,
+              stage: stageLabel(customer.stage),
+            })}
           </p>
         </div>
         <Button variant="outline" onClick={signOut}>
-          Sign out
+          {t('account.signOut')}
         </Button>
       </section>
       {HTTP && <VerifyNotice />}
@@ -159,7 +156,7 @@ export function AccountPage() {
       {HTTP && <PrivacyRequestsCard />}
       <section className="sf-card p-6" aria-labelledby="orders-h">
         <h2 id="orders-h" className="sf-display mb-3 text-xl font-bold">
-          Your orders
+          {t('account.orders')}
         </h2>
         {mine.length ? (
           <ul className="divide-y divide-[color:var(--sf-line)]">
@@ -172,7 +169,7 @@ export function AccountPage() {
                   <span>
                     <span className="text-sm font-semibold block font-mono">{o.code}</span>
                     <span className="text-xs text-[color:var(--sf-muted)]">
-                      {fmtDate(o.createdAt)} · {ORDER_STATUS_LABEL[o.status]}
+                      {fmtDate(o.createdAt)} · {orderStatusLabel(o.status)}
                     </span>
                   </span>
                   <span className="font-semibold">{fmtIdr(o.total)}</span>
@@ -183,9 +180,9 @@ export function AccountPage() {
         ) : (
           <EmptyState
             icon={<Package aria-hidden="true" />}
-            title="No orders yet"
-            text="Your orders show here once you check out."
-            action={<ButtonLink to={paths.home(store)}>Start shopping</ButtonLink>}
+            title={t('account.noOrders')}
+            text={t('account.noOrdersText')}
+            action={<ButtonLink to={paths.home(store)}>{t('account.startShopping')}</ButtonLink>}
             className="shadow-none"
           />
         )}
@@ -228,11 +225,11 @@ function AccountForm({ joining }: { joining: boolean }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if ((creating && !form.name.trim()) || !form.email.trim() || !form.password) {
-      setError(creating ? 'Enter your name, email and password.' : 'Enter your email and password.')
+      setError(creating ? t('account.form.missingJoin') : t('account.form.missing'))
       return
     }
     if (needsCaptcha && !captchaToken) {
-      setError('Complete the check that shows you are a person, then press Create account.')
+      setError(t('account.form.captcha'))
       return
     }
     setBusy(true)
@@ -250,10 +247,12 @@ function AccountForm({ joining }: { joining: boolean }) {
 
   return (
     <>
-      <h1 className="sf-display text-3xl font-bold">{creating ? `Join ${tenant.name}` : 'Sign in'}</h1>
+      <h1 className="sf-display text-3xl font-bold">
+        {creating ? t('account.join', { store: tenant.name }) : t('account.signIn')}
+      </h1>
       <form onSubmit={(e) => void submit(e)} noValidate className="sf-card space-y-4 p-6">
         {creating && (
-          <Field id={`${id}-name`} label="Full name">
+          <Field id={`${id}-name`} label={t('account.form.name')}>
             <input
               id={`${id}-name`}
               autoComplete="name"
@@ -263,7 +262,7 @@ function AccountForm({ joining }: { joining: boolean }) {
             />
           </Field>
         )}
-        <Field id={`${id}-email`} label="Email">
+        <Field id={`${id}-email`} label={t('account.email')}>
           <input
             id={`${id}-email`}
             type="email"
@@ -275,7 +274,7 @@ function AccountForm({ joining }: { joining: boolean }) {
           />
         </Field>
         {creating && (
-          <Field id={`${id}-phone`} label="Phone">
+          <Field id={`${id}-phone`} label={t('account.form.phone')}>
             <input
               id={`${id}-phone`}
               type="tel"
@@ -289,9 +288,9 @@ function AccountForm({ joining }: { joining: boolean }) {
         )}
         <Field
           id={`${id}-password`}
-          label="Password"
+          label={t('account.form.password')}
           error={error}
-          hint={creating ? '10 or more characters.' : undefined}
+          hint={creating ? t('account.form.passwordHint') : undefined}
         >
           <input
             id={`${id}-password`}
@@ -305,7 +304,7 @@ function AccountForm({ joining }: { joining: boolean }) {
         </Field>
         {needsCaptcha && <Turnstile key={captchaRound} siteKey={siteKey} onToken={setCaptchaToken} />}
         <Button type="submit" size="lg" full disabled={busy}>
-          {creating ? 'Create account' : 'Sign in'}
+          {creating ? t('account.form.create') : t('account.signIn')}
         </Button>
         {!creating && <ForgotButton email={form.email} />}
         <button
@@ -316,7 +315,7 @@ function AccountForm({ joining }: { joining: boolean }) {
           }}
           className="min-h-11 text-sm font-semibold w-full underline underline-offset-4"
         >
-          {creating ? 'I already have an account' : 'Create an account'}
+          {creating ? t('account.form.haveAccount') : t('account.form.createAccount')}
         </button>
       </form>
     </>
@@ -336,7 +335,7 @@ function PasswordCard() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setSaved(false)
-    if (next.length < 10) return setError('Use a password of 10 or more characters.')
+    if (next.length < 10) return setError(t('account.password.tooShort'))
     setBusy(true)
     const failed = await setPassword(current, next)
     setBusy(false)
@@ -350,14 +349,14 @@ function PasswordCard() {
 
   return (
     <form onSubmit={(e) => void submit(e)} noValidate className="sf-card space-y-4 p-6">
-      <h2 className="sf-display text-xl font-bold">{hasPassword ? 'Change password' : 'Set a password'}</h2>
+      <h2 className="sf-display text-xl font-bold">
+        {hasPassword ? t('account.password.change') : t('account.password.set')}
+      </h2>
       {!hasPassword && (
-        <p className="text-sm text-[color:var(--sf-muted)]">
-          Set one to sign in on other devices and see your orders.
-        </p>
+        <p className="text-sm text-[color:var(--sf-muted)]">{t('account.password.setIntro')}</p>
       )}
       {hasPassword && (
-        <Field id={`${id}-current`} label="Current password">
+        <Field id={`${id}-current`} label={t('account.password.current')}>
           <input
             id={`${id}-current`}
             type="password"
@@ -368,7 +367,12 @@ function PasswordCard() {
           />
         </Field>
       )}
-      <Field id={`${id}-new`} label="New password" error={error} hint="10 or more characters.">
+      <Field
+        id={`${id}-new`}
+        label={t('account.password.new')}
+        error={error}
+        hint={t('account.form.passwordHint')}
+      >
         <input
           id={`${id}-new`}
           type="password"
@@ -381,18 +385,17 @@ function PasswordCard() {
       </Field>
       {saved && (
         <p role="status" className="text-sm font-semibold">
-          Password saved.
+          {t('account.password.saved')}
         </p>
       )}
       <Button type="submit" variant="outline" disabled={busy}>
-        Save password
+        {t('account.password.save')}
       </Button>
     </form>
   )
 }
 
-const messageOf = (err: unknown) =>
-  err instanceof ApiError ? err.message : 'The store did not answer. Try again in a moment.'
+const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : t('account.noAnswer'))
 
 /** Emails a link to the address typed above it. */
 function ForgotButton({ email }: { email: string }) {
@@ -400,7 +403,7 @@ function ForgotButton({ email }: { email: string }) {
   const [note, setNote] = useState<string | null>(null)
 
   const send = async () => {
-    if (!email.trim()) return setNote('Enter your email above, and we will send a link to it.')
+    if (!email.trim()) return setNote(t('account.forgot.needEmail'))
     try {
       const { message } = await api.shop.forgotPassword(store, email)
       setNote(message)
@@ -416,7 +419,7 @@ function ForgotButton({ email }: { email: string }) {
         onClick={() => void send()}
         className="min-h-11 text-sm font-semibold w-full underline underline-offset-4"
       >
-        Forgot your password?
+        {t('account.forgot')}
       </button>
       {note && (
         <p role="status" className="text-sm text-center">
@@ -438,7 +441,7 @@ function ResetForm({ token }: { token: string }) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (next.length < 10) return setError('Use a password of 10 or more characters.')
+    if (next.length < 10) return setError(t('account.password.tooShort'))
     setBusy(true)
     setError(null)
     try {
@@ -452,9 +455,9 @@ function ResetForm({ token }: { token: string }) {
 
   return (
     <div className="max-w-md space-y-6 md:pt-12 mx-auto">
-      <h1 className="sf-display text-3xl font-bold">Choose a new password</h1>
+      <h1 className="sf-display text-3xl font-bold">{t('account.reset.title')}</h1>
       <form onSubmit={(e) => void submit(e)} noValidate className="sf-card space-y-4 p-6">
-        <Field id={id} label="New password" error={error} hint="10 or more characters.">
+        <Field id={id} label={t('account.password.new')} error={error} hint={t('account.form.passwordHint')}>
           <input
             id={id}
             type="password"
@@ -466,7 +469,7 @@ function ResetForm({ token }: { token: string }) {
           />
         </Field>
         <Button type="submit" size="lg" full disabled={busy}>
-          Save password
+          {t('account.password.save')}
         </Button>
       </form>
     </div>
@@ -488,7 +491,7 @@ function VerifyNotice() {
     api.shop
       .verifyEmail(store, token)
       .then(() => {
-        setNote('Your email is confirmed. Earlier guest orders with this email are in your account now.')
+        setNote(t('account.verified'))
         reloadAccount()
       })
       .catch((err: unknown) => setNote(messageOf(err)))
@@ -512,7 +515,7 @@ function ConfirmEmailCard() {
   const send = async () => {
     try {
       await api.shop.sendVerifyEmail(store)
-      setNote(`We sent a link to ${customer.email}.`)
+      setNote(t('account.confirm.sent', { email: customer.email }))
     } catch (err) {
       setNote(messageOf(err))
     }
@@ -521,13 +524,13 @@ function ConfirmEmailCard() {
   return (
     <section className="sf-card gap-4 p-6 flex flex-wrap items-center justify-between">
       <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-bold">Confirm your email</h2>
+        <h2 className="text-sm font-bold">{t('account.confirm.title')}</h2>
         <p role="status" className="text-sm text-[color:var(--sf-muted)]">
-          {note ?? 'Confirming brings your earlier guest orders into this account.'}
+          {note ?? t('account.confirm.text')}
         </p>
       </div>
       <Button variant="outline" onClick={() => void send()}>
-        Send link
+        {t('account.confirm.send')}
       </Button>
     </section>
   )

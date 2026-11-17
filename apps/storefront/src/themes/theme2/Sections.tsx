@@ -1,4 +1,4 @@
-import { categoryPhoto, nowMs, plural } from '@rc/fixtures'
+import { categoryPhoto, nowMs } from '@rc/fixtures'
 import type { Category } from '@rc/types'
 import { cn } from '@rc/ui'
 import { MessageCircle } from 'lucide-react'
@@ -25,6 +25,7 @@ import { currentDeal, popularCategories, productsIn, sellsThroughSales } from '.
 import { firstName, paths, waLink } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import type { SectionsProps } from '../types'
+import { t, tp } from '../../i18n'
 import { ProductGrid, ShowHeading } from './ProductCard'
 
 const CAT_COLS = [
@@ -43,13 +44,13 @@ const CAT_COLS = [
 export function CategoryGrid({ categories }: { categories?: Category[] }) {
   const { catalog, store } = useShop()
   const list = categories ?? popularCategories(catalog)
-  const count = (c: Category) => plural(productsIn(catalog, c.id).length, 'product')
+  const count = (c: Category) => tp('theme.products', productsIn(catalog, c.id).length)
   return (
     <section aria-labelledby="cat-grid-h">
       <ShowHeading
         id="cat-grid-h"
-        title="Shop by category"
-        action={{ label: 'Explore all', to: paths.search(store, '', { sort: 'best' }) }}
+        title={t('theme.shopByCategory')}
+        action={{ label: t('theme.exploreAll'), to: paths.search(store, '', { sort: 'best' }) }}
       />
       <ul className="-mx-4 px-4 gap-4 scroll-px-4 md:hidden no-scrollbar flex snap-x overflow-x-auto">
         {list.map((c) => (
@@ -101,7 +102,7 @@ export function DealsRow() {
       >
         <div className="gap-6 lg:flex-row lg:items-center lg:justify-between flex flex-col">
           <div className="min-w-0">
-            <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-70">Deal of the week</p>
+            <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-70">{t('theme.dealOfWeek')}</p>
             <h2 id="deal-h" className="sf-title mt-1">
               {deal.promotion.name}
             </h2>
@@ -111,13 +112,13 @@ export function DealsRow() {
                 <CouponCode code={deal.promotion.code} />
               ) : (
                 <span className="h-11 px-4 text-sm font-bold inline-flex items-center rounded-full border-2 border-current">
-                  Applied in your cart
+                  {t('theme.appliedInCart')}
                 </span>
               )}
             </div>
           </div>
           <div className="shrink-0">
-            <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase opacity-70">Ends in</p>
+            <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase opacity-70">{t('theme.endsIn')}</p>
             <Countdown
               endAt={deal.promotion.endAt}
               boxClassName="rounded-[var(--sf-tile-radius)] bg-[var(--sf-bg)] text-[color:var(--sf-text)]"
@@ -127,7 +128,7 @@ export function DealsRow() {
       </Ticket>
       <ProductGrid products={deal.products.slice(0, 4)} rail />
       <ButtonLink to={paths.search(store, '', { deals: true })} variant="outline">
-        See every offer
+        {t('theme.seeEveryOffer')}
       </ButtonLink>
     </section>
   )
@@ -159,12 +160,12 @@ export function Sections({ sections, seller }: SectionsProps) {
                   title={
                     s.headline ||
                     (seller
-                      ? `${firstName(seller.name)}'s picks`
+                      ? t('theme.picks', { name: firstName(seller.name) })
                       : s.kind === 'collection'
-                        ? 'Our collection'
-                        : 'Featured products')
+                        ? t('theme.ourCollection')
+                        : t('theme.featuredProducts'))
                   }
-                  action={{ label: 'Browse all products', to: paths.search(store) }}
+                  action={{ label: t('theme.browseAll'), to: paths.search(store) }}
                 />
                 <ProductGrid
                   products={sectionProducts(catalog, s, layout.limit)}
@@ -198,8 +199,8 @@ export function Sections({ sections, seller }: SectionsProps) {
                     className={cn(buttonClass('light', 'lg'))}
                   >
                     <MessageCircle aria-hidden="true" />
-                    {s.ctaLabel || 'Message me'}
-                    <span className="sr-only"> on WhatsApp (opens WhatsApp)</span>
+                    {s.ctaLabel || t('theme.messageMe')}
+                    <span className="sr-only">{t('theme.onWhatsApp')}</span>
                   </a>
                 }
               />
@@ -213,7 +214,7 @@ export function Sections({ sections, seller }: SectionsProps) {
                   <SectionButton
                     section={s}
                     fallback={paths.search(store, '', { sort: 'best' })}
-                    label={s.ctaLabel || 'Shop best sellers'}
+                    label={s.ctaLabel || t('theme.shopBest')}
                     variant="light"
                     size="lg"
                   />

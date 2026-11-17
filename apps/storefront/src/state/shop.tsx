@@ -1,7 +1,16 @@
 import { nowMs } from '@rc/fixtures'
 import type { AppAction } from '@rc/fixtures'
 import type { Customer, Order, OrderReturn, Seller, Tenant } from '@rc/types'
-import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { setStoreLanguage, t } from '../i18n'
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
 import { ApiError, type Delta, type PaymentLink, type ShopperResponse } from '@rc/api'
 import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
@@ -62,8 +71,7 @@ export interface ShopValue {
 const ShopContext = createContext<ShopValue | null>(null)
 
 /** The app clock, refreshed every `ms`, for countdowns and promotion windows. */
-const failure = (err: unknown) =>
-  err instanceof ApiError ? err.message : 'The store did not answer. Try again in a moment.'
+const failure = (err: unknown) => (err instanceof ApiError ? err.message : t('account.noAnswer'))
 
 export function useNow(ms = 60_000) {
   const [now, setNow] = useState(nowMs)
@@ -76,6 +84,8 @@ export function useNow(ms = 60_000) {
 
 /** One tenant's storefront: catalog, cart, wishlist, referral and the signed-in customer. */
 export function ShopProvider({ tenant, children }: { tenant: Tenant; children: ReactNode }) {
+  // Before paint, so a store set to English never flashes in Indonesian.
+  useLayoutEffect(() => setStoreLanguage(tenant.storeLanguage), [tenant.storeLanguage])
   const { state, send, loadStore, merge, onlinePayments, currencyRates } = useStore()
   const now = useNow()
   // API mode: this store's dataset and event stream, and the token requests carry.

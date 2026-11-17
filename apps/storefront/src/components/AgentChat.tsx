@@ -16,8 +16,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { type MessageKey, t, tp } from '../i18n'
 import { type AgentPlan, type Mandate } from '../lib/agent'
-import { DEMO_PAYMENT_NOTE } from '../lib/checkout'
+import { demoPaymentNote } from '../lib/checkout'
 import { paths } from '../lib/paths'
 import { ApproveMeansConsent } from './TermsConsent'
 import { type CartItem, type ChoiceItem, type Step, useAgentChat } from '../state/agentChat'
@@ -40,8 +41,11 @@ export function AgentThread({ compact }: { compact?: boolean }) {
   }, [items, thinking])
   const lastReplies = [...items].reverse().find((it) => it.kind === 'bot' && it.replies?.length)?.id
   const greeting = customer
-    ? `Hi ${customer.name.split(' ')[0]}, I’m your shopping agent at ${tenant.name}. Tell me what you need and your budget. I’ll suggest options, you choose, and I pay only when you approve.`
-    : `Hi, I’m a shopping agent for ${tenant.name} shoppers. ${customers.length ? 'Who am I buying for today?' : 'Sign in so I can buy for you.'}`
+    ? t('agent.thread.greeting', { name: customer.name.split(' ')[0]!, store: tenant.name })
+    : t('agent.thread.greetingGuest', {
+        store: tenant.name,
+        next: customers.length ? t('agent.thread.who') : t('agent.thread.signInFirst'),
+      })
 
   return (
     <div ref={listRef} className={cn('space-y-4', !compact && 'p-4 md:p-6')} aria-live="polite">
@@ -63,7 +67,7 @@ export function AgentThread({ compact }: { compact?: boolean }) {
             return (
               <div key={it.id} className="flex justify-end">
                 <p className="px-4 py-2.5 text-sm leading-relaxed rounded-2xl rounded-br-md max-w-[85%] bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]">
-                  <span className="sr-only">You: </span>
+                  <span className="sr-only">{t('agent.thread.you')}</span>
                   {it.text}
                 </p>
               </div>
@@ -116,7 +120,7 @@ export function AgentThread({ compact }: { compact?: boolean }) {
       })}
       {thinking && (
         <BotRow>
-          <Bubble>Reading your message…</Bubble>
+          <Bubble>{t('agent.thread.reading')}</Bubble>
         </BotRow>
       )}
     </div>
@@ -138,20 +142,20 @@ export function AgentComposer({ className }: { className?: string }) {
   return (
     <form onSubmit={submit} className={cn('gap-2 flex w-full', className)}>
       <label htmlFor={inputId} className="sr-only">
-        Message your agent
+        {t('agent.thread.messageLabel')}
       </label>
       <input
         id={inputId}
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={!customer}
-        placeholder={customer ? 'Tell me what to buy' : 'Pick who you are shopping for first'}
+        placeholder={customer ? t('agent.thread.placeholder') : t('agent.thread.placeholderGuest')}
         autoComplete="off"
         className="h-12 min-w-0 px-4 text-base md:text-sm flex-1 rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)] disabled:opacity-60"
       />
       <Button
         type="submit"
-        aria-label="Send"
+        aria-label={t('agent.thread.send')}
         disabled={busy || !customer || !text.trim()}
         className="w-12 px-0"
       >
@@ -178,7 +182,7 @@ function BotRow({ children }: { children: ReactNode }) {
 function Bubble({ children }: { children: ReactNode }) {
   return (
     <p className="px-4 py-2.5 text-sm leading-relaxed rounded-2xl rounded-tl-md w-fit max-w-[90%] bg-[var(--sf-soft)]">
-      <span className="sr-only">Agent: </span>
+      <span className="sr-only">{t('agent.thread.agent')}</span>
       {children}
     </p>
   )
@@ -223,7 +227,7 @@ function runLines(plan: AgentPlan, store: string): RunLine[] {
       icon: Bot,
       text: plan.constraints.length ? (
         <span className="gap-1 flex flex-wrap items-center">
-          Understood:
+          {t('agent.thread.understood')}
           {plan.constraints.map((c) => (
             <Pill key={c} tone="soft">
               {c}
@@ -231,19 +235,21 @@ function runLines(plan: AgentPlan, store: string): RunLine[] {
           ))}
         </span>
       ) : (
-        'Understood the request.'
+        t('agent.thread.understoodPlain')
       ),
     },
     {
       icon: ShieldCheck,
-      text: plan.refusal ? `${store} turned me away.` : `${store} accepts shopping agents.`,
+      text: plan.refusal ? t('agent.thread.turnedAway', { store }) : t('agent.thread.accepts', { store }),
       blocked: !!plan.refusal,
     },
   ]
   if (plan.refusal) return lines
   lines.push({
     icon: ScanSearch,
-    text: `Searched ${plan.scanned} products. ${plan.candidates.filter((c) => !c.rejected).length} fit your request.`,
+    text: tp('agent.thread.searched', plan.scanned, {
+      fit: plan.candidates.filter((c) => !c.rejected).length,
+    }),
   })
   return lines
 }
@@ -289,7 +295,7 @@ function RunCard({
                 line.text
               ) : (
                 <span className="gap-1.5 inline-flex items-center text-[color:var(--sf-muted)]">
-                  <Icon className="size-3.5" aria-hidden="true" /> Working…
+                  <Icon className="size-3.5" aria-hidden="true" /> {t('agent.thread.working')}
                 </span>
               )}
             </div>
@@ -301,11 +307,11 @@ function RunCard({
   )
 }
 
-const BEST: Record<Step, string> = {
-  product: 'Suggested',
-  variant: 'Suggested',
-  shipping: 'Suggested',
-  offer: 'Best price',
+const BEST: Record<Step, MessageKey> = {
+  product: 'agent.thread.suggested',
+  variant: 'agent.thread.suggested',
+  shipping: 'agent.thread.suggested',
+  offer: 'agent.thread.bestPrice',
 }
 
 /** One question with its options as numbered rows; the shopper taps one, types its number, or lets the agent pick. */
@@ -371,7 +377,7 @@ function ChoiceCard({
                 <span className="min-w-0 flex-1">
                   <span className="gap-2 flex flex-wrap items-center">
                     <span className="text-sm font-semibold">{o.title}</span>
-                    {o.best && <Pill tone="primary">{BEST[item.step]}</Pill>}
+                    {o.best && <Pill tone="primary">{t(BEST[item.step])}</Pill>}
                   </span>
                   {o.detail && (
                     <span className="mt-0.5 text-xs block text-[color:var(--sf-muted)]">{o.detail}</span>
@@ -401,12 +407,10 @@ function ChoiceCard({
           onClick={() => onPick(best.id)}
           className="min-h-10 gap-1.5 px-3.5 text-xs font-semibold inline-flex items-center rounded-[var(--sf-pill)] border border-[color:var(--sf-line)] hover:border-[color:var(--sf-text)] disabled:opacity-50"
         >
-          <Sparkles className="size-3.5" aria-hidden="true" /> Pick for me
+          <Sparkles className="size-3.5" aria-hidden="true" /> {t('agent.thread.pickForMe')}
         </button>
       )}
-      {item.closed && (
-        <p className="text-xs text-[color:var(--sf-muted)]">A newer request replaced this question.</p>
-      )}
+      {item.closed && <p className="text-xs text-[color:var(--sf-muted)]">{t('agent.thread.replaced')}</p>}
     </div>
   )
 }
@@ -428,15 +432,15 @@ function CartCard({
     [`${plan.choice!.product.name}, ${plan.choice!.variant!.name}`, best.totals.subtotal],
     ...best.totals.discounts.map((d): [string, number] => [d.label, -d.amount]),
     ...(plan.negotiation.amount
-      ? ([['Agent negotiation', -plan.negotiation.amount]] as [string, number][])
+      ? ([[t('agent.negotiation.label'), -plan.negotiation.amount]] as [string, number][])
       : []),
-    [`Shipping, ${plan.courier.label}`, plan.shipping],
+    [t('agent.thread.shippingRow', { courier: plan.courier.label }), plan.shipping],
   ]
   return (
     <div className="max-w-xl rounded-2xl @container overflow-hidden border border-[color:var(--sf-line)] bg-[var(--sf-bg)]">
       <div className="p-4">
         <p className="font-bold text-[11px] tracking-[0.16em] text-[color:var(--sf-muted)] uppercase">
-          Cart mandate
+          {t('agent.thread.cartMandate')}
         </p>
         <dl className="mt-2 text-sm">
           {rows.map(([label, amount]) => (
@@ -446,7 +450,7 @@ function CartCard({
             </div>
           ))}
           <div className="gap-4 pt-2 mt-1 font-bold flex justify-between border-t border-[color:var(--sf-line)]">
-            <dt className="min-w-0">Total with {best.paymentType.name}</dt>
+            <dt className="min-w-0">{t('agent.thread.totalWith', { name: best.paymentType.name })}</dt>
             <dd className="sf-price shrink-0">{fmtIdr(plan.total)}</dd>
           </div>
         </dl>
@@ -469,14 +473,14 @@ function CartCard({
                 className="mt-0.5 size-4 shrink-0 text-[color:var(--sf-primary-text)]"
                 aria-hidden="true"
               />
-              {plan.checkNote || 'Nothing is paid until you approve.'} {DEMO_PAYMENT_NOTE}
+              {plan.checkNote || t('agent.thread.nothingPaid')} {demoPaymentNote()}
             </p>
             <div className="mt-3 gap-2 flex flex-wrap">
               <Button onClick={onApprove} className="@sm:w-auto w-full">
-                <ShieldCheck aria-hidden="true" /> Approve and pay {fmtIdr(plan.total)}
+                <ShieldCheck aria-hidden="true" /> {t('agent.thread.approve', { amount: fmtIdr(plan.total) })}
               </Button>
               <Button variant="outline" onClick={onDecline} className="@sm:w-auto w-full">
-                Not now
+                {t('agent.thread.notNow')}
               </Button>
             </div>
             <ApproveMeansConsent />
@@ -484,12 +488,12 @@ function CartCard({
         )}
         {status === 'paid' && (
           <p className="gap-2 font-semibold flex items-center">
-            <Check className="size-4" aria-hidden="true" /> Paid {fmtIdr(plan.total)} with{' '}
-            {best.paymentType.name}
+            <Check className="size-4" aria-hidden="true" />{' '}
+            {t('agent.thread.paid', { amount: fmtIdr(plan.total), name: best.paymentType.name })}
           </p>
         )}
-        {status === 'declined' && <p>You declined. Nothing was paid.</p>}
-        {status === 'replaced' && <p>Replaced by a newer cart below. Nothing was paid.</p>}
+        {status === 'declined' && <p>{t('agent.thread.youDeclined')}</p>}
+        {status === 'replaced' && <p>{t('agent.thread.cartReplaced')}</p>}
         {status === 'failed' && <p>{item.note}</p>}
       </div>
     </div>
@@ -510,17 +514,21 @@ function ReceiptCard({
   return (
     <div className="p-4 max-w-xl rounded-2xl bg-[var(--sf-text)] text-[color:var(--sf-bg)]">
       <p className="font-bold text-[11px] tracking-[0.16em] uppercase opacity-70">
-        Order placed by your agent
+        {t('agent.thread.orderPlaced')}
       </p>
       <p className="mt-1 text-lg font-bold">
         {order.code} · {fmtIdr(order.total)}
       </p>
       <p className="mt-1 text-sm opacity-80">
-        {plan.choice!.product.name}, {plan.choice!.variant!.name}. Ships with {plan.courier.label}.
+        {t('agent.thread.ships', {
+          product: plan.choice!.product.name,
+          variant: plan.choice!.variant!.name,
+          courier: plan.courier.label,
+        })}
       </p>
       {protocol && plan.mandates.payment && <MandateBlock mandate={plan.mandates.payment} inverse />}
       <ButtonLink to={paths.order(store, order.id)} variant="light" size="sm" className="mt-3">
-        <Receipt aria-hidden="true" /> View order
+        <Receipt aria-hidden="true" /> {t('agent.thread.viewOrder')}
       </ButtonLink>
     </div>
   )
@@ -550,7 +558,7 @@ function ShopperPicker({
   onPick: (id: string) => void
   signInTo: string
 }) {
-  if (!options.length) return <ButtonLink to={signInTo}>Sign in to start</ButtonLink>
+  if (!options.length) return <ButtonLink to={signInTo}>{t('agent.thread.signIn')}</ButtonLink>
   return (
     <div className="gap-2 flex flex-wrap">
       {options.map((c) => (

@@ -98,7 +98,7 @@ func TestShippingQueuesOneEmailWithTheTrackingNumber(t *testing.T) {
 	}
 
 	// The brand switches shipping emails off: the next parcel goes out without one.
-	if _, err := svc.SetShopSettings(t.Context(), admin, "ten-lari", 7, []string{"order_shipped"}); err != nil {
+	if _, err := svc.SetShopSettings(t.Context(), admin, "ten-lari", 7, []string{"order_shipped"}, ""); err != nil {
 		t.Fatal(err)
 	}
 	next := packedOrder(t, db, o.ID)
@@ -117,5 +117,27 @@ func TestNoEmailWhenEmailIsOff(t *testing.T) {
 	}
 	if got := outbox(t, db); len(got) != 0 {
 		t.Errorf("email is off but %d rows were queued", len(got))
+	}
+}
+
+func TestShopperEmailFollowsTheStoreLanguage(t *testing.T) {
+	svc, db, admin := mailService(t, mail.New("http://127.0.0.1:1", "re_test", "Shop <noreply@example.com>"))
+	// A store that never chose a language writes in Bahasa Indonesia.
+	o := packedOrder(t, db)
+	if _, err := svc.AdvanceOrder(t.Context(), admin, o.ID, new("JNE-0042")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetShopSettings(t.Context(), admin, "ten-lari", 7, nil, "en"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AdvanceOrder(t.Context(), admin, packedOrder(t, db, o.ID).ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	got := outbox(t, db)
+	if len(got) != 2 || !strings.HasSuffix(got[0].subject, "sedang dikirim") || !strings.HasSuffix(got[1].subject, "is on its way") {
+		t.Fatalf("outbox: %+v", got)
+	}
+	if _, err := svc.SetShopSettings(t.Context(), admin, "ten-lari", 7, nil, "fr"); err == nil {
+		t.Error("an unknown language was saved")
 	}
 }

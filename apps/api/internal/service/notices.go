@@ -10,6 +10,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
+	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
@@ -78,7 +79,7 @@ func (sn ShopperNotices) queue(ctx context.Context, tx pgx.Tx, n kernel.Notice) 
 		Brand: notifications.StoreBranding(tenant, storeURL, sn.N.PublicURL), To: customer.Email, CustomerName: customer.Name,
 		OrderCode: o.Code, OrderURL: storeURL + "/order/" + o.ID, Subtotal: o.Subtotal, Discount: o.Discount,
 		Shipping: o.Shipping, Total: o.Total, Amount: n.Amount, Courier: courierLabel[o.Courier],
-		CashOnDelivery: o.PaymentMethod == "cod",
+		CashOnDelivery: o.PaymentMethod == "cod", Lang: rules.StoreLanguage(tenant),
 	}
 	if f.Courier == "" {
 		f.Courier = o.Courier
@@ -87,8 +88,8 @@ func (sn ShopperNotices) queue(ctx context.Context, tx pgx.Tx, n kernel.Notice) 
 		f.TrackingNo = *o.TrackingNo
 	}
 	names := func(variantID, productID string, qty int, amount string) notifications.Line {
-		name := "Item"
-		detail := fmt.Sprintf("Qty %d", qty)
+		name := notifications.Say(f.Lang, "line.item")
+		detail := notifications.Say(f.Lang, "line.qty", qty)
 		if p, err := store.Get[domain.Product](ctx, tx, "products", productID); err == nil {
 			name = p.Name
 			for _, v := range p.Variants {

@@ -1,4 +1,3 @@
-import { plural } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
@@ -6,11 +5,12 @@ import { FilterControls, FilterSheetButton, SortSelect } from '../../components/
 import { Scroller } from '../../components/ui'
 import type { ListingViewProps } from '../types'
 import { ProductGrid } from './ProductCard'
+import { t, tp } from '../../i18n'
 
 export function Crumbs({ crumbs }: { crumbs: ListingViewProps['crumbs'] }) {
   if (!crumbs.length) return null
   return (
-    <nav aria-label="Breadcrumb" className="mb-2">
+    <nav aria-label={t('theme.breadcrumb')} className="mb-2">
       <ol className="gap-1 text-sm flex flex-wrap items-center text-[color:var(--sf-muted)]">
         {crumbs.map((c, i) => (
           <li key={c.to} className="gap-1 flex items-center">
@@ -36,7 +36,7 @@ export function Listing({ title, description, crumbs, chips, listing, empty }: L
       {chips.length > 1 && (
         <Scroller
           className="mt-4 -mx-4 px-4 scroll-px-4 md:-mx-6 md:px-6 md:scroll-px-6 lg:-mx-px lg:px-px lg:scroll-px-0"
-          label="Narrow down"
+          label={t('theme.narrowDown')}
         >
           {chips.map((c) => (
             <Link
@@ -56,8 +56,8 @@ export function Listing({ title, description, crumbs, chips, listing, empty }: L
       )}
       <div className={cn('mt-4 gap-6 grid grid-cols-1', hasFilters && 'lg:grid-cols-[250px_minmax(0,1fr)]')}>
         {hasFilters && (
-          <aside aria-label="Filters" className="sf-card p-5 lg:block hidden self-start">
-            <h2 className="sf-display mb-4 text-lg font-bold">Filters</h2>
+          <aside aria-label={t('theme.filters')} className="sf-card p-5 lg:block hidden self-start">
+            <h2 className="sf-display mb-4 text-lg font-bold">{t('theme.filters')}</h2>
             <FilterControls listing={listing} />
           </aside>
         )}
@@ -68,7 +68,7 @@ export function Listing({ title, description, crumbs, chips, listing, empty }: L
               className={cn('text-sm text-[color:var(--sf-muted)]', hasFilters && 'lg:block hidden')}
               aria-live="polite"
             >
-              {plural(listing.results.length, 'product')}
+              {tp('theme.products', listing.results.length)}
             </p>
             <SortSelect listing={listing} className="md:ml-auto" />
           </div>

@@ -20,6 +20,7 @@ import { ProductGrid, ShowHeading } from './ProductCard'
 import { BeautyFacts } from '../../components/beauty'
 import { Money } from '../../components/Money'
 import { OfferInfo } from '../../components/OfferInfo'
+import { t } from '../../i18n'
 
 const SLIDES = [24, 12, 32, 18]
 
@@ -34,7 +35,7 @@ function Gallery({ detail }: { detail: ProductDetail }) {
       <div
         className="md:overflow-hidden no-scrollbar flex snap-x snap-mandatory overflow-x-auto"
         onScroll={(e) => setIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
-        aria-label={`${product.name} pictures`}
+        aria-label={t('theme.pictures', { name: product.name })}
         role="region"
       >
         {SLIDES.map((strength, i) => (
@@ -57,7 +58,7 @@ function Gallery({ detail }: { detail: ProductDetail }) {
       </div>
       <Link
         to={back ? paths.category(store, back.id) : paths.home(store)}
-        aria-label={back ? `Back to ${back.name}` : 'Back to the shop'}
+        aria-label={back ? t('theme.backTo', { name: back.name }) : t('theme.backToShop')}
         className="top-3 left-3 size-11 md:hidden absolute inline-flex items-center justify-center rounded-full bg-[var(--sf-bg)]"
       >
         <ArrowLeft className="size-5" aria-hidden="true" />
@@ -91,7 +92,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
             </h1>
             <Rating product={product} />
             {product.assisted ? (
-              <p className="text-lg font-bold">Price on request</p>
+              <p className="text-lg font-bold">{t('theme.priceOnRequest')}</p>
             ) : (
               <>
                 <PriceTag
@@ -102,7 +103,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
                 />
                 {detail.cartDiscountPct && (
                   <p className="text-sm font-semibold text-[color:var(--sf-primary-text)]">
-                    {detail.cartDiscountPct}% off applied in cart
+                    {t('theme.cartDiscount', { pct: detail.cartDiscountPct })}
                   </p>
                 )}
               </>
@@ -113,7 +114,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
           <BeautyFacts product={product} />
           {product.assisted ? (
             <div className="pt-6 border-t border-[color:var(--sf-line)]">
-              <h2 className="sf-display mb-4 text-lg font-semibold">Talk to sales</h2>
+              <h2 className="sf-display mb-4 text-lg font-semibold">{t('theme.talkToSales')}</h2>
               <TalkToSalesForm product={product} />
             </div>
           ) : (
@@ -136,7 +137,7 @@ export function Product({ detail }: { detail: ProductDetail }) {
                   </p>
                 )}
                 <Button variant="dark" size="lg" full disabled={!!detail.blocker} onClick={add}>
-                  Add to cart · <Money idr={detail.lineTotal} />
+                  {t('theme.addToCart')} · <Money idr={detail.lineTotal} />
                 </Button>
               </div>
               <OfferInfo product={product} />
@@ -144,14 +145,14 @@ export function Product({ detail }: { detail: ProductDetail }) {
           )}
           <section aria-labelledby="best-h" className="py-4 border-y border-[color:var(--sf-line)]">
             <h2 id="best-h" className="sf-display text-lg font-semibold">
-              Best for
+              {t('theme.bestFor')}
             </h2>
-            <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{product.bestFor || 'Everyday use'}</p>
+            <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{product.bestFor || t('theme.everydayUse')}</p>
           </section>
           {detail.specs.length > 0 && (
             <section aria-labelledby="spec-h">
               <h2 id="spec-h" className="sf-display text-lg font-semibold">
-                Specifications
+                {t('theme.specs')}
               </h2>
               <SpecTable detail={detail} />
             </section>
@@ -162,10 +163,10 @@ export function Product({ detail }: { detail: ProductDetail }) {
         <section aria-labelledby="related-h" className="mt-14">
           <ShowHeading
             id="related-h"
-            title="You may also like"
+            title={t('theme.alsoLike')}
             action={
               detail.path.length
-                ? { label: 'Explore all', to: paths.category(store, detail.path.at(-1)!.id) }
+                ? { label: t('theme.exploreAll'), to: paths.category(store, detail.path.at(-1)!.id) }
                 : undefined
             }
           />

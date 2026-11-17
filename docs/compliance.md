@@ -155,3 +155,40 @@ Brands are the controllers of their shoppers' data; WIT Commerce processes it fo
   `marketing.Recipients` and compose with `notifications.ComposeMarketing`.
 - `assistant_log` questions have emails and phone numbers masked but may hold a typed name; it is pruned
   after 90 days. `request_log` and `staff_events` hold staff ids only.
+
+## Language
+
+### Pasal 55: the contract in Bahasa Indonesia; Pasal 13: clear information
+
+Shoppers read the storefront and get the shopper emails in Bahasa Indonesia unless the brand or the
+shopper picks English.
+
+- Store setting: `Tenant.storeLanguage` (`'id' | 'en'`, unset means `'id'`; `StoreLanguage` in
+  `packages/types`, `domain.Tenant.StoreLanguage` and `rules.StoreLanguage` in Go). Owners change it
+  next to the return window at Online store → Domains & SEO (`/store/domains`, `ShopSettingsCard`), saved with
+  `tenants/setShopSettings` (`storeLanguage` is optional; leaving it out keeps the saved value, an
+  unknown language refuses the whole change).
+- Storefront: every shopper-facing string goes through `t`, `tp` and `tx` in
+  `apps/storefront/src/i18n/`. The text lives in `i18n/areas/*.ts`, one file per area, English and
+  Indonesian side by side; `en.ts` and `id.ts` join them and the compiler checks that both carry the
+  same keys. Dates and numbers use `id-ID` in Indonesian (`i18n/format.ts`); rupiah formatting is
+  unchanged. A footer switch (ID | EN, `LanguageSwitch`) remembers the shopper's pick in
+  localStorage; `<html lang>` follows the language. Brand-entered content (product names,
+  descriptions, page sections, menus, payment type names) shows as the brand typed it.
+- Terms and privacy pages stay in Indonesian. In English the page opens with a one-line note that the
+  Indonesian text is the binding version.
+- Shopper emails: `phrases["id"]` in `apps/api/internal/modules/notifications/shopper.go` holds every
+  key of the English map. `ShopperFacts.Lang` comes from the tenant's language
+  (`internal/service/notices.go`), and English fills any key a language lacks. The marketing footer,
+  the unsubscribe label and the unsubscribe page (`GET /api/v1/unsubscribe`) use the same phrases;
+  the page answers in the customer's store language, or Indonesian for a link that opens no customer.
+- Tests: `apps/storefront/test/i18n.test.ts` (same keys, same placeholders, default language,
+  plurals), `notifications/language_test.go` (key parity, language choice, English fallback),
+  `TestShopperEmailFollowsTheStoreLanguage` in `service/notices_test.go`, and two golden cases for
+  `tenants/setShopSettings`.
+
+Still to do: error messages the API writes (stock refusals, validation errors) and the English
+refusals some `@rc/fixtures` rules return reach the shopper in English unless the storefront maps
+them (`codeErrorText`, `returnBlockerText`, `complaintBlockerText`). Brands that sell to Indonesian
+consumers should write their product content in Indonesian too. The admin console and the seller
+PWA stay in English.

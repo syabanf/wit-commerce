@@ -1,4 +1,5 @@
 import { type AppState, type StockSummary, collectionProducts, sumStock, toMs } from '@rc/fixtures'
+import { type MessageKey, t } from '../i18n'
 import type {
   AttributeDef,
   Category,
@@ -121,10 +122,10 @@ export const isBuyable = (catalog: Catalog, product: Product) => {
 
 /** "In stock", "Only 3 left", "Sold out". */
 export function stockNote(available: number | null): string {
-  if (available === null) return 'Always available'
-  if (available <= 0) return 'Sold out'
-  if (available <= 5) return `Only ${available} left`
-  return 'In stock'
+  if (available === null) return t('catalog.stock.always')
+  if (available <= 0) return t('catalog.stock.soldOut')
+  if (available <= 5) return t('catalog.stock.few', { count: available })
+  return t('catalog.stock.in')
 }
 
 // --- categories ---
@@ -146,7 +147,7 @@ export function categoryPath(catalog: Catalog, id: string): Category[] {
   return parent ? [parent, c] : [c]
 }
 
-export const categoryName = (catalog: Catalog, id: string) => catalog.categoryMap.get(id)?.name ?? 'Other'
+export const categoryName = (catalog: Catalog, id: string) => catalog.categoryMap.get(id)?.name ?? t('catalog.category.other')
 
 /** Top-level categories by how much shoppers look at them. */
 export function popularCategories(catalog: Catalog): Category[] {
@@ -243,13 +244,14 @@ export function matchesQuery(catalog: Catalog, p: Product, query: string): boole
 }
 
 export type SortKey = 'featured' | 'best' | 'new' | 'price_asc' | 'price_desc'
-export const SORT_LABEL: Record<SortKey, string> = {
-  featured: 'Featured',
-  best: 'Best selling',
-  new: 'New arrivals',
-  price_asc: 'Price: low to high',
-  price_desc: 'Price: high to low',
+export const SORT_LABEL: Record<SortKey, MessageKey> = {
+  featured: 'catalog.sort.featured',
+  best: 'catalog.sort.best',
+  new: 'catalog.sort.new',
+  price_asc: 'catalog.sort.priceAsc',
+  price_desc: 'catalog.sort.priceDesc',
 }
+export const sortLabel = (sort: SortKey) => t(SORT_LABEL[sort])
 export const isSortKey = (value: string | null): value is SortKey => !!value && value in SORT_LABEL
 
 /** Talk-to-sales products have no price, so price sorts put them last. */

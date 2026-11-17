@@ -1,4 +1,4 @@
-import { categoryPhoto, fmtIdrShort, plural, productPhoto } from '@rc/fixtures'
+import { categoryPhoto, fmtIdrShort, productPhoto } from '@rc/fixtures'
 import type { Product } from '@rc/types'
 import { cn } from '@rc/ui'
 import { Flame, ShieldCheck, ShoppingBag, Star, Truck, Wallet } from 'lucide-react'
@@ -33,6 +33,7 @@ import {
   RoutineFinder,
   isBeauty,
 } from '../../components/beauty'
+import { t, tp } from '../../i18n'
 
 function FloatChip({
   icon,
@@ -73,7 +74,7 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
     product && catalog.attributes.find((a) => /warranty/i.test(a.name) && product.attributes[a.id])
   return (
     <section
-      aria-label="Featured"
+      aria-label={t('theme.featured')}
       className="mx-4 px-6 pt-32 pb-14 md:mx-6 lg:mx-10 lg:px-10 md:block hidden rounded-[var(--sf-card-radius)]"
       style={{ background: tint('--sf-primary', 10) }}
     >
@@ -81,7 +82,7 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
         <div className="min-w-0">
           <p className="min-h-9 gap-2 px-4 text-sm font-semibold inline-flex max-w-full items-center rounded-full bg-[var(--sf-bg)]">
             <Flame className="size-4 shrink-0 text-[color:var(--sf-accent)]" aria-hidden="true" />
-            <span className="truncate">Most popular at {tenant.name}</span>
+            <span className="truncate">{t('theme.mostPopular', { name: tenant.name })}</span>
           </p>
           <Title className="sf-hero-title mt-5">
             <Underlined text={headline} />
@@ -93,10 +94,10 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
             <div className="mt-8 gap-3 flex flex-wrap">
               <Button size="lg" onClick={() => quickAdd(product)}>
                 <ShoppingBag aria-hidden="true" />
-                {product.assisted ? 'Talk to sales' : 'Add to cart'}
+                {product.assisted ? t('theme.talkToSales') : t('theme.addToCart')}
               </Button>
               <ButtonLink to={paths.product(store, product.id)} variant="light" size="lg">
-                View details
+                {t('theme.viewDetails')}
               </ButtonLink>
             </div>
           )}
@@ -105,7 +106,7 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
           <div className="relative w-full max-w-[720px] justify-self-end">
             <Link
               to={paths.product(store, product.id)}
-              aria-label={`${product.name}, view details`}
+              aria-label={t('theme.viewDetailsOf', { name: product.name })}
               className="block"
             >
               <ProductImage
@@ -116,30 +117,30 @@ function Hero({ data, product, main }: { data: HomeData; product: Product | null
               />
             </Link>
             <Stamp
-              text={`${tenant.name} · since ${tenant.createdAt.slice(0, 4)} · `}
+              text={t('theme.since', { name: tenant.name, year: tenant.createdAt.slice(0, 4) })}
               className="top-4 right-4 size-20 lg:top-6 lg:right-6 lg:size-24 absolute"
             />
             <FloatChip
               className="top-4 left-4 lg:top-6 lg:left-6"
               icon={warranty ? <ShieldCheck aria-hidden="true" /> : <Star aria-hidden="true" />}
-              title={warranty ? 'Includes warranty' : `Rated ${product.rating.toFixed(1)} of 5`}
+              title={warranty ? t('theme.warranty') : t('theme.rated', { rating: product.rating.toFixed(1) })}
               text={
                 warranty
                   ? `${product.attributes[warranty.id]} ${warranty.unit ?? ''}`.trim()
-                  : `from ${product.reviewCount} reviews`
+                  : t('theme.fromReviews', { count: product.reviewCount })
               }
             />
             <FloatChip
               className="right-4 bottom-24 lg:right-6 lg:flex hidden"
               icon={<Truck aria-hidden="true" />}
-              title="Free shipping"
-              text={`over ${fmtIdrShort(tenant.loyalty.freeShippingMin)}`}
+              title={t('theme.freeShipping')}
+              text={t('theme.over', { amount: fmtIdrShort(tenant.loyalty.freeShippingMin) })}
             />
             <FloatChip
               className="bottom-4 left-4 lg:bottom-6 lg:left-6"
               icon={<Wallet aria-hidden="true" />}
-              title="Pay your way"
-              text={`${catalog.paymentTypes.filter((t) => t.enabled).length} payment options`}
+              title={t('theme.payYourWay')}
+              text={t('theme.paymentOptions', { count: catalog.paymentTypes.filter((p) => p.enabled).length })}
             />
           </div>
         )}
@@ -156,25 +157,25 @@ function PhoneShop({ data, main }: { data: HomeData; main: boolean }) {
     <section aria-labelledby="phone-shop-h" className="px-4 pt-5 md:hidden">
       <div className="gap-3 flex items-center justify-between">
         <Title id="phone-shop-h" className="sf-display text-4xl">
-          Shop <span className="text-[color:var(--sf-muted)]">Products</span>
+          {t('theme.shopWord')} <span className="text-[color:var(--sf-muted)]">{t('theme.productsWord')}</span>
         </Title>
         <Link
           to={paths.cart(store)}
-          aria-label={`Cart, ${cart.count} items`}
+          aria-label={t('theme.cartItems', { count: cart.count })}
           className="size-12 relative inline-flex items-center justify-center rounded-full bg-[var(--sf-text)] text-[color:var(--sf-bg)]"
         >
           <ShoppingBag className="size-5" aria-hidden="true" />
         </Link>
       </div>
       <nav
-        aria-label="Categories"
+        aria-label={t('theme.categories')}
         className="mt-4 gap-5 no-scrollbar flex overflow-x-auto border-b border-[color:var(--sf-line)] whitespace-nowrap"
       >
         <span
           aria-current="page"
           className="min-h-11 text-sm font-bold inline-flex items-center border-b-2 border-[color:var(--sf-text)]"
         >
-          All
+          {t('theme.all')}
         </span>
         {data.categories.map(({ category, count }) => (
           <Link
@@ -201,7 +202,7 @@ function Collections({ collections }: { collections: HomeData['collections'] }) 
   const shown = collections.slice(0, 3)
   return (
     <section aria-labelledby="collections-h">
-      <ShowHeading id="collections-h" title="Popular collections" />
+      <ShowHeading id="collections-h" title={t('theme.popularCollections')} />
       <ul className={cn(RAIL, 'md:mx-0 md:px-0 md:grid md:overflow-visible', MD_COLS[shown.length])}>
         {shown.map(({ collection, products }) => {
           const first = products[0]
@@ -219,7 +220,7 @@ function Collections({ collections }: { collections: HomeData['collections'] }) 
                   {collection.name}
                 </span>
                 <span className="text-sm text-[color:var(--sf-muted)]">
-                  {plural(products.length, 'product')}
+                  {tp('theme.products', products.length)}
                 </span>
               </Link>
             </li>
@@ -272,7 +273,7 @@ export function Home({ data }: { data: HomeData }) {
         <SellersRow Heading={ShowHeading} />
         {beauty && <GlowWall Heading={ShowHeading} />}
         {!beauty && !has('testimonials') && (
-          <Testimonials section={extraSection('testimonials', 'Customer stories')} Heading={ShowHeading} />
+          <Testimonials section={extraSection('testimonials', t('theme.customerStories'))} Heading={ShowHeading} />
         )}
         {!has('brand_story') && <BrandStory section={extraSection('brand_story')} />}
         {data.recommended.length > 0 && (

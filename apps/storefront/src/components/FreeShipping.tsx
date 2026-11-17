@@ -2,6 +2,7 @@ import { fmtIdr } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { Truck } from 'lucide-react'
 import { useShop } from '../state/shop'
+import { t } from '../i18n'
 
 /** "You are Rp 250.000 away from free shipping", with a progress bar. */
 export function FreeShippingProgress({ className }: { className?: string }) {
@@ -14,14 +15,12 @@ export function FreeShippingProgress({ className }: { className?: string }) {
       <Truck className="mt-0.5 size-5 shrink-0 text-[color:var(--sf-primary-text)]" aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">
-          {done
-            ? 'Your order ships free.'
-            : `You are ${fmtIdr(totals.freeShippingGap)} away from free shipping.`}
+          {done ? t('checkout.free.done') : t('checkout.free.gap', { amount: fmtIdr(totals.freeShippingGap) })}
         </p>
         <div
           className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--sf-soft)]"
           role="progressbar"
-          aria-label="Progress to free shipping"
+          aria-label={t('checkout.free.progress')}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={pct}

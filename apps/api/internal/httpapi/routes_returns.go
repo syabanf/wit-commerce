@@ -29,6 +29,7 @@ type (
 	shopSettingsInput struct {
 		ReturnWindowDays int      `json:"returnWindowDays"`
 		ShopperEmailsOff []string `json:"shopperEmailsOff"`
+		StoreLanguage    string   `json:"storeLanguage,omitempty"`
 	}
 )
 
@@ -119,14 +120,14 @@ func (s *Server) returnRoutes(rt *router) {
 			return d, err
 		})
 	})
-	rt.add("PUT", "/tenants/{id}/shop-settings", "tenants/setShopSettings", "brand.manage", "Set the return window and the shopper emails the store sends", func(w http.ResponseWriter, r *http.Request) {
+	rt.add("PUT", "/tenants/{id}/shop-settings", "tenants/setShopSettings", "brand.manage", "Set the return window, the shopper emails the store sends and the store language", func(w http.ResponseWriter, r *http.Request) {
 		var in shopSettingsInput
 		if err := decode(r, &in); err != nil {
 			s.writeError(w, r, err)
 			return
 		}
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
-			return s.svc.SetShopSettings(r.Context(), m, r.PathValue("id"), in.ReturnWindowDays, in.ShopperEmailsOff)
+			return s.svc.SetShopSettings(r.Context(), m, r.PathValue("id"), in.ReturnWindowDays, in.ShopperEmailsOff, in.StoreLanguage)
 		})
 	})
 	rt.add("GET", "/views/returns", "", "", "Returns, newest first: filtered by status, order or search, with counts per status", s.reader("orders:read", s.returnRows))

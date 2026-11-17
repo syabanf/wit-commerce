@@ -1,10 +1,11 @@
-import { STOREFRONT_THEME_LABEL, type StorefrontTheme } from '@rc/types'
+import type { StorefrontTheme } from '@rc/types'
 import { LayoutGrid, Palette } from 'lucide-react'
 import { Link } from 'react-router'
 import { HOST_STORE } from '../lib/host'
 import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
-import { THEMES, useThemeChoice } from '../themes/registry'
+import { THEMES, themeLabel, themeShortName, useThemeChoice } from '../themes/registry'
+import { t } from '../i18n'
 
 /** Demo chrome, outside the tenant brand: which theme is on screen and a switch to the other one. */
 export function DemoBar() {
@@ -17,8 +18,9 @@ export function DemoBar() {
     <div className="px-4 py-1.5 md:px-6 lg:px-10 bg-ink text-on-ink">
       <div className="gap-3 flex items-center justify-between">
         <p className="min-w-0 text-xs truncate text-on-ink-muted">
-          <span className="font-semibold text-white">Demo</span> · {tenant.name} in {theme.name}
-          {preview ? ' (preview)' : ''}
+          <span className="font-semibold text-white">{t('shell.demo')}</span> ·{' '}
+          {t('shell.demo.inTheme', { store: tenant.name, theme: themeLabel(theme.id) })}
+          {preview ? ` (${t('shell.demo.preview')})` : ''}
         </p>
         <div className="gap-1.5 flex shrink-0">
           <button
@@ -27,13 +29,13 @@ export function DemoBar() {
             onClick={() => setPreview(other === tenant.brand.theme ? null : other)}
           >
             <Palette className="size-3.5" aria-hidden="true" />
-            <span className="sm:inline hidden">View in</span> {STOREFRONT_THEME_LABEL[other].split(' · ')[0]}
+            <span className="sm:inline hidden">{t('shell.demo.viewIn')}</span> {themeShortName(other)}
           </button>
           {!HOST_STORE && (
             <Link to={paths.chooser()} className={pill}>
               <LayoutGrid className="size-3.5" aria-hidden="true" />
-              <span className="sm:hidden">Demos</span>
-              <span className="sm:inline hidden">All demos</span>
+              <span className="sm:hidden">{t('shell.demo.demos')}</span>
+              <span className="sm:inline hidden">{t('shell.demo.all')}</span>
             </Link>
           )}
         </div>

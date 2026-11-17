@@ -10,9 +10,14 @@ import { firstName, paths } from '../lib/paths'
 import { useNow, useShop } from '../state/shop'
 import { Drawer } from './Drawer'
 import { CategoryIcon } from './product'
+import { t, tx } from '../i18n'
 
 export const offerText = (p: Promotion) =>
-  p.kind === 'percentage' ? `${p.value}% off` : p.kind === 'fixed' ? `${fmtIdr(p.value)} off` : p.name
+  p.kind === 'percentage'
+    ? t('format.promo.percent', { value: p.value })
+    : p.kind === 'fixed'
+      ? t('format.promo.fixed', { amount: fmtIdr(p.value) })
+      : p.name
 
 export const isVipCustomer = (c: { stage: string; tier: string }) =>
   c.stage === 'vip' || c.tier === 'gold' || c.tier === 'platinum'
@@ -26,28 +31,38 @@ export function GreetingBar({ className }: { className?: string }) {
   if (!customer)
     content = welcome ? (
       <>
-        Get {offerText(welcome)} your first order with{' '}
-        <strong className="px-2 py-0.5 font-black rounded-full border border-dashed border-current tracking-[0.12em]">
-          {welcome.code}
-        </strong>
+        {tx(
+          'shell.greeting.welcomeCode',
+          {
+            code: (
+              <strong
+                key="code"
+                className="px-2 py-0.5 font-black rounded-full border border-dashed border-current tracking-[0.12em]"
+              >
+                {welcome.code}
+              </strong>
+            ),
+          },
+          { offer: offerText(welcome) },
+        )}
       </>
     ) : (
-      <>Free shipping on orders from {fmtIdr(tenant.loyalty.freeShippingMin)}</>
+      <>{t('shell.greeting.freeShipping', { amount: fmtIdr(tenant.loyalty.freeShippingMin) })}</>
     )
   else
     content = (
       <>
-        Welcome back, {firstName(customer.name)}.{' '}
+        {t('shell.greeting.welcomeBack', { name: firstName(customer.name) })}{' '}
         {isVipCustomer(customer) ? (
           <Link
             to={paths.search(store, '', { sort: 'new' })}
             className="min-h-11 gap-1 font-bold inline-flex items-center underline underline-offset-4"
           >
             <Sparkles className="size-3.5" aria-hidden="true" />
-            Early access for members
+            {t('shell.greeting.earlyAccess')}
           </Link>
         ) : (
-          <span className="opacity-80">You have {customer.points} points to spend.</span>
+          <span className="opacity-80">{t('shell.greeting.points', { points: customer.points })}</span>
         )}
       </>
     )
@@ -76,16 +91,23 @@ export function ReferralBanner({ className }: { className?: string }) {
         {initials(referral.name)}
       </span>
       <p className="min-w-0 truncate">
-        Shopping with{' '}
-        <Link to={paths.seller(store, referral.slug)} className="font-bold underline underline-offset-4">
-          {firstName(referral.name)}
-        </Link>
+        {tx('shell.referral.with', {
+          name: (
+            <Link
+              key="seller"
+              to={paths.seller(store, referral.slug)}
+              className="font-bold underline underline-offset-4"
+            >
+              {firstName(referral.name)}
+            </Link>
+          ),
+        })}
       </p>
       <button
         type="button"
         onClick={() => setReferral(null)}
         className="right-2 size-11 absolute top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-full hover:bg-[var(--sf-soft)]"
-        aria-label={`Stop shopping with ${referral.name}`}
+        aria-label={t('shell.referral.stop', { name: referral.name })}
       >
         <X className="size-4" aria-hidden="true" />
       </button>
@@ -110,10 +132,10 @@ export function CategoryMenu({
       open={open}
       onOpenChange={onOpenChange}
       side="left"
-      title="All categories"
+      title={t('shell.allCategories')}
       description={catalog.tenant.brand.tagline}
     >
-      <nav aria-label="Categories">
+      <nav aria-label={t('shell.nav.categories')}>
         <ul className="space-y-1">
           {catalog.topCategories.map((c) => {
             const subs = catalog.childrenOf.get(c.id) ?? []
@@ -152,8 +174,8 @@ export function CategoryMenu({
         <ul className="mt-4 space-y-1 pt-4 border-t border-[color:var(--sf-line)]">
           {[
             ...(extra ?? []),
-            { label: customer ? 'Your account' : 'Sign in', to: paths.account(store) },
-            { label: 'Wishlist', to: paths.wishlist(store) },
+            { label: customer ? t('shell.nav.yourAccount') : t('shell.nav.signIn'), to: paths.account(store) },
+            { label: t('shell.nav.wishlist'), to: paths.wishlist(store) },
           ].map((l, i) => (
             <li key={`${i}-${l.label}`}>
               <MenuLink
@@ -188,9 +210,9 @@ export function SearchSuggestions({ query }: { query: string }) {
   const popular = popularCategories(catalog).slice(0, 6)
   return (
     <div className="sf-card px-5 py-10 text-center">
-      <h2 className="sf-display text-xl font-bold">Nothing matches "{query}"</h2>
+      <h2 className="sf-display text-xl font-bold">{t('shell.noMatch.title', { query })}</h2>
       <p className="mt-1 max-w-md text-sm mx-auto text-[color:var(--sf-muted)]">
-        Check the spelling, use a shorter word, or start from one of the popular categories.
+        {t('shell.noMatch.text')}
       </p>
       <ul className="mt-5 gap-2 flex flex-wrap justify-center">
         {popular.map((c) => (

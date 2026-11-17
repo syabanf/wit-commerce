@@ -1,14 +1,15 @@
 import { ApiError } from '@rc/api'
-import { fmtDate } from '@rc/fixtures'
 import type { PrivacyRequest, PrivacyRequestKind } from '@rc/types'
-import { MARKETING_CONSENT_TEXT, MARKETING_CONSENT_VERSION, PRIVACY_REQUEST_KIND_LABEL } from '@rc/types'
+import { MARKETING_CONSENT_VERSION } from '@rc/types'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { Button, Field, describedBy, inputClass } from '../components/ui'
 import { HTTP, api } from '../lib/api'
+import { type MessageKey, t } from '../i18n'
+import { fmtDate } from '../i18n/format'
 import { useShop } from '../state/shop'
+import { privacyKindLabel } from './accountLabels'
 
-const messageOf = (err: unknown) =>
-  err instanceof ApiError ? err.message : 'The store did not answer. Try again in a moment.'
+const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : t('account.noAnswer'))
 
 /** The shopper's own switch for offers and news. Order emails arrive either way. */
 export function MarketingCard() {
@@ -37,7 +38,7 @@ export function MarketingCard() {
   return (
     <section className="sf-card space-y-3 p-6" aria-labelledby={`${id}-h`}>
       <h2 id={`${id}-h`} className="sf-display text-xl font-bold">
-        Offers and news
+        {t('account.privacy.offers')}
       </h2>
       <label className="gap-3 flex items-start">
         <input
@@ -49,12 +50,14 @@ export function MarketingCard() {
           {...describedBy(`${id}-box`, error, 'hint')}
         />
         <span className="text-sm">
-          <span className="font-semibold block">{MARKETING_CONSENT_TEXT}</span>
+          <span className="font-semibold block">{t('account.privacy.consent')}</span>
           <span id={`${id}-box-hint`} className="text-[color:var(--sf-muted)]">
             {customer.marketingConsent
-              ? `${on ? 'You agreed' : 'You said no'} on ${fmtDate(customer.marketingConsent.at)}. `
+              ? t(on ? 'account.privacy.agreed' : 'account.privacy.declined', {
+                  date: fmtDate(customer.marketingConsent.at),
+                })
               : ''}
-            Emails about your orders arrive either way.
+            {t('account.privacy.orderEmails')}
           </span>
         </span>
       </label>
@@ -67,18 +70,10 @@ export function MarketingCard() {
   )
 }
 
-const ASK: { kind: PrivacyRequestKind; label: string; hint: string }[] = [
-  {
-    kind: 'access',
-    label: 'Get a copy of my data',
-    hint: 'The store prepares a file you can download here.',
-  },
-  { kind: 'correction', label: 'Correct my data', hint: 'Say what is wrong in the note.' },
-  {
-    kind: 'erasure',
-    label: 'Delete my data',
-    hint: 'Your name and contact details are erased and you are signed out for good. Order amounts stay for the 10 years the law requires.',
-  },
+const ASK: { kind: PrivacyRequestKind; label: MessageKey; hint: MessageKey }[] = [
+  { kind: 'access', label: 'account.privacy.access', hint: 'account.privacy.accessHint' },
+  { kind: 'correction', label: 'account.privacy.correction', hint: 'account.privacy.correctionHint' },
+  { kind: 'erasure', label: 'account.privacy.erasure', hint: 'account.privacy.erasureHint' },
 ]
 
 /** API mode: the shopper's requests about their personal data (UU PDP Pasal 5 to 13). */
@@ -104,7 +99,7 @@ export function PrivacyRequestsCard() {
 
   const submit = () => {
     if (!kind) return
-    if (kind === 'correction' && !note.trim()) return setError('Say what to correct.')
+    if (kind === 'correction' && !note.trim()) return setError(t('account.privacy.correctWhat'))
     setBusy(true)
     setError(null)
     api.shop
@@ -141,21 +136,19 @@ export function PrivacyRequestsCard() {
     <section className="sf-card space-y-4 p-6" aria-labelledby={`${id}-h`}>
       <div>
         <h2 id={`${id}-h`} className="sf-display text-xl font-bold">
-          Your data
+          {t('account.privacy.title')}
         </h2>
-        <p className="mt-1 text-sm text-[color:var(--sf-muted)]">
-          Ask for a copy, a correction or the deletion of your data. The store answers within 3x24 hours.
-        </p>
+        <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{t('account.privacy.intro')}</p>
       </div>
       {requests.length > 0 && (
         <ul className="text-sm divide-y divide-[color:var(--sf-line)]">
           {requests.map((r) => (
             <li key={r.id} className="gap-2 py-2 flex flex-wrap items-center justify-between">
-              <span className="font-semibold">{PRIVACY_REQUEST_KIND_LABEL[r.kind]}</span>
+              <span className="font-semibold">{privacyKindLabel(r.kind)}</span>
               <span className="text-[color:var(--sf-muted)]">
                 {r.status === 'open'
-                  ? `Asked ${fmtDate(r.requestedAt)} · answer by ${fmtDate(r.dueAt)}`
-                  : `Done ${fmtDate(r.completedAt ?? r.dueAt)}`}
+                  ? t('account.privacy.asked', { asked: fmtDate(r.requestedAt), due: fmtDate(r.dueAt) })
+                  : t('account.privacy.done', { date: fmtDate(r.completedAt ?? r.dueAt) })}
               </span>
             </li>
           ))}
@@ -163,7 +156,7 @@ export function PrivacyRequestsCard() {
       )}
       {ready && (
         <Button variant="outline" onClick={download}>
-          Download my data
+          {t('account.privacy.download')}
         </Button>
       )}
       <div className="gap-2 flex flex-wrap">
@@ -179,7 +172,7 @@ export function PrivacyRequestsCard() {
               setError(null)
             }}
           >
-            {open(a.kind) ? `${a.label}: asked` : a.label}
+            {open(a.kind) ? t('account.privacy.askedLabel', { label: t(a.label) }) : t(a.label)}
           </Button>
         ))}
       </div>
@@ -187,9 +180,9 @@ export function PrivacyRequestsCard() {
         <div className="space-y-3">
           <Field
             id={`${id}-note`}
-            label="Note for the store"
+            label={t('account.privacy.note')}
             error={error}
-            hint={ASK.find((a) => a.kind === kind)!.hint}
+            hint={t(ASK.find((a) => a.kind === kind)!.hint)}
           >
             <textarea
               id={`${id}-note`}
@@ -201,13 +194,13 @@ export function PrivacyRequestsCard() {
             />
           </Field>
           <Button variant={kind === 'erasure' ? 'dark' : 'primary'} disabled={busy} onClick={submit}>
-            {kind === 'erasure' ? 'Ask to delete my data' : 'Send request'}
+            {kind === 'erasure' ? t('account.privacy.askDelete') : t('account.sendRequest')}
           </Button>
         </div>
       )}
       {sent && (
         <p role="status" className="text-sm font-semibold">
-          Request sent. The store answers within 3x24 hours.
+          {t('account.privacy.sent')}
         </p>
       )}
       {!kind && error && (

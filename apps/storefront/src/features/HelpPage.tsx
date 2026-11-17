@@ -1,13 +1,5 @@
 import { ApiError } from '@rc/api'
-import {
-  DEFAULT_COMPLAINT_PROCEDURE,
-  addWorkingDays,
-  complaintBlocker,
-  complaintDays,
-  fmtDateTime,
-  newId,
-  nowIso,
-} from '@rc/fixtures'
+import { addWorkingDays, complaintBlocker, complaintDays, newId, nowIso } from '@rc/fixtures'
 import type { Ticket } from '@rc/types'
 import { CircleCheck, Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react'
 import { type FormEvent, type ReactNode, useId, useState } from 'react'
@@ -15,7 +7,18 @@ import { Link, useSearchParams } from 'react-router'
 import { Button, Field, describedBy, inputClass } from '../components/ui'
 import { paths, waLink } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
+import { t, tx } from '../i18n'
+import { fmtDateTime } from '../i18n/format'
 import { useShop } from '../state/shop'
+import { complaintBlockerText } from './accountLabels'
+
+/** The platform's complaint steps, used when the brand wrote none of its own. */
+const defaultSteps = () => [
+  t('account.help.step1'),
+  t('account.help.step2'),
+  t('account.help.step3'),
+  t('account.help.step4'),
+]
 
 /**
  * Help & complaints (PP 80/2019 Pasal 27): where to reach the brand, how complaints work, how
@@ -23,24 +26,23 @@ import { useShop } from '../state/shop'
  */
 export function HelpPage() {
   const { tenant, store } = useShop()
-  useTitle(`Help & complaints · ${tenant.name}`)
+  useTitle(`${t('account.help.title')} · ${tenant.name}`)
   const l = tenant.legal ?? {}
   const days = complaintDays(tenant)
   const brand = tenant.name.replace(/\.$/, '')
-  const steps = (l.complaintProcedure ?? DEFAULT_COMPLAINT_PROCEDURE).split(/\n+/).filter((s) => s.trim())
+  const steps = l.complaintProcedure
+    ? l.complaintProcedure.split(/\n+/).filter((s) => s.trim())
+    : defaultSteps()
   return (
     <div className="max-w-3xl space-y-6 md:pt-6 mx-auto">
       <section className="sf-card p-6 md:p-10" aria-labelledby="help-h">
         <h1 id="help-h" className="sf-display text-3xl font-bold">
-          Help &amp; complaints
+          {t('account.help.title')}
         </h1>
-        <p className="mt-2 text-[color:var(--sf-muted)]">
-          Something wrong with an order? Tell {brand}. Our support team handles every complaint as a ticket,
-          and we resolve it within {days} working days.
-        </p>
+        <p className="mt-2 text-[color:var(--sf-muted)]">{t('account.help.intro', { brand, days })}</p>
         <ul className="mt-6 gap-3 sm:grid-cols-2 grid grid-cols-1">
           {l.phone && (
-            <Contact icon={<Phone />} label="Phone">
+            <Contact icon={<Phone />} label={t('account.help.phone')}>
               <a href={`tel:${l.phone.replace(/[^\d+]/g, '')}`} className="underline underline-offset-4">
                 {l.phone}
               </a>
@@ -54,25 +56,25 @@ export function HelpPage() {
                 rel="noreferrer"
                 className="underline underline-offset-4"
               >
-                Chat with us
+                {t('account.help.chat')}
               </a>
             </Contact>
           )}
           {l.email && (
-            <Contact icon={<Mail />} label="Email">
+            <Contact icon={<Mail />} label={t('account.email')}>
               <a href={`mailto:${l.email}`} className="break-all underline underline-offset-4">
                 {l.email}
               </a>
             </Contact>
           )}
           {l.address && (
-            <Contact icon={<MapPin />} label="Address">
+            <Contact icon={<MapPin />} label={t('account.help.address')}>
               {l.entityName ? `${l.entityName}, ` : ''}
               {l.address}
             </Contact>
           )}
           {l.hours && (
-            <Contact icon={<Clock />} label="Service hours">
+            <Contact icon={<Clock />} label={t('account.help.hours')}>
               {l.hours}
             </Contact>
           )}
@@ -81,7 +83,7 @@ export function HelpPage() {
 
       <section className="sf-card p-6 md:p-10 space-y-5" aria-labelledby="how-h">
         <h2 id="how-h" className="sf-display text-xl font-bold">
-          How complaints work
+          {t('account.help.how')}
         </h2>
         <ol className="space-y-2 text-sm leading-relaxed pl-5 list-decimal">
           {steps.map((step) => (
@@ -89,18 +91,25 @@ export function HelpPage() {
           ))}
         </ol>
         <div className="space-y-2 text-sm leading-relaxed">
-          <h3 className="font-bold">Follow-up</h3>
+          <h3 className="font-bold">{t('account.help.followUp')}</h3>
+          <p>{t('account.help.followUpText')}</p>
+          <h3 className="font-bold">{t('account.help.resolution')}</h3>
           <p>
-            Your complaint opens a ticket with our support team, who replies by email or phone. Quote the
-            ticket code when you contact us again, and we pick up where we left off.
-          </p>
-          <h3 className="font-bold">Resolution time</h3>
-          <p>
-            We resolve complaints within {days} working days of receiving them. If we cannot agree, our{' '}
-            <Link to={paths.terms(store)} className="font-semibold underline underline-offset-4">
-              terms
-            </Link>{' '}
-            set out how the dispute is settled.
+            {tx(
+              'account.help.resolutionText',
+              {
+                terms: (
+                  <Link
+                    key="terms"
+                    to={paths.terms(store)}
+                    className="font-semibold underline underline-offset-4"
+                  >
+                    {t('account.help.terms')}
+                  </Link>
+                ),
+              },
+              { days },
+            )}
           </p>
         </div>
       </section>
@@ -135,7 +144,9 @@ function ComplaintForm() {
   const [email, setEmail] = useState(customer?.email ?? '')
   const [phone, setPhone] = useState(customer?.phone ?? '')
   const [subject, setSubject] = useState('')
-  const [message, setMessage] = useState(linked && !mine ? `Order ${linked.code}: ` : '')
+  const [message, setMessage] = useState(
+    linked && !mine ? t('account.help.orderPrefix', { code: linked.code }) : '',
+  )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState<{ code?: string; due: string } | null>(null)
@@ -145,7 +156,7 @@ function ComplaintForm() {
     e.preventDefault()
     const why = complaintBlocker({ subject, message, contact })
     if (why) {
-      setError(why)
+      setError(complaintBlockerText(why))
       return
     }
     setBusy(true)
@@ -169,7 +180,7 @@ function ComplaintForm() {
         due: ticket?.slaDueAt ?? addWorkingDays(nowIso(), complaintDays(tenant)),
       })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'The store did not answer. Try again in a moment.')
+      setError(err instanceof ApiError ? err.message : t('account.noAnswer'))
     }
     setBusy(false)
   }
@@ -178,15 +189,20 @@ function ComplaintForm() {
     return (
       <section className="sf-card p-6 md:p-10 text-center" role="status">
         <CircleCheck className="size-8 mx-auto" aria-hidden="true" />
-        <h2 className="sf-display mt-3 text-xl font-bold">We received your complaint</h2>
+        <h2 className="sf-display mt-3 text-xl font-bold">{t('account.help.received')}</h2>
         <p className="mt-2 text-sm text-[color:var(--sf-muted)]">
           {sent.code ? (
             <>
-              Your ticket is <strong className="font-mono text-[color:var(--sf-text)]">{sent.code}</strong>
-              .{' '}
+              {tx('account.help.ticket', {
+                code: (
+                  <strong key="code" className="font-mono text-[color:var(--sf-text)]">
+                    {sent.code}
+                  </strong>
+                ),
+              })}{' '}
             </>
           ) : null}
-          Expect an answer by {fmtDateTime(sent.due)}.
+          {t('account.help.expect', { date: fmtDateTime(sent.due) })}
         </p>
       </section>
     )
@@ -194,10 +210,10 @@ function ComplaintForm() {
   return (
     <form className="sf-card p-6 md:p-10 space-y-4" aria-labelledby={`${uid}-h`} onSubmit={submit} noValidate>
       <h2 id={`${uid}-h`} className="sf-display text-xl font-bold">
-        Send a complaint
+        {t('account.help.form')}
       </h2>
       <div className="gap-4 sm:grid-cols-2 grid grid-cols-1">
-        <Field id={`${uid}-name`} label="Your name">
+        <Field id={`${uid}-name`} label={t('account.yourName')}>
           <input
             id={`${uid}-name`}
             className={inputClass}
@@ -206,7 +222,7 @@ function ComplaintForm() {
             onChange={(e) => setName(e.target.value)}
           />
         </Field>
-        <Field id={`${uid}-email`} label="Email">
+        <Field id={`${uid}-email`} label={t('account.email')}>
           <input
             id={`${uid}-email`}
             type="email"
@@ -216,7 +232,7 @@ function ComplaintForm() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </Field>
-        <Field id={`${uid}-phone`} label="Phone or WhatsApp" hint="Leave an email, a phone number, or both.">
+        <Field id={`${uid}-phone`} label={t('account.phoneOrWa')} hint={t('account.help.contactHint')}>
           <input
             id={`${uid}-phone`}
             type="tel"
@@ -228,14 +244,14 @@ function ComplaintForm() {
           />
         </Field>
         {own.length > 0 && (
-          <Field id={`${uid}-order`} label="Order" hint="Optional">
+          <Field id={`${uid}-order`} label={t('account.help.order')} hint={t('account.optional')}>
             <select
               id={`${uid}-order`}
               className={inputClass}
               value={orderId}
               onChange={(e) => setOrderId(e.target.value)}
             >
-              <option value="">Not about one order</option>
+              <option value="">{t('account.help.noOrder')}</option>
               {own.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.code} · {fmtDateTime(o.createdAt)}
@@ -245,7 +261,7 @@ function ComplaintForm() {
           </Field>
         )}
       </div>
-      <Field id={`${uid}-subject`} label="Subject">
+      <Field id={`${uid}-subject`} label={t('account.help.subject')}>
         <input
           id={`${uid}-subject`}
           className={inputClass}
@@ -254,7 +270,7 @@ function ComplaintForm() {
           onChange={(e) => setSubject(e.target.value)}
         />
       </Field>
-      <Field id={`${uid}-message`} label="What happened?" hint="Include your order number if you have one.">
+      <Field id={`${uid}-message`} label={t('account.help.what')} hint={t('account.help.whatHint')}>
         <textarea
           id={`${uid}-message`}
           rows={5}
@@ -272,7 +288,7 @@ function ComplaintForm() {
       )}
       <div className="flex justify-end">
         <Button type="submit" size="lg" disabled={busy}>
-          {busy ? 'Sending…' : 'Send complaint'}
+          {busy ? t('account.help.sending') : t('account.help.submit')}
         </Button>
       </div>
     </form>

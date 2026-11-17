@@ -1,4 +1,3 @@
-import { plural } from '@rc/fixtures'
 import { cn } from '@rc/ui'
 import { Search } from 'lucide-react'
 import { type FormEvent, useId, useState } from 'react'
@@ -8,6 +7,7 @@ import { useSearchSubmit } from '../../components/shell'
 import { Button, inputClass } from '../../components/ui'
 import type { ListingViewProps } from '../types'
 import { ProductGrid } from './ProductCard'
+import { t, tp } from '../../i18n'
 
 function SearchForm({ query }: { query: string }) {
   const [q, setQ] = useState(query)
@@ -20,19 +20,19 @@ function SearchForm({ query }: { query: string }) {
   return (
     <form role="search" onSubmit={onSubmit} className="mb-6 gap-2 flex">
       <label htmlFor={id} className="sr-only">
-        Search products
+        {t('theme.searchProducts')}
       </label>
       <input
         id={id}
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search products"
+        placeholder={t('theme.searchProducts')}
         className={cn(inputClass, 'rounded-[var(--sf-pill)]')}
       />
-      <Button type="submit" variant="dark" aria-label="Search">
+      <Button type="submit" variant="dark" aria-label={t('theme.search')}>
         <Search aria-hidden="true" />
-        <span className="md:inline hidden">Search</span>
+        <span className="md:inline hidden">{t('theme.search')}</span>
       </Button>
     </form>
   )
@@ -45,7 +45,7 @@ export function Listing({ title, description, crumbs, chips, listing, query, emp
     <div>
       {query !== undefined && <SearchForm query={query} />}
       {crumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="mb-1 md:block hidden">
+        <nav aria-label={t('theme.breadcrumb')} className="mb-1 md:block hidden">
           <ol className="gap-2 text-sm flex flex-wrap text-[color:var(--sf-muted)]">
             {crumbs.map((c) => (
               <li key={c.to} className="after:ml-2 after:content-['/'] last:after:content-none">
@@ -63,7 +63,7 @@ export function Listing({ title, description, crumbs, chips, listing, query, emp
       {description && <p className="mt-2 max-w-2xl text-[color:var(--sf-muted)]">{description}</p>}
       {chips.length > 1 && (
         <nav
-          aria-label="Narrow down"
+          aria-label={t('theme.narrowDown')}
           className="mt-4 gap-5 md:flex-wrap md:gap-2 no-scrollbar flex overflow-x-auto whitespace-nowrap"
         >
           {chips.map((c) => (
@@ -87,21 +87,21 @@ export function Listing({ title, description, crumbs, chips, listing, query, emp
       <div className={cn('mt-6 gap-8 grid grid-cols-1', hasFilters && 'lg:grid-cols-[240px_minmax(0,1fr)]')}>
         {hasFilters && (
           <aside
-            aria-label="Filters"
+            aria-label={t('theme.filters')}
             className="p-5 lg:block hidden self-start rounded-[var(--sf-card-radius)] border border-[color:var(--sf-line)] bg-[var(--sf-bg)]"
           >
-            <h2 className="sf-display mb-4 text-lg font-bold">Filter</h2>
+            <h2 className="sf-display mb-4 text-lg font-bold">{t('theme.filter')}</h2>
             <FilterControls listing={listing} />
           </aside>
         )}
         <div className="min-w-0">
           <div className="mb-4 gap-2 md:flex md:justify-between grid grid-cols-2 items-center">
-            <FilterSheetButton listing={listing} className="md:w-auto lg:hidden w-full" label="Filter" />
+            <FilterSheetButton listing={listing} className="md:w-auto lg:hidden w-full" label={t('theme.filter')} />
             <p
               className={cn('text-sm text-[color:var(--sf-muted)]', hasFilters && 'lg:block hidden')}
               aria-live="polite"
             >
-              {plural(listing.results.length, 'item')} found
+              {tp('theme.itemsFound', listing.results.length)}
             </p>
             <SortSelect listing={listing} className="md:ml-auto" />
           </div>

@@ -1,6 +1,6 @@
 import { DEFAULT_RETURN_WINDOW_DAYS, LEGAL_RETURN_WORKING_DAYS, returnWindowDays } from '@rc/fixtures'
-import type { ShopperEmailKind } from '@rc/types'
-import { SHOPPER_EMAIL_KINDS, SHOPPER_EMAIL_LABEL } from '@rc/types'
+import type { ShopperEmailKind, StoreLanguage } from '@rc/types'
+import { SHOPPER_EMAIL_KINDS, SHOPPER_EMAIL_LABEL, STORE_LANGUAGES, STORE_LANGUAGE_LABEL } from '@rc/types'
 import {
   Button,
   Card,
@@ -10,6 +10,7 @@ import {
   CardTitle,
   FormField,
   Input,
+  NativeSelect,
   Switch,
   toast,
 } from '@rc/ui'
@@ -17,21 +18,40 @@ import { useState } from 'react'
 import { useAuth } from '../../auth/auth'
 import { useScoped } from '../../state/scoped'
 
-/** How long shoppers may ask for a return, and which emails the store sends them. */
+const LANGUAGE_OPTIONS = STORE_LANGUAGES.map((value) => ({ value, label: STORE_LANGUAGE_LABEL[value] }))
+
+/** How long shoppers may ask for a return, which emails the store sends them, and in which language. */
 export function ShopSettingsCard() {
   const { tenant } = useScoped()
   const days = returnWindowDays(tenant)
   const off = tenant.shopperEmailsOff ?? []
+  const language = tenant.storeLanguage ?? 'id'
   // The draft restarts when the tenant switches or its saved settings change.
-  return <ShopSettingsEditor key={`${tenant.id}:${days}:${off.join()}`} savedDays={days} savedOff={off} />
+  return (
+    <ShopSettingsEditor
+      key={`${tenant.id}:${days}:${off.join()}:${language}`}
+      savedDays={days}
+      savedOff={off}
+      savedLanguage={language}
+    />
+  )
 }
 
-function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedOff: ShopperEmailKind[] }) {
+function ShopSettingsEditor({
+  savedDays,
+  savedOff,
+  savedLanguage,
+}: {
+  savedDays: number
+  savedOff: ShopperEmailKind[]
+  savedLanguage: StoreLanguage
+}) {
   const s = useScoped()
   const { can } = useAuth()
   const canManage = can('brand.manage')
   const [days, setDays] = useState(String(savedDays))
   const [off, setOff] = useState<ShopperEmailKind[]>(savedOff)
+  const [language, setLanguage] = useState(savedLanguage)
   const [saving, setSaving] = useState(false)
   const value = Number(days)
   // PP 80/2019 Pasal 69(1): a window may not undercut the legal floor; 0 turns change of mind off.
@@ -41,7 +61,7 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
     value < 0 ||
     value > 90 ||
     (value > 0 && value < LEGAL_RETURN_WORKING_DAYS)
-  const dirty = value !== savedDays || off.join() !== savedOff.join()
+  const dirty = value !== savedDays || off.join() !== savedOff.join() || language !== savedLanguage
 
   const toggle = (kind: ShopperEmailKind, on: boolean) =>
     setOff((list) => SHOPPER_EMAIL_KINDS.filter((k) => (k === kind ? !on : list.includes(k))))
@@ -53,8 +73,9 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
         tenantId: s.tenantId,
         returnWindowDays: value,
         shopperEmailsOff: off,
+        storeLanguage: language,
       })
-      toast('Returns and emails saved', {
+      toast('Shop settings saved', {
         tone: 'success',
         description: value
           ? `Shoppers can ask for a return within ${value} days of delivery.`
@@ -69,7 +90,7 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Returns and shopper emails</CardTitle>
+        <CardTitle>Returns, shopper emails and language</CardTitle>
         <CardDescription>
           Shoppers ask for a return from their order page within the window. Whatever you set, damaged, wrong,
           late, defective or expired items can come back for at least 2 working days after delivery, and the
@@ -93,6 +114,21 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
             disabled={!canManage}
             value={days}
             onChange={(e) => setDays(e.target.value.replace(/[^\d]/g, ''))}
+          />
+        </FormField>
+        <FormField
+          label="Store language"
+          hint="Shoppers see the store and get its emails in this language, and can switch it in the footer. Indonesian law (PP 80/2019 Pasal 55) asks for Bahasa Indonesia with Indonesian shoppers."
+          htmlFor="store-language"
+        >
+          <NativeSelect
+            id="store-language"
+            variant="soft"
+            className="max-w-64"
+            disabled={!canManage}
+            options={LANGUAGE_OPTIONS}
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as StoreLanguage)}
           />
         </FormField>
         <div className="gap-2 sm:grid-cols-2 grid grid-cols-1">
@@ -120,6 +156,7 @@ function ShopSettingsEditor({ savedDays, savedOff }: { savedDays: number; savedO
               onClick={() => {
                 setDays(String(savedDays))
                 setOff(savedOff)
+                setLanguage(savedLanguage)
               }}
             >
               Reset

@@ -1,37 +1,39 @@
-import { fmtDate, fmtIdr, fmtIdrShort } from '@rc/fixtures'
+import { fmtIdr, fmtIdrShort } from '@rc/fixtures'
 import type { Promotion } from '@rc/types'
 import { cn, toast } from '@rc/ui'
 import { Check, Copy } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
+import { t, tx } from '../i18n'
+import { fmtDate } from '../i18n/format'
 
 /** The offer as a big value and a small unit: "20%" / "off", "Buy 2" / "get 1 free". */
 export function promoHeadline(p: Promotion): { value: string; unit: string } {
   switch (p.kind) {
     case 'percentage':
-      return { value: `${p.value}%`, unit: 'off' }
+      return { value: `${p.value}%`, unit: t('catalog.promo.off') }
     case 'fixed':
-      return { value: fmtIdrShort(p.value), unit: 'off' }
+      return { value: fmtIdrShort(p.value), unit: t('catalog.promo.off') }
     case 'bxgy':
       return {
-        value: `Buy ${p.buyQty ?? 1}`,
+        value: t('catalog.promo.buy', { count: p.buyQty ?? 1 }),
         unit:
           (p.getDiscountPct ?? 100) >= 100
-            ? `get ${p.getQty ?? 1} free`
-            : `get ${p.getQty ?? 1} at ${p.getDiscountPct}% off`,
+            ? t('catalog.promo.getFree', { count: p.getQty ?? 1 })
+            : t('catalog.promo.getPercent', { count: p.getQty ?? 1, pct: p.getDiscountPct ?? 0 }),
       }
     case 'free_shipping':
-      return { value: 'Free', unit: 'shipping' }
+      return { value: t('catalog.promo.free'), unit: t('catalog.promo.shipping') }
     default:
-      return { value: 'Bundle', unit: 'price' }
+      return { value: t('catalog.promo.bundle'), unit: t('catalog.promo.price') }
   }
 }
 
 /** One line of terms: minimum spend, cap and end date, whichever apply. */
 export function promoTerms(p: Promotion): string {
   return [
-    p.minSpend ? `Min. spend ${fmtIdr(p.minSpend)}` : null,
-    p.maxDiscount ? `Up to ${fmtIdrShort(p.maxDiscount)}` : null,
-    `Ends ${fmtDate(p.endAt)}`,
+    p.minSpend ? t('catalog.promo.minSpend', { amount: fmtIdr(p.minSpend) }) : null,
+    p.maxDiscount ? t('catalog.promo.upTo', { amount: fmtIdrShort(p.maxDiscount) }) : null,
+    t('catalog.promo.ends', { date: fmtDate(p.endAt) }),
   ]
     .filter(Boolean)
     .join(' · ')
@@ -54,10 +56,10 @@ export function CouponCode({ code, className }: { code: string; className?: stri
     try {
       await navigator.clipboard.writeText(code)
       setCopied(true)
-      toast('Code copied', { description: `Paste ${code} at checkout.` })
+      toast(t('catalog.code.copied'), { description: t('catalog.code.paste', { code }) })
       setTimeout(() => setCopied(false), 1600)
     } catch {
-      toast(`Use code ${code} at checkout.`)
+      toast(t('catalog.code.use', { code }))
     }
   }
   return (
@@ -71,7 +73,7 @@ export function CouponCode({ code, className }: { code: string; className?: stri
       <button
         type="button"
         onClick={copy}
-        aria-label={`Copy code ${code}`}
+        aria-label={t('catalog.code.copy', { code })}
         className="size-9 inline-flex items-center justify-center rounded-full hover:bg-[var(--sf-text)]/10"
       >
         {copied ? (
@@ -136,7 +138,13 @@ export function CodeOfferStrip({ code, value }: { code: string; value: number })
       style={{ background: 'color-mix(in srgb, var(--sf-primary) 6%, var(--sf-bg))' }}
     >
       <p className="text-sm">
-        <span className="font-bold text-[color:var(--sf-primary-text)]">Extra {value}% off</span> at checkout
+        {tx('catalog.code.extra', {
+          offer: (
+            <span key="offer" className="font-bold text-[color:var(--sf-primary-text)]">
+              {t('catalog.code.extraOff', { value })}
+            </span>
+          ),
+        })}
       </p>
       <CouponCode code={code} className="h-10 shrink-0 text-[color:var(--sf-primary-text)]" />
     </div>

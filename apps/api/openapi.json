@@ -3964,6 +3964,9 @@
           "source": {
             "type": "string"
           },
+          "storeLanguage": {
+            "type": "string"
+          },
           "subdomain": {
             "type": "string"
           }
@@ -5469,6 +5472,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "storeLanguage": {
+            "type": "string"
           }
         },
         "required": [
@@ -21530,7 +21536,7 @@
             "session": []
           }
         ],
-        "summary": "Set the return window and the shopper emails the store sends",
+        "summary": "Set the return window, the shopper emails the store sends and the store language",
         "tags": [
           "Store"
         ],

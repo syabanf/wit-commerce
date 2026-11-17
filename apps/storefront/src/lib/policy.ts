@@ -1,11 +1,27 @@
 import type { Industry } from '@rc/types'
+import { t } from '../i18n'
 
-/** The returns rule each industry's stores state in footers, FAQs and the benefits strip. */
+/**
+ * The returns rule each industry's stores state in footers, FAQs and the benefits strip. Each entry is
+ * a getter, so it reads the shopper's language when a page renders it.
+ */
 export const RETURNS_POLICY: Record<Industry, string> = {
-  sport: 'Returns within 14 days of delivery, unused and in the original box.',
-  fashion: 'Returns within 14 days of delivery, unworn with the tags on.',
-  beauty: 'Unopened products return within 14 days of delivery.',
-  electronics: 'Returns within 7 days of delivery, sealed in the original box.',
-  industrial: 'Parts return under the warranty terms in your quote.',
-  fnb: 'Damaged or wrong items replaced if you tell us within 2 days.',
+  get sport() {
+    return t('account.policy.sport')
+  },
+  get fashion() {
+    return t('account.policy.fashion')
+  },
+  get beauty() {
+    return t('account.policy.beauty')
+  },
+  get electronics() {
+    return t('account.policy.electronics')
+  },
+  get industrial() {
+    return t('account.policy.industrial')
+  },
+  get fnb() {
+    return t('account.policy.fnb')
+  },
 }

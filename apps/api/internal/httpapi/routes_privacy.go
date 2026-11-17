@@ -7,7 +7,10 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/crm"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
+	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
+	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
 // unsubscribePurpose keys the signed token in a marketing email's unsubscribe link.
@@ -194,12 +197,21 @@ func (s *Server) unsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	customerID, ok := s.Signer.Open(unsubscribePurpose, token)
 	w.Header().Set("Cache-Control", "no-store")
+	// The page speaks the store's language; a link that opens no customer gets Bahasa Indonesia.
+	lang := "id"
+	if ok {
+		if c, err := store.Get[domain.Customer](r.Context(), s.DB.Pool, "customers", customerID); err == nil {
+			if t, err := store.Get[domain.Tenant](r.Context(), s.DB.Pool, "tenants", c.TenantID); err == nil {
+				lang = rules.StoreLanguage(t)
+			}
+		}
+	}
 	if !ok {
-		unsubscribePage(w, http.StatusBadRequest, "This unsubscribe link is not valid. Ask the store to stop sending you offers.", "")
+		unsubscribePage(w, http.StatusBadRequest, lang, "unsubscribe.bad", "")
 		return
 	}
 	if r.Method == http.MethodGet {
-		unsubscribePage(w, http.StatusOK, "Stop offers and news from this store? Email about your orders still arrives.", token)
+		unsubscribePage(w, http.StatusOK, lang, "unsubscribe.ask", token)
 		return
 	}
 	if err := s.svc.Unsubscribe(r.Context(), s.Clock.NowIso(), customerID); err != nil {
@@ -208,19 +220,20 @@ func (s *Server) unsubscribe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	unsubscribePage(w, http.StatusOK, "You are unsubscribed. The store sends you no more offers or news.", "")
+	unsubscribePage(w, http.StatusOK, lang, "unsubscribe.done", "")
 }
 
-func unsubscribePage(w http.ResponseWriter, status int, message, token string) {
+func unsubscribePage(w http.ResponseWriter, status int, lang, messageKey, token string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
+	title := html.EscapeString(notifications.Say(lang, "unsubscribe"))
 	form := ""
 	if token != "" {
 		form = `<form method="post"><input type="hidden" name="token" value="` + html.EscapeString(token) + `">` +
-			`<button type="submit" style="padding:12px 24px;border:0;border-radius:999px;background:#101112;color:#fff;font:inherit;font-weight:bold;cursor:pointer">Unsubscribe</button></form>`
+			`<button type="submit" style="padding:12px 24px;border:0;border-radius:999px;background:#101112;color:#fff;font:inherit;font-weight:bold;cursor:pointer">` + title + `</button></form>`
 	}
-	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe</title></head>`+
+	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="%s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>%s</title></head>`+
 		`<body style="margin:0;padding:48px 16px;background:#f1f0f1;font-family:Helvetica,Arial,sans-serif;color:#101112">`+
-		`<main style="max-width:480px;margin:0 auto;padding:24px;background:#fff;border-radius:12px"><h1 style="margin:0 0 12px;font-size:20px">Unsubscribe</h1>`+
-		`<p style="margin:0 0 16px;line-height:22px">%s</p>%s</main></body></html>`, html.EscapeString(message), form)
+		`<main style="max-width:480px;margin:0 auto;padding:24px;background:#fff;border-radius:12px"><h1 style="margin:0 0 12px;font-size:20px">%s</h1>`+
+		`<p style="margin:0 0 16px;line-height:22px">%s</p>%s</main></body></html>`, lang, title, title, html.EscapeString(notifications.Say(lang, messageKey)), form)
 }

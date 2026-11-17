@@ -1,6 +1,7 @@
 import { sectionsInOrder } from '@rc/fixtures'
 import type { Category, Collection, Page, PageSection, Product, Template } from '@rc/types'
 import { useMemo } from 'react'
+import { t } from '../i18n'
 import {
   type Catalog,
   collectionItems,
@@ -59,8 +60,8 @@ function defaultSections(catalog: Catalog): PageSection[] {
       'hero',
       'hero',
       tenant.brand.tagline,
-      `${catalog.products.length} products across ${catalog.topCategories.length} categories, with people who know them.`,
-      'Browse the catalog',
+      t('catalog.home.heroBody', { products: catalog.products.length, categories: catalog.topCategories.length }),
+      t('catalog.home.heroCta'),
     ),
     section('category', 'category'),
     ...(sellsThroughSales(catalog)
@@ -68,9 +69,9 @@ function defaultSections(catalog: Catalog): PageSection[] {
           section(
             'sales',
             'cta',
-            'Need a quote or a site visit?',
-            'Our sales engineers size machines, quote spare parts and plan service contracts.',
-            'Talk to sales',
+            t('catalog.home.salesTitle'),
+            t('catalog.home.salesBody'),
+            t('catalog.home.salesCta'),
           ),
         ]
       : []),
@@ -108,7 +109,7 @@ export function useHomeData(): HomeData {
       bestSellers: best.slice(0, 8),
       newest: sortProducts(catalog.products, 'new').slice(0, 8),
       recommended: favouriteProducts.slice(0, 8),
-      recommendedTitle: `Recommended for you, ${first}`,
+      recommendedTitle: t('catalog.home.recommended', { name: first }),
       categories: categories.map((c) => ({ category: c, count: productsIn(catalog, c.id).length })),
       showcase: categories
         .map((c) => ({ category: c, products: sortProducts(productsIn(catalog, c.id), 'best').slice(0, 8) }))

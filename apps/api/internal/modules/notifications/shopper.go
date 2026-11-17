@@ -41,10 +41,13 @@ type ShopperFacts struct {
 	// RefundReference traces a return's refund; RefundByTransfer says staff sent it by bank transfer.
 	RefundReference  string
 	RefundByTransfer bool
+
+	// Lang is the store's language, "id" or "en" (rules.StoreLanguage). Empty means English.
+	Lang string
 }
 
-// phrases holds every sentence of the shopper emails per language. A second language adds a map with
-// the same keys; Lang picks it, and English fills any key it lacks.
+// phrases holds every sentence of the shopper emails, the marketing footer and the unsubscribe page per
+// language. Each map has the same keys; English fills any key a language lacks.
 var phrases = map[string]map[string]string{
 	"en": {
 		"greeting":          "Hi %s,",
@@ -88,14 +91,71 @@ var phrases = map[string]map[string]string{
 		"action.order":      "See your order",
 		"action.pay":        "Pay now",
 		"footer":            "You get this email because you ordered from %s.",
+		"greeting.anyone":   "there",
+		"line.item":         "Item",
+		"line.qty":          "Qty %d",
+		"marketing.footer":  "You get this email because you agreed to offers and news from %s.",
+		"unsubscribe":       "Unsubscribe",
+		"unsubscribe.bad":   "This unsubscribe link is not valid. Ask the store to stop sending you offers.",
+		"unsubscribe.ask":   "Stop offers and news from this store? Email about your orders still arrives.",
+		"unsubscribe.done":  "You are unsubscribed. The store sends you no more offers or news.",
+	},
+	"id": {
+		"greeting":          "Halo %s,",
+		"placed.subject":    "Pesanan %[2]s di %[1]s",
+		"placed.title":      "Terima kasih atas pesanan Anda",
+		"placed.intro":      "Pesanan %s sudah kami terima. Kami kabari lagi saat pesanan dikirim.",
+		"placed.pay_online": "Pesanan Anda menunggu pembayaran. Buka halaman pesanan dan tekan Bayar sekarang untuk membayar %s.",
+		"placed.pay_manual": "Pesanan Anda menunggu pembayaran sebesar %s.",
+		"placed.cod":        "Bayar %s ke kurir saat paket tiba.",
+		"paid.subject":      "Pembayaran untuk %s sudah diterima",
+		"paid.title":        "Pembayaran diterima",
+		"paid.intro":        "Pembayaran Anda sebesar %s untuk pesanan %s sudah kami terima. Pesanan sedang kami siapkan.",
+		"shipped.subject":   "Pesanan %s sedang dikirim",
+		"shipped.title":     "Pesanan Anda sedang dikirim",
+		"shipped.intro":     "Pesanan %s sudah keluar dari gudang kami.",
+		"cancelled.subject": "Pesanan %s dibatalkan",
+		"cancelled.title":   "Pesanan Anda dibatalkan",
+		"cancelled.intro":   "Kami membatalkan pesanan %s.",
+		"cancelled.refund":  "Kami mengembalikan dana %s ke metode pembayaran awal Anda.",
+		"refunded.subject":  "Pengembalian dana pesanan %s",
+		"refunded.title":    "Dana Anda sudah kami kembalikan",
+		"refunded.intro":    "Kami mengembalikan dana %s untuk pesanan %s ke metode pembayaran awal Anda.",
+		"approved.subject":  "Retur %s disetujui",
+		"approved.title":    "Retur Anda disetujui",
+		"approved.intro":    "Kami menyetujui retur %s untuk pesanan %s. Kirim kembali barangnya, dan kami kembalikan dana Anda setelah barang tiba.",
+		"retrefund.subject": "Pengembalian dana retur %s",
+		"retrefund.title":   "Dana retur Anda sudah dikembalikan",
+		"retrefund.intro":   "Retur %s sudah kami terima dan dana %s sudah dikembalikan ke metode pembayaran awal Anda.",
+		"retrefund.bank":    "Retur %s sudah kami terima dan dana %s sudah kami kirim lewat transfer bank.",
+		"label.reference":   "Referensi",
+		"label.order":       "Pesanan",
+		"label.subtotal":    "Subtotal",
+		"label.discount":    "Diskon",
+		"label.shipping":    "Ongkos kirim",
+		"label.free":        "Gratis",
+		"label.total":       "Total",
+		"label.courier":     "Kurir",
+		"label.tracking":    "Nomor resi",
+		"label.return":      "Retur",
+		"label.refund":      "Pengembalian dana",
+		"action.order":      "Lihat pesanan",
+		"action.pay":        "Bayar sekarang",
+		"footer":            "Anda menerima email ini karena berbelanja di %s.",
+		"greeting.anyone":   "Kak",
+		"line.item":         "Barang",
+		"line.qty":          "Jumlah %d",
+		"marketing.footer":  "Anda menerima email ini karena setuju menerima penawaran dan kabar dari %s.",
+		"unsubscribe":       "Berhenti berlangganan",
+		"unsubscribe.bad":   "Tautan berhenti berlangganan ini tidak berlaku. Minta toko berhenti mengirimi Anda penawaran.",
+		"unsubscribe.ask":   "Berhenti menerima penawaran dan kabar dari toko ini? Email tentang pesanan Anda tetap dikirim.",
+		"unsubscribe.done":  "Anda sudah berhenti berlangganan. Toko tidak mengirimi Anda penawaran atau kabar lagi.",
 	},
 }
 
-// Lang is the language shopper emails go out in.
-const Lang = "en"
-
-func say(key string, args ...any) string {
-	p, ok := phrases[Lang][key]
+// Say is one phrase in lang ("id" or "en"), with English for a language or key the map lacks.
+func Say(lang, key string, args ...any) string {
+	p, ok := phrases[lang][key]
 	if !ok {
 		p = phrases["en"][key]
 	}
@@ -105,8 +165,13 @@ func say(key string, args ...any) string {
 // ComposeShopper builds the email for one notice kind: order_placed, payment_received,
 // order_shipped, order_cancelled, order_refunded, return_approved or return_refunded.
 func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
+	say := func(key string, args ...any) string { return Say(f.Lang, key, args...) }
+	name := firstWord(f.CustomerName)
+	if name == "" {
+		name = say("greeting.anyone")
+	}
 	e := Email{
-		Greeting: say("greeting", firstWord(f.CustomerName)), Footer: say("footer", f.Brand.Name),
+		Greeting: say("greeting", name), Footer: say("footer", f.Brand.Name),
 		Action: &Link{Label: say("action.order"), URL: f.OrderURL},
 	}
 	totals := func() []Row {
@@ -179,7 +244,7 @@ func firstWord(name string) string {
 	if fields := strings.Fields(name); len(fields) > 0 {
 		return fields[0]
 	}
-	return "there"
+	return ""
 }
 
 // QueueShopper queues a shopper email in the caller's transaction. A second email with the same

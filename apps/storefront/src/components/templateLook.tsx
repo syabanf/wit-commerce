@@ -2,6 +2,7 @@ import { type TemplateLook, lookFor, nowMs, tenantPhotos } from '@rc/fixtures'
 import type { PageSection } from '@rc/types'
 import { cn } from '@rc/ui'
 import { type ReactNode, createContext, useContext } from 'react'
+import { t } from '../i18n'
 import { currentDeal, welcomePromotion } from '../lib/catalog'
 import { paths } from '../lib/paths'
 import { useShop } from '../state/shop'
@@ -61,7 +62,7 @@ function ImmersiveHero({ section }: { section: PageSection }) {
   const { tenant, store } = useShop()
   return (
     <section
-      aria-label="Featured"
+      aria-label={t('catalog.hero.aria')}
       className="md:min-h-[560px] lg:min-h-[640px] text-white relative flex min-h-[440px] items-end overflow-hidden rounded-[var(--sf-card-radius)]"
     >
       <Photo
@@ -82,7 +83,7 @@ function ImmersiveHero({ section }: { section: PageSection }) {
         <SectionButton
           section={section}
           fallback={paths.search(store, '', { sort: 'best' })}
-          label={section.ctaLabel || 'Discover the range'}
+          label={section.ctaLabel || t('catalog.hero.discover')}
           variant="light"
           size="lg"
           className="mt-8"
@@ -110,7 +111,7 @@ function OfferHero({ section }: { section: PageSection }) {
           <SectionButton
             section={section}
             fallback={paths.search(store, '', { deals: true })}
-            label={section.ctaLabel || 'Shop the offer'}
+            label={section.ctaLabel || t('catalog.hero.shopOffer')}
             variant="light"
             size="lg"
           />
@@ -119,7 +120,7 @@ function OfferHero({ section }: { section: PageSection }) {
       </div>
       {promotion && (
         <div className="shrink-0">
-          <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase">Ends in</p>
+          <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase">{t('catalog.hero.endsIn')}</p>
           <Countdown endAt={promotion.endAt} boxClassName="bg-[var(--sf-bg)] text-[color:var(--sf-text)]" />
           <p className="mt-2 text-xs">{promoTerms(promotion)}</p>
         </div>
@@ -128,7 +129,7 @@ function OfferHero({ section }: { section: PageSection }) {
   )
   const surface = 'bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]'
   return (
-    <section aria-label="Featured">
+    <section aria-label={t('catalog.hero.aria')}>
       {promotion ? (
         <Ticket
           className={surface}
@@ -148,7 +149,7 @@ function CompactHero({ section }: { section: PageSection }) {
   const { tenant, store } = useShop()
   return (
     <section
-      aria-label="Featured"
+      aria-label={t('catalog.hero.aria')}
       className="sf-card gap-6 p-4 md:grid-cols-[minmax(0,1fr)_280px] md:p-6 lg:grid-cols-[minmax(0,1fr)_360px] grid grid-cols-1 items-center"
     >
       <div className="min-w-0 md:pl-2">
@@ -159,7 +160,7 @@ function CompactHero({ section }: { section: PageSection }) {
         <SectionButton
           section={section}
           fallback={paths.search(store, '', { sort: 'best' })}
-          label={section.ctaLabel || 'Browse the catalog'}
+          label={section.ctaLabel || t('catalog.home.heroCta')}
           className="mt-5"
         />
       </div>

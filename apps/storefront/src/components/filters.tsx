@@ -2,7 +2,8 @@ import { cn } from '@rc/ui'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { ListingState } from '../features/listing'
-import { SORT_LABEL, type SortKey, isSortKey } from '../lib/catalog'
+import { t, tp } from '../i18n'
+import { SORT_LABEL, type SortKey, isSortKey, sortLabel } from '../lib/catalog'
 import { Drawer } from './Drawer'
 import { Button, inputClass } from './ui'
 
@@ -11,7 +12,7 @@ export function FilterControls({ listing, className }: { listing: ListingState; 
   const uid = useId()
   if (!listing.facets.length)
     return (
-      <p className={cn('text-sm text-[color:var(--sf-muted)]', className)}>No filters for these products.</p>
+      <p className={cn('text-sm text-[color:var(--sf-muted)]', className)}>{t('catalog.filter.none')}</p>
     )
   return (
     <div className={cn('space-y-6', className)}>
@@ -30,7 +31,7 @@ export function FilterControls({ listing, className }: { listing: ListingState; 
                 onChange={(e) => listing.setMax(f.def.id, e.target.value || null)}
                 className={inputClass}
               >
-                <option value="">Any</option>
+                <option value="">{t('catalog.filter.any')}</option>
                 {f.options.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label} ({o.count})
@@ -64,7 +65,7 @@ export function FilterControls({ listing, className }: { listing: ListingState; 
       })}
       {listing.activeCount > 0 && (
         <Button variant="ghost" onClick={listing.clear}>
-          Clear all filters
+          {t('catalog.filter.clearAll')}
         </Button>
       )}
     </div>
@@ -76,7 +77,7 @@ export function SortSelect({ listing, className }: { listing: ListingState; clas
   return (
     <div className={cn('gap-2 flex items-center', className)}>
       <label htmlFor={id} className="text-sm md:not-sr-only sr-only shrink-0 text-[color:var(--sf-muted)]">
-        Sort by
+        {t('catalog.sort.by')}
       </label>
       <div className="min-w-0 md:flex-none relative flex-1">
         <select
@@ -90,7 +91,7 @@ export function SortSelect({ listing, className }: { listing: ListingState; clas
         >
           {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
             <option key={k} value={k}>
-              {SORT_LABEL[k]}
+              {sortLabel(k)}
             </option>
           ))}
         </select>
@@ -107,7 +108,7 @@ export function SortSelect({ listing, className }: { listing: ListingState; clas
 export function FilterSheetButton({
   listing,
   className,
-  label = 'Filters',
+  label = t('catalog.filter.title'),
 }: {
   listing: ListingState
   className?: string
@@ -130,10 +131,10 @@ export function FilterSheetButton({
       <Drawer
         open={open}
         onOpenChange={setOpen}
-        title="Filters"
+        title={t('catalog.filter.title')}
         footer={
           <Button variant="dark" full onClick={() => setOpen(false)}>
-            Show {listing.results.length} {listing.results.length === 1 ? 'result' : 'results'}
+            {tp('catalog.filter.show', listing.results.length)}
           </Button>
         }
       >

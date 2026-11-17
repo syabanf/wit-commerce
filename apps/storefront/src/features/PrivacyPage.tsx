@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
+import { t, useLang } from '../i18n'
 
 // The privacy notice UU PDP Pasal 21 asks for, in Bahasa Indonesia, built from the store's own data.
 // The retention periods follow PP 80/2019 Pasal 25. Keep it in step with docs/compliance.md.
@@ -19,14 +20,29 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 const list = 'list-disc space-y-1 pl-5'
 
+/**
+ * For a shopper reading the store in English: the legal pages stay in Bahasa Indonesia, which binds
+ * (PP 80/2019 Pasal 55). Renders nothing in Indonesian.
+ */
+export function BindingNote({ className }: { className?: string }) {
+  const lang = useLang()
+  if (lang !== 'en') return null
+  return (
+    <p lang="en" className={`text-sm font-semibold ${className ?? ''}`}>
+      {t('account.legal.binding')}
+    </p>
+  )
+}
+
 /** Kebijakan privasi toko: siapa pengendali data, apa yang dikumpulkan, untuk apa dan berapa lama. */
 export function PrivacyPage() {
   const { tenant, store } = useShop()
-  useTitle(`Kebijakan Privasi · ${tenant.name}`)
+  useTitle(`${t('account.privacyPage.title')} · ${tenant.name}`)
   const host = storeHost(tenant)
 
   return (
-    <article className="max-w-3xl space-y-8 md:pt-12 leading-relaxed mx-auto">
+    <article lang="id" className="max-w-3xl space-y-8 md:pt-12 leading-relaxed mx-auto">
+      <BindingNote />
       <header className="space-y-2">
         <h1 className="sf-display text-3xl font-bold">Kebijakan Privasi</h1>
         <p className="text-[color:var(--sf-muted)]">

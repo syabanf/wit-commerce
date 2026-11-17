@@ -2,6 +2,7 @@ import { fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
 import type { AgentPolicy, Customer, Industry, Order, Product } from '@rc/types'
 import type { AIChatAnswer } from '@rc/api'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { type MessageKey, t } from '../i18n'
 import {
   type AgentPlan,
   type MandateInput,
@@ -16,24 +17,13 @@ import { buildOrder, withTerms } from '../lib/checkout'
 import { type ShopValue, useShop } from './shop'
 import { useStore } from './store'
 
-const EXAMPLES: Record<Industry, string[]> = {
-  sport: [
-    'Running shoes for my first half marathon, size 42, under Rp 1,5 juta',
-    'Energy gels for Sunday’s race at the best price',
-    'Belikan kaos lari yang ringan di bawah 400 ribu',
-  ],
-  beauty: [
-    'Serum for sensitive skin under Rp 300 ribu',
-    'A daily sunscreen at the best price',
-    'A gift set for my mother around Rp 500 ribu',
-  ],
-  industrial: [
-    'Air filter element set for compressor line 2',
-    'Way lube oil 20L at the best price this month',
-  ],
-  fashion: ['A linen shirt under Rp 400 ribu'],
-  electronics: ['Wireless earbuds under Rp 1 juta'],
-  fnb: ['Coffee beans for a week'],
+const EXAMPLES: Record<Industry, MessageKey[]> = {
+  sport: ['agent.example.sport.1', 'agent.example.sport.2', 'agent.example.sport.3'],
+  beauty: ['agent.example.beauty.1', 'agent.example.beauty.2', 'agent.example.beauty.3'],
+  industrial: ['agent.example.industrial.1', 'agent.example.industrial.2'],
+  fashion: ['agent.example.fashion.1'],
+  electronics: ['agent.example.electronics.1'],
+  fnb: ['agent.example.fnb.1'],
 }
 
 /** Milliseconds between the agent's work steps, slow enough to follow on a demo screen. */
@@ -106,7 +96,7 @@ const fresh = (task: string): Ask => ({
 const YES = /^(yes|ya|iya|ok(e|ay)?|approve|setuju|bayar|lanjut|go)\b/i
 const NO = /^(no|tidak|nggak|gak|cancel|batal|decline|jangan|not now)\b/i
 const YOU_PICK =
-  /pick for me|you (choose|pick|decide)|terserah|bebas|kamu (pilih|aja)|rekomendasi|recommended/i
+  /pick for me|you (choose|pick|decide)|terserah|bebas|kamu (pilih|aja)|pilihkan|rekomendasi|recommended/i
 /** Follow-ups on a cart that reopen one question and keep the rest. */
 const CHANGES: [RegExp, Partial<Ask>][] = [
   [/change (shipping|courier)|ganti (kurir|pengiriman|ongkir)/i, { courierId: null }],
@@ -121,7 +111,6 @@ const CHANGES: [RegExp, Partial<Ask>][] = [
   ],
 ]
 
-const NOTHING_OPEN = 'Tell me what you need first, and I will find it.'
 /** Model actions that reopen one question, the same as the buttons under the cart. */
 const CHANGE_OF: Partial<Record<AIChatAnswer['action'], Partial<Ask>>> = {
   change_shipping: { courierId: null },
@@ -162,7 +151,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
   const { catalog, tenant, customer, send } = useShop()
   const { state } = useStore()
   const policy = state.agentPolicies.find((p) => p.tenantId === tenant.id) ?? null
-  const examples = EXAMPLES[tenant.industry]
+  const examples = EXAMPLES[tenant.industry].map((key) => t(key))
   const [settings, setSettings] = useState<Settings>({ paymentTypeId: null })
   const [items, setItems] = useState<Item[]>([])
   const [ctx, setCtx] = useState<Context | null>(null)
@@ -227,22 +216,26 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       setCtx({ ...c, plan })
       const fits = plan.candidates.filter((x) => !x.rejected).slice(0, 4)
       const why = choice.reasons
-        .filter((r) => !/ in stock| available$/.test(r))
+        .filter((r) => r.kind !== 'stock')
         .slice(0, 3)
-        .map(lower)
+        .map((r) => lower(r.text))
         .join(', ')
       return push(
         question(
           'product',
           fits.length === 1
-            ? `One product fits: ${choice.product.name}${why ? `, ${why}` : ''}. Want this one?`
-            : `I found ${fits.length} that fit. I suggest ${choice.product.name}${why ? `: ${why}` : ''}. Which one do you want?`,
+            ? t('agent.chat.productOne', { name: choice.product.name, why: why ? `, ${why}` : '' })
+            : t('agent.chat.productMany', {
+                count: fits.length,
+                name: choice.product.name,
+                why: why ? `: ${why}` : '',
+              }),
           fits.map((x) => ({
             id: x.product.id,
             title: x.product.name,
             detail: [
               x.product.options.length ? null : x.variant?.name,
-              x.reasons.find((r) => r.startsWith('Rated')),
+              x.reasons.find((r) => r.kind === 'rating')?.text,
             ]
               .filter(Boolean)
               .join(' · '),
@@ -261,15 +254,16 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
         setCtx({ ...c, plan })
         const stock = (v: (typeof variants)[number]) => variantAvailable(catalog, choice.product, v.id)
         const most = variants.reduce((a, b) => ((stock(b) ?? 0) > (stock(a) ?? 0) ? b : a))
-        const names = choice.product.options.map((o) => o.name.toLowerCase()).join(' and ')
+        const names = choice.product.options.map((o) => o.name.toLowerCase()).join(t('agent.and'))
         return push(
           question(
             'variant',
-            `Which ${names || 'option'}? I suggest ${most.name}: it has the most in stock.`,
+            t('agent.chat.variant', { names: names || t('agent.chat.option'), name: most.name }),
             variants.slice(0, 8).map((v) => ({
               id: v.id,
               title: v.name,
-              detail: stock(v) === null ? 'Available' : `${stock(v)} in stock`,
+              detail:
+                stock(v) === null ? t('agent.chat.available') : t('agent.chat.inStock', { count: stock(v)! }),
               amount: fmtIdr(v.price),
               best: v === most,
             })),
@@ -286,33 +280,41 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       return push(
         question(
           'shipping',
-          `How should it ship to ${customer!.city}? I suggest ${pick.courier.label}: ${pick.fee ? fmtIdr(pick.fee) : 'free for this order'}, ${pick.courier.eta.toLowerCase()}.`,
+          t('agent.chat.shipping', {
+            city: customer!.city,
+            courier: pick.courier.label,
+            fee: pick.fee ? fmtIdr(pick.fee) : t('agent.chat.freeForOrder'),
+            eta: pick.courier.eta.toLowerCase(),
+          }),
           plan.shippingOptions.map((o) => ({
             id: o.courier.id,
             title: o.courier.label,
             detail: o.courier.eta,
-            amount: o.fee ? fmtIdr(o.fee) : 'Free',
+            amount: o.fee ? fmtIdr(o.fee) : t('agent.chat.free'),
             best: o === pick,
           })),
         ),
       )
     }
     if (!c.offer) {
-      const options = plan.trials.slice(0, 4).map((t, i) => {
+      const options = plan.trials.slice(0, 4).map((trial, i) => {
         // Code labels read "RUNMONTH15 · Running Month 15% off": the code goes in the title, its name below.
-        const [coded, automatic] = partition(t.totals.discounts, (d) => d.label.includes(' · '))
+        const [coded, automatic] = partition(trial.totals.discounts, (d) => d.label.includes(' · '))
         return {
-          id: `${t.paymentType.id}|${t.code ?? ''}`,
+          id: `${trial.paymentType.id}|${trial.code ?? ''}`,
           title:
             [...coded.map((d) => d.label.split(' · ')[0]), ...automatic.map((d) => d.label)].join(' + ') ||
-            'No discount',
-          detail: [`Pay with ${t.paymentType.name}`, ...coded.map((d) => d.label.split(' · ')[1])].join(
-            ' · ',
-          ),
-          amount: fmtIdr(t.payable),
-          note: t.totals.discount ? `Saves ${fmtIdr(t.totals.discount)}` : undefined,
+            t('agent.chat.noDiscount'),
+          detail: [
+            t('agent.chat.payWith', { name: trial.paymentType.name }),
+            ...coded.map((d) => d.label.split(' · ')[1]),
+          ].join(' · '),
+          amount: fmtIdr(trial.payable),
+          note: trial.totals.discount
+            ? t('agent.chat.saves', { amount: fmtIdr(trial.totals.discount) })
+            : undefined,
           best: i === 0,
-          offer: { code: t.code, paymentTypeId: t.paymentType.id },
+          offer: { code: trial.code, paymentTypeId: trial.paymentType.id },
         }
       })
       const top = plan.trials[0]!
@@ -320,8 +322,8 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
         question(
           'offer',
           top.totals.discount
-            ? `Which discount should I use? I suggest ${options[0]!.title}: it saves ${fmtIdr(top.totals.discount)}.`
-            : `No discount applies to this one. How should I pay? I suggest ${top.paymentType.name}.`,
+            ? t('agent.chat.offer', { title: options[0]!.title, amount: fmtIdr(top.totals.discount) })
+            : t('agent.chat.offerNone', { name: top.paymentType.name }),
           options,
         ),
       )
@@ -337,10 +339,14 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
         kind: 'bot',
         text: `${
           negotiation.amount
-            ? `The store’s agent agreed to ${negotiation.grantedPct}% more off (${fmtIdr(negotiation.amount)}).`
+            ? t('agent.chat.negotiated', { pct: negotiation.grantedPct, amount: fmtIdr(negotiation.amount) })
             : negotiation.note
-        } Check the cart below. I pay only when you approve.`,
-        replies: ['Change shipping', 'Change discount', 'Another product'],
+        } ${t('agent.chat.checkCart')}`,
+        replies: [
+          t('agent.chat.changeShipping'),
+          t('agent.chat.changeDiscount'),
+          t('agent.chat.anotherProduct'),
+        ],
       },
       { id: id(), kind: 'cart', plan, status: 'awaiting' },
     )
@@ -365,12 +371,12 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     const placed = placeAgentOrder(cart.plan, catalog, customer, state)
     if (typeof placed === 'string') {
       patch(cart.id, { status: 'failed', note: placed })
-      push({ id: id(), kind: 'bot', text: `I could not place it: ${placed}` })
+      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason: placed }) })
       return
     }
     send({ type: 'orders/place', order: withTerms(placed, tenant), customer: null }).catch((err: Error) => {
       patch(cart.id, { status: 'failed', note: err.message })
-      push({ id: id(), kind: 'bot', text: `I could not place it: ${err.message}` })
+      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason: err.message }) })
     })
     setOrders((list) => [placed, ...list])
     patch(cart.id, { status: 'paid' })
@@ -379,7 +385,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       {
         id: id(),
         kind: 'bot',
-        text: 'Done. Anything else I can find for you?',
+        text: t('agent.chat.done'),
         replies: examples.filter((e) => e !== ctx?.task).slice(0, 2),
       },
     )
@@ -389,8 +395,8 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     push({
       id: id(),
       kind: 'bot',
-      text: 'No problem, nothing was paid. Want me to look again?',
-      replies: ['Cheaper', ...examples.slice(0, 1)],
+      text: t('agent.chat.declined'),
+      replies: [t('agent.chat.cheaper'), ...examples.slice(0, 1)],
     })
   }
 
@@ -399,7 +405,11 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     const size = /(?:size|ukuran|uk\.?)\s*(\d{2})\b/i.exec(value)?.[1]
     const pay = /^(?:pay|bayar)\s*(?:with|pakai|pake|dengan|via)?\s*(.+)$/i.exec(value)?.[1]
     if (ctx?.plan?.choice && /cheaper|lebih murah|murahan|less expensive/i.test(value)) {
-      push({ id: id(), kind: 'bot', text: `Looking for something under ${fmtIdr(ctx.plan.choice.price)}.` })
+      push({
+        id: id(),
+        kind: 'bot',
+        text: t('agent.chat.lookingUnder', { amount: fmtIdr(ctx.plan.choice.price) }),
+      })
       run({
         ...ctx,
         budget: Math.ceil(ctx.plan.choice.price / 1000) * 1000 - 1000,
@@ -423,7 +433,7 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       )
       if (type) {
         setSettings((s) => ({ ...s, paymentTypeId: type.id }))
-        push({ id: id(), kind: 'bot', text: `Okay, I will pay with ${type.name}.` })
+        push({ id: id(), kind: 'bot', text: t('agent.chat.payingWith', { name: type.name }) })
         run({ ...ctx, offer: null }, { paymentTypeId: type.id })
         return true
       }
@@ -482,21 +492,23 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
           return asking ? pick(asking, answer.optionId, false) : undefined
         case 'pick_for_me': {
           const best = asking?.options.find((o) => o.best) ?? asking?.options[0]
-          return asking && best ? pick(asking, best.id, false) : reply(answer.reply || NOTHING_OPEN)
+          return asking && best
+            ? pick(asking, best.id, false)
+            : reply(answer.reply || t('agent.chat.nothingOpen'))
         }
         case 'decline':
-          return awaiting ? decline(awaiting) : reply(answer.reply || NOTHING_OPEN)
+          return awaiting ? decline(awaiting) : reply(answer.reply || t('agent.chat.nothingOpen'))
         case 'cheaper':
-          return dispatch('cheaper') || reply(answer.reply || NOTHING_OPEN)
+          return dispatch('cheaper') || reply(answer.reply || t('agent.chat.nothingOpen'))
         case 'size':
-          return dispatch(`size ${answer.size}`) || reply(answer.reply || NOTHING_OPEN)
+          return dispatch(`size ${answer.size}`) || reply(answer.reply || t('agent.chat.nothingOpen'))
         case 'pay_with':
-          return dispatch(`pay with ${answer.payment}`) || reply(answer.reply || NOTHING_OPEN)
+          return dispatch(`pay with ${answer.payment}`) || reply(answer.reply || t('agent.chat.nothingOpen'))
         case 'answer':
-          return reply(answer.reply || 'I did not catch that. What would you like me to find?')
+          return reply(answer.reply || t('agent.chat.notCaught'))
         default:
           if (ctx && change) return advance({ ...ctx, ...change })
-          return reply(answer.reply || NOTHING_OPEN)
+          return reply(answer.reply || t('agent.chat.nothingOpen'))
       }
     } catch {
       run(fresh(value))
@@ -521,10 +533,8 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       return push({
         id: id(),
         kind: 'bot',
-        text: awaiting
-          ? 'Nothing in stock fits all of that, so the cart above is still my best offer.'
-          : 'Nothing in stock fits all of that. Try a higher budget or a broader request.',
-        replies: awaiting ? ['Yes, pay it'] : examples.slice(0, 2),
+        text: awaiting ? t('agent.chat.keepCart') : t('agent.chat.nothingFits'),
+        replies: awaiting ? [t('agent.chat.yesPay')] : examples.slice(0, 2),
       })
     advance(current.ask, current.settings)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- steps the active run on each tick
@@ -570,7 +580,7 @@ function placeAgentOrder(
     discounts: [
       ...best.totals.discounts,
       ...(negotiated
-        ? [{ promotionId: 'agent-negotiation', label: 'Agent negotiation', amount: negotiated }]
+        ? [{ promotionId: 'agent-negotiation', label: t('agent.negotiation.label'), amount: negotiated }]
         : []),
     ],
   }

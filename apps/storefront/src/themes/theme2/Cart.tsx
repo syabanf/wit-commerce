@@ -11,27 +11,28 @@ import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { ProductGrid, ShowHeading } from './ProductCard'
 import { Money } from '../../components/Money'
+import { t } from '../../i18n'
 
 /** Theme 2 cart: serif title, hairline rows, a quantity stepper, Edit and Remove as text buttons. */
 export function Cart({ view }: { view: CartView }) {
   const { store, catalog } = useShop()
   const crossSell = view.crossSell.length > 0 && (
     <section aria-labelledby="cross-h">
-      <ShowHeading id="cross-h" title="You may also like" />
+      <ShowHeading id="cross-h" title={t('checkout.cart.alsoLike')} />
       <ProductGrid products={view.crossSell} rail />
     </section>
   )
   if (!view.items.length)
     return (
       <div className="space-y-10 md:pt-12">
-        <h1 className="sf-display text-4xl">Cart</h1>
+        <h1 className="sf-display text-4xl">{t('checkout.cart.titleShort')}</h1>
         <EmptyState
           icon={<ShoppingBag aria-hidden="true" />}
-          title="Your cart is empty"
-          text="Add something you like and it waits here, even if you close the tab."
+          title={t('checkout.cart.empty')}
+          text={t('checkout.cart.emptyText')}
           action={
             <ButtonLink to={paths.home(store)} variant="dark">
-              Start shopping
+              {t('checkout.cart.startShopping')}
             </ButtonLink>
           }
         />
@@ -42,7 +43,7 @@ export function Cart({ view }: { view: CartView }) {
     <div className="space-y-12 md:pt-12">
       <div>
         <h1 className="sf-display pb-4 text-4xl md:text-5xl md:font-extrabold">
-          Cart <span className="text-lg text-[color:var(--sf-muted)]">({view.totals.count})</span>
+          {t('checkout.cart.titleShort')} <span className="text-lg text-[color:var(--sf-muted)]">({view.totals.count})</span>
         </h1>
         <div className="gap-8 lg:grid-cols-[minmax(0,1fr)_380px] grid grid-cols-1">
           <ul className="min-w-0 divide-y divide-[color:var(--sf-line)] self-start border-y border-[color:var(--sf-line)]">
@@ -88,16 +89,16 @@ export function Cart({ view }: { view: CartView }) {
                         value={item.line.qty}
                         onChange={(q) => view.setQty(item.line.key, q)}
                         max={max}
-                        label={`Quantity of ${item.product.name}`}
+                        label={t('checkout.cart.quantityOf', { name: item.product.name })}
                       />
                       <Link
                         to={paths.product(store, item.product.id)}
                         className="min-h-11 text-sm inline-flex items-center underline underline-offset-4"
                       >
-                        Edit<span className="sr-only"> {item.product.name}</span>
+                        {t('checkout.cart.edit')}<span className="sr-only"> {item.product.name}</span>
                       </Link>
                       <Button variant="ghost" className="px-0 font-normal" onClick={() => view.remove(item)}>
-                        Remove<span className="sr-only"> {item.product.name}</span>
+                        {t('checkout.cart.remove')}<span className="sr-only"> {item.product.name}</span>
                       </Button>
                     </div>
                   </div>
@@ -106,7 +107,7 @@ export function Cart({ view }: { view: CartView }) {
             })}
           </ul>
           <aside
-            aria-label="Order summary"
+            aria-label={t('checkout.cart.orderSummary')}
             className="space-y-6 lg:sticky lg:top-[var(--sf-sticky-top)] lg:rounded-[var(--sf-card-radius)] lg:border lg:border-[color:var(--sf-line)] lg:bg-[var(--sf-bg)] lg:p-6 self-start"
           >
             <FreeShippingProgress />
@@ -116,11 +117,11 @@ export function Cart({ view }: { view: CartView }) {
               subtotal={view.totals.subtotal}
               discounts={view.totals.discounts}
               shipping={view.shipping}
-              shippingLabel="Shipping estimate"
+              shippingLabel={t('checkout.summary.shippingEstimate')}
               total={view.total}
             />
             <ButtonLink to={paths.checkout(store)} variant="dark" size="lg" full>
-              Checkout
+              {t('checkout.cart.checkout')}
             </ButtonLink>
           </aside>
         </div>

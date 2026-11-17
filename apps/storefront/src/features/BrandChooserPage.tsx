@@ -1,5 +1,4 @@
 import type { StorefrontTheme, Tenant } from '@rc/types'
-import { STOREFRONT_THEME_DESCRIPTION, STOREFRONT_THEME_LABEL } from '@rc/types'
 import { cn } from '@rc/ui'
 import {
   ArrowRight,
@@ -21,64 +20,65 @@ import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useStore } from '../state/store'
 import { HTTP } from '../lib/api'
-import { THEMES } from '../themes/registry'
+import { THEMES, themeDescription, themeLabel, themeShortName } from '../themes/registry'
+import { type MessageKey, t } from '../i18n'
 
 const THEME_IDS = Object.keys(THEMES) as StorefrontTheme[]
 
 /** Flows worth trying, each a deep link into one of the demo stores. */
-const FLOWS: { icon: LucideIcon; title: string; text: string; to: string }[] = [
+const FLOWS: { icon: LucideIcon; title: MessageKey; text: MessageKey; to: string }[] = [
   {
     icon: SlidersHorizontal,
-    title: 'Category with filters',
-    text: 'Road shoes filtered by drop, cushioning and carbon plate.',
+    title: 'shell.flow.filters',
+    text: 'shell.flow.filters.text',
     to: '/lari/c/cat-lari-road',
   },
   {
     icon: Layers,
-    title: 'Size and colour variants',
-    text: 'Velocity Trainer: 6 sizes in 3 colours, spare-lace add-ons.',
+    title: 'shell.flow.variants',
+    text: 'shell.flow.variants.text',
     to: '/lari/p/prd-lr-102',
   },
   {
     icon: ShoppingCart,
-    title: 'Buy 2, get 1 free',
-    text: 'Add three pairs of socks and watch the cart price them.',
+    title: 'shell.flow.bxgy',
+    text: 'shell.flow.bxgy.text',
     to: '/lari/p/prd-lr-115',
   },
   {
     icon: ShoppingBag,
-    title: 'Checkout in four steps',
-    text: 'Contact, delivery, payment types from master data, review.',
+    title: 'shell.flow.checkout',
+    text: 'shell.flow.checkout.text',
     to: '/lari/checkout',
   },
   {
     icon: Store,
-    title: 'Personal store',
-    text: "Fahmi's page at /lari/fahmi; orders from it count for him.",
+    title: 'shell.flow.personal',
+    text: 'shell.flow.personal.text',
     to: '/lari/fahmi',
   },
   {
     icon: Sparkles,
-    title: 'Agentic checkout',
-    text: 'An AI agent buys running shoes under a mandate, negotiates and asks before paying.',
+    title: 'shell.flow.agentic',
+    text: 'shell.flow.agentic.text',
     to: '/lari/agent',
   },
   {
     icon: Bot,
-    title: 'Shopping assistant',
-    text: 'Ask "serum untuk kulit sensitif di bawah 300rb".',
+    title: 'shell.flow.assistant',
+    text: 'shell.flow.assistant.text',
     to: '/aruna',
   },
   {
     icon: Palette,
-    title: 'Editorial collection',
-    text: 'Sensitive skin collection in Theme 2.',
+    title: 'shell.flow.editorial',
+    text: 'shell.flow.editorial.text',
     to: '/aruna/collections/sensitive-skin',
   },
   {
     icon: Handshake,
-    title: 'Talk to sales',
-    text: 'A CNC machine sold through a quote, not a cart.',
+    title: 'shell.flow.sales',
+    text: 'shell.flow.sales.text',
     to: '/teknika/p/prd-tk-101',
   },
 ]
@@ -136,33 +136,33 @@ const otherTheme = (t: Tenant): StorefrontTheme => THEME_IDS.find((id) => id !==
 /** `/`: the demo hub. Both themes, every demo store, and the flows worth trying. */
 export function BrandChooserPage() {
   const { state } = useStore()
-  useTitle('WIT Commerce · Storefront demo')
+  useTitle(t('shell.hub.pageTitle'))
   const tenants = HTTP
     ? state.tenants
-    : state.tenants.filter((t) =>
-        state.pages.some((p) => p.tenantId === t.id && p.kind === 'home' && p.status === 'published'),
+    : state.tenants.filter((x) =>
+        state.pages.some((p) => p.tenantId === x.id && p.kind === 'home' && p.status === 'published'),
       )
-  const using = (theme: StorefrontTheme) => tenants.filter((t) => t.brand.theme === theme)
+  const using = (theme: StorefrontTheme) => tenants.filter((x) => x.brand.theme === theme)
 
   return (
     <main className="px-4 py-10 md:px-6 md:py-16 lg:px-10 min-h-dvh bg-surface">
       <div className="max-w-6xl space-y-12 mx-auto">
         <header>
           <p className="font-semibold tracking-wider text-[11px] text-muted uppercase">
-            WIT Commerce · storefront demo
+            {t('shell.hub.kicker')}
           </p>
           <h1 className="mt-2 max-w-3xl text-3xl font-bold tracking-tight md:text-5xl">
-            Two themes, three brands, one platform<span className="text-accent">.</span>
+            {t('shell.hub.title')}
+            <span className="text-accent">.</span>
           </h1>
           <p className="mt-3 max-w-2xl text-muted">
-            Every store reads the same catalog, prices, payment types and promotions. The brand guideline sets
-            the colours and the theme sets the layout. Open a store, or view any store in the other theme.
+            {t('shell.hub.text')}
           </p>
         </header>
 
         <section aria-labelledby="themes-h">
           <h2 id="themes-h" className="text-xl font-bold">
-            Themes
+            {t('shell.hub.themes')}
           </h2>
           <ul className="mt-4 gap-4 md:grid-cols-2 grid grid-cols-1">
             {THEME_IDS.map((theme) => {
@@ -171,10 +171,12 @@ export function BrandChooserPage() {
               return (
                 <li key={theme} className="p-5 flex flex-col rounded-card bg-card shadow-card">
                   <Wireframe theme={theme} />
-                  <h3 className="mt-5 text-2xl font-bold tracking-tight">{STOREFRONT_THEME_LABEL[theme]}</h3>
-                  <p className="mt-1 text-sm text-muted">{STOREFRONT_THEME_DESCRIPTION[theme]}</p>
+                  <h3 className="mt-5 text-2xl font-bold tracking-tight">{themeLabel(theme)}</h3>
+                  <p className="mt-1 text-sm text-muted">{themeDescription(theme)}</p>
                   <p className="mt-4 text-xs font-semibold text-muted">
-                    Live on: {live.length ? live.map((t) => t.name).join(', ') : 'no store yet'}
+                    {t('shell.hub.liveOn', {
+                      stores: live.length ? live.map((x) => x.name).join(', ') : t('shell.hub.noStore'),
+                    })}
                   </p>
                   <div className="pt-5 mt-auto">
                     <Link
@@ -185,20 +187,20 @@ export function BrandChooserPage() {
                       }
                       className="h-11 gap-2 px-5 text-sm font-semibold text-white sm:w-auto sm:inline-flex flex w-full items-center justify-center rounded-full bg-accent-strong shadow-glow hover:bg-accent-dark"
                     >
-                      Open the {lead.name} demo
+                      {t('shell.hub.open', { name: lead.name })}
                       <ArrowRight className="size-4" aria-hidden="true" />
                     </Link>
                     <p className="mt-3 gap-x-4 text-sm flex flex-wrap items-center text-muted">
-                      <span>Also try:</span>
+                      <span>{t('shell.hub.alsoTry')}</span>
                       {tenants
-                        .filter((t) => t.brand.theme !== theme)
-                        .map((t) => (
+                        .filter((other) => other.brand.theme !== theme)
+                        .map((other) => (
                           <Link
-                            key={t.id}
-                            to={`${paths.home(t.subdomain)}?theme=${theme}`}
+                            key={other.id}
+                            to={`${paths.home(other.subdomain)}?theme=${theme}`}
                             className="min-h-11 font-semibold inline-flex items-center text-foreground underline-offset-4 hover:underline"
                           >
-                            {t.name}
+                            {other.name}
                           </Link>
                         ))}
                     </p>
@@ -211,16 +213,16 @@ export function BrandChooserPage() {
 
         <section aria-labelledby="stores-h">
           <h2 id="stores-h" className="text-xl font-bold">
-            Demo stores
+            {t('shell.hub.stores')}
           </h2>
           <ul className="mt-4 gap-4 md:grid-cols-3 grid grid-cols-1">
-            {tenants.map((t) => (
-              <li key={t.id} className="p-5 flex flex-col rounded-card bg-card shadow-card">
-                <div style={brandVars(t.brand)} className="text-[color:var(--sf-text)]">
-                  <BrandLogo tenant={t} />
+            {tenants.map((tenant) => (
+              <li key={tenant.id} className="p-5 flex flex-col rounded-card bg-card shadow-card">
+                <div style={brandVars(tenant.brand)} className="text-[color:var(--sf-text)]">
+                  <BrandLogo tenant={tenant} />
                 </div>
                 <div className="mt-4 gap-1.5 flex" aria-hidden="true">
-                  {Object.values(t.brand.colors).map((c, i) => (
+                  {Object.values(tenant.brand.colors).map((c, i) => (
                     <span
                       key={i}
                       className="size-7 rounded-full border border-border"
@@ -228,24 +230,24 @@ export function BrandChooserPage() {
                     />
                   ))}
                 </div>
-                <h3 className="mt-4 text-xl font-bold">{t.name}</h3>
-                <p className="mt-1 text-sm flex-1 text-muted">{t.brand.tagline}</p>
+                <h3 className="mt-4 text-xl font-bold">{tenant.name}</h3>
+                <p className="mt-1 text-sm flex-1 text-muted">{tenant.brand.tagline}</p>
                 <p className="mt-4 text-xs font-semibold text-muted">
-                  {STOREFRONT_THEME_LABEL[t.brand.theme] ?? STOREFRONT_THEME_LABEL.theme1}
+                  {themeLabel(tenant.brand.theme)}
                 </p>
                 <div className="mt-3 gap-2 flex flex-wrap">
                   <Link
-                    to={paths.home(t.subdomain)}
+                    to={paths.home(tenant.subdomain)}
                     className="h-10 gap-1.5 px-4 text-sm font-semibold inline-flex items-center rounded-full bg-ink text-on-ink hover:bg-ink-3"
                   >
-                    Visit store
+                    {t('shell.hub.visit')}
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                   <Link
-                    to={`${paths.home(t.subdomain)}?theme=${otherTheme(t)}`}
+                    to={`${paths.home(tenant.subdomain)}?theme=${otherTheme(tenant)}`}
                     className="h-10 px-4 text-sm font-semibold inline-flex items-center rounded-full border border-border hover:bg-surface"
                   >
-                    View in {STOREFRONT_THEME_LABEL[otherTheme(t)].split(' · ')[0]}
+                    {t('shell.demo.viewIn')} {themeShortName(otherTheme(tenant))}
                   </Link>
                 </div>
               </li>
@@ -255,11 +257,11 @@ export function BrandChooserPage() {
 
         <section aria-labelledby="flows-h">
           <h2 id="flows-h" className="text-xl font-bold">
-            Try these flows
+            {t('shell.hub.flows')}
           </h2>
           <ul className="mt-4 gap-3 sm:grid-cols-2 lg:grid-cols-4 grid grid-cols-1">
             {FLOWS.map(({ icon: Icon, title, text, to }) => (
-              <li key={title}>
+              <li key={to}>
                 <Link
                   to={to}
                   className="gap-3 rounded-2xl p-4 flex h-full items-start bg-card shadow-card transition-colors hover:bg-surface-2"
@@ -268,8 +270,8 @@ export function BrandChooserPage() {
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
-                    <span className="text-sm font-semibold block">{title}</span>
-                    <span className="mt-0.5 text-xs block text-muted">{text}</span>
+                    <span className="text-sm font-semibold block">{t(title)}</span>
+                    <span className="mt-0.5 text-xs block text-muted">{t(text)}</span>
                   </span>
                 </Link>
               </li>

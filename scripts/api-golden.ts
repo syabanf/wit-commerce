@@ -502,6 +502,8 @@ run('tickets/open refused for another order', {
   type: 'tickets/open',
   complaint: { id: 'tic-golden-3', tenantId: lari, customerId: null, orderId: ownOrder.id, subject: 'Wrong size', message: 'I ordered 42 and got 40 instead.', contact },
 }, 'storefront')
+run('tenants/setShopSettings store language', { ...shopSettings(14, []), storeLanguage: 'en' }, 'usr-andi')
+run('tenants/setShopSettings refused for an unknown language', { ...shopSettings(14, []), storeLanguage: 'fr' as 'en' }, 'usr-andi')
 
 const generated = new Set<string>()
 const seedIds = new Set<string>()

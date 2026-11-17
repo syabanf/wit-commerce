@@ -1,4 +1,4 @@
-import { etaLabel, newId, nextCode, nowIso, termsVersion } from '@rc/fixtures'
+import { newId, nextCode, nowIso, termsVersion } from '@rc/fixtures'
 import type {
   Courier,
   Customer,
@@ -12,9 +12,11 @@ import type {
 import type { CartTotals } from './cart'
 import type { Catalog } from './catalog'
 import { AVATAR_PALETTE } from '@rc/ui'
+import { type MessageKey, t } from '../i18n'
+import { etaLabel } from '../i18n/format'
 
 /** No payment provider takes money yet; shoppers must not read "Paid" as a real charge. */
-export const DEMO_PAYMENT_NOTE = 'Demo store: no money is charged.'
+export const demoPaymentNote = () => t('checkout.demoPaymentNote')
 
 export const CITIES = [
   'Jakarta',
@@ -61,12 +63,27 @@ export const withTerms = (order: Order, tenant: Tenant): Order => ({
   termsAcceptedAt: nowIso(),
 })
 
-/** The couriers the store offers, with the delivery days the brand set in place of the platform's wording. */
+const COURIER_TEXT: Partial<Record<Courier, { label: MessageKey; eta: MessageKey }>> = {
+  jne: { label: 'checkout.courier.jne', eta: 'checkout.eta.jne' },
+  sicepat: { label: 'checkout.courier.sicepat', eta: 'checkout.eta.sicepat' },
+  gojek: { label: 'checkout.courier.gojek', eta: 'checkout.eta.gojek' },
+  pickup: { label: 'checkout.courier.pickup', eta: 'checkout.eta.pickup' },
+}
+
+/**
+ * The couriers the store offers in the shopper's language, with the delivery days the brand set in
+ * place of the platform's wording.
+ */
 export const couriersFor = (tenant: Tenant) =>
   COURIERS.filter((c) => !tenant.shippingCouriers?.length || tenant.shippingCouriers.includes(c.id)).map(
     (c) => {
       const eta = tenant.courierEtaDays?.[c.id]
-      return eta ? { ...c, eta: etaLabel(eta) } : c
+      const text = COURIER_TEXT[c.id]
+      return {
+        ...c,
+        label: text ? t(text.label) : c.label,
+        eta: eta ? etaLabel(eta) : text ? t(text.eta) : c.eta,
+      }
     },
   )
 

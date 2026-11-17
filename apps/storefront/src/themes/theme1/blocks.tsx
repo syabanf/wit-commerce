@@ -23,6 +23,7 @@ import { paths } from '../../lib/paths'
 import { useShop } from '../../state/shop'
 import { CompactCell, ProductGrid } from './ProductCard'
 import { Money } from '../../components/Money'
+import { t, tp } from '../../i18n'
 
 const glow = `radial-gradient(circle at 85% 15%, ${tint('--sf-accent', 45)}, transparent 55%), radial-gradient(circle at 10% 95%, ${tint('--sf-primary', 30)}, transparent 60%), ${tint('--sf-primary', 10)}` // wit-allow: tenant storefront theme glow from the client references
 
@@ -36,10 +37,10 @@ export function HeroRow({ section }: { section: PageSection }) {
   const shopTo = categories[0] ? paths.category(store, categories[0].id) : paths.search(store)
   return (
     <section
-      aria-label="Featured"
+      aria-label={t('theme.featured')}
       className="gap-4 lg:grid-cols-[220px_minmax(0,1fr)_260px] grid grid-cols-1"
     >
-      <nav aria-label="Top categories" className="sf-card p-2 lg:block hidden">
+      <nav aria-label={t('theme.topCategories')} className="sf-card p-2 lg:block hidden">
         <ul className="space-y-1">
           {categories.slice(0, 7).map((c, i) => (
             <li key={c.id}>
@@ -71,13 +72,13 @@ export function HeroRow({ section }: { section: PageSection }) {
           className="md:absolute md:inset-y-0 md:right-0 md:aspect-auto md:w-[46%] md:rounded-none aspect-[16/10] rounded-[var(--sf-tile-radius)]"
         />
         <Stamp
-          text={`${tenant.name} · since ${tenant.createdAt.slice(0, 4)} · `}
+          text={t('theme.since', { name: tenant.name, year: tenant.createdAt.slice(0, 4) })}
           className="top-6 right-6 size-24 md:top-8 md:right-auto md:left-[calc(54%_+_1.5rem)] lg:size-28 absolute z-10"
         />
         <div className="max-w-lg pt-5 pb-2 md:p-0 md:max-w-[50%] relative z-10 flex flex-col justify-center">
           <p className="sf-kicker gap-1.5 flex items-center">
             <Sparkle className="size-3.5" />
-            Fresh in this week
+            {t('theme.freshIn')}
           </p>
           <h1 className="sf-hero-title mt-3">
             <Underlined text={section.headline || tenant.brand.tagline} />
@@ -89,7 +90,7 @@ export function HeroRow({ section }: { section: PageSection }) {
             <SectionButton
               section={section}
               fallback={shopTo}
-              label={section.ctaLabel || 'Shop now'}
+              label={section.ctaLabel || t('theme.shopNow')}
               variant="dark"
               size="lg"
             />
@@ -101,7 +102,7 @@ export function HeroRow({ section }: { section: PageSection }) {
             className="right-6 bottom-6 w-44 p-2 md:block xl:w-52 absolute z-10 hidden rounded-[var(--sf-tile-radius)] bg-[var(--sf-bg)] shadow-float"
           >
             <Sticker tilt="right" className="-top-3 left-3 absolute z-10">
-              Staff pick
+              {t('theme.staffPick')}
             </Sticker>
             <ProductImage product={product} className="aspect-square rounded-[var(--sf-tile-radius)]" />
             <span className="mt-2 px-1 text-sm font-bold block truncate">{product.name}</span>
@@ -118,11 +119,11 @@ export function HeroRow({ section }: { section: PageSection }) {
               <AccountGlyph className={customer ? 'size-11 text-sm' : ''} />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-bold">{customer ? `Hi, welcome back` : 'Join and get offers'}</p>
+              <p className="text-sm font-bold">{customer ? t('theme.welcomeBack') : t('theme.joinOffers')}</p>
               <p className="text-xs line-clamp-2 text-[color:var(--sf-muted)]">
                 {customer
-                  ? `${customer.name} · ${customer.points} points`
-                  : 'Members earn points on every order.'}
+                  ? t('theme.memberPoints', { name: customer.name, points: customer.points })
+                  : t('theme.membersEarn')}
               </p>
             </div>
           </div>
@@ -130,7 +131,7 @@ export function HeroRow({ section }: { section: PageSection }) {
             {customer ? (
               <>
                 <ButtonLink to={paths.account(store)} variant="dark" size="sm">
-                  Orders
+                  {t('theme.orders')}
                 </ButtonLink>
                 <ButtonLink
                   to={paths.wishlist(store)}
@@ -138,13 +139,13 @@ export function HeroRow({ section }: { section: PageSection }) {
                   size="sm"
                   className="bg-[var(--sf-bg)]"
                 >
-                  Wishlist
+                  {t('theme.wishlist')}
                 </ButtonLink>
               </>
             ) : (
               <>
                 <ButtonLink to={paths.account(store)} variant="dark" size="sm">
-                  Sign in
+                  {t('theme.signIn')}
                 </ButtonLink>
                 <ButtonLink
                   to={paths.account(store)}
@@ -152,7 +153,7 @@ export function HeroRow({ section }: { section: PageSection }) {
                   size="sm"
                   className="bg-[var(--sf-bg)]"
                 >
-                  Join
+                  {t('theme.join')}
                 </ButtonLink>
               </>
             )}
@@ -160,13 +161,13 @@ export function HeroRow({ section }: { section: PageSection }) {
         </div>
         <OfferTile tone="accent" icon={<Gift aria-hidden="true" />}>
           {customer && isVipCustomer(customer)
-            ? 'Early access to new arrivals for members'
+            ? t('theme.earlyAccess')
             : welcome
-              ? `Get ${offerText(welcome)} your first order with ${welcome.code}`
-              : 'Members earn points on every order'}
+              ? t('theme.welcomeOffer', { offer: offerText(welcome), code: welcome.code })
+              : t('theme.membersEarnShort')}
         </OfferTile>
         <OfferTile tone="primary" icon={<Truck aria-hidden="true" />}>
-          Free shipping on orders from {fmtIdrShort(tenant.loyalty.freeShippingMin)}
+          {t('theme.freeShippingFrom', { amount: fmtIdrShort(tenant.loyalty.freeShippingMin) })}
         </OfferTile>
       </div>
     </section>
@@ -199,7 +200,7 @@ function OfferTile({
 
 /** Square category photos in a scroller with the name and count under each; arrows sit beside the title. */
 export function CategoryTiles({
-  title = 'Shop by category',
+  title = t('theme.shopByCategory'),
   categories,
 }: {
   title?: string
@@ -216,10 +217,10 @@ export function CategoryTiles({
           {title}
         </h2>
         <div className="gap-2 md:flex hidden">
-          <IconButton label="Scroll categories left" tone="light" onClick={() => scroll(-1)}>
+          <IconButton label={t('theme.scrollLeft')} tone="light" onClick={() => scroll(-1)}>
             <ChevronLeft aria-hidden="true" />
           </IconButton>
-          <IconButton label="Scroll categories right" tone="light" onClick={() => scroll(1)}>
+          <IconButton label={t('theme.scrollRight')} tone="light" onClick={() => scroll(1)}>
             <ChevronRight aria-hidden="true" />
           </IconButton>
         </div>
@@ -240,7 +241,7 @@ export function CategoryTiles({
                 {c.name}
               </span>
               <span className="text-xs text-[color:var(--sf-muted)]">
-                {productsIn(catalog, c.id).length} products
+                {tp('theme.products', productsIn(catalog, c.id).length)}
               </span>
             </Link>
           </li>
@@ -292,7 +293,7 @@ export function DealsStrip() {
       >
         <div className="gap-6 lg:flex-row lg:items-center lg:justify-between flex flex-col">
           <div className="min-w-0">
-            <p className="font-bold text-[11px] tracking-[0.16em] uppercase">Deal of the week</p>
+            <p className="font-bold text-[11px] tracking-[0.16em] uppercase">{t('theme.dealOfWeek')}</p>
             <h2 id="deals-h" className="sf-title mt-1">
               {promotion.name}
             </h2>
@@ -302,13 +303,13 @@ export function DealsStrip() {
                 <CouponCode code={promotion.code} />
               ) : (
                 <span className="h-11 px-4 text-sm font-bold inline-flex items-center rounded-full border-2 border-current">
-                  Applied in your cart
+                  {t('theme.appliedInCart')}
                 </span>
               )}
             </div>
           </div>
           <div className="shrink-0">
-            <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase">Ends in</p>
+            <p className="mb-2 font-bold text-[11px] tracking-[0.16em] uppercase">{t('theme.endsIn')}</p>
             <Countdown endAt={promotion.endAt} />
           </div>
         </div>
@@ -352,7 +353,7 @@ export function ShowcaseRow({
           <p className="mt-1 text-sm sm:block hidden text-[color:var(--sf-muted)]">{description}</p>
         </div>
         <ButtonLink to={to} variant="light" size="sm" className="shrink-0">
-          Explore all
+          {t('theme.exploreAll')}
           <ArrowUpRight aria-hidden="true" />
         </ButtonLink>
       </div>
@@ -390,18 +391,22 @@ export function OfferBand() {
         stub={<PromoValue promotion={promotion} className="text-6xl md:text-8xl" />}
       >
         <p className="font-bold text-[11px] tracking-[0.16em] uppercase">
-          {scopedCategory ? `${scopedCategory.name} offer` : `New to ${tenant.name.replace(/\.$/, '')}`}
+          {scopedCategory
+            ? t('theme.categoryOffer', { category: scopedCategory.name })
+            : t('theme.newTo', { name: tenant.name.replace(/\.$/, '') })}
         </p>
         <h2 id="offer-h" className="sf-title mt-1 max-w-2xl">
           {scopedCategory
-            ? `${offerText(promotion)} ${scopedCategory.name.toLowerCase()}`
-            : `${offerText(promotion)} your first order`}
+            ? t('theme.offerCategory', { offer: offerText(promotion), category: scopedCategory.name.toLowerCase() })
+            : t('theme.offerFirst', { offer: offerText(promotion) })}
         </h2>
         <p className="mt-2 text-sm">{promoTerms(promotion)}</p>
         <div className="mt-5 gap-3 flex flex-wrap items-center">
           {promotion.trigger === 'code' && <CouponCode code={promotion.code} />}
           <ButtonLink to={to} variant="light">
-            {scopedCategory ? `Shop ${scopedCategory.name.toLowerCase()}` : 'Start shopping'}
+            {scopedCategory
+              ? t('theme.shopCategory', { category: scopedCategory.name.toLowerCase() })
+              : t('theme.startShopping')}
             <ArrowUpRight aria-hidden="true" />
           </ButtonLink>
         </div>
