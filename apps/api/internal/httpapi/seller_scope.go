@@ -86,7 +86,7 @@ func (st sellerStream) keep(collection string, data json.RawMessage) bool {
 		return true
 	case "orders":
 		return st.sellers[row.SellerID] || st.customers[row.CustomerID]
-	case "customerEvents", readmodel.CustomerMetricsCollection:
+	case "customerEvents", "returns", readmodel.CustomerMetricsCollection:
 		return st.customers[row.CustomerID]
 	case readmodel.SalesDaysCollection, readmodel.SellerBuyersCollection:
 		return st.sellers[row.SellerID]
@@ -101,7 +101,7 @@ func limitState(collection string, sellers []string) (string, []any, bool) {
 	switch collection {
 	case "orders":
 		return fmt.Sprintf(ownOrders, 2), []any{sellers}, true
-	case readmodel.CustomerMetricsCollection:
+	case readmodel.CustomerMetricsCollection, "returns":
 		return fmt.Sprintf(ownCustomers, 2), []any{sellers}, true
 	case readmodel.SalesDaysCollection, readmodel.SellerBuyersCollection:
 		return "seller_id = any($2)", []any{sellers}, true

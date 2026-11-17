@@ -1,4 +1,4 @@
-import { fmtNumber, plural } from '@rc/fixtures'
+import { plural } from '@rc/fixtures'
 import type { Page } from '@rc/types'
 import {
   Badge,
@@ -20,13 +20,14 @@ import {
   matchesQuery,
   toast,
 } from '@rc/ui'
-import { ArrowRight, Copy, FileCode, Globe, Link2, RefreshCw, ShieldCheck } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Copy, FileCode } from 'lucide-react'
 import { PageStatusBadge } from '../../components/badges'
+import { CustomDomainCard } from './CustomDomainCard'
 import { DisplayCurrenciesCard } from './DisplayCurrenciesCard'
+import { ShopSettingsCard } from './ShopSettingsCard'
 import { useHistoryState } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
-import { DESCRIPTION_MAX, REDIRECTS, TITLE_MAX, dnsRecords, platformHost, primaryHost, seoFlags } from './lib'
+import { DESCRIPTION_MAX, TITLE_MAX, primaryHost, seoFlags } from './lib'
 
 const copy = (text: string) => {
   void navigator.clipboard?.writeText(text).catch(() => undefined)
@@ -54,7 +55,6 @@ export function DomainsPage() {
     setQuery('')
     setHealth(null)
   }
-  const redirects = REDIRECTS[s.tenantId] ?? []
 
   const length = (value: string, max: number) => {
     const n = value.trim().length
@@ -127,75 +127,14 @@ export function DomainsPage() {
     <>
       <PageHeader
         title="Domains & SEO"
-        description="Where shoppers reach your store, the redirects in front of it, the currencies they can browse in, and how its pages show up in search."
+        description="Where shoppers reach your store, the currencies they can browse in, and how its pages show up in search."
       />
       <div className="space-y-4">
-        <div className="gap-4 xl:grid-cols-2 grid grid-cols-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Domains</CardTitle>
-              <CardDescription>
-                Shoppers land on {host}. Every domain serves the same store over HTTPS.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="gap-3 rounded-2xl p-3 flex flex-wrap items-center bg-surface-2">
-                <IconTile size="sm" className="bg-card">
-                  <Globe />
-                </IconTile>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate font-mono">{platformHost(s.tenant)}</p>
-                  <p className="text-xs text-muted">Platform subdomain, always on</p>
-                </div>
-                <Badge variant="success">
-                  <ShieldCheck />
-                  SSL active
-                </Badge>
-              </div>
-              <CustomDomain />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Redirects</CardTitle>
-              <CardDescription>Short and retired links that forward to a live page.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {redirects.length ? (
-                <ul className="space-y-2">
-                  {redirects.map((r) => (
-                    <li
-                      key={r.from}
-                      className="gap-x-3 gap-y-1 rounded-2xl p-3 flex flex-wrap items-center bg-surface-2"
-                    >
-                      <span className="min-w-0 gap-2 text-xs flex flex-1 items-center font-mono">
-                        <span className="font-semibold truncate">{r.from}</span>
-                        <ArrowRight className="size-3.5 shrink-0 text-muted" aria-label="redirects to" />
-                        <span className="truncate">{r.to}</span>
-                      </span>
-                      <Badge variant={r.code === 301 ? 'default' : 'info'}>
-                        {r.code === 301 ? '301 permanent' : '302 temporary'}
-                      </Badge>
-                      <span className="text-xs text-muted tabular-nums">
-                        {fmtNumber(r.hits30d)} hits in 30 days
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState
-                  compact
-                  icon={<Link2 />}
-                  title="No redirects yet"
-                  description="Redirects appear here when a page slug changes or a campaign link retires."
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <CustomDomainCard />
 
         <DisplayCurrenciesCard />
+
+        <ShopSettingsCard />
 
         <Card>
           <CardHeader>
@@ -291,102 +230,5 @@ export function DomainsPage() {
         </Card>
       </div>
     </>
-  )
-}
-
-function CustomDomain() {
-  const { tenant } = useScoped()
-  const [checking, setChecking] = useState(false)
-  const timer = useRef<number | null>(null)
-  useEffect(() => {
-    return () => {
-      if (timer.current) window.clearTimeout(timer.current)
-    }
-  }, [])
-
-  const check = () => {
-    if (!tenant.domain) return
-    const domain = tenant.domain
-    setChecking(true)
-    timer.current = window.setTimeout(() => {
-      setChecking(false)
-      if (tenant.domainVerified)
-        toast('DNS verified', {
-          tone: 'success',
-          description: `${domain} points at WIT Commerce and SSL is active.`,
-        })
-      else
-        toast('DNS still pending', {
-          description: `${domain} does not point at WIT Commerce yet. DNS changes can take up to 24 hours.`,
-        })
-    }, 800)
-  }
-
-  const records = dnsRecords(tenant)
-  return (
-    <div className="rounded-2xl p-3 bg-surface-2">
-      <div className="gap-3 flex flex-wrap items-center">
-        <IconTile size="sm" className="bg-card">
-          <Link2 />
-        </IconTile>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium truncate font-mono">{tenant.domain ?? 'No custom domain'}</p>
-          <p className="text-xs text-muted">
-            {tenant.domain ? 'Custom domain' : 'Point your own domain at the store with the records below.'}
-          </p>
-        </div>
-        {tenant.domain &&
-          (tenant.domainVerified ? (
-            <Badge variant="success">
-              <ShieldCheck />
-              Verified
-            </Badge>
-          ) : (
-            <Badge variant="warning">Not verified</Badge>
-          ))}
-      </div>
-      {!tenant.domainVerified && (
-        <div className="mt-3 space-y-3">
-          <div className="rounded-xl overflow-x-auto bg-card">
-            <table className="text-xs w-full text-left">
-              <thead>
-                <tr className="border-b border-border text-muted">
-                  <th className="px-3 py-2 font-semibold tracking-wide uppercase">Type</th>
-                  <th className="px-3 py-2 font-semibold tracking-wide uppercase">Name</th>
-                  <th className="px-3 py-2 font-semibold tracking-wide uppercase">Value</th>
-                </tr>
-              </thead>
-              <tbody className="font-mono">
-                {records.map((r) => (
-                  <tr key={r.type} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 font-semibold">{r.type}</td>
-                    <td className="px-3 py-2">{r.name}</td>
-                    <td className="px-3 py-2 break-all">{r.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!tenant.domain && (
-            <p className="text-xs text-muted">
-              Then ask platform support to attach the domain to {tenant.name}.
-            </p>
-          )}
-        </div>
-      )}
-      {tenant.domain && (
-        <div className="mt-3 gap-2 flex flex-wrap items-center justify-between">
-          <p className="text-xs text-muted">
-            {tenant.domainVerified
-              ? 'SSL renews on its own.'
-              : 'Add both records at your domain registrar, then check.'}
-          </p>
-          <Button variant="outline" size="sm" loading={checking} onClick={check}>
-            <RefreshCw />
-            Check DNS
-          </Button>
-        </div>
-      )}
-    </div>
   )
 }

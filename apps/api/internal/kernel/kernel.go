@@ -28,6 +28,27 @@ type Runtime struct {
 	HTTP *http.Client
 	// AllowInternalWebhooks permits http:// endpoints, for development.
 	AllowInternalWebhooks bool
+	// Notices queues the shopper emails an action asked for, in the action's transaction. Nil means
+	// no email.
+	Notices NoticeSink
+}
+
+// Notice asks for one email to a shopper about their order or return. Kind names the event:
+// order_placed, payment_received, order_shipped, order_cancelled, order_refunded, return_approved
+// or return_refunded.
+type Notice struct {
+	Kind  string
+	Order domain.Order
+	// Return is set for the return notices.
+	Return *domain.OrderReturn
+	// Amount is the money a refund notice is about.
+	Amount int
+}
+
+// NoticeSink turns notices into queued email. It runs inside the action's transaction, so an email
+// is queued only if the change it reports commits.
+type NoticeSink interface {
+	QueueNotices(ctx context.Context, tx pgx.Tx, notices []Notice) error
 }
 
 // Meta is who performs an action and when, stamped on every event and move it writes.
@@ -104,7 +125,11 @@ type Tx struct {
 	// Created marks rows this action made, so the outbox reports them once.
 	Created map[string]bool
 	events  []outboxEvent
+	notices []Notice
 }
+
+// Notify asks for a shopper email about this action, sent only if the action commits.
+func (t *Tx) Notify(n Notice) { t.notices = append(t.notices, n) }
 
 // Run executes an action in one transaction, projects the read models from its delta and queues
 // its webhooks, so the write, the read side and the outbox commit together.
@@ -118,7 +143,13 @@ func (r *Runtime) Run(ctx context.Context, fn func(t *Tx) error) (*Delta, error)
 		if err := readmodel.Apply(ctx, ptx, d.Upserts, d.Removes); err != nil {
 			return err
 		}
-		return t.enqueue(r.Clock.NowIso())
+		if err := t.enqueue(r.Clock.NowIso()); err != nil {
+			return err
+		}
+		if r.Notices == nil || len(t.notices) == 0 {
+			return nil
+		}
+		return r.Notices.QueueNotices(ctx, ptx, t.notices)
 	})
 	if err != nil {
 		return nil, err

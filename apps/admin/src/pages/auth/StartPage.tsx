@@ -1,7 +1,7 @@
 import { ApiError, type SubdomainCheck } from '@rc/api'
 import { slugify } from '@rc/fixtures'
 import { INDUSTRY_LABEL, type Industry } from '@rc/types'
-import { Banner, Button, Card, Chip, FormField, Input, Steps, cn } from '@rc/ui'
+import { Banner, Button, Card, Chip, FormField, Input, Steps, Turnstile, cn } from '@rc/ui'
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Mail, Store, UserRound } from 'lucide-react'
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
@@ -163,6 +163,22 @@ function useAvailability(subdomain: string) {
   return { check: result?.name === subdomain ? result.check : null, failed }
 }
 
+/** The Turnstile site key the platform saved, or '' while the CAPTCHA is off or the call fails. */
+function useTurnstileSiteKey() {
+  const [siteKey, setSiteKey] = useState('')
+  useEffect(() => {
+    let live = true
+    api
+      .config()
+      .then((c) => live && setSiteKey(c.turnstileSiteKey))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [])
+  return siteKey
+}
+
 function SignUpFlow() {
   const { startSession } = useAuth()
   const navigate = useNavigate()
@@ -179,6 +195,10 @@ function SignUpFlow() {
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const { check, failed } = useAvailability(draft.subdomain)
+  const siteKey = useTurnstileSiteKey()
+  const [captchaToken, setCaptchaToken] = useState('')
+  // A token works once, so a refused submit renders a fresh widget.
+  const [captchaRound, setCaptchaRound] = useState(0)
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }))
@@ -201,6 +221,10 @@ function SignUpFlow() {
     if (step < STEPS.length - 1) return next()
     setTried(true)
     if (blocked || busy) return
+    if (siteKey && !captchaToken) {
+      setFailure('Complete the check that shows you are a person, then press Create my store.')
+      return
+    }
     setBusy(true)
     setFailure('')
     try {
@@ -213,11 +237,16 @@ function SignUpFlow() {
         email: draft.email.trim(),
         password: draft.password,
         website: draft.website,
+        ...(siteKey ? { captchaToken } : {}),
       })
       startSession(token, user)
       navigate('/', { replace: true })
     } catch (err) {
       setBusy(false)
+      if (siteKey) {
+        setCaptchaToken('')
+        setCaptchaRound((n) => n + 1)
+      }
       if (!(err instanceof ApiError)) {
         setFailure('The server did not answer. Try again in a moment.')
         return
@@ -408,6 +437,7 @@ function SignUpFlow() {
               value={draft.website}
               onChange={(e) => set('website', e.target.value)}
             />
+            {siteKey && <Turnstile key={captchaRound} siteKey={siteKey} onToken={setCaptchaToken} />}
             {failure && (
               <Banner tone="danger" title="We could not create your store">
                 {failure}

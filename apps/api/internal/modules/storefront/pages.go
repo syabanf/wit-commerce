@@ -1,10 +1,12 @@
 package storefront
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"strings"
 
+	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
@@ -343,6 +345,55 @@ func (s *Storefront) SaveSeller(ctx context.Context, m kernel.Meta, seller domai
 		}
 		return syncSellerPage(t, seller, m)
 	})
+}
+
+// UpdateSellerProfile is the write of sellers/updateProfile: the headline, bio and photo a seller
+// shows on their personal store. A seller changes their own within the brand's locks; whoever
+// manages sellers changes anyone's. The hero of the seller's page, and of its draft, takes the copy.
+func UpdateSellerProfile(t *kernel.Tx, m kernel.Meta, seller domain.Seller, in rules.SellerProfile, locks map[string]bool) error {
+	if err := kernel.Access(m, seller.TenantID); err != nil {
+		return err
+	}
+	manages := m.P.Kind != auth.KindUser || auth.Can(m.P.Role, "seller.manage")
+	if !manages && (seller.UserID == nil || *seller.UserID != m.P.ID) {
+		return kernel.NotFound{What: "seller"}
+	}
+	in = rules.CleanSellerProfile(in)
+	if why := rules.SellerProfileBlocker(seller, in, locks, !manages); why != "" {
+		return kernel.Refuse(why)
+	}
+	seller.Headline, seller.Bio, seller.PhotoURL = in.Headline, in.Bio, in.PhotoURL
+	if err := t.Put("sellers", seller.ID, seller); err != nil {
+		return err
+	}
+	page, err := sellerPage(t, seller.ID)
+	if err != nil || page == nil {
+		return err
+	}
+	if heroCopy(page.Sections, seller) {
+		page.UpdatedAt, page.UpdatedBy = m.At, m.By()
+		if err := t.Put("pages", page.ID, *page); err != nil {
+			return err
+		}
+	}
+	d, err := draftOf(t, page.ID)
+	if err != nil || d == nil || !heroCopy(d.Sections, seller) {
+		return err
+	}
+	return t.Put("pageDrafts", d.ID, *d)
+}
+
+// heroCopy writes the seller's headline and bio into the hero sections and reports whether there
+// was one.
+func heroCopy(sections []domain.PageSection, seller domain.Seller) bool {
+	found := false
+	for i := range sections {
+		if sections[i].Kind == "hero" {
+			sections[i].Headline, sections[i].Body = cmp.Or(seller.Headline, seller.Name), seller.Bio
+			found = true
+		}
+	}
+	return found
 }
 
 // SetSellerTemplate is sellers/setTemplate: the page keeps its content in the new layout.

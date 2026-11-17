@@ -42,6 +42,11 @@ services:
       # Email links and the payment return go to https://{subdomain}.$STORE_ROOT_DOMAIN; empty keeps
       # them at $PUBLIC_URL/shop/{subdomain}.
       STORE_ROOT_DOMAIN: ${STORE_ROOT_DOMAIN:-}
+      # Custom domains (apps/api/cmd/README.md): another name or addresses a brand's DNS may point at,
+      # and the secret a TLS proxy sends to /api/v1/internal/domain-allowed.
+      DOMAIN_TARGET: ${DOMAIN_TARGET:-}
+      DOMAIN_TARGET_IPS: ${DOMAIN_TARGET_IPS:-}
+      DOMAIN_ASK_SECRET: ${DOMAIN_ASK_SECRET:-}
       MEDIA_DIR: /media
       TRUST_PROXY: 'true'
       PORT: '8090'
@@ -155,6 +160,9 @@ services:
     environment:
       STORE_ROOT_DOMAIN: ${STORE_ROOT_DOMAIN:-}
       SPLIT_SERVICES: ${SPLIT_SERVICES:-false}
+      # With STORE_ROOT_DOMAIN set, the admin answers on this host only and any other host is served
+      # as a brand's own domain.
+      PUBLIC_URL: ${PUBLIC_URL:-}
     volumes:
       - ${MEDIA_ROOT:-/var/lib/commerce/media}:/media:ro
       # Put fullchain.pem and privkey.pem here to serve HTTPS on 443; without them web serves plain

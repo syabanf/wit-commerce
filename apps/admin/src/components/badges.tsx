@@ -1,4 +1,5 @@
 import type {
+  ReturnStatus,
   AutomationStatus,
   CampaignStatus,
   Channel,
@@ -31,6 +32,7 @@ import {
   SELLER_STATUS_LABEL,
   STOCK_STATE_LABEL,
   TICKET_STATUS_LABEL,
+  RETURN_STATUS_LABEL,
 } from '@rc/types'
 import { Badge, type BadgeProps, type Tone } from '@rc/ui'
 
@@ -258,4 +260,21 @@ export function HealthBadge({ health }: { health: IntegrationHealth }) {
 
 export function ChannelBadge({ channel }: { channel: Channel }) {
   return <Badge variant="outline">{CHANNEL_LABEL[channel]}</Badge>
+}
+
+const RETURN_VARIANT: Record<ReturnStatus, Variant> = {
+  requested: 'warning',
+  approved: 'info',
+  received: 'ink',
+  refunded: 'success',
+  rejected: 'muted',
+  cancelled: 'muted',
+}
+
+export function ReturnStatusBadge({ status, className }: { status: ReturnStatus; className?: string }) {
+  return (
+    <Badge variant={RETURN_VARIANT[status]} className={className}>
+      {RETURN_STATUS_LABEL[status]}
+    </Badge>
+  )
 }

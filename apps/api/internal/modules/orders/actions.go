@@ -86,6 +86,7 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 		if paid {
 			t.Emit("order.paid", o)
 		}
+		t.Notify(kernel.Notice{Kind: "order_placed", Order: o})
 		// Placing reserves the units until the parcel ships or the order is cancelled.
 		if err := inventory.Reserve(t, l, o, +1, false); err != nil {
 			return err
@@ -142,9 +143,11 @@ func advance(t *kernel.Tx, m kernel.Meta, o domain.Order, next string, trackingN
 	}
 	if next == "paid" || (next == "delivered" && o.PaymentMethod == "cod") {
 		t.Emit("order.paid", o)
+		t.Notify(kernel.Notice{Kind: "payment_received", Order: o})
 	}
 	if next == "shipped" {
 		t.Emit("order.shipped", o)
+		t.Notify(kernel.Notice{Kind: "order_shipped", Order: o})
 	}
 	return t.Put("orders", o.ID, o)
 }
@@ -217,6 +220,7 @@ func Expire(t *kernel.Tx, o domain.Order, reason, note, at, by string) error {
 	o.Status, o.PaymentStatus = "cancelled", "failed"
 	o.CancelReason = kernel.Ptr(reason)
 	o.Events = append([]domain.OrderEvent{kernel.OrderEvent(at, by, kernel.Ptr("cancelled"), note)}, o.Events...)
+	t.Notify(kernel.Notice{Kind: "order_cancelled", Order: o})
 	return t.Put("orders", o.ID, o)
 }
 
@@ -251,6 +255,7 @@ func (s *Orders) CancelOrder(ctx context.Context, m kernel.Meta, id, reason, not
 			note = "Cancelled"
 		}
 		o.Events = append([]domain.OrderEvent{kernel.OrderEvent(m.At, m.By(), kernel.Ptr("cancelled"), note)}, o.Events...)
+		t.Notify(kernel.Notice{Kind: "order_cancelled", Order: o, Amount: o.RefundedAmount})
 		return t.Put("orders", o.ID, o)
 	})
 }
@@ -272,20 +277,36 @@ func (s *Orders) RefundOrder(ctx context.Context, m kernel.Meta, id string, amou
 			return kernel.Refuse(why)
 		}
 		amount = min(amount, o.Total-o.RefundedAmount)
-		full := o.RefundedAmount+amount >= o.Total
-		o.RefundedAmount += amount
-		var status *string
-		if full {
-			o.Status, o.PaymentStatus = "refunded", "refunded"
-			status = kernel.Ptr("refunded")
-		}
-		text := fmt.Sprintf("Refunded %d", amount)
-		if note != "" {
-			text += " · " + note
-		}
-		o.Events = append([]domain.OrderEvent{kernel.OrderEvent(m.At, m.By(), status, text)}, o.Events...)
+		o = refunded(o, amount, note, m, false)
+		t.Notify(kernel.Notice{Kind: "order_refunded", Order: o, Amount: amount})
 		return t.Put("orders", o.ID, o)
 	})
+}
+
+// refunded is the order after a refund of amount. A refund of everything closes it as refunded;
+// returned closes it as returned instead, when the refund settles the last of its units.
+func refunded(o domain.Order, amount int, note string, m kernel.Meta, returned bool) domain.Order {
+	full := o.RefundedAmount+amount >= o.Total
+	o.RefundedAmount += amount
+	var status *string
+	switch {
+	case returned:
+		status = kernel.Ptr("returned")
+	case full:
+		status = kernel.Ptr("refunded")
+	}
+	if status != nil {
+		o.Status = *status
+	}
+	if full {
+		o.PaymentStatus = "refunded"
+	}
+	text := fmt.Sprintf("Refunded %d", amount)
+	if note != "" {
+		text += " · " + note
+	}
+	o.Events = append([]domain.OrderEvent{kernel.OrderEvent(m.At, m.By(), status, text)}, o.Events...)
+	return o
 }
 
 // NoteOrder is orders/note.

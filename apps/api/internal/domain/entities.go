@@ -65,6 +65,41 @@ type Tenant struct {
 	// DisplayCurrencies are the extra currencies shoppers may see estimated prices in. Stores still
 	// sell and charge in rupiah.
 	DisplayCurrencies []string `json:"displayCurrencies,omitempty"`
+	// DomainToken is the value the brand puts in a TXT record at _wit-commerce.{domain} to prove
+	// the domain is theirs.
+	DomainToken string `json:"domainToken,omitempty"`
+	// DomainVerifiedAt is when DNS proved the custom domain. Only a domain with this time is served
+	// and linked to.
+	DomainVerifiedAt IsoDate `json:"domainVerifiedAt,omitempty"`
+	// DomainCheckedAt is when the daily job last re-checked a verified domain's DNS, and
+	// DomainCheckFailures how many of those checks failed in a row.
+	DomainCheckedAt     IsoDate `json:"domainCheckedAt,omitempty"`
+	DomainCheckFailures int     `json:"domainCheckFailures,omitempty"`
+	// Menus are the store's own header and footer links; nil keeps the theme's fixed links.
+	Menus *StoreMenus `json:"menus,omitempty"`
+	// ReturnWindowDays is how long after delivery a shopper may ask for a return; nil means 7.
+	ReturnWindowDays *int `json:"returnWindowDays,omitempty"`
+	// ShopperEmailsOff lists the shopper emails the brand switched off.
+	ShopperEmailsOff []string `json:"shopperEmailsOff,omitempty"`
+}
+
+// StoreMenus are the links a store shows in its header and footer, in order.
+type StoreMenus struct {
+	Header []MenuLink `json:"header"`
+	Footer []MenuLink `json:"footer"`
+}
+
+type MenuLink struct {
+	Label  string     `json:"label"`
+	Target MenuTarget `json:"target"`
+}
+
+// MenuTarget is where a menu link goes. Kind is page, category, collection, catalog or url; ID names
+// the page, category or collection, and URL holds a full link or a store path.
+type MenuTarget struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id,omitempty"`
+	URL  string `json:"url,omitempty"`
 }
 
 type User struct {
@@ -103,6 +138,8 @@ type Seller struct {
 	CommissionRate     float64  `json:"commissionRate"`
 	JoinedAt           IsoDate  `json:"joinedAt"`
 	Color              string   `json:"color"`
+	// PhotoURL is the seller's uploaded photo; empty means the storefront shows their initials.
+	PhotoURL string `json:"photoUrl,omitempty"`
 }
 
 // --- storefront ---
@@ -679,4 +716,38 @@ type AppState struct {
 	IntegrationLogs    []IntegrationLog     `json:"integrationLogs"`
 	Traffic            []TrafficDay         `json:"traffic"`
 	SearchTerms        []SearchTerm         `json:"searchTerms"`
+}
+
+type ReturnItem struct {
+	ProductID string `json:"productId"`
+	VariantID string `json:"variantId"`
+	Qty       int    `json:"qty"`
+	Reason    string `json:"reason"`
+}
+
+type ReturnEvent struct {
+	ID     string  `json:"id"`
+	At     IsoDate `json:"at"`
+	By     string  `json:"by"`
+	Status *string `json:"status"`
+	Note   string  `json:"note"`
+}
+
+// OrderReturn is a request to send bought items back for a refund.
+type OrderReturn struct {
+	ID           string        `json:"id"`
+	TenantID     string        `json:"tenantId"`
+	Code         string        `json:"code"`
+	OrderID      string        `json:"orderId"`
+	CustomerID   string        `json:"customerId"`
+	Items        []ReturnItem  `json:"items"`
+	Reason       string        `json:"reason"`
+	Note         string        `json:"note"`
+	Status       string        `json:"status"`
+	RequestedBy  string        `json:"requestedBy"`
+	RefundAmount int           `json:"refundAmount"`
+	Restock      bool          `json:"restock"`
+	RejectReason string        `json:"rejectReason,omitempty"`
+	Events       []ReturnEvent `json:"events"`
+	CreatedAt    IsoDate       `json:"createdAt"`
 }

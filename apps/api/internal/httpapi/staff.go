@@ -186,6 +186,10 @@ func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
 		s.writeStaffError(w, r, errStaffForbidden)
 		return
 	}
+	if err := s.svc.StaffRoom(r.Context(), in.TenantIDs); err != nil {
+		s.writeStaffError(w, r, err)
+		return
+	}
 	password, err := temporaryPassword()
 	if err != nil {
 		s.writeError(w, r, err)
@@ -239,6 +243,13 @@ func (s *Server) updateStaff(w http.ResponseWriter, r *http.Request) {
 				return u, staffEvent{}, err
 			}
 		}
+		// A brand the person joins needs a free seat on its plan; a disabled person takes none.
+		if !u.Disabled {
+			joined := slices.DeleteFunc(slices.Clone(in.TenantIDs), func(id string) bool { return slices.Contains(u.TenantIDs, id) })
+			if err := s.svc.StaffRoom(r.Context(), joined); err != nil {
+				return u, staffEvent{}, err
+			}
+		}
 		detail, err := changesBetween(r.Context(), tx, u, in)
 		if err != nil {
 			return u, staffEvent{}, err
@@ -276,6 +287,11 @@ func (s *Server) setStaffStatus(w http.ResponseWriter, r *http.Request) {
 		action := "enabled"
 		if in.Disabled {
 			action = "disabled"
+		} else if u.Disabled {
+			// Coming back takes a seat again in each of the person's brands.
+			if err := s.svc.StaffRoom(r.Context(), u.TenantIDs); err != nil {
+				return u, staffEvent{}, err
+			}
 		}
 		u.Disabled = in.Disabled
 		return u, staffEvent{action: action}, nil

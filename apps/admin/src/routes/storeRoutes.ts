@@ -17,4 +17,9 @@ export const storeRoutes: RouteObject[] = [
     handle: { breadcrumb: t.breadcrumb.domains },
     lazy: page(() => import('../pages/domains/DomainsPage'), 'DomainsPage'),
   },
+  {
+    path: 'store/media',
+    handle: { breadcrumb: t.breadcrumb.media },
+    lazy: page(() => import('../pages/media/MediaPage'), 'MediaPage'),
+  },
 ]

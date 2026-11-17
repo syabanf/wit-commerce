@@ -46,6 +46,9 @@ func (s *Server) tenantRoutes(rt *router) {
 			return s.svc.SetDisplayCurrencies(r.Context(), m, r.PathValue("id"), in.Currencies)
 		})
 	})
+	rt.add("GET", "/tenants/{id}/domain", "", "brand.manage", "The custom domain and the DNS records it needs", s.getDomain)
+	rt.add("PUT", "/tenants/{id}/domain", "tenants/setDomain", "brand.manage", "Connect a custom domain, or disconnect it with null; a new domain starts unverified", s.setDomain)
+	rt.add("POST", "/tenants/{id}/domain/verify", "tenants/verifyDomain", "brand.manage", "Ask DNS for the domain's records and verify it when they are right", s.verifyDomain)
 	rt.add("POST", "/tenants/{id}/brand/locks/{key}/toggle", "brand/toggleLock", "brand.manage", "Lock or unlock a brand setting", func(w http.ResponseWriter, r *http.Request) {
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
 			return s.svc.ToggleBrandLock(r.Context(), m, r.PathValue("id"), r.PathValue("key"))

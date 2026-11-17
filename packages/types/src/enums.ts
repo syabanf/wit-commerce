@@ -3,7 +3,8 @@
 export type IsoDate = string
 
 // --- people and access ---
-export type Role = 'platform_admin' | 'tenant_admin' | 'marketing' | 'operations' | 'service' | 'sales'
+export type Role =
+  'platform_admin' | 'tenant_admin' | 'marketing' | 'operations' | 'service' | 'sales' | 'staff'
 export const ROLE_LABEL: Record<Role, string> = {
   platform_admin: 'Platform admin',
   tenant_admin: 'Tenant admin',
@@ -11,6 +12,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   operations: 'Commerce operations',
   service: 'Customer service',
   sales: 'Sales agent',
+  staff: 'Staff',
 }
 
 export type SellerStatus = 'active' | 'invited' | 'suspended'
@@ -613,3 +615,45 @@ export const AGENT_KIND_LABEL: Record<AgentKind, string> = {
 }
 
 /** How an agent order got its go-ahead: inside the mandate's limits, or with the shopper's tap. */
+
+// --- returns ---
+export type ReturnStatus = 'requested' | 'approved' | 'received' | 'refunded' | 'rejected' | 'cancelled'
+export const RETURN_STATUS_LABEL: Record<ReturnStatus, string> = {
+  requested: 'Requested',
+  approved: 'Approved',
+  received: 'Received',
+  refunded: 'Refunded',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+}
+/** The steps a return takes when nothing stops it. */
+export const RETURN_STATUS_FLOW: ReturnStatus[] = ['requested', 'approved', 'received', 'refunded']
+/** A return still under way: its items cannot join another return. */
+export const OPEN_RETURN_STATUSES: ReturnStatus[] = ['requested', 'approved', 'received']
+
+export type ReturnReason = 'damaged' | 'wrong_item' | 'not_as_described' | 'size_or_fit' | 'changed_mind'
+export const RETURN_REASON_LABEL: Record<ReturnReason, string> = {
+  damaged: 'Arrived damaged',
+  wrong_item: 'Wrong item sent',
+  not_as_described: 'Not as described',
+  size_or_fit: 'Size or fit',
+  changed_mind: 'Changed my mind',
+}
+
+/** Emails a store sends its shoppers. Each is on unless the brand switches it off. */
+export type ShopperEmailKind =
+  'order_placed' | 'payment_received' | 'order_shipped' | 'order_cancelled' | 'return_update'
+export const SHOPPER_EMAIL_KINDS: ShopperEmailKind[] = [
+  'order_placed',
+  'payment_received',
+  'order_shipped',
+  'order_cancelled',
+  'return_update',
+]
+export const SHOPPER_EMAIL_LABEL: Record<ShopperEmailKind, string> = {
+  order_placed: 'Order placed',
+  payment_received: 'Payment received',
+  order_shipped: 'Order shipped',
+  order_cancelled: 'Order cancelled or refunded',
+  return_update: 'Return approved or refunded',
+}

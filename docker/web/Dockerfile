@@ -57,6 +57,7 @@ FROM nginx:1.30-alpine
 # STORE_* and COMMERCE_* names are substituted, so nginx's own $variables pass through untouched.
 ENV NGINX_ENVSUBST_FILTER='^(STORE_|COMMERCE_)' \
     STORE_ROOT_DOMAIN= \
+    PUBLIC_URL= \
     SPLIT_SERVICES=false
 # /media is where the api's uploads are mounted read-only. It starts empty and owned by the api's uid
 # 10001 here too, so a fresh Docker volume ends up writable for the api whichever container mounts first.

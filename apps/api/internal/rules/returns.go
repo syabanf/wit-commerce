@@ -1,0 +1,184 @@
+package rules
+
+import (
+	"fmt"
+	"slices"
+
+	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
+	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+)
+
+// Returns mirror the return rules in packages/fixtures/src/rules.ts. A return covers some units of
+// one order and moves requested → approved → received → refunded, or ends rejected or cancelled. An
+// order turns "returned" when refunded returns cover every unit it holds; a partial return leaves
+// the order's status alone and shows in its refunded amount.
+
+// DefaultReturnWindowDays is how long after delivery a shopper may ask when the brand set nothing.
+const DefaultReturnWindowDays = 7
+
+// ReturnReasons are the reasons an item may carry.
+var ReturnReasons = []string{"damaged", "wrong_item", "not_as_described", "size_or_fit", "changed_mind"}
+
+// ShopperEmailKinds are the shopper emails a brand may switch off, in display order.
+var ShopperEmailKinds = []string{"order_placed", "payment_received", "order_shipped", "order_cancelled", "return_update"}
+
+// ReturnWindowDays mirrors returnWindowDays.
+func ReturnWindowDays(t domain.Tenant) int {
+	if t.ReturnWindowDays == nil {
+		return DefaultReturnWindowDays
+	}
+	return *t.ReturnWindowDays
+}
+
+// IsOpenReturn is a return still under way.
+func IsOpenReturn(r domain.OrderReturn) bool {
+	return r.Status == "requested" || r.Status == "approved" || r.Status == "received"
+}
+
+// returnedQty mirrors returnedQty: units per variant held by returns keep accepts.
+func returnedQty(orderID string, returns []domain.OrderReturn, keep func(domain.OrderReturn) bool) map[string]int {
+	held := map[string]int{}
+	for _, r := range returns {
+		if r.OrderID != orderID || !keep(r) {
+			continue
+		}
+		for _, item := range r.Items {
+			held[item.VariantID] += item.Qty
+		}
+	}
+	return held
+}
+
+func notDropped(r domain.OrderReturn) bool { return r.Status != "rejected" && r.Status != "cancelled" }
+
+// DeliveredAt mirrors deliveredAt: the delivered step on the timeline, else when the order was placed.
+func DeliveredAt(o domain.Order) string {
+	for _, e := range o.Events {
+		if e.Status != nil && *e.Status == "delivered" {
+			return e.At
+		}
+	}
+	return o.CreatedAt
+}
+
+// ReturnRequestBlocker mirrors returnRequestBlocker. who is "staff" or "shopper"; now is in
+// milliseconds; returns are the tenant's returns.
+func ReturnRequestBlocker(o domain.Order, returns []domain.OrderReturn, items []domain.ReturnItem, who string, now int64, windowDays int) string {
+	delivered := o.Status == "delivered" || o.Status == "completed"
+	if who == "shopper" {
+		if !delivered {
+			return "You can ask for a return once the order is delivered."
+		}
+		if windowDays <= 0 {
+			return "This store takes return requests by message. Contact the store."
+		}
+		if now > clock.Ms(DeliveredAt(o))+int64(windowDays)*clock.Day {
+			return fmt.Sprintf("The %d-day return window for this order has closed.", windowDays)
+		}
+	} else if !delivered && o.Status != "shipped" {
+		return "Only a shipped or delivered order can be returned."
+	}
+	if len(items) == 0 {
+		return "Choose at least one item to return."
+	}
+	bought := VariantDemand(o).Qty
+	held := returnedQty(o.ID, returns, notDropped)
+	open := returnedQty(o.ID, returns, IsOpenReturn)
+	seen := map[string]bool{}
+	for _, item := range items {
+		if bought[item.VariantID] == 0 {
+			return "One item is not part of this order."
+		}
+		if seen[item.VariantID] {
+			return "List each item once."
+		}
+		seen[item.VariantID] = true
+		if !slices.Contains(ReturnReasons, item.Reason) {
+			return "Choose a reason for each item."
+		}
+		if item.Qty < 1 {
+			return "Enter how many units to return."
+		}
+		if open[item.VariantID] > 0 {
+			return "One item already has an open return. Finish that one first."
+		}
+		if left := bought[item.VariantID] - held[item.VariantID]; item.Qty > left {
+			if left > 0 {
+				return fmt.Sprintf("Only %d of one item can still be returned.", left)
+			}
+			return "One item was already returned in full."
+		}
+	}
+	return ""
+}
+
+// ReturnDecideBlocker mirrors returnDecideBlocker.
+func ReturnDecideBlocker(r domain.OrderReturn) string {
+	if r.Status != "requested" {
+		return "Only a requested return can be approved or rejected."
+	}
+	return ""
+}
+
+// ReturnReceiveBlocker mirrors returnReceiveBlocker.
+func ReturnReceiveBlocker(r domain.OrderReturn) string {
+	if r.Status != "approved" {
+		return "Approve the return before marking it received."
+	}
+	return ""
+}
+
+// ReturnCancelBlocker mirrors returnCancelBlocker.
+func ReturnCancelBlocker(r domain.OrderReturn) string {
+	if r.Status != "requested" && r.Status != "approved" {
+		return "Only a return that has not been received can be cancelled."
+	}
+	return ""
+}
+
+// ReturnRefundBlocker mirrors returnRefundBlocker.
+func ReturnRefundBlocker(r domain.OrderReturn, o domain.Order) string {
+	if r.Status != "received" {
+		return "Mark the return received before refunding it."
+	}
+	return OrderRefundBlocker(o)
+}
+
+// ReturnItemsPaid mirrors returnItemsPaid: the line value of the returned units, less their share of
+// the order's discount. Shipping is not part of it.
+func ReturnItemsPaid(o domain.Order, items []domain.ReturnItem) int {
+	value := 0
+	for _, item := range items {
+		units, total := 0, 0
+		for _, l := range o.Lines {
+			if l.VariantID == item.VariantID {
+				units += l.Qty
+				total += l.Qty * l.Price
+			}
+		}
+		if units > 0 {
+			value += item.Qty * total / units
+		}
+	}
+	if o.Subtotal <= 0 {
+		return 0
+	}
+	return value * max(0, o.Subtotal-o.Discount) / o.Subtotal
+}
+
+// ReturnRefundCap mirrors returnRefundCap.
+func ReturnRefundCap(o domain.Order, r domain.OrderReturn) int {
+	return max(0, min(ReturnItemsPaid(o, r.Items), o.Total-o.RefundedAmount))
+}
+
+// OrderFullyReturned mirrors orderFullyReturned.
+func OrderFullyReturned(o domain.Order, returns []domain.OrderReturn) bool {
+	refunded := returnedQty(o.ID, returns, func(r domain.OrderReturn) bool { return r.Status == "refunded" })
+	demand := VariantDemand(o)
+	for _, variantID := range demand.Keys {
+		if refunded[variantID] < demand.Qty[variantID] {
+			return false
+		}
+	}
+	return len(o.Lines) > 0
+}

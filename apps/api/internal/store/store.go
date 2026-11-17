@@ -41,6 +41,7 @@ var Tables = map[string]string{
 	"customers":          "customers",
 	"customerEvents":     "customer_events",
 	"orders":             "orders",
+	"returns":            "returns",
 	"segments":           "segments",
 	"leads":              "leads",
 	"tickets":            "tickets",
@@ -59,7 +60,7 @@ var Tables = map[string]string{
 var Collections = []string{
 	"tenants", "users", "sellers", "templates", "pages", "pageDrafts", "categories", "attributes", "modifiers",
 	"collections", "products", "warehouses", "stock", "stockMoves", "modifierStock", "modifierStockMoves",
-	"customers", "customerEvents", "orders", "segments", "leads", "tickets", "campaigns", "automations",
+	"customers", "customerEvents", "orders", "returns", "segments", "leads", "tickets", "campaigns", "automations",
 	"promotions", "paymentTypes", "agentPolicies", "integrations", "integrationLogs", "traffic", "searchTerms",
 }
 
@@ -353,7 +354,8 @@ func (db *DB) Truncate(ctx context.Context) error {
 	for _, t := range Tables {
 		names = append(names, t)
 	}
-	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log", "email_settings", "payments", "media", "currency_rates")
+	names = append(names, "credentials", "customer_credentials", "email_tokens", "staff_events", "order_rows", "customer_metrics", "sales_days", "product_days", "seller_buyers", "request_log", "api_credentials", "connector_secrets", "credential_events", "webhook_endpoints", "webhook_deliveries", "email_outbox", "event_log", "email_settings", "payments", "media", "currency_rates", "assistant_log",
+		"plan_settings", "plan_requests", "invoices", "rate_limits", "captcha_settings", "sales_months", "product_months", "sales_rollup")
 	_, err := db.Pool.Exec(ctx, `truncate `+strings.Join(names, ", "))
 	return err
 }

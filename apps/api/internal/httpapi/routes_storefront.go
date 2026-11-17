@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 
+	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 )
@@ -52,12 +53,53 @@ func (s *Server) storefrontRoutes(rt *router) {
 		return s.svc.SaveSeller(r.Context(), m, seller)
 	}))
 	rt.add("POST", "/sellers/{id}/template", "sellers/setTemplate", "seller.manage", "Give a seller another allowed template", templateOf(s, s.svc.SetSellerTemplate))
+	rt.table = append(rt.table, Route{
+		Method: "PUT", Path: prefix + "/sellers/{id}/profile", Action: "sellers/updateProfile", Scope: auth.ScopeFor("seller.manage"),
+		Summary: "Change a seller's headline, bio and photo: sellers their own within the brand's locks, seller.manage anyone's",
+	})
+	rt.mux.HandleFunc("PUT "+prefix+"/sellers/{id}/profile", s.reader(auth.ScopeFor("seller.manage"), s.updateSellerProfile))
+	rt.add("PUT", "/tenants/{id}/menus", "menus/save", "store.manage", "Replace the store's header and footer links; two empty lists bring back the theme's own", func(w http.ResponseWriter, r *http.Request) {
+		var menus domain.StoreMenus
+		if err := decode(r, &menus); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+			return s.svc.SaveMenus(r.Context(), m, r.PathValue("id"), menus)
+		})
+	})
 	rt.add("POST", "/sellers/{id}/status", "sellers/setStatus", "seller.manage", "Activate, invite or suspend a seller", status(s, s.svc.SetSellerStatus))
+}
+
+// updateSellerProfile is PUT /sellers/{id}/profile. A person who does not manage sellers reaches only
+// the profile linked to their own account; the service checks the same again inside the write.
+func (s *Server) updateSellerProfile(w http.ResponseWriter, r *http.Request) {
+	var in service.SellerProfile
+	if err := decode(r, &in); err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	if p, _ := auth.From(r.Context()); p.Kind == auth.KindUser && !auth.Can(p.Role, "seller.manage") {
+		var own bool
+		if err := s.DB.Pool.QueryRow(r.Context(), `select exists (select 1 from sellers where id = $1 and data->>'userId' = $2)`, r.PathValue("id"), p.ID).Scan(&own); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		if !own {
+			writeProblem(w, http.StatusForbidden, "FORBIDDEN", "You can change only your own seller profile.")
+			return
+		}
+	}
+	s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+		return s.svc.UpdateSellerProfile(r.Context(), m, r.PathValue("id"), in)
+	})
 }
 
 // shopRoutes registers the public storefront, one store per subdomain.
 func (s *Server) shopRoutes(rt *router) {
 	rt.add("GET", "/shop", "", "", "The stores on this platform", s.shops)
+	rt.add("GET", "/shop/by-host", "", "", "The store a verified custom domain serves, for ?host=", s.shopByHost)
+	rt.add("GET", "/internal/domain-allowed", "", "", "For the platform's TLS proxy: 200 when ?domain= is a verified custom domain", s.domainAllowed)
 	rt.add("GET", "/shop/{store}/state", "", "", "A store's public dataset", s.shopState)
 	rt.add("GET", "/shop/{store}/events", "", "", "Server-sent events for a store's public dataset", s.shopEvents)
 	rt.add("GET", "/shop/{store}/demo-customers", "", "", "Demo shoppers to sign in as (demo mode only)", s.demoCustomers)
@@ -73,5 +115,7 @@ func (s *Server) shopRoutes(rt *router) {
 	rt.add("POST", "/shop/{store}/price", "", "", "Price a cart with the store's promotions", s.shopPrice)
 	rt.add("POST", "/shop/{store}/orders", "orders/place", "", "Place an order from the storefront", s.shopPlaceOrder)
 	rt.add("POST", "/shop/{store}/leads", "leads/save", "", "Send a Talk to sales lead", s.shopLead)
+	rt.add("POST", "/shop/{store}/returns", "returns/request", "", "Ask for a return of a delivered order, within the store's return window", s.shopReturn)
+	rt.add("POST", "/shop/{store}/returns/{id}/cancel", "returns/cancel", "", "Cancel the shopper's own return before it is received", s.shopReturn)
 	rt.add("POST", "/shop/{store}/ai/chat", "", "", "Ask the AI what a shopper's message means", s.shopAIChat)
 }

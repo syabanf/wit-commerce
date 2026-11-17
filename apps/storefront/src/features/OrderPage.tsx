@@ -12,6 +12,7 @@ import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
 import { PayInRupiahNote } from '../components/Money'
 import { RupiahOnlyArea } from '../state/currency'
+import { OrderReturns } from './OrderReturns'
 
 /** Order confirmation: code, items, totals, payment state and points. */
 export function OrderPage() {
@@ -141,6 +142,7 @@ export function OrderPage() {
         </RupiahOnlyArea>
         <p className="mt-4 text-sm text-[color:var(--sf-muted)]">Delivering to {order.city}.</p>
       </section>
+      <OrderReturns order={order} />
       <div className="gap-2 flex flex-wrap justify-center">
         <ButtonLink to={paths.home(store)} size="lg">
           Continue shopping

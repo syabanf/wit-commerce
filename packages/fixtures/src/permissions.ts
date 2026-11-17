@@ -55,6 +55,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   operations: ['product.manage', 'inventory.manage', 'order.fulfil', 'order.refund', 'analytics.view'],
   service: ['customer.manage', 'ticket.manage', 'order.refund', 'lead.manage'],
   sales: ['lead.manage', 'customer.manage'],
+  // Works for the brand without a back-office job: the employee area only.
+  staff: [],
 }
 
 export const can = (role: Role, permission: Permission) => ROLE_PERMISSIONS[role].includes(permission)
@@ -67,4 +69,5 @@ export const ROLE_SUMMARY: Record<Role, string> = {
   operations: 'Keeps the catalog and stock right, ships orders and handles refunds.',
   service: 'Answers tickets, handles returns and refunds, keeps customer records tidy.',
   sales: 'Works assigned leads and customers and runs a personal storefront.',
+  staff: 'Employee area only: their own tasks and account, no back-office pages.',
 }

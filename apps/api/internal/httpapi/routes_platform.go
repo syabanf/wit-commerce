@@ -29,6 +29,9 @@ func (s *Server) platformRoutes(rt *router) {
 	rt.add("POST", "/settings/email/test", "", "", "Send a test email to the signed-in platform admin", s.platformAdmin(s.sendTestEmail))
 	rt.add("GET", "/views/orders", "", "", "The orders list: filtered, searched, sorted and paged on the server", s.reader("orders:read", s.orderRows))
 	rt.add("POST", "/ai/assistant", "", "", "Ask the admin assistant about a brand; it proposes actions and never runs them", s.user("", s.adminAssistant))
+	rt.add("POST", "/ai/assistant/outcome", "", "", "Report what the person did with an assistant card, or rate the answer", s.user("", s.assistantOutcome))
+	rt.add("GET", "/ai/assistant/log", "", "", "A brand's assistant questions and outcomes, newest first (tenant admin)", s.user("", s.assistantLog))
+	rt.add("GET", "/ai/assistant/totals", "", "", "Assistant use per brand over 30 days (platform admin)", s.user("", s.assistantTotals))
 	rt.add("GET", "/views/customer-events", "", "", "Customer history, newest first: one customer, one kind, or the latest", s.reader("customers:read", s.customerEvents))
 }
 

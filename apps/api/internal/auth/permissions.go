@@ -16,6 +16,8 @@ var rolePermissions = map[string][]string{
 	"operations": {"product.manage", "inventory.manage", "order.fulfil", "order.refund", "analytics.view"},
 	"service":    {"customer.manage", "ticket.manage", "order.refund", "lead.manage"},
 	"sales":      {"lead.manage", "customer.manage"},
+	// Works for the brand without a back-office job: signs in and reads, changes nothing.
+	"staff": {},
 }
 
 // ValidRole reports whether a role exists.

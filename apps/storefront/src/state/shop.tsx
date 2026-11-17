@@ -1,6 +1,6 @@
 import { nowMs } from '@rc/fixtures'
 import type { AppAction } from '@rc/fixtures'
-import type { Customer, Order, Seller, Tenant } from '@rc/types'
+import type { Customer, Order, OrderReturn, Seller, Tenant } from '@rc/types'
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
 import { ApiError, type Delta, type PaymentLink, type ShopperResponse } from '@rc/api'
@@ -17,6 +17,8 @@ export interface ShopValue {
   /** The tenant subdomain, the first URL segment. */
   store: string
   orders: Order[]
+  /** Return requests of this store's shoppers on this device. */
+  returns: OrderReturn[]
   customers: Customer[]
   /** The signed-in demo customer on this device. */
   customer: Customer | null
@@ -30,6 +32,8 @@ export interface ShopValue {
     email: string
     phone: string
     password: string
+    /** The Turnstile token, sent only while the platform has Turnstile on. */
+    captchaToken?: string
   }) => Promise<string | null>
   /** API mode: whether the signed-in shopper can sign in on another device. */
   hasPassword: boolean
@@ -93,6 +97,10 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     () => state.customers.filter((c) => c.tenantId === tenant.id),
     [state.customers, tenant.id],
   )
+  const returns = useMemo(
+    () => state.returns.filter((r) => r.tenantId === tenant.id),
+    [state.returns, tenant.id],
+  )
   const [customerId, setCustomerId] = usePersisted<string | null>(
     'local',
     `rc.storefront.account.${tenant.id}`,
@@ -122,6 +130,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
         ({
           customer: me,
           orders: mine,
+          returns: theirs,
           payments: links,
           hasPassword: stored,
           emailVerified: proven,
@@ -135,6 +144,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
           merge({
             customers: [...state.customers.filter((c) => c.id !== me.id), me],
             orders: [...state.orders.filter((o) => o.customerId !== me.id), ...mine],
+            returns: [...state.returns.filter((r) => r.customerId !== me.id), ...(theirs ?? [])],
           })
         },
       )
@@ -171,6 +181,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
       tenant,
       store: tenant.subdomain,
       orders,
+      returns,
       customers,
       customer,
       signIn: async (id) => {
@@ -224,6 +235,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     catalog,
     tenant,
     orders,
+    returns,
     customers,
     customer,
     setCustomerId,

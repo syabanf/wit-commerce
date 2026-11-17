@@ -28,6 +28,7 @@ import {
 } from '@rc/ui'
 import {
   BriefcaseBusiness,
+  IdCard,
   Ellipsis,
   KeyRound,
   Mail,
@@ -61,6 +62,7 @@ const ROLE_ICON: Record<Role, ReactNode> = {
   operations: <PackageCheck />,
   service: <Headset />,
   sales: <BriefcaseBusiness />,
+  staff: <IdCard />,
 }
 
 const ROLE_BADGE: Record<Role, BadgeProps['variant']> = {
@@ -70,6 +72,7 @@ const ROLE_BADGE: Record<Role, BadgeProps['variant']> = {
   operations: 'outline',
   service: 'outline',
   sales: 'outline',
+  staff: 'outline',
 }
 
 export function UsersPage() {

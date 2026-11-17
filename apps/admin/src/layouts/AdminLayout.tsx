@@ -1,13 +1,14 @@
 // apps/admin/src/layouts/AdminLayout.tsx
 import { Banner, Entrance, Spinner, cn, useMediaQuery } from '@rc/ui'
 import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react'
-import { NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router'
+import { Navigate, NavLink, Outlet, useLocation, useNavigationType, useMatches } from 'react-router'
 import { AssistantLauncher } from '../assistant/AssistantPanel'
 import { useAuth } from '../auth/auth'
 import { usePersistentState } from '../lib/storage'
 import { useStore } from '../state/store'
 import { Header } from './Header'
-import { leafFor, navFor, sectionFor } from './nav'
+import { AREA_HOME, areaOfPath, areasFor, leafFor, navFor, sectionFor } from './nav'
+import { NoAccessPage } from '../pages/NotFoundPage'
 import { PhoneNav } from './PhoneNav'
 import { QuickSearch } from './QuickSearch'
 import { SideRail } from './SideRail'
@@ -31,6 +32,10 @@ export function AdminLayout() {
   const entryKey = useRef(key)
   const expanded = expandedPref && isDesktop
   const { storageError } = useStore()
+  const { user } = useAuth()
+  const backOffice = areasFor(user?.role).length > 1
+  // A role with no back-office menu lives in the employee area: its home is /me, and no other page opens.
+  const denied = !backOffice && areaOfPath(pathname) === 'backoffice'
 
   // ---- Scroll‑position handling (unchanged) ----
   useEffect(() => {
@@ -63,6 +68,8 @@ export function AdminLayout() {
   const crumb = (crumbMatch?.handle as RouteHandle | undefined)?.breadcrumb
   const breadcrumb = typeof crumb === 'function' ? crumb({ params: crumbMatch!.params }) : crumb
 
+  if (denied && pathname === '/') return <Navigate to={AREA_HOME.employee} replace />
+
   return (
     <div className="gap-4 p-3 lg:p-4 print:bg-white print:p-0 relative flex h-[var(--admin-viewport-height)] overflow-clip bg-surface print:block print:h-auto print:overflow-visible">
       {/* Glow effect */}
@@ -79,6 +86,7 @@ export function AdminLayout() {
           expanded={expanded}
           canExpand={isDesktop}
           onToggle={() => setExpandedPref(!expandedPref)}
+          onSearch={() => setSearchOpen(true)}
           showCodes={showCodes}
         />
       </div>
@@ -98,6 +106,7 @@ export function AdminLayout() {
           onSearch={() => setSearchOpen(true)}
           showCodes={showCodes}
           onShowCodes={setShowCodes}
+          backOffice={backOffice}
         />
         <main
           id="main"
@@ -117,24 +126,28 @@ export function AdminLayout() {
           {!expanded && <SectionTabs />}
 
           {/* Breadcrumb (if defined) */}
-          {breadcrumb && (
+          {breadcrumb && !denied && (
             <nav aria-label="Breadcrumb" className="mb-2 text-xs font-medium text-muted">
               {breadcrumb}
             </nav>
           )}
 
           {/* Lazy‑loaded pages – generic spinner fallback */}
-          <Suspense fallback={<Spinner />}>
-            <Entrance key={pathname}>
-              <Outlet />
-            </Entrance>
-          </Suspense>
+          {denied ? (
+            <NoAccessPage />
+          ) : (
+            <Suspense fallback={<Spinner />}>
+              <Entrance key={pathname}>
+                <Outlet />
+              </Entrance>
+            </Suspense>
+          )}
         </main>
       </div>
 
       <PhoneNav moreOpen={moreOpen} onMoreChange={setMoreOpen} />
       <QuickSearch open={searchOpen} onOpenChange={setSearchOpen} />
-      <AssistantLauncher />
+      {backOffice && <AssistantLauncher />}
     </div>
   )
 }

@@ -4,7 +4,7 @@
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Customer, Order, Page } from '../packages/types/src/index.ts'
+import type { Customer, MenuLink, Order, Page, ReturnReason, ShopperEmailKind } from '../packages/types/src/index.ts'
 import { FIXTURE_NOW } from '../packages/fixtures/src/clock.ts'
 import { seedState } from '../packages/fixtures/src/data.ts'
 import { DAY, HOUR, toIso, toMs } from '../packages/fixtures/src/dates.ts'
@@ -300,6 +300,82 @@ run('system/tick', { type: 'system/tick' }, 'system')
 const currencies = (list: string[]) => ({ type: 'tenants/setDisplayCurrencies' as const, tenantId: lari, currencies: list })
 run('tenants/setDisplayCurrencies', currencies(['USD', 'SGD', 'USD']), 'usr-andi')
 run('tenants/setDisplayCurrencies refused', currencies(['XYZ']), 'usr-andi')
+
+// Custom domains, on the brand that has none so the cases above keep their rows.
+const teknika = 'ten-teknika'
+const setDomain = (domain: string | null) =>
+  ({ type: 'tenants/setDomain' as const, tenantId: teknika, domain, token: 'wit-verify-golden' })
+run('tenants/verifyDomain refused without a domain', { type: 'tenants/verifyDomain', tenantId: teknika })
+run('tenants/setDomain refused when invalid', setDomain('localhost'))
+run('tenants/setDomain refused when taken', setDomain('www.aruna.id'))
+run('tenants/setDomain', setDomain('www.teknika-store.com'))
+run('tenants/verifyDomain', { type: 'tenants/verifyDomain', tenantId: teknika })
+run('tenants/setDomain same domain', setDomain('www.teknika-store.com'))
+run('tenants/setDomain disconnect', setDomain(null))
+
+// Store content: a seller's own copy, then the store's menus.
+const profile = (id: string, headline: string, bio: string, photoUrl = '') => ({ type: 'sellers/updateProfile' as const, id, headline, bio, photoUrl })
+run('sellers/updateProfile', profile('sel-sherlyn', ' Trail picks, tested on Rinjani. ', 'I run the club\'s trail group.', '/media/ten-lari/med-golden0001.webp'), 'usr-andi')
+run('sellers/updateProfile own', profile('sel-fahmi', 'Race-day shoes, fitted by Fahmi.', 'Ask me about carbon plates.'), 'usr-fahmi')
+run('sellers/updateProfile refused', profile('sel-fahmi', 'x'.repeat(81), ''), 'usr-andi')
+const menus = (header: MenuLink[], footer: MenuLink[]) => ({ type: 'menus/save' as const, tenantId: lari, menus: { header, footer } })
+run('menus/save', menus(
+  [
+    { label: ' About us ', target: { kind: 'page', id: 'page-lari-about' } },
+    { label: 'Shoes', target: { kind: 'category', id: find(state.categories, (c) => c.tenantId === lari, 'category').id } },
+    { label: 'Everything', target: { kind: 'catalog' } },
+    { label: 'Instagram', target: { kind: 'url', url: 'https://instagram.com/lari' } },
+  ],
+  [
+    { label: 'FAQ', target: { kind: 'page', id: 'page-lari-faq' } },
+    { label: 'Your cart', target: { kind: 'url', url: '/cart' } },
+  ],
+), 'usr-maya')
+run('menus/save refused', menus([{ label: 'Bad', target: { kind: 'url', url: 'javascript:alert(1)' } }], []), 'usr-maya')
+run('menus/save cleared', menus([], []), 'usr-maya')
+
+// Returns, added at the end so every case above keeps its output. One order of four units goes
+// through every return step until refunded returns cover it all and it turns returned.
+const shopSettings = (returnWindowDays: number, shopperEmailsOff: ShopperEmailKind[]) =>
+  ({ type: 'tenants/setShopSettings' as const, tenantId: lari, returnWindowDays, shopperEmailsOff })
+run('tenants/setShopSettings', shopSettings(14, ['order_shipped', 'order_placed']), 'usr-andi')
+run('tenants/setShopSettings refused', shopSettings(120, []), 'usr-andi')
+const line = { ...template.lines[0]!, qty: 4 }
+const returnable = fresh('ord-golden-r1', {
+  lines: [line],
+  subtotal: line.qty * line.price,
+  discount: 0,
+  total: line.qty * line.price + template.shipping,
+})
+run('orders/place for returns', { type: 'orders/place', order: returnable, customer: null }, 'storefront')
+for (const step of ['confirm', 'pay', 'process', 'pack', 'ship', 'deliver'])
+  run(`orders/advance ${step} for returns`, { type: 'orders/advance', id: returnable.id })
+const ask = (id: string, qty: number, who: 'staff' | 'shopper', reason: ReturnReason = 'damaged') =>
+  ({
+    type: 'returns/request' as const,
+    id,
+    orderId: returnable.id,
+    items: [{ variantId: line.variantId, qty, reason }],
+    note: `Golden ${id}`,
+    who,
+  })
+run('returns/request refused too many', ask('ret-golden-0', 5, 'staff'))
+run('returns/request shopper', ask('ret-golden-1', 1, 'shopper'), 'storefront')
+run('returns/request refused open item', ask('ret-golden-x', 1, 'staff'))
+run('returns/refund refused not received', { type: 'returns/refund', id: 'ret-golden-1', amount: 1000, note: '' })
+run('returns/approve', { type: 'returns/approve', id: 'ret-golden-1', note: '' })
+run('returns/receive restock', { type: 'returns/receive', id: 'ret-golden-1', restock: true })
+run('returns/cancel refused received', { type: 'returns/cancel', id: 'ret-golden-1', note: '' })
+run('returns/refund capped', { type: 'returns/refund', id: 'ret-golden-1', amount: 100_000_000, note: 'Golden refund' })
+run('returns/request staff', ask('ret-golden-2', 2, 'staff', 'size_or_fit'))
+run('returns/reject refused no reason', { type: 'returns/reject', id: 'ret-golden-2', reason: ' ' })
+run('returns/reject', { type: 'returns/reject', id: 'ret-golden-2', reason: 'Worn and washed' })
+run('returns/request after rejection', ask('ret-golden-3', 2, 'staff'))
+run('returns/cancel', { type: 'returns/cancel', id: 'ret-golden-3', note: 'Shopper kept them' })
+run('returns/request rest', ask('ret-golden-4', 3, 'staff', 'wrong_item'))
+run('returns/approve rest', { type: 'returns/approve', id: 'ret-golden-4', note: 'Golden approval' })
+run('returns/receive no restock', { type: 'returns/receive', id: 'ret-golden-4', restock: false })
+run('returns/refund closes the order', { type: 'returns/refund', id: 'ret-golden-4', amount: 100_000_000, note: '' })
 
 const generated = new Set<string>()
 const seedIds = new Set<string>()

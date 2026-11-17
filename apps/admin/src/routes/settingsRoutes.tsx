@@ -33,9 +33,24 @@ export const settingsRoutes: RouteObject[] = [
     lazy: page(() => import('../pages/settings/EmailSettingsPage'), 'EmailSettingsPage'),
   },
   {
+    path: 'settings/plan',
+    handle: { breadcrumb: t.breadcrumb.planUsage },
+    lazy: page(() => import('../pages/plans/PlanUsagePage'), 'PlanUsagePage'),
+  },
+  {
+    path: 'settings/plans',
+    handle: { breadcrumb: t.breadcrumb.plans },
+    lazy: page(() => import('../pages/plans/PlansPage'), 'PlansPage'),
+  },
+  {
     path: 'settings/currencies',
     handle: { breadcrumb: t.breadcrumb.currencies },
     lazy: page(() => import('../pages/settings/CurrencySettingsPage'), 'CurrencySettingsPage'),
+  },
+  {
+    path: 'settings/assistant-log',
+    handle: { breadcrumb: t.breadcrumb.assistantLog },
+    lazy: page(() => import('../pages/settings/AssistantLogPage'), 'AssistantLogPage'),
   },
 ]
 

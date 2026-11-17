@@ -60,7 +60,11 @@ Dependencies point down. A page composes; it owns no business rules.
 
 ## Navigation map
 
-`layouts/nav.ts` is the one source for the rail, the section tabs, the phone bar and the More sheet. Sections sit in four groups, in the order a brand team works:
+`layouts/nav.ts` is the one source for the rail, the section tabs, the phone bar and the More sheet. The menu has two areas, switched with the pill tab at the top of the rail and of the More sheet (`AreaTabs`): **Back office** (`NAV`) and **Employee** (`EMPLOYEE_NAV`, the pages under `/me`: My home, My tasks, My account). `areaOfPath()` picks the area from the URL. Both labels are one string each in `i18n/en.ts`.
+
+Each back-office section or page names the permissions that make it useful (`needs`, any of), and `navFor(role)` returns only those. A role with no back-office section (`staff`) gets no tabs: the rail shows the employee list, `/` opens `/me`, and a back-office address shows `NoAccessPage`. `mayOpen(role, link)` says whether a role's menu holds a page, for rows that link there.
+
+Back-office sections sit in groups, in the order a brand team works:
 
 | Group | Sections |
 |---|---|

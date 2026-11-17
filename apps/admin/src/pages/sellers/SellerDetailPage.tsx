@@ -42,6 +42,7 @@ import { ProductsPicker } from '../../components/pickers'
 import { useNow, useScoped } from '../../state/scoped'
 import { HeroMetric } from '../../components/HeroMetric'
 import { PersonalStoreCard } from './PersonalStoreCard'
+import { SellerProfileCard } from './SellerProfileCard'
 import { dailyVisitors, storeUrl } from './lib'
 
 const LIST = '/sales/sellers'
@@ -234,6 +235,9 @@ export function SellerDetailPage() {
         )}
       </Card>
 
+      {(canManage || seller.userId === s.user.id) && (
+        <SellerProfileCard key={`profile-${seller.id}`} seller={seller} />
+      )}
       <PersonalStoreCard key={seller.id} seller={seller} />
 
       <div className="gap-4 lg:grid-cols-2 grid grid-cols-1">

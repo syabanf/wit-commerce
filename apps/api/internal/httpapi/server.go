@@ -23,6 +23,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
 	aimodule "github.com/syabanf/wit-commerce/apps/api/internal/modules/ai"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/antispam"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/currency"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
@@ -67,6 +68,14 @@ type Options struct {
 	MediaPublicURL string
 	// CurrencyURL is the Frankfurter API root for exchange rates; empty means currency.DefaultURL.
 	CurrencyURL string
+	// DNS answers custom domain checks; nil means the system resolver. DomainTarget is another name
+	// a domain's CNAME may point at, and DomainTargetIPs the addresses its A records may hold.
+	DNS             identity.Resolver
+	DNSTimeout      time.Duration
+	DomainTarget    string
+	DomainTargetIPs []string
+	// DomainAskSecret, when set, is what GET /internal/domain-allowed needs as ?secret=.
+	DomainAskSecret string
 }
 
 // Server holds the dependencies handlers read.
@@ -80,11 +89,14 @@ type Server struct {
 	signInClients, signInEmails, mailEmails *keyLimiter
 	signUpClients, signUpEmails             *keyLimiter
 	subdomainChecks                         *keyLimiter
+	domainChecks, hostLookups               *keyLimiter
 	assistantUsers, assistantTenants        *keyLimiter
 	assistant                               *aimodule.AI
+	segments                                segmentCache
 	media                                   *media.Media
 	mediaDisk                               media.Disk
 	currency                                *currency.Currency
+	antispam                                *antispam.Antispam
 	spec                                    []byte
 }
 
@@ -93,11 +105,16 @@ func New(o Options) *Server {
 	s := &Server{Options: o, svc: service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock, Vault: o.Vault, HTTP: o.Outbound, AllowInternalWebhooks: o.AllowInternalWebhooks}), limiter: newKeyLimiter(apiKeyRatePerMinute), aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal), signInClients: newKeyLimiter(signInRatePerIP), signInEmails: newKeyLimiter(signInRatePerEmail), mailEmails: newKeyLimiter(mailRatePerEmail)}
 	s.signUpClients, s.signUpEmails = newPeriodLimiter(signUpRatePerIP, time.Hour), newPeriodLimiter(signUpRatePerEmail, time.Hour)
 	s.subdomainChecks = newKeyLimiter(subdomainChecksPerIP)
+	s.domainChecks, s.hostLookups = newKeyLimiter(domainChecksPerTenant), newKeyLimiter(hostLookupsPerIP)
+	s.svc.Identity.Domains = o.domainConfig()
 	s.assistantUsers, s.assistantTenants = newKeyLimiter(assistantRatePerUser), newPeriodLimiter(assistantDailyPerTenant, 24*time.Hour)
+	s.shareLimits()
+	s.antispam = &antispam.Antispam{Runtime: s.svc.Runtime}
 	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, StoreRootDomain: o.StoreRootDomain, Log: o.Log}
+	s.svc.UseShopperNotices(s.notify)
 	s.assistant = aimodule.New(o.AI, s.svc.Catalog)
 	s.mediaDisk = media.Disk{Dir: cmp.Or(o.MediaDir, "media-data"), PublicURL: strings.TrimRight(cmp.Or(o.MediaPublicURL, "/media"), "/")}
-	s.media = &media.Media{Runtime: s.svc.Runtime, Storage: s.mediaDisk}
+	s.media = &media.Media{Runtime: s.svc.Runtime, Storage: s.mediaDisk, Uses: s.svc, Log: o.Log}
 	s.currency = &currency.Currency{Runtime: s.svc.Runtime, Log: o.Log, URL: o.CurrencyURL}
 	mux := http.NewServeMux()
 	s.routes(mux)
@@ -174,6 +191,8 @@ func uniqueConflict(err error) (service.Conflict, bool) {
 		return identity.ErrSubdomainTaken, true
 	case "users_email_idx":
 		return identity.ErrEmailTaken, true
+	case "tenants_domain_idx":
+		return identity.ErrDomainTaken, true
 	}
 	return service.Conflict{}, false
 }
@@ -358,7 +377,7 @@ func (s *Server) reader(scope string, h http.HandlerFunc) http.HandlerFunc {
 		if p.Kind == auth.KindAPIKey {
 			return p.HasScope(scope), "This API key lacks the scope " + scope + "."
 		}
-		return true, ""
+		return !employeeOnly(p), noBrandData
 	}, h)
 }
 
@@ -423,6 +442,7 @@ func (s *Server) publish(d *service.Delta) map[string]any {
 			}
 			_ = json.Unmarshal(raw, &keys)
 			upserts[collection] = append(upserts[collection], raw)
+			s.segments.forget(collection, keys.TenantID)
 			for _, tenantID := range rowTenants(collection, keys.ID, keys.TenantID, keys.TenantIDs) {
 				change.Upserts[collection] = append(change.Upserts[collection], events.Row{TenantID: tenantID, Data: raw})
 			}

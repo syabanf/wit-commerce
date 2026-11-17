@@ -7,4 +7,6 @@ import "github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 // Identity runs the identity actions.
 type Identity struct {
 	*kernel.Runtime
+	// Domains configures custom domain checks. The zero value keeps custom domains off.
+	Domains DomainConfig
 }

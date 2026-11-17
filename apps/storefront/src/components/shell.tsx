@@ -3,6 +3,7 @@ import type { Promotion } from '@rc/types'
 import { cn } from '@rc/ui'
 import { ChevronRight, Sparkles, UserRound, X } from 'lucide-react'
 import { useCallback } from 'react'
+import { MenuLink } from './MenuLink'
 import { Link, useNavigate } from 'react-router'
 import { popularCategories, productsIn, welcomePromotion } from '../lib/catalog'
 import { firstName, paths } from '../lib/paths'
@@ -100,7 +101,7 @@ export function CategoryMenu({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  extra?: { label: string; to: string }[]
+  extra?: { label: string; to: string; external?: boolean }[]
 }) {
   const { catalog, store, customer } = useShop()
   const close = () => onOpenChange(false)
@@ -153,16 +154,16 @@ export function CategoryMenu({
             ...(extra ?? []),
             { label: customer ? 'Your account' : 'Sign in', to: paths.account(store) },
             { label: 'Wishlist', to: paths.wishlist(store) },
-          ].map((l) => (
-            <li key={l.label}>
-              <Link
-                to={l.to}
+          ].map((l, i) => (
+            <li key={`${i}-${l.label}`}>
+              <MenuLink
+                item={{ external: false, ...l }}
                 onClick={close}
                 className="min-h-11 px-3 text-sm font-semibold flex items-center justify-between hover:underline"
               >
                 {l.label}
                 <ChevronRight className="size-4" aria-hidden="true" />
-              </Link>
+              </MenuLink>
             </li>
           ))}
         </ul>

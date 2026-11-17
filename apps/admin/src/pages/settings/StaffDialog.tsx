@@ -102,7 +102,9 @@ export function StaffDialog({
                   ? 'Another admin must change your own role and brands.'
                   : role === 'sales'
                     ? 'A sales agent also needs a seller profile in Sellers to use the seller app.'
-                    : undefined
+                    : role === 'staff'
+                      ? 'Employee area only: their own tasks and account, no back-office pages.'
+                      : undefined
               }
             >
               <NativeSelect
@@ -110,7 +112,10 @@ export function StaffDialog({
                 value={role}
                 disabled={self}
                 onChange={(e) => setRole(e.target.value as Role)}
-                options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+                options={roles.map((r) => ({
+                  value: r,
+                  label: r === 'staff' ? `${ROLE_LABEL[r]} (employee area only)` : ROLE_LABEL[r],
+                }))}
               />
             </FormField>
             {role !== 'platform_admin' && (

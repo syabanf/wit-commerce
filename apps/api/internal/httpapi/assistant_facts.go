@@ -1,13 +1,14 @@
 package httpapi
 
 import (
-	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -25,71 +26,156 @@ import (
 //
 // What the model receives: sales totals for 7 and 30 days against the period before, the top five
 // products and sellers, order queue counts with the oldest orders to fulfil (code, status, total, no
-// customer), stock levels at or under their reorder point, running and upcoming campaigns and
-// promotions, segment sizes, the abandoned checkouts of the last 7 days and the five customers who
-// spent most, by initials and customer code only. What it never receives: a customer's full name,
-// email, phone, address, city or birthday, and any staff account detail.
+// customer), stock levels at or under their reorder point, campaigns and promotions that have not
+// ended, segment sizes, open tickets and leads, the abandoned checkouts of the last 7 days and the
+// five customers who spent most, by initials and customer code only. What it never receives: a
+// customer's or lead's full name, email, phone, address, city or birthday, and any staff account
+// detail.
 //
-// A sales user's facts cover their own orders and customers, the rule of seller_scope.go, and leave
-// out products, sellers, stock, campaigns and promotions.
+// A sales user's facts cover their own orders, customers and leads, the rule of seller_scope.go, and
+// leave out products, sellers, stock, campaigns, promotions and tickets.
+//
+// The sections run at once under one deadline, and sectionsFor trims them to the question and page.
 
 const (
-	assistantTop       = 5
-	assistantOrders    = 8
-	assistantLowStock  = 10
-	assistantCampaigns = 10
-	assistantPromos    = 15
+	assistantTop        = 5
+	assistantOrders     = 8
+	assistantLowStock   = 10
+	assistantCampaigns  = 10
+	assistantPromos     = 15
+	assistantFactsLimit = 5 * time.Second
+	segmentCacheTTL     = 60 * time.Second
 )
 
-func (s *Server) assistantFacts(ctx context.Context, p auth.Principal, tenantID, page string) (aimodule.AssistantFacts, error) {
+// sections says which optional parts of the facts a question needs.
+type sections struct {
+	marketing, funnels, tickets, leads bool
+}
+
+// sectionKeywords open a section whatever page the person is on.
+var sectionKeywords = map[string][]string{
+	"marketing": {"campaign", "promo", "discount", "voucher", "coupon", "sale", "launch", "marketing"},
+	"tickets":   {"ticket", "support", "complain", "complaint", "issue", "help desk"},
+	"leads":     {"lead", "pipeline", "deal", "prospect"},
+}
+
+func mentions(question string, kind string) bool {
+	q := strings.ToLower(question)
+	return slices.ContainsFunc(sectionKeywords[kind], func(w string) bool { return strings.Contains(q, w) })
+}
+
+// sectionsFor is the trim rule: a record page about an order, product or stock leaves marketing out,
+// campaign funnels appear only on marketing pages, and tickets and leads only on their pages or
+// home. A keyword in the question brings any section back.
+func sectionsFor(page, question string) sections {
+	path, _, _ := strings.Cut(page, "?")
+	home := path == "" || path == "/" || path == "/analytics"
+	under := func(prefixes ...string) bool {
+		return slices.ContainsFunc(prefixes, func(p string) bool { return path == p || strings.HasPrefix(path, p+"/") })
+	}
+	operational := strings.HasPrefix(path, "/commerce/orders/") || strings.HasPrefix(path, "/commerce/products/") || under("/commerce/inventory")
+	return sections{
+		marketing: !operational || mentions(question, "marketing"),
+		funnels:   under("/marketing") || mentions(question, "marketing"),
+		tickets:   home || under("/customers/support") || mentions(question, "tickets"),
+		leads:     home || under("/customers/leads", "/sales") || mentions(question, "leads"),
+	}
+}
+
+// assistantFacts gathers the facts and returns them with a sales user's seller profiles (nil for a
+// reader of the whole brand), which the lookups scope by.
+func (s *Server) assistantFacts(ctx context.Context, p auth.Principal, tenantID, page, question string) (aimodule.AssistantFacts, []string, error) {
+	ctx, cancel := context.WithTimeout(ctx, assistantFactsLimit)
+	defer cancel()
 	tenant, err := store.Get[domain.Tenant](ctx, s.DB.Pool, "tenants", tenantID)
 	if err != nil {
-		return aimodule.AssistantFacts{}, err
+		return aimodule.AssistantFacts{}, nil, err
 	}
 	sellers, err := s.ownSellers(ctx, p)
 	if err != nil {
-		return aimodule.AssistantFacts{}, err
+		return aimodule.AssistantFacts{}, nil, err
 	}
 	now := s.Clock.Now().In(clock.WIB)
 	f := aimodule.AssistantFacts{
-		TenantID: tenantID, Role: p.Role, Store: tenant.Name, Today: now.Format(time.DateOnly), Page: page,
+		TenantID: tenantID, Role: p.Role, UserID: p.ID, OwnOnly: sellers != nil, Now: now,
+		Store: tenant.Name, Today: now.Format(time.DateOnly), Page: page,
 		Scope: "the whole brand", Known: map[string][]string{},
 	}
 	if sellers != nil {
-		f.Scope = "only this sales person's own orders and assigned customers"
+		f.Scope = "only this sales person's own orders, assigned customers and leads"
 	}
-	g := factGatherer{s: s, ctx: ctx, tenantID: tenantID, sellers: sellers, now: now, f: &f}
+	g := factGatherer{s: s, ctx: ctx, tenantID: tenantID, userID: p.ID, sellers: sellers, now: now, f: &f}
+	want := sectionsFor(page, question)
 	steps := []func() error{g.sales, g.queue, g.customers}
-	if sellers == nil {
-		steps = append(steps, g.catalog, g.marketing)
+	if want.leads {
+		steps = append(steps, g.leads)
 	}
-	steps = append(steps, func() error { return g.current(page) })
-	for _, step := range steps {
-		if err := step(); err != nil {
-			return aimodule.AssistantFacts{}, err
+	if sellers == nil {
+		steps = append(steps, g.catalog)
+		if want.marketing {
+			steps = append(steps, func() error { return g.marketing(want.funnels) })
+		}
+		if want.tickets {
+			steps = append(steps, g.tickets)
 		}
 	}
-	return f, nil
+	// Each step writes only its own fields of f, so they run at once; the first error wins.
+	errs := make([]error, len(steps))
+	var wg sync.WaitGroup
+	for i, step := range steps {
+		wg.Go(func() { errs[i] = step() })
+	}
+	wg.Wait()
+	if err := errors.Join(errs...); err != nil {
+		return aimodule.AssistantFacts{}, nil, err
+	}
+	if err := g.current(page); err != nil {
+		return aimodule.AssistantFacts{}, nil, err
+	}
+	knowFacts(&f)
+	return f, sellers, nil
+}
+
+// knowFacts lets actions and links name every record the facts list.
+func knowFacts(f *aimodule.AssistantFacts) {
+	for _, r := range f.TopSellers {
+		f.Know(aimodule.KnownSellers, r.ID)
+	}
+	for _, r := range f.TopProducts {
+		f.Know(aimodule.KnownProducts, r.ID)
+	}
+	for _, l := range f.LowStock {
+		f.Know(aimodule.KnownProducts, l.ProductID)
+	}
+	for _, o := range f.Orders {
+		f.Know(aimodule.KnownOrders, o.ID)
+	}
+	for _, c := range f.Customers {
+		f.Know(aimodule.KnownCustomers, c.ID)
+	}
+	for _, s := range f.Segments {
+		f.Know(aimodule.KnownSegments, s.ID)
+	}
+	for _, c := range f.Campaigns {
+		f.Know(aimodule.KnownCampaigns, c.ID)
+	}
+	for _, p := range f.Promotions {
+		f.Know(aimodule.KnownPromotions, p.ID)
+	}
 }
 
 type factGatherer struct {
 	s        *Server
 	ctx      context.Context
 	tenantID string
+	userID   string
 	// sellers is nil for a reader of the whole brand, else a sales user's seller profiles.
-	sellers  []string
-	now      time.Time
-	products []domain.Product
-	f        *aimodule.AssistantFacts
+	sellers []string
+	now     time.Time
+	f       *aimodule.AssistantFacts
 }
 
 func (g *factGatherer) day(back int) string { return g.now.AddDate(0, 0, -back).Format(time.DateOnly) }
-
-func (g *factGatherer) know(kind, id string) {
-	if !slices.Contains(g.f.Known[kind], id) {
-		g.f.Known[kind] = append(g.f.Known[kind], id)
-	}
-}
 
 // scoped adds a sales user's rule to a query whose arguments are args: order_rows' own-orders rule,
 // or seller_id for the sales facts.
@@ -125,34 +211,17 @@ func (g *factGatherer) sales() error {
 	if g.sellers != nil {
 		return nil
 	}
-	rows, err := g.s.DB.Pool.Query(g.ctx, `select seller_id, sum(orders), sum(revenue) from sales_days
-		where tenant_id = $1 and day >= $2 and seller_id is not null group by 1 order by 3 desc, 1 limit $3`, g.tenantID, g.day(29), assistantTop)
+	rows, err := g.s.DB.Pool.Query(g.ctx, `select d.seller_id, coalesce(s.data->>'name', d.seller_id), sum(d.orders), sum(d.revenue)
+		from sales_days d left join sellers s on s.id = d.seller_id
+		where d.tenant_id = $1 and d.day >= $2 and d.seller_id is not null group by 1, 2 order by 4 desc, 1 limit $3`, g.tenantID, g.day(29), assistantTop)
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var r aimodule.RankedFact
-		if err := rows.Scan(&r.ID, &r.Orders, &r.Revenue); err != nil {
-			rows.Close()
-			return err
-		}
-		g.f.TopSellers = append(g.f.TopSellers, r)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	sellers, err := store.ListTenant[domain.Seller](g.ctx, g.s.DB.Pool, "sellers", g.tenantID)
-	if err != nil {
-		return err
-	}
-	for i, r := range g.f.TopSellers {
-		if j := slices.IndexFunc(sellers, func(x domain.Seller) bool { return x.ID == r.ID }); j >= 0 {
-			g.f.TopSellers[i].Name = sellers[j].Name
-		}
-		g.know(aimodule.KnownSellers, r.ID)
-	}
-	return nil
+	g.f.TopSellers, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (aimodule.RankedFact, error) {
+		var f aimodule.RankedFact
+		return f, r.Scan(&f.ID, &f.Name, &f.Orders, &f.Revenue)
+	})
+	return err
 }
 
 func (g *factGatherer) queue() error {
@@ -167,173 +236,322 @@ func (g *factGatherer) queue() error {
 		return err
 	}
 	where, args = g.scoped("tenant_id = $1 and "+orderViews["to-fulfil"], []any{g.tenantID}, true)
-	rows, err := g.s.DB.Pool.Query(g.ctx, fmt.Sprintf(`select id, code, status, payment_status, payment_method, created_at, total
-		from order_rows where %s order by created_at, id limit %d`, where, assistantOrders), args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var o aimodule.OrderFact
-		var method string
-		var placed time.Time
-		if err := rows.Scan(&o.ID, &o.Code, &o.Status, &o.Payment, &method, &placed, &o.Total); err != nil {
-			return err
-		}
-		o.NextStatus, _ = rules.NextOrderStatus(o.Status, method)
-		o.PlacedAt, o.Late = clock.Iso(placed), placed.Before(lateBefore)
-		g.f.Orders = append(g.f.Orders, o)
-		g.know(aimodule.KnownOrders, o.ID)
-	}
-	return rows.Err()
+	g.f.Orders, err = g.s.orderFacts(g.ctx, where, "created_at, id", assistantOrders, args, false)
+	return err
 }
 
-// customers counts segments and abandoned checkouts, and names the top spenders by initials.
+// orderFacts reads order_rows into facts. withCustomer adds the buyer's initials and code.
+func (s *Server) orderFacts(ctx context.Context, where, order string, limit int, args []any, withCustomer bool) ([]aimodule.OrderFact, error) {
+	rows, err := s.DB.Pool.Query(ctx, fmt.Sprintf(`select id, code, status, payment_status, payment_method, created_at, total,
+		customer_name, customer_code from order_rows where %s order by %s limit %d`, where, order, limit), args...)
+	if err != nil {
+		return nil, err
+	}
+	lateBefore := s.Clock.Now().Add(-lateAfter)
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (aimodule.OrderFact, error) {
+		var o aimodule.OrderFact
+		var method, name, code string
+		var placed time.Time
+		if err := r.Scan(&o.ID, &o.Code, &o.Status, &o.Payment, &method, &placed, &o.Total, &name, &code); err != nil {
+			return o, err
+		}
+		if aimodule.Advanceable(o.Status) {
+			o.NextStatus, _ = rules.NextOrderStatus(o.Status, method)
+		}
+		o.PlacedAt, o.Late = clock.Iso(placed), aimodule.Advanceable(o.Status) && placed.Before(lateBefore)
+		if withCustomer {
+			o.Customer = initials(name) + " (" + code + ")"
+		}
+		return o, nil
+	})
+}
+
+// customers counts segments and abandoned checkouts in SQL, and names the top spenders by initials.
 func (g *factGatherer) customers() error {
-	customers, err := store.ListTenant[domain.Customer](g.ctx, g.s.DB.Pool, "customers", g.tenantID)
-	if err != nil {
-		return err
-	}
-	if g.sellers != nil {
-		customers = slices.DeleteFunc(customers, func(c domain.Customer) bool {
-			return c.SellerID == nil || !slices.Contains(g.sellers, *c.SellerID)
-		})
-	}
-	inScope := map[string]domain.Customer{}
-	for _, c := range customers {
-		inScope[c.ID] = c
-	}
-	metrics, err := readmodel.TenantCustomerMetrics(g.ctx, g.s.DB.Pool, g.tenantID)
-	if err != nil {
-		return err
-	}
-	nowMs := g.now.UnixMilli()
-	rows := []rules.MetricsRow{}
-	for _, m := range metrics {
-		if _, ok := inScope[m.CustomerID]; !ok {
-			continue
-		}
-		row := rules.MetricsRow{CustomerID: m.CustomerID, Orders: m.Orders, Spend: int(m.Spend), FirstAt: ms(m.FirstAt),
-			LastAt: ms(m.LastAt), LastAbandonedAt: ms(m.LastAbandonedAt), LastPurchaseEventAt: ms(m.LastPurchaseEventAt)}
-		rows = append(rows, row)
-		if row.LastAbandonedAt > row.LastPurchaseEventAt && nowMs-row.LastAbandonedAt <= 7*clock.Day {
-			g.f.AbandonedCarts7d++
-		}
-	}
-	segCtx := rules.SegmentContextFromRows(rows, nowMs)
 	segments, err := store.ListTenant[domain.Segment](g.ctx, g.s.DB.Pool, "segments", g.tenantID)
 	if err != nil {
 		return err
 	}
+	sizes, abandoned, err := g.s.segmentSizes(g.ctx, g.tenantID, segments, g.sellers)
+	if err != nil {
+		return err
+	}
+	g.f.AbandonedCarts7d = abandoned
 	for _, seg := range segments {
-		g.f.Segments = append(g.f.Segments, aimodule.SegmentFact{ID: seg.ID, Name: seg.Name, Customers: rules.AudienceSize(seg, customers, segCtx)})
-		g.know(aimodule.KnownSegments, seg.ID)
+		g.f.Segments = append(g.f.Segments, aimodule.SegmentFact{ID: seg.ID, Name: seg.Name, Customers: sizes[seg.ID]})
 	}
-	slices.SortFunc(rows, func(a, b rules.MetricsRow) int {
-		return cmp.Or(cmp.Compare(b.Spend, a.Spend), cmp.Compare(a.CustomerID, b.CustomerID))
-	})
-	for _, r := range rows[:min(assistantTop, len(rows))] {
-		if r.Spend == 0 {
-			break
+	where, args := "c.tenant_id = $1 and m.spend > 0 and m.orders > 0", []any{g.tenantID}
+	if g.sellers != nil {
+		args = append(args, g.sellers)
+		where += fmt.Sprintf(" and c.data->>'sellerId' = any($%d)", len(args))
+	}
+	g.f.Customers, err = g.s.customerFacts(g.ctx, where, "m.spend desc, c.id", assistantTop, args)
+	return err
+}
+
+// customerFacts reads customers with their metrics as initials and code, never contact details.
+func (s *Server) customerFacts(ctx context.Context, where, order string, limit int, args []any) ([]aimodule.CustomerFact, error) {
+	rows, err := s.DB.Pool.Query(ctx, fmt.Sprintf(`select c.id, c.code, coalesce(c.data->>'name', ''), coalesce(c.data->>'tier', ''),
+		coalesce(m.orders, 0), coalesce(m.spend, 0), m.last_at
+		from customers c left join customer_metrics m on m.customer_id = c.id where %s order by %s limit %d`, where, order, limit), args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (aimodule.CustomerFact, error) {
+		var c aimodule.CustomerFact
+		var name string
+		var last *time.Time
+		if err := r.Scan(&c.ID, &c.Code, &name, &c.Tier, &c.Orders, &c.Spend, &last); err != nil {
+			return c, err
 		}
-		c := inScope[r.CustomerID]
-		g.f.Customers = append(g.f.Customers, aimodule.CustomerFact{ID: c.ID, Code: c.Code, Initials: initials(c.Name), Orders: r.Orders, Spend: int64(r.Spend)})
-		g.know(aimodule.KnownCustomers, c.ID)
+		c.Initials = initials(name)
+		if last != nil && c.Orders > 0 {
+			c.LastOrderAt = clock.Iso(*last)
+		}
+		return c, nil
+	})
+}
+
+// segmentCache keeps a brand's segment sizes for a minute. A write to customers or segments drops
+// the brand's entry.
+type segmentCache struct {
+	mu      sync.Mutex
+	entries map[string]segmentEntry
+}
+
+type segmentEntry struct {
+	at        time.Time
+	key       string
+	sizes     map[string]int
+	abandoned int
+}
+
+func (c *segmentCache) forget(collection, tenantID string) {
+	if collection != "customers" && collection != "segments" && collection != readmodel.CustomerMetricsCollection {
+		return
 	}
-	return nil
+	c.mu.Lock()
+	delete(c.entries, tenantID)
+	c.mu.Unlock()
+}
+
+// segmentSizes counts each segment's customers by id. A sales user's counts cover their own
+// customers and skip the cache.
+func (s *Server) segmentSizes(ctx context.Context, tenantID string, segments []domain.Segment, sellers []string) (map[string]int, int, error) {
+	var key strings.Builder
+	for _, seg := range segments {
+		fmt.Fprintf(&key, "%s:%s:%v;", seg.ID, seg.Match, seg.Rules)
+	}
+	now := s.Clock.Now()
+	if sellers == nil {
+		s.segments.mu.Lock()
+		e, ok := s.segments.entries[tenantID]
+		s.segments.mu.Unlock()
+		if ok && e.key == key.String() && now.Sub(e.at) < segmentCacheTTL && !now.Before(e.at) {
+			return e.sizes, e.abandoned, nil
+		}
+	}
+	counts, abandoned, err := readmodel.SegmentCounts(ctx, s.DB.Pool, tenantID, segments, sellers, now.UnixMilli())
+	if err != nil {
+		return nil, 0, err
+	}
+	sizes := make(map[string]int, len(segments))
+	for i, seg := range segments {
+		sizes[seg.ID] = counts[i]
+	}
+	if sellers == nil {
+		s.segments.mu.Lock()
+		if s.segments.entries == nil {
+			s.segments.entries = map[string]segmentEntry{}
+		}
+		s.segments.entries[tenantID] = segmentEntry{at: now, key: key.String(), sizes: sizes, abandoned: abandoned}
+		s.segments.mu.Unlock()
+	}
+	return sizes, abandoned, nil
 }
 
 // catalog ranks products over 30 days and lists stock levels at or under their reorder point.
 func (g *factGatherer) catalog() error {
-	var err error
-	if g.products, err = store.ListTenant[domain.Product](g.ctx, g.s.DB.Pool, "products", g.tenantID); err != nil {
-		return err
-	}
-	rows, err := g.s.DB.Pool.Query(g.ctx, `select product_id, sum(orders), sum(units), sum(revenue) from product_days
-		where tenant_id = $1 and day >= $2 group by 1 order by 4 desc, 1 limit $3`, g.tenantID, g.day(29), assistantTop)
+	rows, err := g.s.DB.Pool.Query(g.ctx, `select d.product_id, coalesce(p.data->>'name', d.product_id), sum(d.orders), sum(d.units), sum(d.revenue)
+		from product_days d left join products p on p.id = d.product_id
+		where d.tenant_id = $1 and d.day >= $2 group by 1, 2 order by 5 desc, 1 limit $3`, g.tenantID, g.day(29), assistantTop)
 	if err != nil {
 		return err
 	}
-	for rows.Next() {
-		var r aimodule.RankedFact
-		if err := rows.Scan(&r.ID, &r.Orders, &r.Units, &r.Revenue); err != nil {
-			rows.Close()
-			return err
-		}
-		r.Name = g.productName(r.ID)
-		g.f.TopProducts = append(g.f.TopProducts, r)
-		g.know(aimodule.KnownProducts, r.ID)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	if g.f.TopProducts, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (aimodule.RankedFact, error) {
+		var f aimodule.RankedFact
+		return f, r.Scan(&f.ID, &f.Name, &f.Orders, &f.Units, &f.Revenue)
+	}); err != nil {
 		return err
 	}
-
-	levels, err := store.ListTenant[domain.StockLevel](g.ctx, g.s.DB.Pool, "stock", g.tenantID)
-	if err != nil {
+	const low = `(s.data->>'onHand')::int - (s.data->>'reserved')::int <= (s.data->>'safety')::int`
+	if err := g.s.DB.Pool.QueryRow(g.ctx, `select count(*) from stock s where s.tenant_id = $1 and `+low, g.tenantID).Scan(&g.f.LowStockTotal); err != nil {
 		return err
 	}
-	warehouses, err := store.ListTenant[domain.Warehouse](g.ctx, g.s.DB.Pool, "warehouses", g.tenantID)
-	if err != nil {
-		return err
-	}
-	low := slices.DeleteFunc(levels, func(l domain.StockLevel) bool { return l.OnHand-l.Reserved > l.Safety })
-	g.f.LowStockTotal = len(low)
 	// The furthest under the reorder point first.
-	slices.SortStableFunc(low, func(a, b domain.StockLevel) int {
-		return cmp.Or(cmp.Compare(a.OnHand-a.Reserved-a.Safety, b.OnHand-b.Reserved-b.Safety), cmp.Compare(a.ID, b.ID))
+	g.f.LowStock, err = g.s.stockFacts(g.ctx, "s.tenant_id = $1 and "+low,
+		`(s.data->>'onHand')::int - (s.data->>'reserved')::int - (s.data->>'safety')::int, s.id`, assistantLowStock, []any{g.tenantID})
+	return err
+}
+
+// stockFacts reads stock levels with their product, SKU and warehouse names.
+func (s *Server) stockFacts(ctx context.Context, where, order string, limit int, args []any) ([]aimodule.StockFact, error) {
+	rows, err := s.DB.Pool.Query(ctx, fmt.Sprintf(`select s.id, s.data->>'productId', s.data->>'variantId', s.data->>'warehouseId',
+		(s.data->>'onHand')::int, (s.data->>'reserved')::int, (s.data->>'safety')::int,
+		coalesce(p.data->>'name', s.data->>'productId'),
+		coalesce((select v->>'sku' from jsonb_array_elements(p.data->'variants') v where v->>'id' = s.data->>'variantId' limit 1), ''),
+		coalesce(w.data->>'name', '')
+		from stock s left join products p on p.id = s.data->>'productId' left join warehouses w on w.id = s.data->>'warehouseId'
+		where %s order by %s limit %d`, where, order, limit), args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (aimodule.StockFact, error) {
+		var l aimodule.StockFact
+		err := r.Scan(&l.LevelID, &l.ProductID, &l.VariantID, &l.WarehouseID, &l.OnHand, &l.Reserved, &l.ReorderPoint, &l.Product, &l.SKU, &l.Warehouse)
+		l.Available = l.OnHand - l.Reserved
+		return l, err
 	})
-	for _, l := range low[:min(assistantLowStock, len(low))] {
-		fact := aimodule.StockFact{LevelID: l.ID, Product: g.productName(l.ProductID), OnHand: l.OnHand, Reserved: l.Reserved,
-			Available: l.OnHand - l.Reserved, ReorderPoint: l.Safety, ProductID: l.ProductID, VariantID: l.VariantID, WarehouseID: l.WarehouseID}
-		if i := slices.IndexFunc(g.products, func(p domain.Product) bool { return p.ID == l.ProductID }); i >= 0 {
-			if j := slices.IndexFunc(g.products[i].Variants, func(v domain.Variant) bool { return v.ID == l.VariantID }); j >= 0 {
-				fact.SKU = g.products[i].Variants[j].Sku
-			}
-		}
-		if i := slices.IndexFunc(warehouses, func(w domain.Warehouse) bool { return w.ID == l.WarehouseID }); i >= 0 {
-			fact.Warehouse = warehouses[i].Name
-		}
-		g.f.LowStock = append(g.f.LowStock, fact)
-		g.know(aimodule.KnownProducts, l.ProductID)
-	}
-	return nil
 }
 
-func (g *factGatherer) productName(id string) string {
-	if i := slices.IndexFunc(g.products, func(p domain.Product) bool { return p.ID == id }); i >= 0 {
-		return g.products[i].Name
-	}
-	return id
-}
-
-// marketing lists the campaigns and promotions that are live, coming or paused.
-func (g *factGatherer) marketing() error {
-	campaigns, err := store.ListTenant[domain.Campaign](g.ctx, g.s.DB.Pool, "campaigns", g.tenantID)
+// marketing lists the campaigns and promotions that are live, coming, paused or in draft.
+func (g *factGatherer) marketing(funnels bool) error {
+	campaigns, err := g.s.campaignFacts(g.ctx, g.tenantID, "status in ('running', 'scheduled', 'paused', 'draft')", nil, assistantCampaigns)
 	if err != nil {
 		return err
 	}
+	if !funnels {
+		for i := range campaigns {
+			campaigns[i].Funnel = nil
+		}
+	}
+	g.f.Campaigns = campaigns
+	g.f.Promotions, err = g.s.promotionFacts(g.ctx, g.tenantID, "status in ('active', 'scheduled', 'paused', 'draft')", nil, assistantPromos)
+	return err
+}
+
+var campaignRank = map[string]int{"running": 0, "scheduled": 1, "paused": 2, "draft": 3, "completed": 4}
+
+// campaignFacts reads campaigns matching where ($1 is the tenant, extra arguments follow), with the
+// reason a draft or paused one cannot launch.
+func (s *Server) campaignFacts(ctx context.Context, tenantID, where string, args []any, limit int) ([]aimodule.CampaignFact, error) {
+	campaigns, err := store.List[domain.Campaign](ctx, s.DB.Pool, "campaigns", "tenant_id = $1 and "+where, append([]any{tenantID}, args...)...)
+	if err != nil {
+		return nil, err
+	}
+	slices.SortStableFunc(campaigns, func(a, b domain.Campaign) int { return campaignRank[a.Status] - campaignRank[b.Status] })
+	campaigns = campaigns[:min(limit, len(campaigns))]
+	var sizes map[string]int
+	out := make([]aimodule.CampaignFact, 0, len(campaigns))
 	for _, c := range campaigns {
-		if len(g.f.Campaigns) == assistantCampaigns || !slices.Contains([]string{"running", "scheduled", "paused"}, c.Status) {
-			continue
+		fact := aimodule.CampaignFact{ID: c.ID, Name: c.Name, Status: c.Status, StartAt: c.StartAt, EndAt: c.EndAt, Budget: c.Budget, Revenue: c.Revenue, Funnel: c.Funnel}
+		if c.Status == "draft" || c.Status == "paused" {
+			audience := 0
+			if c.SegmentID != nil {
+				if sizes == nil {
+					segments, err := store.ListTenant[domain.Segment](ctx, s.DB.Pool, "segments", tenantID)
+					if err != nil {
+						return nil, err
+					}
+					if sizes, _, err = s.segmentSizes(ctx, tenantID, segments, nil); err != nil {
+						return nil, err
+					}
+				}
+				audience = sizes[*c.SegmentID]
+			}
+			fact.LaunchBlocker = rules.CampaignLaunchBlocker(c, audience)
 		}
-		g.f.Campaigns = append(g.f.Campaigns, aimodule.CampaignFact{ID: c.ID, Name: c.Name, Status: c.Status, StartAt: c.StartAt,
-			EndAt: c.EndAt, Budget: c.Budget, Revenue: c.Revenue, Funnel: c.Funnel})
-		g.know(aimodule.KnownCampaigns, c.ID)
+		out = append(out, fact)
 	}
-	promotions, err := store.ListTenant[domain.Promotion](g.ctx, g.s.DB.Pool, "promotions", g.tenantID)
+	return out, nil
+}
+
+var promotionRank = map[string]int{"active": 0, "scheduled": 1, "paused": 2, "draft": 3, "expired": 4}
+
+func (s *Server) promotionFacts(ctx context.Context, tenantID, where string, args []any, limit int) ([]aimodule.PromotionFact, error) {
+	promotions, err := store.List[domain.Promotion](ctx, s.DB.Pool, "promotions", "tenant_id = $1 and "+where, append([]any{tenantID}, args...)...)
 	if err != nil {
+		return nil, err
+	}
+	slices.SortStableFunc(promotions, func(a, b domain.Promotion) int { return promotionRank[a.Status] - promotionRank[b.Status] })
+	out := make([]aimodule.PromotionFact, 0, min(limit, len(promotions)))
+	for _, p := range promotions[:min(limit, len(promotions))] {
+		out = append(out, aimodule.PromotionFact{ID: p.ID, Code: p.Code, Name: p.Name, Kind: p.Kind, Value: p.Value,
+			Status: p.Status, StartAt: p.StartAt, EndAt: p.EndAt, Used: p.Used, Revenue: p.Revenue})
+	}
+	return out, nil
+}
+
+// tickets counts open tickets and lists the five due first.
+func (g *factGatherer) tickets() error {
+	if err := g.s.DB.Pool.QueryRow(g.ctx, `select count(*) from tickets where tenant_id = $1 and status <> 'resolved'`, g.tenantID).Scan(&g.f.OpenTicketsTotal); err != nil {
 		return err
 	}
-	rank := map[string]int{"active": 0, "scheduled": 1, "paused": 2, "draft": 3}
-	promotions = slices.DeleteFunc(promotions, func(p domain.Promotion) bool { _, ok := rank[p.Status]; return !ok })
-	slices.SortStableFunc(promotions, func(a, b domain.Promotion) int { return cmp.Compare(rank[a.Status], rank[b.Status]) })
-	for _, p := range promotions[:min(assistantPromos, len(promotions))] {
-		g.f.Promotions = append(g.f.Promotions, aimodule.PromotionFact{ID: p.ID, Code: p.Code, Name: p.Name, Kind: p.Kind, Value: p.Value,
-			Status: p.Status, StartAt: p.StartAt, EndAt: p.EndAt, Used: p.Used, Revenue: p.Revenue})
-		g.know(aimodule.KnownPromotions, p.ID)
+	var err error
+	g.f.Tickets, err = g.s.ticketFacts(g.ctx, g.userID, "t.tenant_id = $1 and t.status <> 'resolved'", []any{g.tenantID}, assistantTop)
+	return err
+}
+
+// ticketFacts reads tickets by SLA, with the customer as initials and code and the assignee as you,
+// nobody or someone else. A subject keeps no email or phone number.
+func (s *Server) ticketFacts(ctx context.Context, userID, where string, args []any, limit int) ([]aimodule.TicketFact, error) {
+	rows, err := s.DB.Pool.Query(ctx, fmt.Sprintf(`select t.id, t.data->>'code', t.data->>'kind', t.status, t.data->>'subject',
+		coalesce(c.data->>'name', ''), coalesce(c.code, ''), coalesce(t.data->>'assigneeId', ''), t.data->>'createdAt', t.data->>'slaDueAt'
+		from tickets t left join customers c on c.id = t.data->>'customerId' where %s order by t.data->>'slaDueAt', t.id limit %d`, where, limit), args...)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	now := s.Clock.Now()
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (aimodule.TicketFact, error) {
+		var t aimodule.TicketFact
+		var name, code, assignee string
+		if err := r.Scan(&t.ID, &t.Code, &t.Kind, &t.Status, &t.Subject, &name, &code, &assignee, &t.CreatedAt, &t.SlaDueAt); err != nil {
+			return t, err
+		}
+		t.Subject = clipText(aimodule.Redact(t.Subject), 120)
+		if code != "" {
+			t.Customer = initials(name) + " (" + code + ")"
+		}
+		switch assignee {
+		case "":
+			t.Assigned = aimodule.AssignedNobody
+		case userID:
+			t.Assigned = aimodule.AssignedYou
+		default:
+			t.Assigned = aimodule.AssignedSomeone
+		}
+		due, err := clock.Parse(t.SlaDueAt)
+		t.Overdue = err == nil && t.Status != "resolved" && due.Before(now)
+		return t, nil
+	})
+}
+
+// leads counts open leads and lists the five untouched longest.
+func (g *factGatherer) leads() error {
+	where, args := g.scoped("tenant_id = $1 and stage not in ('won', 'lost')", []any{g.tenantID}, false)
+	if err := g.s.DB.Pool.QueryRow(g.ctx, `select count(*) from leads where `+where, args...).Scan(&g.f.OpenLeadsTotal); err != nil {
+		return err
+	}
+	var err error
+	g.f.Leads, err = g.s.leadFacts(g.ctx, where, args, assistantTop)
+	return err
+}
+
+// leadFacts reads leads by initials and code; never their phone or company contact.
+func (s *Server) leadFacts(ctx context.Context, where string, args []any, limit int) ([]aimodule.LeadFact, error) {
+	leads, err := queryDocs[domain.Lead](ctx, s.DB.Pool, "select data from leads where "+where+" order by data->>'updatedAt', id limit "+fmt.Sprint(limit), args...)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]aimodule.LeadFact, 0, len(leads))
+	for _, l := range leads {
+		next := aimodule.NextLeadStage(l.Stage)
+		if next != "" && rules.LeadMoveBlocker(l, next) != "" {
+			next = ""
+		}
+		out = append(out, aimodule.LeadFact{ID: l.ID, Code: l.Code, Initials: initials(l.Name), Stage: l.Stage, NextStage: next, Value: l.Value, UpdatedAt: l.UpdatedAt})
+	}
+	return out, nil
 }
 
 // current adds the order, customer or product on the open page, when the person may read it.
@@ -365,16 +583,17 @@ func (g *factGatherer) currentOrder(id string) error {
 	}
 	o.NextStatus, _ = rules.NextOrderStatus(o.Status, method)
 	o.PlacedAt, o.Late = clock.Iso(placed), placed.Before(g.s.Clock.Now().Add(-lateAfter))
+	o.Customer = initials(customerName) + " (" + customerCode + ")"
 	g.f.Current = &aimodule.CurrentRecord{Kind: "order", ID: o.ID, Facts: map[string]any{
 		"code": o.Code, "status": o.Status, "nextStatus": o.NextStatus, "payment": o.Payment, "paymentMethod": method,
-		"placedAt": o.PlacedAt, "total": o.Total, "items": items, "channel": channel,
-		"customer": initials(customerName) + " (" + customerCode + ")",
+		"placedAt": o.PlacedAt, "total": o.Total, "items": items, "channel": channel, "customer": o.Customer,
 	}}
-	if !slices.ContainsFunc(g.f.Orders, func(x aimodule.OrderFact) bool { return x.ID == o.ID }) && o.NextStatus != "" &&
-		slices.Contains([]string{"paid", "processing", "packed"}, o.Status) {
-		g.f.Orders = append(g.f.Orders, o)
+	// Actions may name the open order; the assistant moves one on only while it is being fulfilled.
+	if !aimodule.Advanceable(o.Status) {
+		o.NextStatus = ""
 	}
-	g.know(aimodule.KnownOrders, o.ID)
+	g.f.Found.Orders = append(g.f.Found.Orders, o)
+	g.f.Know(aimodule.KnownOrders, o.ID)
 	return nil
 }
 
@@ -388,46 +607,109 @@ func (g *factGatherer) currentCustomer(id string) error {
 	}
 	facts := map[string]any{"code": c.Code, "initials": initials(c.Name), "tier": c.Tier, "stage": c.Stage, "points": c.Points,
 		"source": c.Source, "since": c.CreatedAt, "tags": c.Tags}
-	var orders int
-	var spend int64
+	found := aimodule.CustomerFact{ID: c.ID, Code: c.Code, Initials: initials(c.Name), Tier: c.Tier}
 	var last *time.Time
-	err = g.s.DB.Pool.QueryRow(g.ctx, `select orders, spend, last_at from customer_metrics where customer_id = $1`, c.ID).Scan(&orders, &spend, &last)
+	err = g.s.DB.Pool.QueryRow(g.ctx, `select orders, spend, last_at from customer_metrics where customer_id = $1`, c.ID).Scan(&found.Orders, &found.Spend, &last)
 	if err != nil && ignoreMissing(err) != nil {
 		return err
 	}
-	facts["orders"], facts["spend"] = orders, spend
+	facts["orders"], facts["spend"] = found.Orders, found.Spend
 	if last != nil {
 		facts["lastOrderAt"] = clock.Iso(*last)
 	}
 	g.f.Current = &aimodule.CurrentRecord{Kind: "customer", ID: c.ID, Facts: facts}
-	g.know(aimodule.KnownCustomers, c.ID)
+	g.f.Found.Customers = append(g.f.Found.Customers, found)
+	g.f.Know(aimodule.KnownCustomers, c.ID)
 	return nil
 }
 
 func (g *factGatherer) currentProduct(id string) error {
-	i := slices.IndexFunc(g.products, func(p domain.Product) bool { return p.ID == id })
-	if i < 0 {
-		return nil
-	}
-	p := g.products[i]
-	var onHand, reserved int
-	var units, revenue int64
-	err := g.s.DB.Pool.QueryRow(g.ctx, `select coalesce(sum((data->>'onHand')::int), 0), coalesce(sum((data->>'reserved')::int), 0)
-		from stock where tenant_id = $1 and data->>'productId' = $2`, g.tenantID, id).Scan(&onHand, &reserved)
-	if err != nil {
+	products, err := g.s.productFacts(g.ctx, g.tenantID, "id = $2", []any{id}, 1)
+	if err != nil || len(products) == 0 {
 		return err
 	}
+	p := products[0]
+	var units, revenue int64
 	err = g.s.DB.Pool.QueryRow(g.ctx, `select coalesce(sum(units), 0), coalesce(sum(revenue), 0) from product_days
 		where tenant_id = $1 and product_id = $2 and day >= $3`, g.tenantID, id, g.day(29)).Scan(&units, &revenue)
 	if err != nil {
 		return err
 	}
+	onHand, available := 0, 0
+	for _, l := range p.Stock {
+		onHand, available = onHand+l.OnHand, available+l.Available
+	}
 	g.f.Current = &aimodule.CurrentRecord{Kind: "product", ID: p.ID, Facts: map[string]any{
-		"name": p.Name, "code": p.Code, "status": p.Status, "price": p.Price, "variants": len(p.Variants),
-		"onHand": onHand, "available": onHand - reserved, "units30d": units, "revenue30d": revenue,
+		"name": p.Name, "code": p.Code, "status": p.Status, "price": p.Price, "variants": p.Variants,
+		"onHand": onHand, "available": available, "units30d": units, "revenue30d": revenue, "stock": p.Stock,
 	}}
-	g.know(aimodule.KnownProducts, p.ID)
+	if p.ActivateBlocker != "" {
+		g.f.Current.Facts["cannotActivateBecause"] = p.ActivateBlocker
+	}
+	g.f.Found.Products = append(g.f.Found.Products, p.ProductFact)
+	g.f.Found.Levels = append(g.f.Found.Levels, p.Stock...)
+	g.f.Know(aimodule.KnownProducts, p.ID)
 	return nil
+}
+
+// productRow is a product fact with its variant count, which only the open page shows.
+type productRow struct {
+	aimodule.ProductFact
+	Variants int
+}
+
+// productFacts reads products matching where ($1 is the tenant, args follow) with stock per
+// warehouse and the reason each cannot be activated.
+func (s *Server) productFacts(ctx context.Context, tenantID, where string, args []any, limit int) ([]productRow, error) {
+	products, err := queryDocs[domain.Product](ctx, s.DB.Pool,
+		"select data from products where tenant_id = $1 and "+where+" order by data->>'name', id limit "+fmt.Sprint(limit), append([]any{tenantID}, args...)...)
+	if err != nil || len(products) == 0 {
+		return nil, err
+	}
+	defs, err := store.ListTenant[domain.AttributeDef](ctx, s.DB.Pool, "attributes", tenantID)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := store.ListTenant[domain.Category](ctx, s.DB.Pool, "categories", tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(products))
+	for i, p := range products {
+		ids[i] = p.ID
+	}
+	levels, err := s.stockFacts(ctx, "s.tenant_id = $1 and s.data->>'productId' = any($2)", "s.data->>'productId', w.data->>'name', s.id", 200, []any{tenantID, ids})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]productRow, 0, len(products))
+	for _, p := range products {
+		row := productRow{ProductFact: aimodule.ProductFact{ID: p.ID, Code: p.Code, Name: p.Name, Status: p.Status, Price: p.Price,
+			ActivateBlocker: rules.ProductActivateBlocker(p, rules.AttributesFor(p.CategoryID, defs, categories))}, Variants: len(p.Variants)}
+		for _, l := range levels {
+			if l.ProductID == p.ID {
+				row.Stock = append(row.Stock, l)
+			}
+		}
+		out = append(out, row)
+	}
+	return out, nil
+}
+
+// queryDocs reads the data column of a query into documents, keeping the query's own order.
+func queryDocs[T any](ctx context.Context, q store.Querier, sql string, args ...any) ([]T, error) {
+	rows, err := q.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (T, error) {
+		var v T
+		var raw []byte
+		if err := r.Scan(&raw); err != nil {
+			return v, err
+		}
+		return v, json.Unmarshal(raw, &v)
+	})
 }
 
 func ignoreMissing(err error) error {
@@ -447,9 +729,9 @@ func initials(name string) string {
 	return strings.Join(parts, " ")
 }
 
-func ms(at *time.Time) int64 {
-	if at == nil {
-		return 0
+func clipText(text string, limit int) string {
+	if r := []rune(text); len(r) > limit {
+		return string(r[:limit])
 	}
-	return at.UnixMilli()
+	return text
 }

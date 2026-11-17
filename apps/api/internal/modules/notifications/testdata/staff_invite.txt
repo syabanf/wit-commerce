@@ -1,0 +1,11 @@
+WIT Commerce
+
+You are invited to WIT Commerce
+
+An admin added you to WIT Commerce. Use this link within 7 days to choose your password.
+
+Choose your password: https://commerce.reddie.id/reset-password?token=abc&invite=1
+
+If you did not ask for this, you can ignore this email.
+
+WIT Commerce · https://commerce.reddie.id

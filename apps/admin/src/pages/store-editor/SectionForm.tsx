@@ -87,6 +87,7 @@ export function SectionForm({
         <FormField label="Image" htmlFor={id('image')} hint="Without one, the layout's own photo shows.">
           <ImageUpload
             id={id('image')}
+            shape="wide"
             tenantId={tenantId}
             label={`${label} image`}
             value={section.imageUrl || undefined}

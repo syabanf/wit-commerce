@@ -41,6 +41,8 @@ type registerInput struct {
 	Email    string `json:"email"`
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
+	// CaptchaToken is the Turnstile token, needed only while the platform has Turnstile keys saved.
+	CaptchaToken string `json:"captchaToken,omitempty"`
 }
 
 type shopperResponse struct {
@@ -198,7 +200,7 @@ func (s *Server) shopRegister(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusUnprocessableEntity, "INVALID", "Enter your name and a valid email address.")
 		return
 	}
-	if !checkNewPassword(w, in.Password) {
+	if !checkNewPassword(w, in.Password) || !s.captchaPassed(w, r, in.CaptchaToken) {
 		return
 	}
 	hash, err := auth.HashPassword(in.Password)

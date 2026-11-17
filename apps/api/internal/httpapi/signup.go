@@ -31,6 +31,8 @@ type signUpInput struct {
 	Password   string `json:"password"`
 	// Website is a field people never see; only a bot fills it.
 	Website string `json:"website"`
+	// CaptchaToken is the Turnstile token, needed only while the platform has Turnstile keys saved.
+	CaptchaToken string `json:"captchaToken,omitempty"`
 }
 
 // signUp creates a store and its owner, and signs the owner in. A filled honeypot answers 422 with
@@ -55,7 +57,7 @@ func (s *Server) signUp(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusUnprocessableEntity, "INVALID", "Enter a valid email address.")
 		return
 	}
-	if !checkNewPassword(w, in.Password) {
+	if !checkNewPassword(w, in.Password) || !s.captchaPassed(w, r, in.CaptchaToken) {
 		return
 	}
 	hash, err := auth.HashPassword(in.Password)

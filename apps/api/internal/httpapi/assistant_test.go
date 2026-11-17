@@ -28,12 +28,27 @@ const assistantPath = "/ai/assistant?tenantId=ten-lari"
 // records the system prompt of every call.
 func assistantEnv(t *testing.T) (*env, *string, *[]string) {
 	t.Helper()
+	m := assistantScript(t)
+	return m.e, &m.answer, &m.prompts
+}
+
+// scriptedModel is a fake model. Each call takes the next reply from script, then answer once the
+// script runs out, and records every conversation it was sent.
+type scriptedModel struct {
+	e       *env
+	answer  string
+	script  []string
+	prompts []string
+	calls   [][]ai.Message
+}
+
+func assistantScript(t *testing.T) *scriptedModel {
+	t.Helper()
 	db := testdb.Open(t)
 	if err := seed.Load(t.Context(), db, testdb.SeedDir(t), password); err != nil {
 		t.Fatal(err)
 	}
-	answer := `{"answer":"ok"}`
-	var prompts []string
+	m := &scriptedModel{answer: `{"answer":"ok"}`}
 	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Messages []ai.Message `json:"messages"`
@@ -41,8 +56,13 @@ func assistantEnv(t *testing.T) (*env, *string, *[]string) {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Messages) == 0 {
 			t.Error("the model got no messages")
 		}
-		prompts = append(prompts, req.Messages[0].Content)
-		_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"role": "assistant", "content": answer}})
+		m.prompts = append(m.prompts, req.Messages[0].Content)
+		m.calls = append(m.calls, req.Messages)
+		reply := m.answer
+		if len(m.script) > 0 {
+			reply, m.script = m.script[0], m.script[1:]
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"role": "assistant", "content": reply}})
 	}))
 	t.Cleanup(model.Close)
 	signer, _ := auth.NewSigner(strings.Repeat("s", 32), time.Hour)
@@ -52,9 +72,9 @@ func assistantEnv(t *testing.T) (*env, *string, *[]string) {
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Version: "test",
 	}))
 	t.Cleanup(srv.Close)
-	e := &env{t: t, url: srv.URL + "/api/v1", db: db, vault: vault}
-	e.admin = e.login("andi@lari.co.id")
-	return e, &answer, &prompts
+	m.e = &env{t: t, url: srv.URL + "/api/v1", db: db, vault: vault}
+	m.e.admin = m.e.login("andi@lari.co.id")
+	return m
 }
 
 func ask(question, page string) httpapi.AssistantInput {
@@ -305,7 +325,7 @@ func TestAssistantActionsMatchTheirRoutes(t *testing.T) {
 		Routes []httpapi.Route `json:"routes"`
 	}
 	e.call("GET", "/routes", "", nil, &table)
-	for _, action := range []string{"promotions/save", "promotions/setStatus", "campaigns/pause", "stock/receive", "orders/advance", "customers/note"} {
+	for _, action := range aimodule.AssistantActionTypes() {
 		want := aimodule.AssistantPermission(action)
 		found := false
 		for _, r := range table.Routes {

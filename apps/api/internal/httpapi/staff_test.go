@@ -136,3 +136,35 @@ func TestStateHoldsOnlyColleagues(t *testing.T) {
 		t.Error("no colleagues in the state")
 	}
 }
+
+// A staff member works for the brand without a back-office job: they sign in and read, and every
+// write that needs a permission refuses them.
+func TestStaffRoleSignsInAndChangesNothing(t *testing.T) {
+	e := setup(t)
+	made := e.create(e.admin, newStaff("staff@example.com", "staff", "ten-lari"))
+	if made.User.Role != "staff" {
+		t.Fatalf("role: %+v", made.User)
+	}
+	token := e.signIn("staff@example.com", made.TemporaryPassword)
+	var me struct {
+		User domain.User `json:"user"`
+	}
+	if code := e.call("GET", "/auth/me", token, nil, &me); code != 200 || me.User.Role != "staff" || len(me.User.TenantIDs) != 1 {
+		t.Fatalf("me: %d %+v", code, me.User)
+	}
+	e.expect(200, "GET", "/state", token, nil)
+	e.expect(403, "POST", "/users", token, newStaff("via-staff@example.com", "staff", "ten-lari"))
+	e.expect(403, "POST", "/tickets/tic-1/resolve", token, nil)
+	e.expect(403, "PUT", "/leads/led-new", token, map[string]any{"id": "led-new", "tenantId": "ten-lari"})
+	e.expect(422, "POST", "/users", e.admin, newStaff("no-brand@example.com", "staff"))
+}
+
+func TestSeededStaffUserSignsIn(t *testing.T) {
+	e := setup(t)
+	var me struct {
+		User domain.User `json:"user"`
+	}
+	if code := e.call("GET", "/auth/me", e.login("nadia@lari.co.id"), nil, &me); code != 200 || me.User.Role != "staff" {
+		t.Fatalf("me: %d %+v", code, me.User)
+	}
+}

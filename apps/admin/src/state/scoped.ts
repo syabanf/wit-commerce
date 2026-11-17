@@ -113,6 +113,8 @@ export function useScoped() {
       segments: own(state.segments),
       leads: own(state.leads),
       tickets: own(state.tickets),
+      /** Return requests: with the API only open ones; useReturns reads the rest. */
+      returns: own(state.returns),
       campaigns: own(state.campaigns),
       automations: own(state.automations),
       promotions: own(state.promotions),

@@ -12,10 +12,14 @@ import (
 	_ "image/jpeg" // Registers the JPEG decoder.
 	_ "image/png"  // Registers the PNG decoder.
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
@@ -39,6 +43,8 @@ var (
 // Storage keeps the bytes of a file under a key such as "ten-lari/med-k3f9a1b2c3.png".
 type Storage interface {
 	Put(ctx context.Context, key string, r io.Reader, size int64, mime string) error
+	// Delete removes the file; a key that holds nothing is not an error.
+	Delete(ctx context.Context, key string) error
 	// URL is where browsers load the file.
 	URL(key string) string
 }
@@ -74,6 +80,15 @@ func (d Disk) Put(_ context.Context, key string, r io.Reader, _ int64, _ string)
 	return os.Rename(tmp.Name(), path)
 }
 
+// Delete removes the file under the key.
+func (d Disk) Delete(_ context.Context, key string) error {
+	err := os.Remove(filepath.Join(d.Dir, filepath.FromSlash(key)))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
 // URL joins the public prefix and the key.
 func (d Disk) URL(key string) string { return d.PublicURL + "/" + key }
 
@@ -89,6 +104,13 @@ func (d Disk) Open(tenantID, name string) (*os.File, error) {
 type Media struct {
 	*kernel.Runtime
 	Storage Storage
+	// Uses finds where a brand shows its images. The rows live in other modules' collections, so
+	// the facade supplies it.
+	Uses UseFinder
+	Log  *slog.Logger
+
+	mu        sync.Mutex
+	nextSweep time.Time
 }
 
 // MediaUpload is a stored image as the console sees it. The OpenAPI spec names its schema after
@@ -100,10 +122,13 @@ type MediaUpload struct {
 	Height int    `json:"height"`
 	Mime   string `json:"mime"`
 	Size   int64  `json:"size"`
+	// Name is the file name on the uploader's device; empty for images from before it was kept.
+	Name string `json:"name"`
 }
 
-// Upload checks that data is a PNG, JPEG or WebP image and stores it for the tenant.
-func (m *Media) Upload(ctx context.Context, meta kernel.Meta, tenantID string, data []byte) (MediaUpload, error) {
+// Upload checks that data is a PNG, JPEG or WebP image and stores it for the tenant. name is the
+// file's name on the uploader's device.
+func (m *Media) Upload(ctx context.Context, meta kernel.Meta, tenantID, name string, data []byte) (MediaUpload, error) {
 	if err := kernel.Access(meta, tenantID); err != nil {
 		return MediaUpload{}, err
 	}
@@ -119,17 +144,32 @@ func (m *Media) Upload(ctx context.Context, meta kernel.Meta, tenantID string, d
 	if err != nil {
 		return MediaUpload{}, kernel.Invalid{Reason: "The image could not be read. Save it again as PNG, JPEG or WebP and retry."}
 	}
-	up := MediaUpload{ID: ids.New("med"), Width: width, Height: height, Mime: mime, Size: int64(len(data))}
+	up := MediaUpload{ID: ids.New("med"), Width: width, Height: height, Mime: mime, Size: int64(len(data)), Name: cleanName(name)}
 	key := tenantID + "/" + up.ID + "." + ext
 	up.URL = m.Storage.URL(key)
 	_, err = m.Run(ctx, func(t *kernel.Tx) error {
-		if _, err := t.Exec(ctx, `insert into media (id, tenant_id, path, mime, size, width, height, created_by)
-			values ($1, $2, $3, $4, $5, $6, $7, $8)`, up.ID, tenantID, key, mime, up.Size, width, height, meta.By()); err != nil {
+		if _, err := t.Exec(ctx, `insert into media (id, tenant_id, path, mime, size, width, height, created_by, name)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, up.ID, tenantID, key, mime, up.Size, width, height, meta.By(), up.Name); err != nil {
 			return err
 		}
 		return m.Storage.Put(ctx, key, bytes.NewReader(data), up.Size, mime)
 	})
 	return up, err
+}
+
+// cleanName keeps the last path element of a file name, without control characters, up to 120 runes.
+func cleanName(name string) string {
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, name)
+	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
+		name = name[i+1:]
+	}
+	r := []rune(strings.TrimSpace(name))
+	return string(r[:min(len(r), 120)])
 }
 
 // dimensions reads the image size and, for PNG and JPEG, decodes the whole image to prove it is one.
@@ -183,4 +223,11 @@ func webpSize(b []byte) (int, int, error) {
 		return 0, 0, errBadImage
 	}
 	return w, h, nil
+}
+
+// Used is how many bytes a brand's uploads take.
+func (m *Media) Used(ctx context.Context, tenantID string) (int64, error) {
+	var bytes int64
+	err := m.DB.Pool.QueryRow(ctx, `select coalesce(sum(size), 0)::bigint from media where tenant_id = $1`, tenantID).Scan(&bytes)
+	return bytes, err
 }

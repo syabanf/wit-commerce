@@ -27,8 +27,11 @@ Turning it off again is safe: `api` serves every route either way.
 
 ## Known limits
 
-- Rate limits for the AI chat live in each process's memory: 30 a minute per shopper IP and 300 a
-  minute in total. Each replica of `ai` allows that much on its own.
+- The limits on public endpoints (sign-up, the subdomain check, sign-in, forgot password, shopper
+  registration, the AI chat and the admin assistant) count in the `rate_limits` table, so every `api`
+  and `ai` process shares one window per key. The tick deletes ended windows. When a count in
+  Postgres fails, that process counts in its own memory until the database answers again. The limit
+  on API keys stays in each process's memory.
 - A `shop` stream misses changes sent while its LISTEN connection reconnects, or while the API's
   notify queue is full. Shoppers see them on the next reload.
 - Email is sent at least once. A send cut off by a restart can arrive twice.
@@ -36,8 +39,82 @@ Turning it off again is safe: `api` serves every route either way.
   invitations and admin resets still send at once, because the admin sees the result.
 - Sent `email_outbox` rows are kept without their body; nothing prunes them yet.
 
+## Returns
+
+A return (`returns`, owned by the orders module) covers some units of one order and moves
+requested → approved → received → refunded, or ends rejected or cancelled. Staff start one from the
+order page with `order.fulfil` or `ticket.manage`; the signed-in shopper asks from their order page
+for a delivered order within the brand's return window (Online store → Domains & SEO, 7 days by
+default, 0 turns shopper requests off). Approving, receiving and refunding need `order.refund`.
+Receiving can put the units back on the shelf of the warehouse that shipped them, as stock moves of
+kind `return`. A refund goes through the order's refund path, capped at what the returned items cost
+after the order's discount (shipping stays) and at what the order has left.
+
+An order's status follows its returns only at the end: when refunded returns cover every unit it
+holds, the refund closes it as `returned`. A partial return leaves the status alone and shows in the
+order's refunded amount, so the orders view `returns` still finds it. The console's state carries
+open returns only; `GET /views/returns` pages through every return with counts per status.
+
+## Shopper email
+
+With email on and an address on the customer, a store emails its shoppers when an order is placed
+(items, totals, and the order page with Pay now for a pending Midtrans payment, or the payment
+type's instructions for a transfer), when the payment arrives, when the parcel ships (courier and
+tracking number), when the order is cancelled or refunded, and when a return is approved or refunded.
+Each brand can switch each kind off next to the return window. Every one is queued in the action's
+own transaction (`kernel.Tx.Notify`, joined in `service/notices.go`), so it goes out only for a change
+that committed. The Midtrans payment page opens after the order commits, so the order email links to
+the order page, which carries Pay now. Each row carries a dedupe key (`kind:order id`, `kind:return id`,
+or `order_refunded:order id:refunded total`) under a unique index, so a repeated notification or a
+retried action queues one email. Every email, staff and shopper, uses one layout
+(`modules/notifications/layout.go`): table-based, inline styles, a plain-text part, the brand's name,
+logo and primary colour on store email and WIT Commerce's on platform email. The sentences live in
+`modules/notifications/shopper.go` per language; English is the only one so far.
+
+## Sales facts window
+
+`sales_days`, `product_days` and `seller_buyers` keep the current month and the 13 whole months before
+it: the console's longest daily read is the 12-month revenue chart, plus one spare month. The timer
+rolls older days into `sales_months` and `product_months` once per WIB day, 50 tenant months per
+transaction, deriving each month from the orders, so a rerun or a late refund to an old order gives
+the same rows as `readmodel.Rebuild`. `seller_buyers` has no monthly form, since only the seller
+screens read it, over 90 days at most. `/state` sends the daily window only; `GET /views/sales-months`
+serves the months before it.
+
 Every binary reads `.env` in its working directory for development runs; real environment
 variables win.
+
+## Plans and invoices
+
+Each tenant sits on a plan, `starter`, `growth` or `enterprise`, that caps products, staff accounts,
+sellers, warehouses, assistant questions a day, display currencies and media storage. A creation past
+a cap answers 409 with the code `PLAN_LIMIT`; what a brand already has keeps working. The defaults
+live in `internal/modules/billing` and `packages/fixtures/src/plans.ts` (a test keeps them equal). A
+platform admin changes prices and caps in Settings, Plans, which saves them in `plan_settings`.
+
+Sign-up puts a new store on Starter. A brand admin asks for a larger plan in Settings, Plan & usage;
+a platform admin approves or declines it on the Plans page, and approval changes `tenant.plan`.
+
+The tick writes one invoice per tenant on a paid plan per month (`invoices`, unique per tenant and
+month). No payment provider is wired for subscriptions: payment is arranged with the platform, and a
+platform admin marks each invoice paid or void.
+
+## Cloudflare Turnstile
+
+Store sign-up (`/start`) and shopper registration can ask for a Turnstile check. It is off until a
+platform admin saves keys, and with no keys nothing changes.
+
+1. The operator creates a widget in the Cloudflare dashboard under Turnstile, adds the admin host
+   and the store hosts (for example `commerce.reddie.id` and `*.commerce.reddie.id`, or each store
+   host if the wildcard is refused), and copies the site key and the secret key.
+2. In the admin, open Settings, Plans, and save both keys under Bot check. The secret is encrypted
+   with `CREDENTIALS_KEY` like the email key; the console shows only its last four characters.
+3. `GET /api/v1/config` now returns the site key, and the two forms render the widget. The API
+   checks each token at `https://challenges.cloudflare.com/turnstile/v0/siteverify` through the
+   outbound client. A missing or refused token answers 422 `CAPTCHA_FAILED`; when Cloudflare cannot
+   be reached the answer is 503 `CAPTCHA_UNAVAILABLE`.
+
+Clear both keys and save to turn the check off.
 
 ## Store subdomains
 
@@ -90,6 +167,74 @@ In development `STORE_ROOT_DOMAIN` and `VITE_STORE_ROOT_DOMAIN` are `localhost:5
 `*.localhost` to this machine, so `http://lari.localhost:5375` opens the lari store from `pnpm dev`,
 and `http://localhost:5375/lari` still works. The storefront dev server proxies `/api` to port 8787, so
 store hosts reach the API on their own origin.
+
+## Custom domains
+
+A brand can open its store on a domain it owns, such as `www.tokosaya.com`, next to its subdomain.
+The subdomain keeps working and is never redirected.
+
+How it runs:
+
+1. In Domains & SEO the owner enters the domain. `PUT /api/v1/tenants/{id}/domain` checks it (lowercase
+   host name, a public ending, no IP address, port or `localhost`, not the platform's own hosts or any
+   `*.{STORE_ROOT_DOMAIN}`) and refuses one another brand holds with 409 `DOMAIN_TAKEN`; `www.` and the
+   bare name count as one. The API stores the domain unverified with a fresh token.
+2. The owner adds two records at their DNS provider: a TXT record at `_wit-commerce.{domain}` holding the
+   token, and a CNAME from the domain to `{subdomain}.{STORE_ROOT_DOMAIN}` (or to `DOMAIN_TARGET`). A
+   root domain that cannot hold a CNAME may use A records to the `DOMAIN_TARGET_IPS` instead.
+3. Check DNS calls `POST /api/v1/tenants/{id}/domain/verify`. The API asks DNS (5 seconds at most) and
+   answers with each record's expected and found values. Both right marks the domain verified.
+4. From then on `GET /api/v1/shop/by-host?host=` answers with the store for that host, with or without
+   `www.`, and email links, the payment return and the admin's store links use the domain. An unverified
+   domain never answers.
+5. The timer checks every verified domain again once a day. After 3 failures in a row the domain stops
+   being verified, so a domain that moved away stops serving the store. Check DNS brings it back.
+
+Settings:
+
+| Variable | Where | Meaning |
+| --- | --- | --- |
+| `DOMAIN_TARGET` | API | Another name a brand's CNAME may point at, such as `stores.example.com` on a proxy. The console shows it in place of the store host. |
+| `DOMAIN_TARGET_IPS` | API | Comma-separated addresses A records may hold. Empty means a domain needs a CNAME. |
+| `DOMAIN_ASK_SECRET` | API | When set, `GET /api/v1/internal/domain-allowed` needs it as `?secret=`. |
+| `PUBLIC_URL` | `web` | With `STORE_ROOT_DOMAIN` set, the admin answers on this host and `localhost` only, and every other host gets the store build, which asks `by-host` which store it is. An unknown host shows "No store at this address". Empty keeps the admin on every host. |
+
+The storefront calls `/api` on its own origin, so custom domains need no CORS change. The admin's
+preview frame keeps using the subdomain origin.
+
+### TLS for custom domains
+
+This stack does not issue certificates for brands' domains. The certificate in `deploy/certs` covers the
+platform's names only, and the console never claims HTTPS for a custom domain. Pick one of these and put
+it in front of `web`:
+
+- **Cloudflare for SaaS (custom hostnames).** Keep the platform zone on Cloudflare and add each verified
+  domain as a custom hostname; Cloudflare issues and renews its certificate. Set `DOMAIN_TARGET` to the
+  fallback origin name Cloudflare gives you, so brands point their CNAME there. `web` keeps serving plain
+  http on 80 behind it.
+- **A proxy with on-demand TLS, such as Caddy.** Run it on ports 80 and 443 and let `web` listen on a local
+  port (`WEB_BIND=127.0.0.1 WEB_PORT=8080 WEB_TLS_PORT=8443`, no certificates mounted). Before Caddy asks
+  Let's Encrypt for a certificate, it calls the `ask` endpoint, which answers 200 only for a verified
+  domain. The API port is bound to `127.0.0.1` and `web` answers 404 for `/api/v1/internal/`, so only a
+  proxy on the same machine reaches it; set `DOMAIN_ASK_SECRET` as well when anything else shares that
+  machine.
+
+  ```caddyfile
+  {
+    on_demand_tls {
+      ask http://127.0.0.1:8090/api/v1/internal/domain-allowed?secret={$DOMAIN_ASK_SECRET}
+    }
+  }
+  https:// {
+    tls {
+      on_demand
+    }
+    reverse_proxy 127.0.0.1:8080
+  }
+  ```
+
+  Keep the platform's own names (the console and `*.{STORE_ROOT_DOMAIN}`) on their own site blocks with
+  the wildcard certificate, since the ask endpoint answers 404 for them.
 
 ## Midtrans sandbox
 

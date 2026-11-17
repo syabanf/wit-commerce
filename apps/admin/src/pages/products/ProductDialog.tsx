@@ -275,6 +275,7 @@ function ProductForm({
         <FormField label="Photo" htmlFor="product-photo" className="sm:col-span-2">
           <ImageUpload
             id="product-photo"
+            shape="square"
             tenantId={tenantId}
             label="Product photo"
             value={draft.imageUrl}

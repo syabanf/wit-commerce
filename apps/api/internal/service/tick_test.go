@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
@@ -76,5 +77,32 @@ func TestTickKeepsADraftThatFailsTheChecks(t *testing.T) {
 	}
 	if _, err := store.Get[domain.PageDraft](t.Context(), db.Pool, "pageDrafts", trail); err != nil {
 		t.Fatalf("the draft was lost: %v", err)
+	}
+}
+
+// TestRollUpRunsOncePerDay: the timer calls the roll-up every minute, and it works once per WIB day.
+func TestRollUpRunsOncePerDay(t *testing.T) {
+	svc, db, _, _ := trailService(t)
+	now := clock.MustParse(clock.FixtureNow)
+	if err := svc.RollUpSales(t.Context(), now); err != nil {
+		t.Fatal(err)
+	}
+	var done string
+	if err := db.Pool.QueryRow(t.Context(), `select done_day from sales_rollup`).Scan(&done); err != nil || done != "2026-10-05" {
+		t.Fatalf("done day %q (%v)", done, err)
+	}
+	// An old daily row appears; the same day does not roll up again, the next day does.
+	if _, err := db.Pool.Exec(t.Context(), `insert into sales_days values ('old', 'ten-lari', '2024-01-02', 'web', null, null, 1, 100)`); err != nil {
+		t.Fatal(err)
+	}
+	count := func() (n int) {
+		_ = db.Pool.QueryRow(t.Context(), `select count(*) from sales_days where day < '2025-01-01'`).Scan(&n)
+		return n
+	}
+	if err := svc.RollUpSales(t.Context(), now.Add(time.Hour)); err != nil || count() != 1 {
+		t.Fatalf("rolled up twice in one day: %d rows left (%v)", count(), err)
+	}
+	if err := svc.RollUpSales(t.Context(), now.Add(24*time.Hour)); err != nil || count() != 0 {
+		t.Fatalf("the next day left %d old rows (%v)", count(), err)
 	}
 }

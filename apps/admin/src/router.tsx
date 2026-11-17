@@ -62,6 +62,18 @@ export const router = createBrowserRouter([
         lazy: page(() => import('./pages/integrations/CredentialsPage'), 'CredentialsPage'),
       },
       ...settingsRoutes,
+      // The employee area: what a person does for themselves.
+      { path: 'me', lazy: page(() => import('./pages/me/MyHomePage'), 'MyHomePage') },
+      {
+        path: 'me/tasks',
+        handle: { breadcrumb: t.breadcrumb.myTasks },
+        lazy: page(() => import('./pages/me/MyTasksPage'), 'MyTasksPage'),
+      },
+      {
+        path: 'me/account',
+        handle: { breadcrumb: t.breadcrumb.myAccount },
+        lazy: page(() => import('./pages/me/MyAccountPage'), 'MyAccountPage'),
+      },
       // Section shortcuts and the not-found page come last.
       ...miscRoutes,
     ],

@@ -268,7 +268,7 @@ func TestDemoAccountsLeaveSignUpsOut(t *testing.T) {
 	if code := e.call("GET", "/auth/demo-accounts", "", nil, &demo); code != 200 {
 		t.Fatalf("demo accounts: %d", code)
 	}
-	if len(demo.Tenants) != 3 || len(demo.Users) != 9 {
+	if len(demo.Tenants) != 3 || len(demo.Users) != 10 {
 		t.Errorf("demo lists %d tenants and %d users", len(demo.Tenants), len(demo.Users))
 	}
 	for _, u := range demo.Users {

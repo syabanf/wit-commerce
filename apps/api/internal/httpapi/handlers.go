@@ -16,6 +16,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/antispam"
 	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
@@ -43,12 +44,33 @@ func (s *Server) tick(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusForbidden, "FORBIDDEN", "Only a platform admin runs the jobs by hand.")
 		return
 	}
+	if err := s.pruneAssistantLog(r.Context()); err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	s.housekeeping(r.Context())
 	s.act(w, r, func(m service.Meta) (*service.Delta, error) { return s.svc.Tick(r.Context(), m.At) })
+}
+
+// housekeeping runs the timed jobs that write no collection: this month's invoices and the ended
+// rate limit windows. A failure is logged and tried again on the next tick.
+func (s *Server) housekeeping(ctx context.Context) {
+	if _, err := s.svc.IssueInvoices(ctx, s.Clock.NowIso()); err != nil {
+		s.Log.Error("invoices not issued", "err", err)
+	}
+	if err := antispam.Prune(ctx, s.DB.Pool); err != nil {
+		s.Log.Error("rate limit windows not pruned", "err", err)
+	}
 }
 
 // RunTick is what the timer calls: the jobs, then a broadcast of what they changed.
 func (s *Server) RunTick(ctx context.Context) error {
 	s.currency.RefreshIfDue(ctx)
+	s.media.SweepIfDue(ctx)
+	s.housekeeping(ctx)
+	if err := s.pruneAssistantLog(ctx); err != nil {
+		s.Log.Error("assistant log not pruned", "err", err)
+	}
 	d, err := s.svc.Tick(ctx, s.Clock.NowIso())
 	if err != nil {
 		return err
@@ -57,6 +79,19 @@ func (s *Server) RunTick(ctx context.Context) error {
 		s.publish(d)
 	}
 	return nil
+}
+
+// RunDomainChecks is the daily re-check of verified custom domains. DNS can take seconds per
+// domain, so it has its own timer and never holds back the tick that expires unpaid orders.
+func (s *Server) RunDomainChecks(ctx context.Context) error {
+	d, err := s.svc.RecheckDomains(ctx, s.Clock.NowIso())
+	if err != nil {
+		return err
+	}
+	if !d.Empty() {
+		s.publish(d)
+	}
+	return s.svc.RollUpSales(ctx, s.Clock.Now())
 }
 
 // RunWebhooks sends the deliveries that are due; the timer calls it.
@@ -260,7 +295,12 @@ func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, col
 		case readmodel.CustomerMetricsCollection:
 			rows, err = readmodel.CustomerMetricsRows(ctx, s.DB.Pool, where, args...)
 		case readmodel.SalesDaysCollection, readmodel.ProductDaysCollection, readmodel.SellerBuyersCollection:
-			rows, err = readmodel.FactRows(ctx, s.DB.Pool, c, where, args...)
+			// Only the daily window the console reads; older months are at GET /views/sales-months.
+			window := append(slices.Clone(args), readmodel.SalesCutoff(s.Clock.Now()))
+			rows, err = readmodel.FactRows(ctx, s.DB.Pool, c, fmt.Sprintf("%s and day >= $%d", where, len(window)), window...)
+		case "returns":
+			// Open returns only, as with orders; GET /views/returns pages through the rest.
+			rows, err = store.Raw(ctx, s.DB.Pool, c, where+" and status in ('requested', 'approved', 'received')", args...)
 		case "users":
 			// Colleagues and platform admins; staff of other brands stay out of this browser.
 			rows, err = store.Raw(ctx, s.DB.Pool, c, "data->'tenantIds' ?| $1 or data->>'role' = 'platform_admin'", tenantIDs)
@@ -336,10 +376,25 @@ func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	state, err := s.loadState(r.Context(), ids, sellers, stateCollections)
+	collections := stateCollections
+	if employeeOnly(p) {
+		collections = staffCollections
+	}
+	state, err := s.loadState(r.Context(), ids, sellers, collections)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
+	}
+	if employeeOnly(p) {
+		if state["tickets"], err = assignedTo(state["tickets"], p.ID); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		for _, c := range stateCollections {
+			if state[c] == nil {
+				state[c] = []json.RawMessage{}
+			}
+		}
 	}
 	if p.Role != "platform_admin" {
 		if state["users"], err = withoutAdminContacts(state["users"]); err != nil {
@@ -389,6 +444,10 @@ func (s *Server) userEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	scope := events.Scope{TenantIDs: ids}
+	if employeeOnly(p) {
+		s.stream(w, r, staffStreamScope(ids, p.ID))
+		return
+	}
 	sellers, err := s.ownSellers(r.Context(), p)
 	if err == nil && sellers != nil {
 		scope, err = s.sellerStreamScope(r.Context(), ids, sellers)
@@ -484,7 +543,7 @@ func (s *Server) shopEvents(w http.ResponseWriter, r *http.Request) {
 	// while the order page is open shows at once. cmd/shop has no signer and streams the store only.
 	if s.Signer != nil {
 		if p, ok := s.shopper(r, tenant.ID); ok {
-			scope.Collections["orders"], scope.Collections["customers"] = true, true
+			scope.Collections["orders"], scope.Collections["customers"], scope.Collections["returns"] = true, true, true
 			scope.Keep = ownRows(p.ID)
 		}
 	}
@@ -499,7 +558,7 @@ func ownRows(customerID string) func(string, json.RawMessage) bool {
 			CustomerID string `json:"customerId"`
 		}
 		switch collection {
-		case "orders":
+		case "orders", "returns":
 			return json.Unmarshal(data, &row) == nil && row.CustomerID == customerID
 		case "customers":
 			return json.Unmarshal(data, &row) == nil && row.ID == customerID
@@ -602,7 +661,12 @@ func (s *Server) shopMe(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "payments": payments, "hasPassword": hasPassword, "emailVerified": verified, "emailOn": s.notify.On()})
+	returns, err := store.List[domain.OrderReturn](r.Context(), s.DB.Pool, "returns", "customer_id = $1", p.ID)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"customer": customer, "orders": orders, "returns": returns, "payments": payments, "hasPassword": hasPassword, "emailVerified": verified, "emailOn": s.notify.On()})
 }
 
 func (s *Server) shopPrice(w http.ResponseWriter, r *http.Request) {

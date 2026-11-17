@@ -1,5 +1,14 @@
-import { fmtIdr, fmtNumber, fmtPercent, sellerPerformance, sellerTemplateBlocker } from '@rc/fixtures'
-import type { Product, Template } from '@rc/types'
+import {
+  cleanSellerProfile,
+  fmtIdr,
+  fmtNumber,
+  fmtPercent,
+  sellerPerformance,
+  sellerProfileBlocker,
+  sellerProfileOf,
+  sellerTemplateBlocker,
+} from '@rc/fixtures'
+import type { Page, Product, Seller, Template } from '@rc/types'
 import { PAGE_STATUS_LABEL } from '@rc/types'
 import { Banner, Button, Card, cn, toast } from '@rc/ui'
 import { Check, ExternalLink, Lock, Share2 } from 'lucide-react'
@@ -9,6 +18,7 @@ import { StorePreview } from '../../components/StorePreview'
 import { ScreenHeader } from '../../layouts/ScreenHeader'
 import { shareLink } from '../../lib/seller'
 import { useNow, useSellerScope } from '../../state/scope'
+import { AboutCard } from './AboutCard'
 import { FeaturedSheet, MAX_FEATURED } from './FeaturedSheet'
 
 export function StorePage() {
@@ -16,11 +26,39 @@ export function StorePage() {
     useSellerScope()
   const now = useNow()
   const [editingFeatured, setEditingFeatured] = useState(false)
+  const saved = sellerProfileOf(seller)
+  const [about, setAbout] = useState(saved)
+  const profile = cleanSellerProfile(about)
+  const aboutDirty = JSON.stringify(profile) !== JSON.stringify(saved)
+  const aboutBlocker = sellerProfileBlocker(seller, profile, tenant.brand.locks, true)
+  // The preview shows the unsaved copy and photo as the seller types.
+  const previewSeller: Seller = {
+    ...seller,
+    headline: profile.headline,
+    bio: profile.bio,
+    photoUrl: profile.photoUrl,
+  }
+  const previewPage: Page | null =
+    page && aboutDirty
+      ? {
+          ...page,
+          sections: page.sections.map((x) =>
+            x.kind === 'hero' ? { ...x, headline: profile.headline || seller.name, body: profile.bio } : x,
+          ),
+        }
+      : page
+  const saveAbout = () => {
+    if (aboutBlocker) return
+    dispatch({ type: 'sellers/updateProfile', id: seller.id, ...profile })
+    toast('Profile saved', { tone: 'success', description: 'Your store shows the new copy.' })
+  }
   const template = maps.template.get(seller.templateId)
   const featured = seller.featuredProductIds
     .map((id) => maps.product.get(id))
     .filter((p): p is Product => !!p)
-  const stats = sellerPerformance([seller], sales.salesDays, sales.sellerBuyers, traffic, leads, 30, now).get(seller.id)!
+  const stats = sellerPerformance([seller], sales.salesDays, sales.sellerBuyers, traffic, leads, 30, now).get(
+    seller.id,
+  )!
   const layoutLocked = tenant.brand.locks.layout
   const featuredLocked = tenant.brand.locks.featured_product
   const allowed = templates.filter((t) => seller.allowedTemplateIds.includes(t.id))
@@ -58,8 +96,8 @@ export function StorePage() {
 
       <StorePreview
         tenant={tenant}
-        seller={seller}
-        page={page}
+        seller={previewSeller}
+        page={previewPage}
         template={template}
         products={featured}
         storeUrl={storeUrl}
@@ -81,6 +119,17 @@ export function StorePage() {
           </a>
         </Button>
       </div>
+
+      <AboutCard
+        seller={seller}
+        tenant={tenant}
+        draft={about}
+        onChange={setAbout}
+        blocker={aboutBlocker}
+        dirty={aboutDirty}
+        onSave={saveAbout}
+        onReset={() => setAbout(saved)}
+      />
 
       <Card className="p-5">
         <h2 className="text-base font-semibold">Last 30 days</h2>

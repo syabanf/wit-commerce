@@ -10,6 +10,7 @@ import {
   plural,
   productPerformance,
   toMs,
+  isOpenReturn,
 } from '@rc/fixtures'
 import type { Channel, OrderStatus } from '@rc/types'
 import { CHANNEL_LABEL, FUNNEL_FLOW, FUNNEL_STEP_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
@@ -36,6 +37,7 @@ import {
   PackageCheck,
   ShoppingBag,
   Truck,
+  Undo2,
   Wallet,
 } from 'lucide-react'
 import { useMemo } from 'react'
@@ -74,6 +76,9 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
     { tenantId: s.tenantId, sort: 'placed', desc: true, pageSize: 5 },
     s.orders,
   ).page
+
+  // Open returns are in the state with the API and in the demo alike.
+  const openReturns = s.returns.filter((r) => isOpenReturn(r)).length
 
   const data = useMemo(() => {
     const week = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, 7, now)
@@ -247,7 +252,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
         </Card>
       </div>
 
-      <div className="gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-6 grid grid-cols-2">
+      <div className="gap-3 sm:gap-4 md:grid-cols-4 xl:grid-cols-7 grid grid-cols-2">
         {OVERVIEW.map((st) => (
           <Link
             key={st}
@@ -270,6 +275,19 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
             />
           </Link>
         ))}
+        <Link
+          to="/commerce/returns"
+          className="block rounded-card focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
+        >
+          <StatCard
+            label="Open returns"
+            value={openReturns}
+            hint="To decide, receive or refund"
+            icon={<Undo2 />}
+            tone={openReturns ? 'warning' : 'default'}
+            className="h-full transition-colors hover:bg-surface-2"
+          />
+        </Link>
       </div>
 
       <div className="gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_20rem] grid grid-cols-1">

@@ -1,5 +1,17 @@
-import type { AppAction, AppState } from '@rc/fixtures'
-import type { Customer, Order, Seller, Tenant, User, CustomerEvent, Industry } from '@rc/types'
+import type { AppAction, AppState, DomainStatus } from '@rc/fixtures'
+import type {
+  Customer,
+  Order,
+  OrderReturn,
+  ProductMonth,
+  ReturnStatus,
+  SalesMonth,
+  Seller,
+  Tenant,
+  User,
+  CustomerEvent,
+  Industry,
+} from '@rc/types'
 
 // The HTTP client for apps/api. Every reducer action maps to one request (actionRequest), every
 // answer is a Delta the app lays over its AppState (applyDelta), and the event stream delivers the
@@ -19,6 +31,8 @@ export interface Delta {
   payment?: PaymentLink
   /** Placing that order worked, but the payment page did not open. */
   paymentError?: string
+  /** A domain check: how each DNS record did. */
+  domainStatus?: DomainStatus
 }
 
 /** Where a shopper pays for an order online. */
@@ -82,6 +96,17 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
         path: `/tenants/${action.tenantId}/display-currencies`,
         body: { currencies: action.currencies },
       }
+    case 'tenants/setShopSettings':
+      return {
+        method: 'PUT',
+        path: `/tenants/${action.tenantId}/shop-settings`,
+        body: { returnWindowDays: action.returnWindowDays, shopperEmailsOff: action.shopperEmailsOff },
+      }
+    case 'tenants/setDomain':
+      // The server issues its own token, so the client's never leaves the browser.
+      return { method: 'PUT', path: `/tenants/${action.tenantId}/domain`, body: { domain: action.domain } }
+    case 'tenants/verifyDomain':
+      return { method: 'POST', path: `/tenants/${action.tenantId}/domain/verify` }
     case 'brand/update':
       return { method: 'PUT', path: `/tenants/${action.tenantId}/brand`, body: action.brand }
     case 'brand/toggleLock':
@@ -164,6 +189,29 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       }
     case 'orders/note':
       return { method: 'POST', path: `/orders/${action.id}/notes`, body: { note: action.note } }
+    case 'returns/request': {
+      // A shopper asks through their store; the server knows who is asking from the route.
+      const { type: _type, who: _who, ...body } = action
+      return { method: 'POST', path: store ? `/shop/${store}/returns` : '/returns', body }
+    }
+    case 'returns/approve':
+      return { method: 'POST', path: `/returns/${action.id}/approve`, body: { note: action.note } }
+    case 'returns/reject':
+      return { method: 'POST', path: `/returns/${action.id}/reject`, body: { reason: action.reason } }
+    case 'returns/cancel':
+      return {
+        method: 'POST',
+        path: store ? `/shop/${store}/returns/${action.id}/cancel` : `/returns/${action.id}/cancel`,
+        body: { note: action.note },
+      }
+    case 'returns/receive':
+      return { method: 'POST', path: `/returns/${action.id}/receive`, body: { restock: action.restock } }
+    case 'returns/refund':
+      return {
+        method: 'POST',
+        path: `/returns/${action.id}/refund`,
+        body: { amount: action.amount, note: action.note },
+      }
     case 'customers/save':
       return { method: 'PUT', path: `/customers/${action.customer.id}`, body: action.customer }
     case 'customers/note':
@@ -236,6 +284,14 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       }
     case 'sellers/setStatus':
       return { method: 'POST', path: `/sellers/${action.id}/status`, body: { status: action.status } }
+    case 'sellers/updateProfile':
+      return {
+        method: 'PUT',
+        path: `/sellers/${action.id}/profile`,
+        body: { headline: action.headline, bio: action.bio, photoUrl: action.photoUrl },
+      }
+    case 'menus/save':
+      return { method: 'PUT', path: `/tenants/${action.tenantId}/menus`, body: action.menus }
     case 'integrations/toggle':
       return { method: 'POST', path: `/integrations/${action.id}/toggle` }
     case 'integrations/sync':
@@ -309,6 +365,7 @@ export const emptyState = (): AppState => ({
   productDays: [],
   sellerBuyers: [],
   orders: [],
+  returns: [],
   segments: [],
   leads: [],
   tickets: [],
@@ -359,6 +416,8 @@ export interface SignUpInput {
   password: string
   /** Stays empty: a field people never see, so only a bot fills it. */
   website: string
+  /** The Cloudflare Turnstile token, sent only while the platform has Turnstile on. */
+  captchaToken?: string
 }
 
 export interface SubdomainCheck {
@@ -481,6 +540,35 @@ export interface OrderRowsPage {
   }
   /** An order to fulfil placed before this is late, on the store's clock. */
   lateBefore: string
+}
+
+export interface ReturnRowsQuery {
+  tenantId: string
+  /** A status, or "open" for requested, approved and received together. */
+  status?: ReturnStatus | 'open' | null
+  orderId?: string
+  customerId?: string
+  /** Matches the return code or its order's code. */
+  q?: string
+  page?: number
+  /** At most 200. */
+  pageSize?: number
+}
+
+export interface ReturnRowsPage {
+  rows: OrderReturn[]
+  total: number
+  /** Per status with every filter but the status applied. */
+  statusCounts: Partial<Record<ReturnStatus, number>>
+  /** What the brand's returns refunded, whatever the filters. */
+  refundedAmount: number
+}
+
+export interface SalesMonthsPage {
+  salesMonths: SalesMonth[]
+  productMonths: ProductMonth[]
+  /** The first day the state's daily facts keep; these months end before it. */
+  cutoff: string
 }
 
 /** One line of the staff history. Names stay as they were at the time. */
@@ -607,6 +695,88 @@ export interface CurrencyRates {
   refresh?: { ok: boolean; updated: number; error?: string }
 }
 
+/** What the sign-up pages need before anyone signs in. */
+export interface PublicConfig {
+  /** The Turnstile site key; empty while the CAPTCHA is off. */
+  turnstileSiteKey: string
+}
+
+/** The Turnstile keys as the console shows them. It never carries the secret. */
+export interface CaptchaSettings {
+  siteKey: string
+  secretSet: boolean
+  secretLast4: string
+  updatedAt: string | null
+  updatedBy: string | null
+}
+
+export interface PlanLimitsWire {
+  products: number
+  staff: number
+  sellers: number
+  warehouses: number
+  assistantPerDay: number
+  currencies: number
+  mediaMb: number
+}
+
+/** One plan as it applies now: the defaults, or a platform admin's override. */
+export interface PlanInfo {
+  id: 'starter' | 'growth' | 'enterprise'
+  name: string
+  /** Rupiah a month. */
+  price: number
+  limits: PlanLimitsWire
+  updatedAt: string | null
+  updatedBy: string | null
+}
+
+export interface PlanRequest {
+  id: string
+  tenantId: string
+  fromPlan: string
+  toPlan: string
+  note: string
+  status: 'pending' | 'approved' | 'declined'
+  requestedBy: string
+  requestedAt: string
+  decidedBy: string | null
+  decidedAt: string | null
+  decisionNote: string
+}
+
+/** A month of a brand's plan. It records what is owed; nothing charges anyone. */
+export interface Invoice {
+  id: string
+  tenantId: string
+  /** YYYY-MM */
+  period: string
+  plan: string
+  amount: number
+  status: 'due' | 'paid' | 'void'
+  issuedAt: string
+  paidAt: string | null
+}
+
+/** A brand's Plan & usage page. */
+export interface PlanOverview {
+  tenantId: string
+  plan: PlanInfo['id']
+  plans: PlanInfo[]
+  usage: Record<keyof PlanLimitsWire, number>
+  requests: PlanRequest[]
+  invoices: Invoice[]
+}
+
+/** The platform's Plans page. */
+export interface PlatformPlans {
+  plans: PlanInfo[]
+  defaults: PlanInfo[]
+  tenants: { id: string; name: string; plan: string }[]
+  requests: PlanRequest[]
+  invoices: Invoice[]
+}
+
 /** A rate a storefront needs: units of the currency per 1 IDR. */
 export interface ShopRate {
   code: string
@@ -692,23 +862,92 @@ export interface AssistantAction {
     | 'promotions/save'
     | 'promotions/setStatus'
     | 'campaigns/pause'
+    | 'campaigns/launch'
     | 'stock/receive'
+    | 'stock/adjust'
     | 'orders/advance'
+    | 'orders/cancel'
+    | 'orders/note'
     | 'customers/note'
+    | 'tickets/assign'
+    | 'tickets/resolve'
+    | 'leads/move'
+    | 'products/setStatus'
+    | 'segments/save'
   label: string
   reason: string
-  params: Record<string, string | number>
+  /** Scalars, except segments/save, whose rules are a list of { field, op, value }. */
+  params: Record<string, string | number | { field: string; op: string; value: string }[]>
+  /** High for a change that is hard to take back; the console asks twice. */
+  risk?: 'high'
 }
 
 export interface AssistantAnswer {
+  /** Names the answer when the console reports a card's outcome or a rating; absent if the log failed. */
+  id?: string
   answer: string
   actions: AssistantAction[]
   links: { label: string; path: string }[]
+  /** The kinds of record the assistant looked up for this answer. */
+  lookups?: string[]
+}
+
+export type AssistantOutcome = 'confirmed' | 'dismissed' | 'failed'
+
+export interface AssistantLogEntry {
+  id: string
+  at: string
+  userId: string
+  userName: string
+  page: string
+  question: string
+  modelCalls: number
+  lookups: string[]
+  answerLength: number
+  actions: { type: string; targets: string[]; risk?: 'high'; outcome?: AssistantOutcome }[]
+  feedback?: 'up' | 'down'
+  latencyMs: number
+  errorCode?: string
+}
+
+export interface AssistantLogPage {
+  entries: AssistantLogEntry[]
+  nextBefore?: string
+}
+
+export interface AssistantLogFilter {
+  userId?: string
+  outcome?: AssistantOutcome | 'open'
+  /** YYYY-MM-DD, WIB. */
+  from?: string
+  to?: string
+  before?: string
+}
+
+export interface AssistantBrandTotals {
+  tenantId: string
+  tenantName: string
+  questions: number
+  modelCalls: number
+  proposed: number
+  confirmed: number
+  dismissed: number
+  failed: number
+  errors: number
+  thumbsUp: number
+  thumbsDown: number
+}
+
+export interface AssistantTotals {
+  since: string
+  brands: AssistantBrandTotals[]
 }
 
 export interface MeResponse {
   customer: Customer
   orders: Order[]
+  /** The shopper's returns, open and closed. */
+  returns?: OrderReturn[]
   /** Payment pages of the orders still waiting for an online payment, by order id. */
   payments: Record<string, PaymentLink>
   hasPassword: boolean
@@ -725,6 +964,28 @@ export interface MediaUpload {
   height: number
   mime: 'image/png' | 'image/jpeg' | 'image/webp'
   size: number
+  /** The file's name on the uploader's device; empty for older images. */
+  name: string
+}
+
+/** One place a brand shows an image. */
+export interface MediaUse {
+  kind: 'product' | 'brand' | 'page' | 'page_draft' | 'page_history' | 'seller'
+  id: string
+  label: string
+}
+
+/** An image in a brand's library with the places that show it. */
+export interface MediaItem extends MediaUpload {
+  createdAt: string
+  uses: MediaUse[]
+}
+
+export interface MediaList {
+  items: MediaItem[]
+  total: number
+  limit: number
+  offset: number
 }
 
 /** Builds the client. Every method throws ApiError on a non-2xx answer. */
@@ -805,6 +1066,20 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
           if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
         return call<{ events: CustomerEvent[] }>('GET', `/views/customer-events?${query}`)
       },
+      /** Every return, open or closed; the state carries the open ones only. */
+      returns: (params: ReturnRowsQuery) => {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params))
+          if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
+        return call<ReturnRowsPage>('GET', `/views/returns?${query}`)
+      },
+      /** Sales per month before the daily window, YYYY-MM bounds included. */
+      salesMonths: (tenantId: string, from?: string, to?: string) => {
+        const query = new URLSearchParams({ tenantId })
+        if (from) query.set('from', from)
+        if (to) query.set('to', to)
+        return call<SalesMonthsPage>('GET', `/views/sales-months?${query}`)
+      },
       /** The orders list from the read model: filtered, searched, sorted and paged on the server. */
       orders: (params: OrderRowsQuery) => {
         const query = new URLSearchParams()
@@ -812,6 +1087,10 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
           if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
         return call<OrderRowsPage>('GET', `/views/orders?${query}`)
       },
+    },
+    returns: {
+      get: (id: string, tenantId: string) =>
+        call<OrderReturn>('GET', `/returns/${id}?tenantId=${encodeURIComponent(tenantId)}`),
     },
     staff: {
       create: (input: StaffInput & { email: string }) => call<IssuedStaff>('POST', '/users', input),
@@ -828,16 +1107,47 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     },
     media: {
       /** Stores a PNG, JPEG or WebP image of at most 5 MB for the brand; the answer carries its URL. */
-      upload: (tenantId: string, file: File) => {
+      upload: (tenantId: string, file: File, purpose?: 'seller-photo') => {
         const form = new FormData()
         form.append('file', file)
-        return request<MediaUpload>('POST', `/media?tenantId=${encodeURIComponent(tenantId)}`, form)
+        return request<MediaUpload>(
+          'POST',
+          `/media?tenantId=${encodeURIComponent(tenantId)}${purpose ? `&purpose=${purpose}` : ''}`,
+          form,
+        )
       },
+      /** A page of the brand's images, newest first, with where each is used. q searches file names. */
+      list: (tenantId: string, query: { q?: string; limit?: number; offset?: number } = {}) => {
+        const params = new URLSearchParams({ tenantId })
+        if (query.q) params.set('q', query.q)
+        if (query.limit) params.set('limit', String(query.limit))
+        if (query.offset) params.set('offset', String(query.offset))
+        return call<MediaList>('GET', `/media?${params}`)
+      },
+      /** Deletes an image and its file. Refused with 409 while something still shows it. */
+      remove: (tenantId: string, id: string) =>
+        call<{ ok: boolean }>('DELETE', `/media/${id}?tenantId=${encodeURIComponent(tenantId)}`),
     },
     demoAccounts: () => call<DemoAccounts>('GET', '/auth/demo-accounts'),
     /** Asks the admin assistant about a brand. It proposes actions and never runs them. */
     assistant: (tenantId: string, input: AssistantInput) =>
       call<AssistantAnswer>('POST', `/ai/assistant?tenantId=${encodeURIComponent(tenantId)}`, input),
+    assistantLog: {
+      /** Reports what the person did with a card. */
+      outcome: (answerId: string, action: number, outcome: AssistantOutcome) =>
+        call<{ ok: boolean }>('POST', '/ai/assistant/outcome', { answerId, action, outcome }),
+      /** Rates an answer. */
+      feedback: (answerId: string, feedback: 'up' | 'down') =>
+        call<{ ok: boolean }>('POST', '/ai/assistant/outcome', { answerId, feedback }),
+      /** A brand's questions, newest first (tenant admin). */
+      list: (tenantId: string, filter: AssistantLogFilter = {}) => {
+        const q = new URLSearchParams({ tenantId })
+        for (const [key, value] of Object.entries(filter)) if (value) q.set(key, value)
+        return call<AssistantLogPage>('GET', `/ai/assistant/log?${q.toString()}`)
+      },
+      /** Use per brand over 30 days (platform admin). */
+      totals: () => call<AssistantTotals>('GET', '/ai/assistant/totals'),
+    },
     state: () => call<StateResponse>('GET', '/state'),
     /** Sends an action; the answer is the delta it produced. */
     send: (action: AppAction, store?: string) => {
@@ -868,6 +1178,30 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       save: (rates: CurrencyRateInput[]) => call<CurrencyRates>('PUT', '/settings/currencies', { rates }),
       refresh: () => call<CurrencyRates>('POST', '/settings/currencies/refresh'),
     },
+    /** Public settings for the sign-up pages; no sign-in needed. */
+    config: () => call<PublicConfig>('GET', '/config'),
+    captchaSettings: {
+      get: () => call<CaptchaSettings>('GET', '/settings/captcha'),
+      /** An empty secret keeps the saved one; both empty turns the check off. */
+      save: (input: { siteKey: string; secret: string }) =>
+        call<CaptchaSettings>('PUT', '/settings/captcha', input),
+    },
+    plans: {
+      /** The catalog, every brand's plan, requests and invoices (platform admin). */
+      platform: () => call<PlatformPlans>('GET', '/settings/plans'),
+      save: (plan: string, input: { price: number; limits: PlanLimitsWire }) =>
+        call<PlatformPlans>('PUT', `/settings/plans/${plan}`, input),
+      decide: (requestId: string, approve: boolean, note = '') =>
+        call<PlanRequest>('POST', `/plan-requests/${requestId}/decide`, { approve, note }),
+      setInvoiceStatus: (invoiceId: string, status: Invoice['status']) =>
+        call<Invoice>('POST', `/invoices/${invoiceId}/status`, { status }),
+      setTenantPlan: (tenantId: string, plan: string) =>
+        call<Delta>('PUT', `/tenants/${tenantId}/plan`, { plan }),
+      /** A brand's plan, usage, requests and invoices (brand admin). */
+      overview: (tenantId: string) => call<PlanOverview>('GET', `/tenants/${tenantId}/plan`),
+      request: (tenantId: string, plan: string, note: string) =>
+        call<PlanRequest>('POST', `/tenants/${tenantId}/plan-requests`, { plan, note }),
+    },
     emailSettings: {
       get: () => call<EmailSettings>('GET', '/settings/email'),
       /** An empty key keeps the saved one. */
@@ -886,8 +1220,13 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       remove: (id: string) => call<{ ok: boolean }>('DELETE', `/webhooks/${id}`),
       retry: (deliveryId: number) => call<{ ok: boolean }>('POST', `/webhook-deliveries/${deliveryId}/retry`),
     },
+    /** The custom domain and the DNS records it needs, as the server builds them. */
+    domain: (tenantId: string) => call<DomainStatus>('GET', `/tenants/${tenantId}/domain`),
     shop: {
       tenants: () => call<{ tenants: Tenant[]; now: string }>('GET', '/shop'),
+      /** The store a verified custom domain serves; ApiError 404 for any other host. */
+      byHost: (host: string) =>
+        call<{ store: string }>('GET', `/shop/by-host?host=${encodeURIComponent(host)}`),
       state: (store: string) => call<StateResponse>('GET', `/shop/${store}/state`),
       subscribe: (store: string, onDelta: (delta: Delta) => void) => events(`/shop/${store}/events`, onDelta),
       demoCustomers: (store: string) =>
@@ -896,8 +1235,10 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
         call<ShopperResponse>('POST', `/shop/${store}/sign-in`, { customerId }),
       login: (store: string, email: string, password: string) =>
         call<ShopperResponse>('POST', `/shop/${store}/login`, { email, password }),
-      register: (store: string, input: { name: string; email: string; phone: string; password: string }) =>
-        call<ShopperResponse>('POST', `/shop/${store}/register`, input),
+      register: (
+        store: string,
+        input: { name: string; email: string; phone: string; password: string; captchaToken?: string },
+      ) => call<ShopperResponse>('POST', `/shop/${store}/register`, input),
       setPassword: (store: string, currentPassword: string, newPassword: string) =>
         call<{ token: string }>('POST', `/shop/${store}/password`, { currentPassword, newPassword }),
       forgotPassword: (store: string, email: string) =>

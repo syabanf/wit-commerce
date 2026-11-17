@@ -1,48 +1,12 @@
-import { storeHost } from '@rc/fixtures'
+import { subdomainHost } from '@rc/fixtures'
 import type { Page, Tenant } from '@rc/types'
-import { STORE_ROOT } from '../../lib/storefront'
+import { STORE_ROOT, storeAddress } from '../../lib/storefront'
 
-export const PLATFORM_IP = '76.76.21.21'
+/** The store's host under the platform root, which keeps working next to a custom domain. */
+export const platformHost = (tenant: Tenant) => subdomainHost(tenant, STORE_ROOT)
 
-export const platformHost = (tenant: Tenant) => storeHost(tenant, STORE_ROOT)
-
-/** The host shoppers reach: the custom domain once verified, else the platform subdomain. */
-export const primaryHost = (tenant: Tenant) =>
-  tenant.domain && tenant.domainVerified ? tenant.domain : platformHost(tenant)
-
-export interface DnsRecord {
-  type: 'A' | 'CNAME'
-  name: string
-  value: string
-}
-
-export function dnsRecords(tenant: Tenant): DnsRecord[] {
-  return [
-    { type: 'A', name: '@', value: PLATFORM_IP },
-    { type: 'CNAME', name: 'www', value: platformHost(tenant) },
-  ]
-}
-
-export interface Redirect {
-  from: string
-  to: string
-  code: 301 | 302
-  hits30d: number
-}
-
-/** Redirects per tenant. Static until the redirect manager ships. */
-export const REDIRECTS: Record<string, Redirect[]> = {
-  'ten-lari': [
-    { from: '/sale', to: '/running-month', code: 302, hits30d: 1840 },
-    { from: '/trail-launch', to: '/summit-ultra', code: 301, hits30d: 312 },
-    { from: '/help', to: '/faq', code: 301, hits30d: 96 },
-  ],
-  'ten-aruna': [
-    { from: '/sale', to: '/glow-week', code: 302, hits30d: 2210 },
-    { from: '/skincare', to: '/', code: 301, hits30d: 140 },
-  ],
-  'ten-teknika': [{ from: '/catalog', to: '/', code: 301, hits30d: 58 }],
-}
+/** The host shoppers reach: the custom domain once verified, else the platform address. */
+export const primaryHost = (tenant: Tenant) => storeAddress(tenant)
 
 export const TITLE_MAX = 60
 export const DESCRIPTION_MAX = 160

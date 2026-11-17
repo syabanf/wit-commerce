@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { resolveStore, storeHostUrl } from '../../../apps/storefront/src/lib/host.ts'
+import { customDomainHost, resolveStore, storeHostUrl } from '../../../apps/storefront/src/lib/host.ts'
 import { makePaths } from '../../../apps/storefront/src/lib/paths.ts'
 import { storeHost, storeOrigin } from '../src/storeUrl.ts'
 
@@ -55,5 +55,23 @@ describe('storefront paths', () => {
     assert.equal(path.seller('lari', 'fahmi'), '/lari/fahmi')
     assert.equal(path.order('lari', 'ord-1'), '/lari/order/ord-1')
     assert.equal(path.search('lari'), '/lari/search')
+  })
+})
+
+describe('customDomainHost', () => {
+  it('looks up a host outside the platform', () => {
+    assert.equal(customDomainHost('www.TokoSaya.com', 'commerce.reddie.id'), 'www.tokosaya.com')
+    assert.equal(customDomainHost('tokosaya.co.id', 'localhost:5375'), 'tokosaya.co.id')
+  })
+
+  it('never looks up the platform, localhost, an address or a path build', () => {
+    assert.equal(customDomainHost('commerce.reddie.id', 'commerce.reddie.id'), null)
+    assert.equal(customDomainHost('lari.commerce.reddie.id', 'commerce.reddie.id'), null)
+    assert.equal(customDomainHost('www.commerce.reddie.id', 'commerce.reddie.id'), null)
+    assert.equal(customDomainHost('localhost', 'localhost:5375'), null)
+    assert.equal(customDomainHost('lari.localhost', 'localhost:5375'), null)
+    assert.equal(customDomainHost('127.0.0.1', 'localhost:5375'), null)
+    assert.equal(customDomainHost('www.tokosaya.com', null), null)
+    assert.equal(customDomainHost('www.tokosaya.com', 'commerce.reddie.id', '/shop/'), null)
   })
 })

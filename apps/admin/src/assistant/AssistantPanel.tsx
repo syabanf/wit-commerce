@@ -1,4 +1,4 @@
-import { ApiError, type AssistantAction, type AssistantAnswer } from '@rc/api'
+import { ApiError, type AssistantAction, type AssistantAnswer, type AssistantOutcome } from '@rc/api'
 import { newId, nowMs } from '@rc/fixtures'
 import {
   Badge,
@@ -17,15 +17,24 @@ import {
   toast,
   useMediaQuery,
 } from '@rc/ui'
-import { ArrowUp, LoaderCircle, Sparkles, SquarePen } from 'lucide-react'
+import { ArrowUp, LoaderCircle, Sparkles, SquarePen, ThumbsDown, ThumbsUp, TriangleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { HTTP, api } from '../lib/api'
 import { useScoped } from '../state/scoped'
-import { ACTION_PERMISSION, describeAction, doneTitle, startersFor, toAppAction } from './lib'
+import {
+  ACTION_PERMISSION,
+  describeAction,
+  doneTitle,
+  lookedUp,
+  riskWarning,
+  startersFor,
+  toAppAction,
+} from './lib'
 
-type CardState = 'open' | 'running' | 'done' | 'failed' | 'dismissed'
+/** `confirming` is the second step of a high-risk card. */
+type CardState = 'open' | 'confirming' | 'running' | 'done' | 'failed' | 'dismissed'
 
 interface Card {
   action: AssistantAction
@@ -39,6 +48,10 @@ interface Turn {
   text: string
   cards?: Card[]
   links?: AssistantAnswer['links']
+  /** The answer's id in the assistant log, for outcomes and ratings. */
+  answerId?: string
+  lookups?: string[]
+  feedback?: 'up' | 'down'
   /** An error the console wrote; it never goes back to the model. */
   failed?: boolean
 }
@@ -138,6 +151,8 @@ function AssistantChat({ onClose }: { onClose: () => void }) {
           text: answer.answer,
           cards: answer.actions.map((action) => ({ action, state: 'open' })),
           links: answer.links,
+          answerId: answer.id,
+          lookups: answer.lookups,
         },
       ])
     } catch (err) {
@@ -157,17 +172,31 @@ function AssistantChat({ onClose }: { onClose: () => void }) {
       ),
     )
 
-  const confirm = async (turnId: string, index: number, action: AssistantAction) => {
+  /** Tells the log what happened to a card. A failure here never disturbs the chat. */
+  const report = (turn: Turn, index: number, outcome: AssistantOutcome) => {
+    if (turn.answerId) void api.assistantLog.outcome(turn.answerId, index, outcome).catch(() => undefined)
+  }
+
+  const rate = (turn: Turn, feedback: 'up' | 'down') => {
+    if (!turn.answerId || turn.feedback) return
+    setTurns((list) => list.map((t) => (t.id === turn.id ? { ...t, feedback } : t)))
+    void api.assistantLog.feedback(turn.answerId, feedback).catch(() => undefined)
+  }
+
+  const confirm = async (turn: Turn, index: number, action: AssistantAction) => {
+    const turnId = turn.id
     setCard(turnId, index, { state: 'running' })
     const promotionCodes = new Set(s.promotions.map((p) => p.code.toUpperCase()))
     try {
       // The normal dispatch: the API checks the permission and the record again.
       await s.dispatchAsync(toAppAction(action, { tenantId: s.tenantId, promotionCodes, now: nowMs() }))
       setCard(turnId, index, { state: 'done' })
+      report(turn, index, 'confirmed')
       toast(doneTitle(action), { tone: 'success', description: describeAction(action) })
     } catch (err) {
       const message = (err as Error).message
       setCard(turnId, index, { state: 'failed', error: message })
+      report(turn, index, 'failed')
       toast('The change was not saved', { tone: 'danger', description: message })
     }
   }
@@ -229,13 +258,24 @@ function AssistantChat({ onClose }: { onClose: () => void }) {
                   >
                     {turn.text}
                   </p>
+                  {!!turn.lookups?.length && (
+                    <p className="px-1 text-xs text-muted">Looked up: {lookedUp(turn.lookups)}</p>
+                  )}
                   {turn.cards?.map((card, i) =>
                     can(ACTION_PERMISSION[card.action.type]) && card.state !== 'dismissed' ? (
                       <ActionCard
                         key={i}
                         card={card}
-                        onConfirm={() => void confirm(turn.id, i, card.action)}
-                        onDismiss={() => setCard(turn.id, i, { state: 'dismissed' })}
+                        onConfirm={() =>
+                          card.action.risk === 'high' && card.state === 'open'
+                            ? setCard(turn.id, i, { state: 'confirming' })
+                            : void confirm(turn, i, card.action)
+                        }
+                        onBack={() => setCard(turn.id, i, { state: 'open' })}
+                        onDismiss={() => {
+                          setCard(turn.id, i, { state: 'dismissed' })
+                          report(turn, i, 'dismissed')
+                        }}
                       />
                     ) : null,
                   )}
@@ -252,6 +292,35 @@ function AssistantChat({ onClose }: { onClose: () => void }) {
                           {link.label}
                         </Chip>
                       ))}
+                    </div>
+                  )}
+                  {turn.answerId && !turn.failed && (
+                    <div className="gap-1 flex items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Helpful answer"
+                        aria-pressed={turn.feedback === 'up'}
+                        disabled={!!turn.feedback}
+                        className={cn(turn.feedback === 'up' && 'text-accent')}
+                        onClick={() => rate(turn, 'up')}
+                      >
+                        <ThumbsUp aria-hidden="true" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Not helpful"
+                        aria-pressed={turn.feedback === 'down'}
+                        disabled={!!turn.feedback}
+                        className={cn(turn.feedback === 'down' && 'text-accent')}
+                        onClick={() => rate(turn, 'down')}
+                      >
+                        <ThumbsDown aria-hidden="true" />
+                      </Button>
+                      {turn.feedback && <span className="text-xs text-muted">Thanks for the rating.</span>}
                     </div>
                   )}
                 </div>
@@ -310,23 +379,48 @@ function AssistantChat({ onClose }: { onClose: () => void }) {
 function ActionCard({
   card,
   onConfirm,
+  onBack,
   onDismiss,
 }: {
   card: Card
   onConfirm: () => void
+  onBack: () => void
   onDismiss: () => void
 }) {
   const { action, state } = card
+  const warning = riskWarning(action)
   return (
-    <div className="space-y-2 p-3.5 rounded-2xl border border-border bg-card">
+    <div
+      className={cn(
+        'space-y-2 p-3.5 min-w-0 rounded-2xl border bg-card',
+        warning && state !== 'done' ? 'border-danger' : 'border-border',
+      )}
+    >
       <div className="gap-2 flex flex-wrap items-center justify-between">
-        <p className="text-sm font-semibold">{action.label || describeAction(action)}</p>
+        <p className="text-sm font-semibold min-w-0 break-words">{action.label || describeAction(action)}</p>
         {state === 'done' && <Badge variant="success">Done</Badge>}
         {state === 'failed' && <Badge variant="danger">Not saved</Badge>}
       </div>
-      <p className="text-sm text-body">{describeAction(action)}</p>
-      {action.reason && <p className="text-xs text-muted">{action.reason}</p>}
+      <p className="text-sm break-words text-body">{describeAction(action)}</p>
+      {action.reason && <p className="text-xs break-words text-muted">{action.reason}</p>}
+      {warning && state !== 'done' && (
+        <p className="gap-1.5 text-xs font-medium flex items-start text-danger">
+          <TriangleAlert aria-hidden="true" className="size-3.5 mt-px shrink-0" />
+          {warning}
+        </p>
+      )}
       {state === 'failed' && card.error && <p className="text-xs text-accent-strong">{card.error}</p>}
+      {state === 'confirming' && (
+        <div className="gap-2 flex flex-wrap items-center">
+          <span className="text-sm font-medium">Are you sure?</span>
+          <Button size="sm" variant="danger" onClick={onConfirm}>
+            Yes, do it
+          </Button>
+          <Button size="sm" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+        </div>
+      )}
       {(state === 'open' || state === 'running' || state === 'failed') && (
         <div className="gap-2 flex flex-wrap items-center">
           <Button size="sm" onClick={onConfirm} disabled={state === 'running'}>

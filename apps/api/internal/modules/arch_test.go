@@ -26,7 +26,7 @@ var owns = map[string][]string{
 	"marketing":    {"campaigns", "automations", "promotions"},
 	"storefront":   {"sellers", "pages", "pageDrafts", "templates", "traffic", "searchTerms"},
 	"integrations": {"integrations", "integrationLogs"},
-	"orders":       {"orders"},
+	"orders":       {"orders", "returns"},
 	// notifications writes the email_tokens table, and ai writes nothing: neither owns a collection.
 	"notifications": {},
 	"ai":            {},
@@ -34,6 +34,10 @@ var owns = map[string][]string{
 	"media": {},
 	// currency writes the currency_rates table.
 	"currency": {},
+	// billing writes the plan_settings, plan_requests and invoices tables.
+	"billing": {},
+	// antispam writes the rate_limits and captcha_settings tables.
+	"antispam": {},
 }
 
 // mayImport lists the modules each module calls. Calls run one way, so no cycle can form.

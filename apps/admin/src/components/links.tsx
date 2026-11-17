@@ -7,6 +7,8 @@ import { useOrderCode } from '../state/useOrderCode'
 /** Routes for entity pages, shared by every feature. Build every in-app link through these. */
 export const paths = {
   order: (id: string) => `/commerce/orders/${id}`,
+  returns: '/commerce/returns',
+  orderReturn: (id: string) => `/commerce/returns/${id}`,
   product: (id: string) => `/commerce/products/${id}`,
   newProduct: '/commerce/products/new',
   customer: (id: string) => `/customers/all/${id}`,

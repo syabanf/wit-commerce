@@ -23,7 +23,9 @@ import {
   useSearchSubmit,
 } from '../../components/shell'
 import { IconButton } from '../../components/ui'
+import { useStoreMenu } from '../../lib/menus'
 import { paths } from '../../lib/paths'
+import { MenuLink } from '../../components/MenuLink'
 import { RETURNS_POLICY } from '../../lib/policy'
 import { useShop } from '../../state/shop'
 import { CurrencySwitcher } from '../../components/Money'
@@ -229,6 +231,7 @@ function BottomBar({ onCategories, categoriesOpen }: { onCategories: () => void;
 
 function Footer() {
   const { tenant, catalog, store } = useShop()
+  const menu = useStoreMenu('footer')
   const payNames = catalog.paymentTypes.filter((t) => t.enabled).map((t) => t.name)
   return (
     <footer className="mt-4 pb-28 md:mt-8 md:pb-0 bg-[var(--sf-bg)]">
@@ -240,13 +243,22 @@ function Footer() {
         <nav aria-label="Shop" className="min-w-0">
           <h2 className="mb-2 text-sm font-bold">Shop</h2>
           <ul className="gap-x-4 text-sm sm:block grid grid-cols-2">
-            {catalog.topCategories.map((c) => (
-              <li key={c.id}>
-                <Link to={paths.category(store, c.id)} className="min-h-9 flex items-center hover:underline">
-                  {c.name}
-                </Link>
-              </li>
-            ))}
+            {menu.length
+              ? menu.map((l, i) => (
+                  <li key={`${i}-${l.label}`}>
+                    <MenuLink item={l} className="min-h-9 flex items-center hover:underline" />
+                  </li>
+                ))
+              : catalog.topCategories.map((c) => (
+                  <li key={c.id}>
+                    <Link
+                      to={paths.category(store, c.id)}
+                      className="min-h-9 flex items-center hover:underline"
+                    >
+                      {c.name}
+                    </Link>
+                  </li>
+                ))}
           </ul>
         </nav>
         <div id="help" className="min-w-0 scroll-mt-24">
@@ -279,13 +291,16 @@ export function Layout({ children }: { children: ReactNode }) {
   const isHome = !!useMatch('/:store')
   const { pathname } = useLocation()
   const pinnedBar = pathname.includes('/p/') || pathname.endsWith('/checkout')
-  const navLinks = [
+  const menu = useStoreMenu('header')
+  const themeLinks = [
     { label: 'Hot offers', to: paths.search(store, '', { deals: true }) },
     { label: 'New arrivals', to: paths.search(store, '', { sort: 'new' }) },
     { label: 'Best sellers', to: paths.search(store, '', { sort: 'best' }) },
     { label: 'Gift ideas', to: paths.search(store, '', { gifts: true }) },
     { label: 'Shop with an agent', to: paths.agent(store) },
   ]
+  // The store's own header links replace the theme's, Help included.
+  const navLinks = menu.length ? menu : themeLinks
   return (
     <>
       <a
@@ -336,21 +351,21 @@ export function Layout({ children }: { children: ReactNode }) {
               >
                 <Menu className="size-4" aria-hidden="true" /> All categories
               </button>
-              {navLinks.map((l) => (
-                <Link
-                  key={l.label}
-                  to={l.to}
+              {navLinks.map((l, i) => (
+                <MenuLink
+                  key={`${i}-${l.label}`}
+                  item={{ external: false, ...l }}
+                  className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
+                />
+              ))}
+              {!menu.length && (
+                <a
+                  href="#help"
                   className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
                 >
-                  {l.label}
-                </Link>
-              ))}
-              <a
-                href="#help"
-                className="min-h-11 px-3 text-sm font-medium inline-flex items-center hover:text-[color:var(--sf-primary-text)]"
-              >
-                Help
-              </a>
+                  Help
+                </a>
+              )}
             </nav>
           </div>
           <div className="space-y-2 px-3 py-2 md:hidden">

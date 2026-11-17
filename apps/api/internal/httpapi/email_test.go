@@ -165,6 +165,8 @@ func TestMailToOneAddressIsCappedInSilence(t *testing.T) {
 func TestVerifyingBringsGuestOrdersIntoTheAccount(t *testing.T) {
 	e, box := mailEnv(t)
 	email := "claim@example.com"
+	// The guest checkout would also send an order email; this test reads the confirmation link alone.
+	e.expect(200, "PUT", "/tenants/ten-lari/shop-settings", e.login("andi@lari.co.id"), map[string]any{"returnWindowDays": 7, "shopperEmailsOff": []string{"order_placed"}})
 	guest := map[string]any{"id": "cus-claim", "tenantId": "ten-lari", "code": "LARI-C99998", "name": "Guest", "email": email, "points": 5}
 	if code := e.call("POST", "/shop/lari/orders", "", map[string]any{"order": e.placeable("ord-claim", "cus-claim"), "customer": guest}, nil); code != 200 {
 		t.Fatalf("guest order: %d", code)

@@ -31,8 +31,8 @@ ${COMMERCE_TLS_REDIRECT}
 # The main host: the admin at /, the storefront under /shop/ (or a redirect to the store hosts) and
 # the seller app under /seller/.
 server {
-  listen ${COMMERCE_LISTEN} default_server;
-  server_name _;
+  listen ${COMMERCE_LISTEN}${COMMERCE_MAIN_DEFAULT};
+  server_name ${COMMERCE_MAIN_NAMES};
   ${COMMERCE_TLS}
   root /srv/web/main;
 
@@ -64,3 +64,4 @@ server {
 }
 
 ${COMMERCE_STORES}
+${COMMERCE_DOMAINS}

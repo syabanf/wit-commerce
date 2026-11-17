@@ -36,20 +36,22 @@ import {
   type StepsProps,
   toast,
 } from '@rc/ui'
-import { ArrowRight, Ban, MoreHorizontal, NotebookPen, Printer, Undo2 } from 'lucide-react'
+import { ArrowRight, Ban, MoreHorizontal, NotebookPen, PackageOpen, Printer, Undo2 } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
-import { ON_INK, OrderStatusBadge, PaymentBadge, TierBadge } from '../../components/badges'
+import { ON_INK, OrderStatusBadge, PaymentBadge, ReturnStatusBadge, TierBadge } from '../../components/badges'
 import { CustomerLink, ProductLink, SellerChip, paths } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
 import { useFullOrder } from '../../state/useFullOrder'
 import { useOrderPayment } from '../../state/useOrderPayment'
 import { CancelOrderDialog, NoteDialog, RefundDialog, ShipDialog } from './dialogs'
 import { HeroMetric } from '../../components/HeroMetric'
+import { StartReturnDialog } from '../returns/dialogs'
+import { useReturns } from '../returns/useReturns'
 
-type Pending = 'ship' | 'cancel' | 'refund' | 'note' | null
+type Pending = 'ship' | 'cancel' | 'refund' | 'note' | 'return' | null
 
 function orderSteps(order: Order): StepsProps['steps'] {
   const flow = ORDER_STATUS_FLOW.filter((s) => !(s === 'paid' && order.paymentMethod === 'cod'))
@@ -85,6 +87,7 @@ export function OrderDetailPage() {
     s.tenant.id,
   )
   const payment = useOrderPayment(id, s.tenant.id, order?.paymentStatus)
+  const returns = useReturns({ orderId: id }).page?.rows ?? []
 
   if (!order && loading) {
     return (
@@ -133,7 +136,22 @@ export function OrderDetailPage() {
     })
   }
 
+  const returnable =
+    (can('order.fulfil') || can('ticket.manage')) &&
+    (order.status === 'shipped' || order.status === 'delivered' || order.status === 'completed')
+
   const menu = [
+    ...(returnable
+      ? [
+          {
+            key: 'return',
+            label: 'Start a return',
+            description: 'The shopper sends items back for a refund',
+            icon: <PackageOpen />,
+            onSelect: () => setPending('return'),
+          },
+        ]
+      : []),
     {
       key: 'note',
       label: 'Add internal note',
@@ -299,6 +317,40 @@ export function OrderDetailPage() {
 
           {order.agent && <AgentMandateCard order={order} />}
 
+          {returns.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Returns</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {returns.map((r) => (
+                  <Link
+                    key={r.id}
+                    to={paths.orderReturn(r.id)}
+                    className="gap-3 rounded-2xl p-3 flex flex-wrap items-center justify-between bg-surface-2 hover:bg-surface"
+                  >
+                    <span className="min-w-0">
+                      <span className="text-xs font-semibold block font-mono">{r.code}</span>
+                      <span className="text-xs text-muted">
+                        {plural(
+                          r.items.reduce((n, i) => n + i.qty, 0),
+                          'unit',
+                        )}{' '}
+                        · {fmtWhen(r.createdAt, now)}
+                      </span>
+                    </span>
+                    <span className="gap-2 flex items-center">
+                      {r.refundAmount > 0 && (
+                        <span className="text-sm tabular-nums">{fmtIdr(r.refundAmount)}</span>
+                      )}
+                      <ReturnStatusBadge status={r.status} />
+                    </span>
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Timeline</CardTitle>
@@ -425,6 +477,12 @@ export function OrderDetailPage() {
       />
       <RefundDialog order={order} open={pending === 'refund'} onOpenChange={(o) => !o && setPending(null)} />
       <NoteDialog order={order} open={pending === 'note'} onOpenChange={(o) => !o && setPending(null)} />
+      <StartReturnDialog
+        order={order}
+        returns={returns}
+        open={pending === 'return'}
+        onOpenChange={(o) => !o && setPending(null)}
+      />
     </div>
   )
 }

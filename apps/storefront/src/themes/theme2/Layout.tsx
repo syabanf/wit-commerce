@@ -6,7 +6,9 @@ import { Link, useLocation, useMatch } from 'react-router'
 import { BrandLogo } from '../../components/BrandLogo'
 import { CategoryMenu, GreetingBar, ReferralBanner } from '../../components/shell'
 import { popularCategories } from '../../lib/catalog'
+import { useStoreMenu } from '../../lib/menus'
 import { firstName, paths } from '../../lib/paths'
+import { MenuLink } from '../../components/MenuLink'
 import { EMBED } from '../../lib/embed'
 import { RETURNS_POLICY } from '../../lib/policy'
 import { usePersisted } from '../../lib/storage'
@@ -18,6 +20,7 @@ import { CurrencySwitcher } from '../../components/Money'
 function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; menuOpen: boolean }) {
   const { tenant, store, cart, customer } = useShop()
   const { pathname } = useLocation()
+  const menu = useStoreMenu('header')
   const shopActive = /\/(search|c|p|collections)(\/|$)/.test(
     pathname.slice(paths.home(store).replace(/\/$/, '').length),
   )
@@ -33,29 +36,53 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
         <BrandLogo tenant={tenant} inverse />
       </Link>
       <nav aria-label="Main" className="flex items-center">
-        <Link
-          to={paths.search(store, '', { sort: 'best' })}
-          className={link(shopActive)}
-          aria-current={shopActive ? 'page' : undefined}
-        >
-          Shop
-        </Link>
-        <button type="button" onClick={onCategories} aria-expanded={menuOpen} className={link(menuOpen)}>
-          Categories
-        </button>
-        <Link to={paths.agent(store)} className={link(pathname.endsWith('/agent'))}>
-          Agent
-        </Link>
-        {/* Tablets keep Shop and Categories; the rest returns from lg up so the bar never overflows. */}
-        <Link to={`${paths.home(store)}#testimonials`} className={cn(link(false), 'lg:inline-flex hidden')}>
-          Testimonials
-        </Link>
-        <Link
-          to={paths.account(store)}
-          className={cn(link(pathname.endsWith('/account')), 'lg:inline-flex hidden')}
-        >
-          Rewards
-        </Link>
+        {menu.length ? (
+          <>
+            <button type="button" onClick={onCategories} aria-expanded={menuOpen} className={link(menuOpen)}>
+              Categories
+            </button>
+            {/* Tablets show two links, lg four, xl all; the categories drawer lists every one. */}
+            {menu.map((l, i) => (
+              <MenuLink
+                key={`${i}-${l.label}`}
+                item={l}
+                className={cn(
+                  link(!l.external && pathname === l.to),
+                  i >= 4 ? 'xl:inline-flex hidden' : i >= 2 && 'lg:inline-flex hidden',
+                )}
+              />
+            ))}
+          </>
+        ) : (
+          <>
+            <Link
+              to={paths.search(store, '', { sort: 'best' })}
+              className={link(shopActive)}
+              aria-current={shopActive ? 'page' : undefined}
+            >
+              Shop
+            </Link>
+            <button type="button" onClick={onCategories} aria-expanded={menuOpen} className={link(menuOpen)}>
+              Categories
+            </button>
+            <Link to={paths.agent(store)} className={link(pathname.endsWith('/agent'))}>
+              Agent
+            </Link>
+            {/* Tablets keep Shop and Categories; the rest returns from lg up so the bar never overflows. */}
+            <Link
+              to={`${paths.home(store)}#testimonials`}
+              className={cn(link(false), 'lg:inline-flex hidden')}
+            >
+              Testimonials
+            </Link>
+            <Link
+              to={paths.account(store)}
+              className={cn(link(pathname.endsWith('/account')), 'lg:inline-flex hidden')}
+            >
+              Rewards
+            </Link>
+          </>
+        )}
       </nav>
       <div className="gap-2 flex items-center justify-self-end">
         <CurrencySwitcher className="bg-[var(--sf-bg)] text-[color:var(--sf-text)]" />
@@ -111,6 +138,7 @@ function DesktopHeader({ onCategories, menuOpen }: { onCategories: () => void; m
 
 function PhoneHeader({ onMenu }: { onMenu: () => void }) {
   const { tenant, store, cart, catalog } = useShop()
+  const menu = useStoreMenu('header')
   return (
     <div className="mx-3 mt-2 md:hidden backdrop-blur-md pointer-events-auto overflow-hidden rounded-[22px] bg-[var(--sf-bg)]/90 shadow-float">
       <div className="h-14 px-2 grid grid-cols-[1fr_auto_1fr] items-center">
@@ -144,15 +172,26 @@ function PhoneHeader({ onMenu }: { onMenu: () => void }) {
         >
           <Search className="size-4" aria-hidden="true" />
         </Link>
-        <Link to={paths.search(store, '', { sort: 'best' })} className="min-h-11 inline-flex items-center">
-          Shop
-        </Link>
-        <Link to={paths.search(store, '', { sort: 'new' })} className="min-h-11 inline-flex items-center">
-          New arrivals
-        </Link>
-        <Link to={paths.agent(store)} className="min-h-11 inline-flex items-center">
-          Agent
-        </Link>
+        {menu.length ? (
+          menu.map((l, i) => (
+            <MenuLink key={`${i}-${l.label}`} item={l} className="min-h-11 inline-flex items-center" />
+          ))
+        ) : (
+          <>
+            <Link
+              to={paths.search(store, '', { sort: 'best' })}
+              className="min-h-11 inline-flex items-center"
+            >
+              Shop
+            </Link>
+            <Link to={paths.search(store, '', { sort: 'new' })} className="min-h-11 inline-flex items-center">
+              New arrivals
+            </Link>
+            <Link to={paths.agent(store)} className="min-h-11 inline-flex items-center">
+              Agent
+            </Link>
+          </>
+        )}
         {popularCategories(catalog).map((c) => (
           <Link key={c.id} to={paths.category(store, c.id)} className="min-h-11 inline-flex items-center">
             {c.name}
@@ -212,6 +251,7 @@ function TabBar() {
 
 function Footer() {
   const { tenant, catalog } = useShop()
+  const menu = useStoreMenu('footer')
   return (
     <footer
       id="help"
@@ -219,6 +259,17 @@ function Footer() {
     >
       <p className="sf-display text-2xl font-bold">{tenant.name}</p>
       <p className="mt-1 text-sm text-[color:var(--sf-muted)]">{tenant.brand.tagline}</p>
+      {!!menu.length && (
+        <nav aria-label="Store links" className="mt-5">
+          <ul className="gap-x-5 text-sm font-semibold flex flex-wrap justify-center">
+            {menu.map((l, i) => (
+              <li key={`${i}-${l.label}`}>
+                <MenuLink item={l} className="min-h-11 inline-flex items-center hover:underline" />
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
       <ul className="mt-6 max-w-2xl space-y-1 text-sm mx-auto text-[color:var(--sf-muted)]">
         <li>
           Free shipping on orders from{' '}
@@ -248,6 +299,7 @@ function Footer() {
 /** Theme 2 · Showcase shell: a primary pill header on a tinted band on desktop, an editorial header and tab bar on phones. */
 export function Layout({ children }: { children: ReactNode }) {
   const { tenant } = useShop()
+  const headerMenu = useStoreMenu('header')
   const [menuOpen, setMenuOpen] = useState(false)
   const isHome = !!useMatch('/:store')
   const isPhone = useIsPhone()
@@ -283,7 +335,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </main>
       <Footer />
       {!pinned && <TabBar />}
-      <CategoryMenu open={menuOpen} onOpenChange={setMenuOpen} />
+      <CategoryMenu open={menuOpen} onOpenChange={setMenuOpen} extra={headerMenu} />
     </>
   )
 }

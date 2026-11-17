@@ -486,7 +486,7 @@ export function PromoBlock({ section, seller }: { section: PageSection; seller?:
   )
 }
 
-/** Personal store hero (spec 13): the seller's initials, headline, bio and a WhatsApp button. */
+/** Personal store hero (spec 13): the seller's photo or initials, headline, bio and a WhatsApp button. */
 export function SellerHero({
   section,
   seller,
@@ -507,12 +507,20 @@ export function SellerHero({
       )}
       style={{ background: tint('--sf-primary', 10) }}
     >
-      <span
-        aria-hidden="true"
-        className="sf-heading size-24 text-3xl font-bold md:size-32 md:text-4xl flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]"
-      >
-        {initials(seller.name)}
-      </span>
+      {seller.photoUrl ? (
+        <img
+          src={seller.photoUrl}
+          alt={seller.name}
+          className="size-24 md:size-32 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="sf-heading size-24 text-3xl font-bold md:size-32 md:text-4xl flex shrink-0 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[color:var(--sf-on-primary)]"
+        >
+          {initials(seller.name)}
+        </span>
+      )}
       <div className="min-w-0">
         <p className="sf-kicker">{seller.name}</p>
         <p className="mt-1 text-xs text-[color:var(--sf-muted)]">

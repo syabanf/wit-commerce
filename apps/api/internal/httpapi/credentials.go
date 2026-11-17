@@ -28,6 +28,7 @@ var readable = []struct {
 	{"/warehouses", "warehouses", "inventory:read", "warehouses", false, false, domain.Warehouse{}},
 	{"/stock", "stock", "inventory:read", "stock levels", false, false, domain.StockLevel{}},
 	{"/orders", "orders", "orders:read", "orders", true, true, domain.Order{}},
+	{"/returns", "returns", "orders:read", "returns", true, true, domain.OrderReturn{}},
 	{"/customers", "customers", "customers:read", "customers", false, true, domain.Customer{}},
 	{"/leads", "leads", "leads:read", "leads", false, true, domain.Lead{}},
 	{"/tickets", "tickets", "tickets:read", "support tickets", true, true, domain.Ticket{}},
@@ -129,7 +130,7 @@ func (s *Server) getHandler(collection string) http.HandlerFunc {
 // missing, so a key cannot probe ids. So does another seller's order for a sales user.
 func (s *Server) visibleRow(r *http.Request, collection, tenantID string) (string, []any, error) {
 	where, args := "id = $1 and tenant_id = $2", []any{r.PathValue("id"), tenantID}
-	if collection == "orders" {
+	if collection == "orders" || collection == "returns" {
 		p, _ := auth.From(r.Context())
 		sellers, err := s.ownSellers(r.Context(), p)
 		if err != nil {

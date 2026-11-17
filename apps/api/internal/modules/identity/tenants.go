@@ -10,6 +10,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 )
 
 // CreateTenant is tenants/create.
@@ -132,6 +133,36 @@ func (s *Identity) SetDisplayCurrencies(ctx context.Context, m kernel.Meta, tena
 	})
 }
 
+// SetShopSettings is tenants/setShopSettings: the return window in days and the shopper emails the
+// brand switched off. A window outside 0 to 90 or an unknown email kind refuses the whole change.
+func (s *Identity) SetShopSettings(ctx context.Context, m kernel.Meta, tenantID string, returnWindowDays int, emailsOff []string) (*kernel.Delta, error) {
+	if err := kernel.Access(m, tenantID); err != nil {
+		return nil, err
+	}
+	if returnWindowDays < 0 || returnWindowDays > 90 {
+		return nil, kernel.Invalid{Reason: "Set the return window between 0 and 90 days."}
+	}
+	for _, kind := range emailsOff {
+		if !slices.Contains(rules.ShopperEmailKinds, kind) {
+			return nil, kernel.Invalid{Reason: kind + " is not an email stores send."}
+		}
+	}
+	var off []string
+	for _, kind := range rules.ShopperEmailKinds {
+		if slices.Contains(emailsOff, kind) {
+			off = append(off, kind)
+		}
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+		if err != nil {
+			return err
+		}
+		tenant.ReturnWindowDays, tenant.ShopperEmailsOff = &returnWindowDays, off
+		return t.Put("tenants", tenant.ID, tenant)
+	})
+}
+
 // ToggleBrandLock is brand/toggleLock.
 func (s *Identity) ToggleBrandLock(ctx context.Context, m kernel.Meta, tenantID, key string) (*kernel.Delta, error) {
 	if err := kernel.Access(m, tenantID); err != nil {
@@ -146,6 +177,40 @@ func (s *Identity) ToggleBrandLock(ctx context.Context, m kernel.Meta, tenantID,
 			tenant.Brand.Locks = map[string]bool{}
 		}
 		tenant.Brand.Locks[key] = !tenant.Brand.Locks[key]
+		return t.Put("tenants", tenant.ID, tenant)
+	})
+}
+
+// SetPlan moves a tenant to another plan. The facade calls it when a platform admin approves a plan
+// request or sets the plan directly.
+func SetPlan(t *kernel.Tx, tenantID, plan string) error {
+	tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+	if err != nil {
+		return err
+	}
+	tenant.Plan = plan
+	return t.Put("tenants", tenant.ID, tenant)
+}
+
+// SaveMenus is menus/save: the store's header and footer links, live at once. Two empty lists
+// remove the menus, and the theme's fixed links come back.
+func (s *Identity) SaveMenus(ctx context.Context, m kernel.Meta, tenantID string, menus domain.StoreMenus) (*kernel.Delta, error) {
+	if err := kernel.Access(m, tenantID); err != nil {
+		return nil, err
+	}
+	menus = rules.CleanMenus(menus)
+	if why := rules.MenusBlocker(menus); why != "" {
+		return nil, kernel.Invalid{Reason: why}
+	}
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+		if err != nil {
+			return err
+		}
+		tenant.Menus = nil
+		if len(menus.Header)+len(menus.Footer) > 0 {
+			tenant.Menus = &menus
+		}
 		return t.Put("tenants", tenant.ID, tenant)
 	})
 }

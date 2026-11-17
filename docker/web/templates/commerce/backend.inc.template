@@ -9,6 +9,12 @@ location = /healthz {
 
 ${COMMERCE_SPLIT}
 
+# GET /api/v1/internal/domain-allowed is for a TLS proxy on this machine, which calls the API port
+# directly. Browsers never reach it through here.
+location ^~ /api/v1/internal/ {
+  return 404;
+}
+
 location /api/ {
   proxy_pass $api;
   include /etc/nginx/conf.d/commerce/proxy.inc;

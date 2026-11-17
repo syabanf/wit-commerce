@@ -73,18 +73,31 @@ func RefreshSalesDays(ctx context.Context, q Querier, tenants, days []string) (m
 		return rows, gone, nil
 	}
 	keys := `(tenant_id, day) in (select * from unnest($1::text[], $2::text[]))`
+	// A change to an order in a month that already rolled up, such as a late refund, updates that
+	// month and leaves no daily rows behind; a day alone cannot tell the month apart otherwise.
+	oldTenants, oldMonths, err := rolledUp(ctx, q, tenants, days)
+	if err != nil {
+		return nil, nil, err
+	}
+	before := map[string][]string{}
 	for _, f := range factTables {
 		removed, err := q.Query(ctx, `delete from `+f.table+` where `+keys+` returning id`, tenants, days)
 		if err != nil {
 			return nil, nil, err
 		}
-		before, err := pgx.CollectRows(removed, pgx.RowTo[string])
-		if err != nil {
+		if before[f.collection], err = pgx.CollectRows(removed, pgx.RowTo[string]); err != nil {
 			return nil, nil, err
 		}
 		if _, err := q.Exec(ctx, soldIn+f.insert, tenants, days); err != nil {
 			return nil, nil, fmt.Errorf("%s: %w", f.table, err)
 		}
+	}
+	if len(oldTenants) > 0 {
+		if err := rollUpMonths(ctx, q, oldTenants, oldMonths); err != nil {
+			return nil, nil, err
+		}
+	}
+	for _, f := range factTables {
 		current, err := q.Query(ctx, `select id, `+f.row+` from `+f.table+` where `+keys+` order by id`, tenants, days)
 		if err != nil {
 			return nil, nil, err
@@ -101,7 +114,7 @@ func RefreshSalesDays(ctx context.Context, q Querier, tenants, days []string) (m
 			rows[f.collection] = append(rows[f.collection], row)
 		}
 		current.Close()
-		for _, id := range before {
+		for _, id := range before[f.collection] {
 			if !kept[id] {
 				gone[f.collection] = append(gone[f.collection], id)
 			}
@@ -143,9 +156,10 @@ func FactRows(ctx context.Context, q Querier, collection, where string, args ...
 	return nil, fmt.Errorf("no fact collection %s", collection)
 }
 
-func rebuildSales(ctx context.Context, q Querier) error {
-	for _, f := range factTables {
-		if _, err := q.Exec(ctx, `delete from `+f.table); err != nil {
+// rebuildSales derives every daily fact again, then rolls up the days before cutoff into months.
+func rebuildSales(ctx context.Context, q Querier, cutoff string) error {
+	for _, table := range []string{"sales_days", "product_days", "seller_buyers", "sales_months", "product_months"} {
+		if _, err := q.Exec(ctx, `delete from `+table); err != nil {
 			return err
 		}
 	}
@@ -153,6 +167,9 @@ func rebuildSales(ctx context.Context, q Querier) error {
 	if err != nil {
 		return err
 	}
-	_, _, err = RefreshSalesDays(ctx, q, tenants, days)
+	if _, _, err = RefreshSalesDays(ctx, q, tenants, days); err != nil {
+		return err
+	}
+	_, err = RollUpSales(ctx, q, cutoff, 0)
 	return err
 }

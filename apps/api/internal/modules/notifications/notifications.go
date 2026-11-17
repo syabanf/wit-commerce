@@ -11,8 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"html"
 	"log/slog"
 	"net/url"
 	"sync"
@@ -130,15 +128,24 @@ func RedeemCustomerVerify(ctx context.Context, tx pgx.Tx, token string) (string,
 	return useToken(ctx, tx, token, subjectCustomer, kindVerify)
 }
 
-func linkMessage(to, subject, intro, action, link string) mail.Message {
-	note := "If you did not ask for this, you can ignore this email."
-	return mail.Message{
-		To:      to,
-		Subject: subject,
-		Text:    fmt.Sprintf("%s\n\n%s: %s\n\n%s\n", intro, action, link, note),
-		HTML: fmt.Sprintf(`<p>%s</p><p><a href="%s">%s</a></p><p>%s</p>`,
-			html.EscapeString(intro), html.EscapeString(link), html.EscapeString(action), html.EscapeString(note)),
-	}
+// linkMessage is an email whose point is one link, in the shared layout.
+func linkMessage(b Branding, to, subject, intro, action, link string) mail.Message {
+	body, text := Render(b, Email{
+		Title: subject, Intro: intro, Action: &Link{Label: action, URL: link},
+		Footer: "If you did not ask for this, you can ignore this email.",
+	})
+	return mail.Message{To: to, Subject: subject, Text: text, HTML: body}
+}
+
+func (n *Notifications) platform() Branding { return PlatformBranding(n.PublicURL) }
+
+// StoreURL is the address of a brand's store, for links in its email.
+func (n *Notifications) StoreURL(t domain.Tenant) string {
+	return domain.StoreLink(t, n.StoreRootDomain, n.PublicURL)
+}
+
+func (n *Notifications) store(t domain.Tenant) Branding {
+	return StoreBranding(t, n.StoreURL(t), n.PublicURL)
 }
 
 // queueLink replaces earlier links of the kind and queues an email with the new one, both in one
@@ -162,14 +169,14 @@ func (n *Notifications) queueLink(ctx context.Context, kind, subjectType, subjec
 }
 
 func (n *Notifications) storeLink(tenant domain.Tenant, param, token string) string {
-	return domain.StoreLink(tenant, n.StoreRootDomain, n.PublicURL) + "/account?" + param + "=" + url.QueryEscape(token)
+	return n.StoreURL(tenant) + "/account?" + param + "=" + url.QueryEscape(token)
 }
 
 // MailUserReset queues for a staff member the link from "forgot password".
 func (n *Notifications) MailUserReset(ctx context.Context, u domain.User) {
 	n.queueLink(ctx, kindReset, subjectUser, u.ID, resetLifetime, func(token string) mail.Message {
 		link := n.PublicURL + "/reset-password?token=" + url.QueryEscape(token)
-		return linkMessage(u.Email, "Reset your WIT Commerce password", "Use this link within an hour to choose a new password.", "Choose a new password", link)
+		return linkMessage(n.platform(), u.Email, "Reset your WIT Commerce password", "Use this link within an hour to choose a new password.", "Choose a new password", link)
 	})
 }
 
@@ -177,21 +184,21 @@ func (n *Notifications) MailUserReset(ctx context.Context, u domain.User) {
 func (n *Notifications) MailUserVerify(ctx context.Context, u domain.User) {
 	n.queueLink(ctx, kindVerify, subjectUser, u.ID, verifyLifetime, func(token string) mail.Message {
 		link := n.PublicURL + "/verify-email?token=" + url.QueryEscape(token)
-		return linkMessage(u.Email, "Confirm your email for WIT Commerce", "Confirm this email within 24 hours so you can publish your store.", "Confirm my email", link)
+		return linkMessage(n.platform(), u.Email, "Confirm your email for WIT Commerce", "Confirm this email within 24 hours so you can publish your store.", "Confirm my email", link)
 	})
 }
 
 // MailCustomerReset queues for a shopper the link from "forgot password" at the tenant's store.
 func (n *Notifications) MailCustomerReset(ctx context.Context, tenant domain.Tenant, customerID, email string) {
 	n.queueLink(ctx, kindReset, subjectCustomer, customerID, resetLifetime, func(token string) mail.Message {
-		return linkMessage(email, "Reset your "+tenant.Name+" password", "Use this link within an hour to choose a new password.", "Choose a new password", n.storeLink(tenant, "reset", token))
+		return linkMessage(n.store(tenant), email, "Reset your "+tenant.Name+" password", "Use this link within an hour to choose a new password.", "Choose a new password", n.storeLink(tenant, "reset", token))
 	})
 }
 
 // MailVerify queues for a shopper a link that proves the inbox.
 func (n *Notifications) MailVerify(ctx context.Context, tenant domain.Tenant, c domain.Customer) {
 	n.queueLink(ctx, kindVerify, subjectCustomer, c.ID, verifyLifetime, func(token string) mail.Message {
-		return linkMessage(c.Email, "Confirm your email at "+tenant.Name, "Confirm this email to bring your earlier guest orders into your account.", "Confirm my email", n.storeLink(tenant, "verify", token))
+		return linkMessage(n.store(tenant), c.Email, "Confirm your email at "+tenant.Name, "Confirm this email to bring your earlier guest orders into your account.", "Confirm my email", n.storeLink(tenant, "verify", token))
 	})
 }
 
@@ -211,7 +218,7 @@ func (n *Notifications) mailStaffLink(ctx context.Context, u domain.User, kind s
 	sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 	link := n.PublicURL + "/reset-password?token=" + url.QueryEscape(token) + query
-	if err := client.Send(sendCtx, linkMessage(u.Email, subject, intro, action, link)); err != nil {
+	if err := client.Send(sendCtx, linkMessage(n.platform(), u.Email, subject, intro, action, link)); err != nil {
 		// The earlier link is the only one the person holds, so a failed send must not end it.
 		n.Log.Error("email not sent", "err", err, "subject", subject)
 		if _, err := n.DB.Pool.Exec(ctx, `delete from email_tokens where hash = $1`, hashToken(token)); err != nil {

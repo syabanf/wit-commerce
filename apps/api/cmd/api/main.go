@@ -218,6 +218,10 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		MediaDir: os.Getenv("MEDIA_DIR"), MediaPublicURL: os.Getenv("MEDIA_PUBLIC_URL"),
 		// CURRENCY_RATES_URL points the daily exchange-rate refresh at another Frankfurter host.
 		CurrencyURL: os.Getenv("CURRENCY_RATES_URL"),
+		// Custom domains: where a brand's DNS may point besides its store host, and the secret the
+		// TLS proxy sends to GET /internal/domain-allowed.
+		DomainTarget: strings.TrimSpace(os.Getenv("DOMAIN_TARGET")), DomainTargetIPs: strings.Fields(strings.ReplaceAll(os.Getenv("DOMAIN_TARGET_IPS"), ",", " ")),
+		DomainAskSecret: os.Getenv("DOMAIN_ASK_SECRET"),
 	})
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -231,6 +235,23 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		for {
 			if err := srv.RunTick(ctx); err != nil && ctx.Err() == nil {
 				log.Error("tick failed", "err", err)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+			}
+		}
+	}()
+
+	// Custom domains are re-checked on their own timer; RecheckDomains only touches domains not
+	// checked in the last day, so a frequent timer costs one cheap query.
+	go func() {
+		t := time.NewTicker(10 * time.Minute)
+		defer t.Stop()
+		for {
+			if err := srv.RunDomainChecks(ctx); err != nil && ctx.Err() == nil {
+				log.Error("domain re-check failed", "err", err)
 			}
 			select {
 			case <-ctx.Done():

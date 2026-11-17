@@ -236,6 +236,15 @@ export const users: User[] = [
     tenantIds: ['ten-teknika', 'ten-lari'],
     color: '#5c5c7a',
   },
+  {
+    id: 'usr-nadia',
+    name: 'Nadia Kusuma',
+    email: 'nadia@lari.co.id',
+    title: 'Store associate, Senayan',
+    role: 'staff',
+    tenantIds: ['ten-lari'],
+    color: '#6b7a5a',
+  },
 ]
 
 export const warehouses: Warehouse[] = [

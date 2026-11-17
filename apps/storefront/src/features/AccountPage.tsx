@@ -2,6 +2,7 @@ import { fmtDate, fmtIdr, initials } from '@rc/fixtures'
 import { LIFECYCLE_STAGE_LABEL, LOYALTY_TIER_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
 import { Package } from 'lucide-react'
 import { ApiError } from '@rc/api'
+import { Turnstile } from '@rc/ui'
 import { type ChangeEvent, type FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
@@ -205,6 +206,21 @@ function AccountForm({ joining }: { joining: boolean }) {
   const [busy, setBusy] = useState(false)
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
+  const [siteKey, setSiteKey] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  // A token works once, so a refused registration renders a fresh widget.
+  const [captchaRound, setCaptchaRound] = useState(0)
+  useEffect(() => {
+    let live = true
+    api
+      .config()
+      .then((c) => live && setSiteKey(c.turnstileSiteKey))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [])
+  const needsCaptcha = creating && !!siteKey
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -212,10 +228,20 @@ function AccountForm({ joining }: { joining: boolean }) {
       setError(creating ? 'Enter your name, email and password.' : 'Enter your email and password.')
       return
     }
+    if (needsCaptcha && !captchaToken) {
+      setError('Complete the check that shows you are a person, then press Create account.')
+      return
+    }
     setBusy(true)
-    const failed = creating ? await register(form) : await signInWithPassword(form.email, form.password)
+    const failed = creating
+      ? await register(needsCaptcha ? { ...form, captchaToken } : form)
+      : await signInWithPassword(form.email, form.password)
     setBusy(false)
     setError(failed)
+    if (failed && needsCaptcha) {
+      setCaptchaToken('')
+      setCaptchaRound((n) => n + 1)
+    }
     if (!failed) navigate(safeNext(params.get('next')) ?? paths.account(store), { replace: true })
   }
 
@@ -274,6 +300,7 @@ function AccountForm({ joining }: { joining: boolean }) {
             {...describedBy(`${id}-password`, error, 'hint')}
           />
         </Field>
+        {needsCaptcha && <Turnstile key={captchaRound} siteKey={siteKey} onToken={setCaptchaToken} />}
         <Button type="submit" size="lg" full disabled={busy}>
           {creating ? 'Create account' : 'Sign in'}
         </Button>

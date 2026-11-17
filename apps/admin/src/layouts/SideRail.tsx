@@ -12,54 +12,98 @@ import {
   RailWorkspace,
   cn,
 } from '@rc/ui'
-import { Building2, Check, ChevronDown, LogOut, Plus } from 'lucide-react'
+import { BriefcaseBusiness, Building2, Check, ChevronDown, IdCard, LogOut, Plus, Search } from 'lucide-react'
 import { Fragment } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { storeAddress } from '../lib/storefront'
+import { AreaTabs } from './AreaTabs'
 import { CreateMenu } from './CreateMenu'
 import { WitLogo } from './WitLogo'
-import { leafFor, navFor, sectionFor } from './nav'
+import {
+  AREA_HOME,
+  AREA_LABEL,
+  type NavArea,
+  areaNav,
+  areaOfPath,
+  areasFor,
+  leafFor,
+  sectionFor,
+} from './nav'
 import { useNavCounts } from './useNavCounts'
 
 export function SideRail({
   expanded,
   canExpand,
   onToggle,
+  onSearch,
   showCodes,
 }: {
   expanded: boolean
   canExpand: boolean
   onToggle: () => void
+  onSearch: () => void
   showCodes: boolean
 }) {
   const { pathname } = useLocation()
   const counts = useNavCounts()
-  const nav = navFor(useAuth().user?.role)
+  const navigate = useNavigate()
+  const role = useAuth().user?.role
+  // A role with no back-office menu gets no tabs: the employee list shows directly.
+  const tabs = areasFor(role).length > 1
+  const area: NavArea = tabs ? areaOfPath(pathname) : 'employee'
+  const other: NavArea = area === 'employee' ? 'backoffice' : 'employee'
+  const nav = areaNav(role, area)
   const current = sectionFor(pathname)
   const leaf = leafFor(pathname)
+  // The shown menu follows the page, so choosing the other area opens its home. Focus stays on the tab.
+  const switchArea = (next: NavArea) =>
+    next !== area && navigate(AREA_HOME[next], { state: { keepFocus: true } })
 
   return (
     <Rail
       expanded={expanded}
       header={
-        <Link
-          to="/"
-          className={cn('gap-3 rounded-2xl flex items-center', expanded && 'px-1 w-full')}
-          aria-label="Home"
-        >
-          <span className="size-11 rounded-2xl bg-white/5 flex shrink-0 items-center justify-center">
-            <WitLogo onDark className="h-3.5" />
-          </span>
-          {expanded && (
-            <span className="min-w-0">
-              <span className="font-bold leading-tight tracking-tight block text-[0.9375rem]">
-                Commerce
-              </span>
-              <span className="block text-[0.6875rem] text-on-ink-muted">Brand · Commerce · CRM</span>
+        <div className={cn('gap-3 flex flex-col', expanded ? 'w-full' : 'items-center')}>
+          <Link
+            to={AREA_HOME[area]}
+            className={cn('gap-3 rounded-2xl flex items-center', expanded && 'px-1 w-full')}
+            aria-label="Home"
+          >
+            <span className="size-11 rounded-2xl bg-white/5 flex shrink-0 items-center justify-center">
+              <WitLogo onDark className="h-3.5" />
             </span>
-          )}
-        </Link>
+            {expanded && (
+              <span className="min-w-0">
+                <span className="font-bold leading-tight tracking-tight block text-[0.9375rem]">
+                  Commerce
+                </span>
+                <span className="block text-[0.6875rem] text-on-ink-muted">Brand · Commerce · CRM</span>
+              </span>
+            )}
+          </Link>
+          {tabs &&
+            (expanded ? (
+              <div className="gap-2 flex items-center">
+                <AreaTabs value={area} onChange={switchArea} />
+                <button
+                  type="button"
+                  onClick={onSearch}
+                  aria-label="Quick search"
+                  className="size-9 bg-white/10 hover:bg-white/20 hover:text-white [&_svg]:size-4 flex shrink-0 items-center justify-center rounded-full text-on-ink-muted transition-colors focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none"
+                >
+                  <Search aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <RailItem
+                expanded={false}
+                icon={area === 'employee' ? <BriefcaseBusiness /> : <IdCard />}
+                label={`Switch to ${AREA_LABEL[other]}`}
+                onClick={() => switchArea(other)}
+              />
+            ))}
+        </div>
       }
       action={
         <CreateMenu
@@ -77,7 +121,7 @@ export function SideRail({
     >
       {nav.map((section, index) => {
         const Icon = section.icon
-        const firstInGroup = nav[index - 1]?.group !== section.group
+        const firstInGroup = !!section.group && nav[index - 1]?.group !== section.group
         const isCurrent = section.id === current.id
         const open = expanded && isCurrent && !!section.items
         const badge = section.badge
@@ -109,7 +153,7 @@ export function SideRail({
                 ) : undefined
               }
             >
-              <NavLink to={section.to} end={section.to === '/'} />
+              <NavLink to={section.to} end={section.to === '/' || section.to === AREA_HOME.employee} />
             </RailItem>
             {open &&
               section.items!.map((item) => (

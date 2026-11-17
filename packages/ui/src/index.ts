@@ -68,6 +68,7 @@ export { EmptyState, type EmptyStateProps } from './components/empty-state'
 export { Banner, type BannerProps } from './components/banner'
 export { SplitStats, type SplitStatsProps } from './components/split-stats'
 export { ProgressBar, SegmentBar, type ProgressBarProps, type SegmentBarProps } from './components/progress'
+export { Turnstile, type TurnstileProps } from './components/turnstile'
 export { PageHeader, Kicker, type PageHeaderProps } from './components/page-header'
 
 // overlays

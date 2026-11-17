@@ -1,0 +1,179 @@
+package notifications
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/syabanf/wit-commerce/apps/api/internal/mail"
+	"github.com/syabanf/wit-commerce/apps/api/internal/store"
+)
+
+// Shopper emails report what happened to an order or a return. The facade gathers the facts in the
+// action's transaction (ShopperFacts) and queues the message there too, so an email goes out only for
+// a change that committed, and a dedupe key keeps a repeated event to one email.
+
+// ShopperFacts is everything a shopper email shows, already formatted where it is money.
+type ShopperFacts struct {
+	Brand        Branding
+	To           string
+	CustomerName string
+	OrderCode    string
+	OrderURL     string
+	Lines        []Line
+	Subtotal     int
+	Discount     int
+	Shipping     int
+	Total        int
+	// AwaitingPayment is an online or transfer payment that has not arrived.
+	AwaitingPayment bool
+	// PayOnline means a provider collects the payment on its own page, opened from the order page.
+	PayOnline bool
+	// PaymentInstructions are the payment type's own words, for a manual transfer.
+	PaymentInstructions string
+	CashOnDelivery      bool
+	Courier             string
+	TrackingNo          string
+	// Amount is the money a refund email reports.
+	Amount     int
+	ReturnCode string
+}
+
+// phrases holds every sentence of the shopper emails per language. A second language adds a map with
+// the same keys; Lang picks it, and English fills any key it lacks.
+var phrases = map[string]map[string]string{
+	"en": {
+		"greeting":          "Hi %s,",
+		"placed.subject":    "Your %s order %s",
+		"placed.title":      "Thank you for your order",
+		"placed.intro":      "We have your order %s and will let you know when it ships.",
+		"placed.pay_online": "Your order waits for payment. Open the order page and press Pay now to pay %s.",
+		"placed.pay_manual": "Your order waits for payment of %s.",
+		"placed.cod":        "Pay the courier %s when the parcel arrives.",
+		"paid.subject":      "Payment received for %s",
+		"paid.title":        "Payment received",
+		"paid.intro":        "We received your payment of %s for order %s. We are getting it ready.",
+		"shipped.subject":   "Order %s is on its way",
+		"shipped.title":     "Your order is on its way",
+		"shipped.intro":     "Order %s left our warehouse.",
+		"cancelled.subject": "Order %s was cancelled",
+		"cancelled.title":   "Your order was cancelled",
+		"cancelled.intro":   "We cancelled order %s.",
+		"cancelled.refund":  "We are refunding %s to your original payment method.",
+		"refunded.subject":  "Refund for order %s",
+		"refunded.title":    "We sent your refund",
+		"refunded.intro":    "We refunded %s for order %s to your original payment method.",
+		"approved.subject":  "Return %s approved",
+		"approved.title":    "Your return is approved",
+		"approved.intro":    "We approved return %s for order %s. Send the items back and we will refund you once they arrive.",
+		"retrefund.subject": "Refund for return %s",
+		"retrefund.title":   "Your return is refunded",
+		"retrefund.intro":   "We received return %s and refunded %s to your original payment method.",
+		"label.order":       "Order",
+		"label.subtotal":    "Subtotal",
+		"label.discount":    "Discount",
+		"label.shipping":    "Shipping",
+		"label.free":        "Free",
+		"label.total":       "Total",
+		"label.courier":     "Courier",
+		"label.tracking":    "Tracking number",
+		"label.return":      "Return",
+		"label.refund":      "Refund",
+		"action.order":      "See your order",
+		"action.pay":        "Pay now",
+		"footer":            "You get this email because you ordered from %s.",
+	},
+}
+
+// Lang is the language shopper emails go out in.
+const Lang = "en"
+
+func say(key string, args ...any) string {
+	p, ok := phrases[Lang][key]
+	if !ok {
+		p = phrases["en"][key]
+	}
+	return fmt.Sprintf(p, args...)
+}
+
+// ComposeShopper builds the email for one notice kind: order_placed, payment_received,
+// order_shipped, order_cancelled, order_refunded, return_approved or return_refunded.
+func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
+	e := Email{
+		Greeting: say("greeting", firstWord(f.CustomerName)), Footer: say("footer", f.Brand.Name),
+		Action: &Link{Label: say("action.order"), URL: f.OrderURL},
+	}
+	totals := func() []Row {
+		rows := []Row{{say("label.subtotal"), Rupiah(f.Subtotal)}}
+		if f.Discount > 0 {
+			rows = append(rows, Row{say("label.discount"), Rupiah(-f.Discount)})
+		}
+		shipping := say("label.free")
+		if f.Shipping > 0 {
+			shipping = Rupiah(f.Shipping)
+		}
+		return append(rows, Row{say("label.shipping"), shipping}, Row{say("label.total"), Rupiah(f.Total)})
+	}
+	var subject string
+	switch kind {
+	case "order_placed":
+		subject = say("placed.subject", f.Brand.Name, f.OrderCode)
+		e.Title, e.Intro = say("placed.title"), say("placed.intro", f.OrderCode)
+		e.Lines, e.Totals = f.Lines, totals()
+		switch {
+		case f.AwaitingPayment && f.PayOnline:
+			e.Note = say("placed.pay_online", Rupiah(f.Total))
+			e.Action.Label = say("action.pay")
+		case f.AwaitingPayment:
+			e.Note = strings.TrimSpace(say("placed.pay_manual", Rupiah(f.Total)) + " " + f.PaymentInstructions)
+		case f.CashOnDelivery:
+			e.Note = say("placed.cod", Rupiah(f.Total))
+		}
+	case "payment_received":
+		subject = say("paid.subject", f.OrderCode)
+		e.Title, e.Intro = say("paid.title"), say("paid.intro", Rupiah(f.Total), f.OrderCode)
+	case "order_shipped":
+		subject = say("shipped.subject", f.OrderCode)
+		e.Title, e.Intro = say("shipped.title"), say("shipped.intro", f.OrderCode)
+		e.Rows = []Row{{say("label.courier"), f.Courier}}
+		if f.TrackingNo != "" {
+			e.Rows = append(e.Rows, Row{say("label.tracking"), f.TrackingNo})
+		}
+	case "order_cancelled":
+		subject = say("cancelled.subject", f.OrderCode)
+		e.Title, e.Intro = say("cancelled.title"), say("cancelled.intro", f.OrderCode)
+		if f.Amount > 0 {
+			e.Note = say("cancelled.refund", Rupiah(f.Amount))
+		}
+	case "order_refunded":
+		subject = say("refunded.subject", f.OrderCode)
+		e.Title, e.Intro = say("refunded.title"), say("refunded.intro", Rupiah(f.Amount), f.OrderCode)
+	case "return_approved":
+		subject = say("approved.subject", f.ReturnCode)
+		e.Title, e.Intro = say("approved.title"), say("approved.intro", f.ReturnCode, f.OrderCode)
+		e.Lines = f.Lines
+	case "return_refunded":
+		subject = say("retrefund.subject", f.ReturnCode)
+		e.Title, e.Intro = say("retrefund.title"), say("retrefund.intro", f.ReturnCode, Rupiah(f.Amount))
+		e.Rows = []Row{{say("label.return"), f.ReturnCode}, {say("label.order"), f.OrderCode}, {say("label.refund"), Rupiah(f.Amount)}}
+	default:
+		return mail.Message{}, false
+	}
+	body, text := Render(f.Brand, e)
+	return mail.Message{To: f.To, Subject: subject, HTML: body, Text: text}, true
+}
+
+func firstWord(name string) string {
+	if fields := strings.Fields(name); len(fields) > 0 {
+		return fields[0]
+	}
+	return "there"
+}
+
+// QueueShopper queues a shopper email in the caller's transaction. A second email with the same
+// dedupe key is dropped, so a repeated notification or a retried action sends once.
+func QueueShopper(ctx context.Context, q store.Querier, dedupeKey, kind string, m mail.Message) error {
+	_, err := q.Exec(ctx, `insert into email_outbox ("to", subject, html, text, kind, dedupe_key) values ($1, $2, $3, $4, $5, $6)
+		on conflict (dedupe_key) where dedupe_key is not null do nothing`, m.To, m.Subject, m.HTML, m.Text, "shopper_"+kind, dedupeKey)
+	return err
+}

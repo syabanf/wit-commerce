@@ -4,6 +4,8 @@ export const en = {
     // Commerce
     orders: 'Orders',
     orderDetail: (id: string) => `Order ${id}`,
+    returns: 'Returns',
+    returnDetail: (id: string) => `Return ${id}`,
     payments: 'Payments',
     agents: 'AI agents',
     products: 'Products',
@@ -17,6 +19,7 @@ export const en = {
     storeEditor: 'Store editor',
     brand: 'Brand',
     domains: 'Domains',
+    media: 'Media',
     // Customers
     allCustomers: 'All Customers',
     customerDetail: (id: string) => `Customer ${id}`,
@@ -44,12 +47,23 @@ export const en = {
     apps: 'Apps',
     email: 'Email',
     currencies: 'Currencies',
+    planUsage: 'Plan & usage',
+    plans: 'Plans',
+    assistantLog: 'Assistant log',
     analytics: 'Analytics',
     integrations: 'Integrations',
     credentials: 'API credentials',
+    // Employee area
+    myTasks: 'My tasks',
+    myAccount: 'My account',
   },
   navigation: {
     dashboard: 'Dashboard',
-    // add other navigation labels as needed
+    // The two menu areas of the sidebar. Change "Employee" here to rename the area everywhere.
+    backOffice: 'Back office',
+    employee: 'Employee',
+    myHome: 'My home',
+    myTasks: 'My tasks',
+    myAccount: 'My account',
   },
 }

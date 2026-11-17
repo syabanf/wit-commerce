@@ -8,14 +8,18 @@ import type {
   ModifierGroup,
   ModifierStockLevel,
   Order,
+  OrderReturn,
   Page,
   PageDraft,
   Product,
+  ReturnItem,
   Segment,
   Seller,
   StockLevel,
+  Tenant,
 } from '@rc/types'
-import { SECTION_KIND_LABEL } from '@rc/types'
+import { OPEN_RETURN_STATUSES, RETURN_REASON_LABEL, SECTION_KIND_LABEL } from '@rc/types'
+import { DAY, toMs } from './dates'
 import { modifierDemand, nextOrderStatus, variantDemand } from './derive'
 import { listOf } from './format'
 
@@ -221,4 +225,149 @@ export function orderPlaceBlocker(
 export function paymentTypeDisableBlocker(type: PaymentType, all: readonly PaymentType[]): string | null {
   const others = all.filter((t) => t.tenantId === type.tenantId && t.id !== type.id && t.enabled)
   return others.length ? null : 'Keep at least one payment type on, or shoppers cannot check out.'
+}
+
+// --- returns ---
+//
+// A return covers some units of one order. It moves requested → approved → received → refunded, or
+// ends rejected or cancelled. An order turns `returned` when refunded returns cover every unit it
+// holds; a partial return leaves the order's status alone and shows in its refunded amount.
+
+/** Days after delivery a shopper may ask for a return when the brand set none. */
+export const DEFAULT_RETURN_WINDOW_DAYS = 7
+
+export const returnWindowDays = (tenant: Pick<Tenant, 'returnWindowDays'> | undefined) =>
+  tenant?.returnWindowDays ?? DEFAULT_RETURN_WINDOW_DAYS
+
+export const isOpenReturn = (r: Pick<OrderReturn, 'status'>) => OPEN_RETURN_STATUSES.includes(r.status)
+
+/** Units per variant the order's returns hold: every return that was not rejected or cancelled. */
+export function returnedQty(orderId: string, returns: readonly OrderReturn[]): Map<string, number> {
+  const held = new Map<string, number>()
+  for (const r of returns) {
+    if (r.orderId !== orderId || r.status === 'rejected' || r.status === 'cancelled') continue
+    for (const item of r.items) held.set(item.variantId, (held.get(item.variantId) ?? 0) + item.qty)
+  }
+  return held
+}
+
+/** Units per variant that can still go into a return: bought minus earlier returns. */
+export function returnableQty(order: Order, returns: readonly OrderReturn[]): Map<string, number> {
+  const held = returnedQty(order.id, returns)
+  const left = new Map<string, number>()
+  for (const [variantId, qty] of variantDemand(order)) left.set(variantId, qty - (held.get(variantId) ?? 0))
+  return left
+}
+
+/** When the parcel arrived: the delivered step on the order's timeline, else when it was placed. */
+export function deliveredAt(order: Pick<Order, 'events' | 'createdAt'>): string {
+  return order.events.find((e) => e.status === 'delivered')?.at ?? order.createdAt
+}
+
+/** The last moment a shopper may ask to return the order, or null when the store takes no requests. */
+export function returnDeadline(
+  order: Pick<Order, 'events' | 'createdAt'>,
+  windowDays: number,
+): number | null {
+  return windowDays > 0 ? toMs(deliveredAt(order)) + windowDays * DAY : null
+}
+
+/**
+ * Checks a return request. Staff may start one once the parcel has shipped; a shopper once it is
+ * delivered, within the store's return window.
+ */
+export function returnRequestBlocker(
+  order: Order,
+  returns: readonly OrderReturn[],
+  items: readonly Pick<ReturnItem, 'variantId' | 'qty' | 'reason'>[],
+  who: 'staff' | 'shopper',
+  now: number,
+  windowDays: number,
+): string | null {
+  const delivered = order.status === 'delivered' || order.status === 'completed'
+  if (who === 'shopper') {
+    if (!delivered) return 'You can ask for a return once the order is delivered.'
+    const deadline = returnDeadline(order, windowDays)
+    if (deadline === null) return 'This store takes return requests by message. Contact the store.'
+    if (now > deadline) return `The ${windowDays}-day return window for this order has closed.`
+  } else if (!delivered && order.status !== 'shipped') {
+    return 'Only a shipped or delivered order can be returned.'
+  }
+  if (!items.length) return 'Choose at least one item to return.'
+  const bought = variantDemand(order)
+  const left = returnableQty(order, returns)
+  const open = new Set(
+    returns
+      .filter((r) => r.orderId === order.id && isOpenReturn(r))
+      .flatMap((r) => r.items.map((i) => i.variantId)),
+  )
+  const seen = new Set<string>()
+  for (const item of items) {
+    if (!bought.has(item.variantId)) return 'One item is not part of this order.'
+    if (seen.has(item.variantId)) return 'List each item once.'
+    seen.add(item.variantId)
+    if (!(item.reason in RETURN_REASON_LABEL)) return 'Choose a reason for each item.'
+    if (!Number.isInteger(item.qty) || item.qty < 1) return 'Enter how many units to return.'
+    if (open.has(item.variantId)) return 'One item already has an open return. Finish that one first.'
+    const can = left.get(item.variantId) ?? 0
+    if (item.qty > can)
+      return can > 0
+        ? `Only ${can} of one item can still be returned.`
+        : 'One item was already returned in full.'
+  }
+  return null
+}
+
+/** Approving and rejecting both answer a request. */
+export function returnDecideBlocker(ret: Pick<OrderReturn, 'status'>): string | null {
+  return ret.status === 'requested' ? null : 'Only a requested return can be approved or rejected.'
+}
+
+export function returnReceiveBlocker(ret: Pick<OrderReturn, 'status'>): string | null {
+  return ret.status === 'approved' ? null : 'Approve the return before marking it received.'
+}
+
+export function returnCancelBlocker(ret: Pick<OrderReturn, 'status'>): string | null {
+  return ret.status === 'requested' || ret.status === 'approved'
+    ? null
+    : 'Only a return that has not been received can be cancelled.'
+}
+
+export function returnRefundBlocker(ret: Pick<OrderReturn, 'status'>, order: Order): string | null {
+  if (ret.status !== 'received') return 'Mark the return received before refunding it.'
+  return orderRefundBlocker(order)
+}
+
+/**
+ * What the shopper paid for the returned units: their line value, less their share of the order's
+ * discount. Shipping is not part of it.
+ */
+export function returnItemsPaid(
+  order: Order,
+  items: readonly Pick<ReturnItem, 'variantId' | 'qty'>[],
+): number {
+  let value = 0
+  for (const item of items) {
+    const lines = order.lines.filter((l) => l.variantId === item.variantId)
+    const units = lines.reduce((n, l) => n + l.qty, 0)
+    const total = lines.reduce((n, l) => n + l.qty * l.price, 0)
+    if (units) value += Math.floor((item.qty * total) / units)
+  }
+  const goods = Math.max(0, order.subtotal - order.discount)
+  return order.subtotal > 0 ? Math.floor((value * goods) / order.subtotal) : 0
+}
+
+/** The most a return may refund: what was paid for its items, and no more than the order still holds. */
+export function returnRefundCap(order: Order, ret: Pick<OrderReturn, 'items'>): number {
+  return Math.max(0, Math.min(returnItemsPaid(order, ret.items), order.total - order.refundedAmount))
+}
+
+/** True when refunded returns cover every unit of the order. */
+export function orderFullyReturned(order: Order, returns: readonly OrderReturn[]): boolean {
+  const refunded = returnedQty(
+    order.id,
+    returns.filter((r) => r.status === 'refunded'),
+  )
+  for (const [variantId, qty] of variantDemand(order)) if ((refunded.get(variantId) ?? 0) < qty) return false
+  return order.lines.length > 0
 }

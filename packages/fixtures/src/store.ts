@@ -23,6 +23,7 @@ import type {
   LeadStage,
   Order,
   OrderEvent,
+  OrderReturn,
   Page,
   PageDraft,
   PageSection,
@@ -30,12 +31,17 @@ import type {
   ProductStatus,
   Promotion,
   PromotionStatus,
+  ReturnEvent,
+  ReturnItem,
+  ReturnStatus,
   SearchTerm,
   Segment,
   Seller,
   SellerStatus,
+  ShopperEmailKind,
   StockLevel,
   StockMove,
+  StoreMenus,
   Template,
   Tenant,
   Ticket,
@@ -47,8 +53,10 @@ import type {
   SalesDay,
   SellerBuyer,
 } from '@rc/types'
-import { ORDER_STATUS_LABEL } from '@rc/types'
+import { ORDER_STATUS_LABEL, SHOPPER_EMAIL_KINDS } from '@rc/types'
+import { cleanMenus, cleanSellerProfile, menusBlocker, sellerProfileBlocker } from './content'
 import { isDisplayCurrency } from './currency'
+import { domainProblem, domainTaken } from './domains'
 import { DAY, HOUR, toIso, toMs } from './dates'
 import {
   attributesFor,
@@ -58,7 +66,8 @@ import {
   segmentMembers,
   variantDemand,
 } from './derive'
-import { newId } from './ids'
+import { newId, nextCode } from './ids'
+import { can } from './permissions'
 import {
   campaignLaunchBlocker,
   paymentTypeDisableBlocker,
@@ -72,6 +81,14 @@ import {
   pagePublishBlocker,
   pageWithDraft,
   productActivateBlocker,
+  orderFullyReturned,
+  returnCancelBlocker,
+  returnDecideBlocker,
+  returnReceiveBlocker,
+  returnRefundBlocker,
+  returnRefundCap,
+  returnRequestBlocker,
+  returnWindowDays,
   segmentRemoveBlocker,
   sellerTemplateBlocker,
   stockAdjustBlocker,
@@ -104,6 +121,8 @@ export interface AppState {
   productDays: ProductDay[]
   sellerBuyers: SellerBuyer[]
   orders: Order[]
+  /** Return requests. The API keeps only open ones in the state; lists read GET /views/returns. */
+  returns: OrderReturn[]
   segments: Segment[]
   leads: Lead[]
   tickets: Ticket[]
@@ -134,6 +153,16 @@ export type AppAction =
   | { type: 'tenants/setup'; setup: TenantSetup }
   | { type: 'tenants/completeStep'; tenantId: string; step: string }
   | { type: 'tenants/setDisplayCurrencies'; tenantId: string; currencies: string[] }
+  | {
+      type: 'tenants/setShopSettings'
+      tenantId: string
+      returnWindowDays: number
+      shopperEmailsOff: ShopperEmailKind[]
+    }
+  /** Connects a custom domain, or disconnects it with null. The API issues its own token. */
+  | { type: 'tenants/setDomain'; tenantId: string; domain: string | null; token: string }
+  /** Marks the domain verified. The API checks DNS first; the demo has no DNS to ask. */
+  | { type: 'tenants/verifyDomain'; tenantId: string }
   | { type: 'brand/update'; tenantId: string; brand: BrandConfig }
   | { type: 'brand/toggleLock'; tenantId: string; key: BrandLockKey }
   | { type: 'products/save'; product: Product }
@@ -175,6 +204,19 @@ export type AppAction =
   | { type: 'orders/cancel'; id: string; reason: CancelReason; note: string }
   | { type: 'orders/refund'; id: string; amount: number; note: string }
   | { type: 'orders/note'; id: string; note: string }
+  | {
+      type: 'returns/request'
+      id: string
+      orderId: string
+      items: Pick<ReturnItem, 'variantId' | 'qty' | 'reason'>[]
+      note: string
+      who: 'staff' | 'shopper'
+    }
+  | { type: 'returns/approve'; id: string; note: string }
+  | { type: 'returns/reject'; id: string; reason: string }
+  | { type: 'returns/cancel'; id: string; note: string }
+  | { type: 'returns/receive'; id: string; restock: boolean }
+  | { type: 'returns/refund'; id: string; amount: number; note: string }
   | { type: 'customers/save'; customer: Customer }
   | { type: 'customers/note'; id: string; note: string }
   | { type: 'customers/addPoints'; id: string; points: number; reason: string }
@@ -202,6 +244,8 @@ export type AppAction =
   | { type: 'sellers/save'; seller: Seller }
   | { type: 'sellers/setTemplate'; id: string; templateId: string }
   | { type: 'sellers/setStatus'; id: string; status: SellerStatus }
+  | { type: 'sellers/updateProfile'; id: string; headline: string; bio: string; photoUrl: string }
+  | { type: 'menus/save'; tenantId: string; menus: StoreMenus }
   | { type: 'integrations/toggle'; id: string }
   | { type: 'integrations/sync'; id: string }
   | { type: 'system/tick' }
@@ -284,6 +328,41 @@ function customerEvent(
 
 function orderEvent(at: IsoDate, by: string, status: Order['status'] | null, note: string): OrderEvent {
   return { id: newId('oev'), at, by, status, note }
+}
+
+/** A return's next step on its own timeline. */
+function returnStep(
+  ret: OrderReturn,
+  status: ReturnStatus,
+  note: string,
+  at: IsoDate,
+  by: string,
+): OrderReturn {
+  const event: ReturnEvent = { id: newId('oev'), at, by, status, note }
+  return { ...ret, status, events: [event, ...ret.events] }
+}
+
+/**
+ * Refunds part of an order. A refund of everything closes it as refunded; `returned` closes it as
+ * returned instead, when the refund settles the last of its units.
+ */
+function refundOrder(
+  o: Order,
+  amount: number,
+  note: string,
+  at: IsoDate,
+  by: string,
+  returned = false,
+): Order {
+  const full = o.refundedAmount + amount >= o.total
+  const closed = returned ? 'returned' : full ? 'refunded' : null
+  return {
+    ...o,
+    refundedAmount: o.refundedAmount + amount,
+    status: closed ?? o.status,
+    paymentStatus: full ? 'refunded' : o.paymentStatus,
+    events: [orderEvent(at, by, closed, `Refunded ${amount}${note ? ` · ${note}` : ''}`), ...o.events],
+  }
 }
 
 /** Puts reserved stock back for every line of an order that has not shipped. */
@@ -602,6 +681,66 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         ),
       }
     }
+    case 'tenants/setShopSettings': {
+      // A window outside 0 to 90 days or an unknown email kind refuses the whole change.
+      const days = action.returnWindowDays
+      if (!Number.isInteger(days) || days < 0 || days > 90) return state
+      if (!action.shopperEmailsOff.every((k) => SHOPPER_EMAIL_KINDS.includes(k))) return state
+      const off = SHOPPER_EMAIL_KINDS.filter((k) => action.shopperEmailsOff.includes(k))
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, ({ shopperEmailsOff: _, ...t }) => ({
+          ...t,
+          returnWindowDays: days,
+          ...(off.length && { shopperEmailsOff: off }),
+        })),
+      }
+    }
+    case 'tenants/setDomain': {
+      const { domain, token } = action
+      const current = state.tenants.find((t) => t.id === action.tenantId)
+      // Saving the domain the brand already has keeps its verification. One from before
+      // verification existed has no token yet and gets one.
+      if (!current || (current.domain === domain && (domain === null || current.domainToken))) return state
+      if (
+        domain !== null &&
+        (!token || domainProblem(domain) || domainTaken(state.tenants, current.id, domain))
+      )
+        return state
+      return {
+        ...state,
+        tenants: patch(
+          state.tenants,
+          current.id,
+          ({
+            domainToken: _t,
+            domainVerifiedAt: _v,
+            domainCheckedAt: _c,
+            domainCheckFailures: _f,
+            ...t
+          }) => ({
+            ...t,
+            domain,
+            domainVerified: false,
+            ...(domain === null ? {} : { domainToken: token }),
+          }),
+        ),
+      }
+    }
+    case 'tenants/verifyDomain':
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, (t) => {
+          if (!t.domain || !t.domainToken) return t
+          const { domainCheckFailures: _, ...rest } = t
+          return {
+            ...rest,
+            domainVerified: true,
+            domainVerifiedAt: t.domainVerifiedAt ?? at,
+            domainCheckedAt: at,
+          }
+        }),
+      }
     case 'brand/update':
       return {
         ...state,
@@ -887,24 +1026,9 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       const order = state.orders.find((o) => o.id === action.id)
       if (!order || orderRefundBlocker(order) || action.amount <= 0) return state
       const amount = Math.min(action.amount, order.total - order.refundedAmount)
-      const full = order.refundedAmount + amount >= order.total
       return {
         ...state,
-        orders: patch(state.orders, order.id, (o) => ({
-          ...o,
-          refundedAmount: o.refundedAmount + amount,
-          status: full ? 'refunded' : o.status,
-          paymentStatus: full ? 'refunded' : o.paymentStatus,
-          events: [
-            orderEvent(
-              at,
-              by,
-              full ? 'refunded' : null,
-              `Refunded ${amount}${action.note ? ` · ${action.note}` : ''}`,
-            ),
-            ...o.events,
-          ],
-        })),
+        orders: patch(state.orders, order.id, (o) => refundOrder(o, amount, action.note, at, by)),
       }
     }
     case 'orders/place': {
@@ -954,6 +1078,150 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
           events: [orderEvent(at, by, null, action.note), ...o.events],
         })),
       }
+
+    case 'returns/request': {
+      const order = state.orders.find((o) => o.id === action.orderId)
+      if (!order || state.returns.some((r) => r.id === action.id)) return state
+      const tenant = state.tenants.find((t) => t.id === order.tenantId)
+      const own = state.returns.filter((r) => r.tenantId === order.tenantId)
+      if (
+        !tenant ||
+        returnRequestBlocker(order, own, action.items, action.who, toMs(at), returnWindowDays(tenant))
+      )
+        return state
+      const code = nextCode(
+        own.map((r) => r.code),
+        `${tenant.code}-R`,
+        4,
+      )
+      const created: OrderReturn = {
+        id: action.id,
+        tenantId: order.tenantId,
+        code,
+        orderId: order.id,
+        customerId: order.customerId,
+        items: action.items.map((i) => ({
+          productId: order.lines.find((l) => l.variantId === i.variantId)!.productId,
+          variantId: i.variantId,
+          qty: i.qty,
+          reason: i.reason,
+        })),
+        reason: action.items[0]!.reason,
+        note: action.note,
+        status: 'requested',
+        requestedBy: action.who,
+        refundAmount: 0,
+        restock: false,
+        events: [],
+        createdAt: at,
+      }
+      const opening = action.who === 'shopper' ? 'Requested by the shopper' : 'Return started'
+      return {
+        ...state,
+        returns: [...state.returns, returnStep(created, 'requested', opening, at, by)],
+        orders: patch(state.orders, order.id, (o) => ({
+          ...o,
+          events: [orderEvent(at, by, null, `Return ${code} requested`), ...o.events],
+        })),
+      }
+    }
+    case 'returns/approve': {
+      const ret = state.returns.find((r) => r.id === action.id)
+      if (!ret || returnDecideBlocker(ret)) return state
+      return {
+        ...state,
+        returns: patch(state.returns, ret.id, (r) =>
+          returnStep(r, 'approved', action.note.trim() || 'Approved', at, by),
+        ),
+      }
+    }
+    case 'returns/reject': {
+      const ret = state.returns.find((r) => r.id === action.id)
+      const reason = action.reason.trim()
+      if (!ret || returnDecideBlocker(ret) || !reason) return state
+      return {
+        ...state,
+        returns: patch(state.returns, ret.id, (r) => ({
+          ...returnStep(r, 'rejected', `Rejected: ${reason}`, at, by),
+          rejectReason: reason,
+        })),
+      }
+    }
+    case 'returns/cancel': {
+      const ret = state.returns.find((r) => r.id === action.id)
+      if (!ret || returnCancelBlocker(ret)) return state
+      return {
+        ...state,
+        returns: patch(state.returns, ret.id, (r) =>
+          returnStep(r, 'cancelled', action.note.trim() || 'Cancelled', at, by),
+        ),
+      }
+    }
+    case 'returns/receive': {
+      const ret = state.returns.find((r) => r.id === action.id)
+      const order = ret && state.orders.find((o) => o.id === ret.orderId)
+      if (!ret || !order || returnReceiveBlocker(ret)) return state
+      const received = {
+        ...returnStep(
+          ret,
+          'received',
+          action.restock ? 'Received and restocked' : 'Received, not restocked',
+          at,
+          by,
+        ),
+        restock: action.restock,
+      }
+      const returns = patch(state.returns, ret.id, () => received)
+      if (!action.restock) return { ...state, returns }
+      // The units go back on the shelf of the warehouse that shipped them, with a return move each.
+      const back = new Map(ret.items.map((i) => [i.variantId, i.qty]))
+      const levelOf = (variantId: string) =>
+        state.stock.find((s) => s.variantId === variantId && s.warehouseId === order.warehouseId)
+      return {
+        ...state,
+        returns,
+        stock: state.stock.map((s) => {
+          const qty = s.warehouseId === order.warehouseId ? (back.get(s.variantId) ?? 0) : 0
+          return qty ? { ...s, onHand: s.onHand + qty } : s
+        }),
+        stockMoves: [
+          ...ret.items
+            .filter((i) => levelOf(i.variantId))
+            .map<StockMove>((i) => ({
+              id: newId('mv'),
+              tenantId: ret.tenantId,
+              variantId: i.variantId,
+              warehouseId: order.warehouseId,
+              kind: 'return',
+              qty: i.qty,
+              at,
+              by,
+              note: ret.code,
+            })),
+          ...state.stockMoves,
+        ],
+      }
+    }
+    case 'returns/refund': {
+      const ret = state.returns.find((r) => r.id === action.id)
+      const order = ret && state.orders.find((o) => o.id === ret.orderId)
+      if (!ret || !order || returnRefundBlocker(ret, order)) return state
+      const amount = Math.min(action.amount, returnRefundCap(order, ret))
+      if (!(amount > 0)) return state
+      const refunded = {
+        ...returnStep(ret, 'refunded', `Refunded ${amount}${action.note ? ` · ${action.note}` : ''}`, at, by),
+        refundAmount: amount,
+      }
+      const returns = patch(state.returns, ret.id, () => refunded)
+      const note = `Return ${ret.code}${action.note ? ` · ${action.note}` : ''}`
+      return {
+        ...state,
+        returns,
+        orders: patch(state.orders, order.id, (o) =>
+          refundOrder(o, amount, note, at, by, orderFullyReturned(o, returns)),
+        ),
+      }
+    }
 
     case 'customers/save':
       return { ...state, customers: upsert(state.customers, action.customer) }
@@ -1221,6 +1489,58 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     }
     case 'sellers/setStatus':
       return { ...state, sellers: patch(state.sellers, action.id, (s) => ({ ...s, status: action.status })) }
+
+    case 'sellers/updateProfile': {
+      const seller = state.sellers.find((s) => s.id === action.id)
+      const tenant = state.tenants.find((t) => t.id === seller?.tenantId)
+      const actor = state.users.find((u) => u.id === by)
+      if (!seller || !tenant || !actor) return state
+      // Whoever manages sellers changes anyone's profile; a seller changes their own within the locks.
+      const manages = can(actor.role, 'seller.manage')
+      if (!manages && seller.userId !== actor.id) return state
+      const profile = cleanSellerProfile(action)
+      if (sellerProfileBlocker(seller, profile, tenant.brand.locks, !manages)) return state
+      const { photoUrl: _, ...rest } = seller
+      const next: Seller = {
+        ...rest,
+        headline: profile.headline,
+        bio: profile.bio,
+        ...(profile.photoUrl ? { photoUrl: profile.photoUrl } : {}),
+      }
+      // The hero of the seller's page, and of its unpublished changes, takes the copy.
+      const heroCopy = (sections: PageSection[]) =>
+        sections.map((s) =>
+          s.kind === 'hero' ? { ...s, headline: next.headline || next.name, body: next.bio } : s,
+        )
+      const hasHero = (sections: PageSection[]) => sections.some((s) => s.kind === 'hero')
+      const page = state.pages.find((p) => p.sellerId === seller.id)
+      return {
+        ...state,
+        sellers: patch(state.sellers, seller.id, () => next),
+        pages:
+          page && hasHero(page.sections)
+            ? patch(state.pages, page.id, (p) => ({
+                ...p,
+                sections: heroCopy(p.sections),
+                updatedAt: at,
+                updatedBy: by,
+              }))
+            : state.pages,
+        pageDrafts: state.pageDrafts.map((d) =>
+          d.id === page?.id && hasHero(d.sections) ? { ...d, sections: heroCopy(d.sections) } : d,
+        ),
+      }
+    }
+    case 'menus/save': {
+      const menus = cleanMenus(action.menus)
+      if (!state.tenants.some((t) => t.id === action.tenantId) || menusBlocker(menus)) return state
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, ({ menus: _, ...t }) =>
+          menus.header.length + menus.footer.length ? { ...t, menus } : t,
+        ),
+      }
+    }
 
     case 'integrations/toggle':
       return {

@@ -10,8 +10,11 @@ import (
 	"strings"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/antispam"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/billing"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/currency"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/inventory"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
@@ -27,7 +30,12 @@ type routeDoc struct {
 	status   int
 	// upload means a multipart/form-data body with one file field, and a tenantId query parameter.
 	upload bool
+	// query lists further query parameters as name, type and description.
+	query [][3]string
 }
+
+// mediaTenant is the tenantId parameter of the media library's routes.
+var mediaTenant = [3]string{"tenantId", "string", "The brand the image belongs to."}
 
 type (
 	statusInput struct {
@@ -129,6 +137,17 @@ var routeDocs = map[string]routeDoc{
 	"POST /settings/currencies/refresh":        {response: currency.Rates{}},
 	"GET /views/orders":                        {response: orderRowsResponse{}},
 	"GET /views/customer-events":               {response: customerEventsResponse{}},
+	"GET /views/returns":                       {response: returnRowsResponse{}},
+	"GET /views/sales-months":                  {response: salesMonthsResponse{}},
+	"POST /returns":                            {body: returnRequestInput{}},
+	"POST /returns/{id}/approve":               {body: noteInput{}},
+	"POST /returns/{id}/reject":                {body: rejectInput{}},
+	"POST /returns/{id}/cancel":                {body: noteInput{}},
+	"POST /returns/{id}/receive":               {body: receiveInput{}},
+	"POST /returns/{id}/refund":                {body: refundInput{}},
+	"PUT /tenants/{id}/shop-settings":          {body: shopSettingsInput{}},
+	"POST /shop/{store}/returns":               {body: returnRequestInput{}},
+	"POST /shop/{store}/returns/{id}/cancel":   {body: noteInput{}},
 	"GET /users/events":                        {response: staffEventsResponse{}},
 	"POST /users":                              {body: staffInput{}, response: issuedStaffResponse{}},
 	"PUT /users/{id}":                          {body: staffInput{}, response: staffResponse{}},
@@ -143,6 +162,11 @@ var routeDocs = map[string]routeDoc{
 	"PUT /tenants/{id}/brand":                  {body: domain.BrandConfig{}},
 	"PUT /tenants/{id}/agent-policy":           {body: domain.AgentPolicy{}},
 	"PUT /tenants/{id}/display-currencies":     {body: displayCurrenciesInput{}},
+	"GET /tenants/{id}/domain":                 {response: identity.DomainStatus{}},
+	"PUT /tenants/{id}/domain":                 {body: domainInput{}},
+	"POST /tenants/{id}/domain/verify":         {response: domainCheckResponse{}},
+	"GET /shop/by-host":                        {response: storeByHostResponse{}},
+	"GET /internal/domain-allowed":             {response: okResponse{}},
 	"PUT /products/{id}":                       {body: domain.Product{}},
 	"PUT /products/{id}/attributes":            {body: attributesInput{}},
 	"POST /products/{id}/status":               {body: statusInput{}},
@@ -195,13 +219,35 @@ var routeDocs = map[string]routeDoc{
 	"DELETE /webhooks/{id}":                    {response: okResponse{}},
 	"POST /webhook-deliveries/{id}/retry":      {response: okResponse{}},
 	"POST /shop/{store}/ai/chat":               {body: AIChatInput{}, response: AIChatAnswer{}},
+	"GET /config":                              {response: publicConfig{}},
+	"GET /settings/captcha":                    {response: antispam.CaptchaSettings{}},
+	"PUT /settings/captcha":                    {body: antispam.CaptchaInput{}, response: antispam.CaptchaSettings{}},
+	"GET /settings/plans":                      {response: platformPlans{}},
+	"PUT /settings/plans/{plan}":               {body: billing.PlanInput{}, response: platformPlans{}},
+	"POST /plan-requests/{id}/decide":          {body: planDecisionInput{}, response: billing.PlanRequest{}},
+	"POST /invoices/{id}/status":               {body: statusInput{}, response: billing.Invoice{}},
+	"PUT /tenants/{id}/plan":                   {body: tenantPlanInput{}},
+	"GET /tenants/{id}/plan":                   {response: service.PlanOverview{}},
+	"POST /tenants/{id}/plan-requests":         {body: planRequestInput{}, response: billing.PlanRequest{}, status: http.StatusCreated},
+	"POST /warehouses":                         {body: inventory.WarehouseInput{}},
 	"POST /ai/assistant":                       {body: AssistantInput{}, response: AssistantAnswer{}},
+	"POST /ai/assistant/outcome":               {body: assistantOutcomeInput{}, response: okResponse{}},
+	"GET /ai/assistant/log":                    {response: AssistantLogPage{}},
+	"GET /ai/assistant/totals":                 {response: AssistantTotals{}},
 	"POST /shop/{store}/price":                 {body: priceInput{}, response: rules.CartPrice{}},
 	"POST /shop/{store}/orders":                {body: placeOrderInput{}, response: shopOrderResponse{}},
 	"POST /payments/midtrans/notification":     {body: midtransNotificationInput{}, response: okResponse{}},
 	"GET /orders/{id}/payment":                 {response: orderPaymentResponse{}},
 	"POST /shop/{store}/leads":                 {body: domain.Lead{}},
-	"POST /media":                              {upload: true, response: media.MediaUpload{}, status: http.StatusCreated},
+	"POST /media": {upload: true, response: media.MediaUpload{}, status: http.StatusCreated, query: [][3]string{
+		{"purpose", "string", "seller-photo lets a seller upload the photo of their own profile without an upload permission."}}},
+	"GET /media": {response: media.MediaList{}, query: [][3]string{mediaTenant,
+		{"q", "string", "Part of the file name, any case."},
+		{"limit", "integer", "Page size, 1 to 100; 48 when left out."},
+		{"offset", "integer", "Images to skip, for the next page."}}},
+	"DELETE /media/{id}":        {response: okResponse{}, query: [][3]string{mediaTenant}},
+	"PUT /sellers/{id}/profile": {body: service.SellerProfile{}},
+	"PUT /tenants/{id}/menus":   {body: domain.StoreMenus{}},
 }
 
 // hiddenRoutes are for the demo and for this server's own apps, so the published contract leaves them out.
@@ -327,7 +373,7 @@ func tagOf(path string) string {
 		return "Catalog"
 	case "stock", "modifier-stock", "warehouses":
 		return "Inventory"
-	case "orders", "views":
+	case "orders", "returns", "views":
 		return "Orders"
 	case "customers", "leads", "tickets", "segments":
 		return "Customers"
@@ -350,7 +396,7 @@ func tagOf(path string) string {
 			return "Credentials"
 		}
 		return "Integrations"
-	case "shop":
+	case "shop", "internal":
 		return "Storefront"
 	case "payments":
 		return "Payments"
@@ -358,6 +404,8 @@ func tagOf(path string) string {
 		return "Media"
 	case "auth", "health", "users", "settings", "signup", "ai":
 		return "Platform"
+	case "config", "plan-requests", "invoices":
+		return "Plans"
 	}
 	panic("openapi: no tag for " + path)
 }
@@ -442,6 +490,13 @@ func buildSpec(table []Route, version string) []byte {
 			} {
 				params = append(params, map[string]any{"name": q.name, "in": "query", "description": q.about, "schema": map[string]any{"type": q.kind}})
 			}
+		}
+		for _, q := range doc.query {
+			param := map[string]any{"name": q[0], "in": "query", "description": q[2], "schema": map[string]any{"type": q[1]}}
+			if q == mediaTenant {
+				param["required"] = true
+			}
+			params = append(params, param)
 		}
 		if params != nil {
 			op["parameters"] = params

@@ -21,7 +21,8 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react'
-import { Fragment, type KeyboardEvent, type PointerEvent, type ReactNode, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useState } from 'react'
+import { usePointerReorder } from '../../hooks/usePointerReorder'
 import { useScoped } from '../../state/scoped'
 import { ADDABLE, SECTION_COPY, insertSection, moveSection, newSection, sectionLocks } from './lib'
 import type { Draft } from './useDraft'
@@ -48,9 +49,6 @@ export function SectionList({
   const listed = sections.filter((s) => s.kind !== 'footer')
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState<PageSection | null>(null)
-  const [drag, setDrag] = useState<{ id: string; to: number } | null>(null)
-  const rows = useRef(new Map<string, HTMLLIElement>())
-
   const label = (s: PageSection) => SECTION_COPY[s.kind].label
   const move = (s: PageSection, to: number) =>
     change((d) => ({ ...d, sections: moveSection(d.sections, s.id, to) }), `Moved ${label(s)}`)
@@ -64,32 +62,12 @@ export function SectionList({
     onSelect(section.id)
   }
 
-  // Dragging by the handle: the drop place is how many other rows sit above the pointer.
-  const dropIndex = (id: string, y: number) =>
-    listed.filter((s) => {
-      const el = rows.current.get(s.id)
-      if (s.id === id || !el) return false
-      const box = el.getBoundingClientRect()
-      return box.top + box.height / 2 < y
-    }).length
-  const onPointerDown = (s: PageSection, e: PointerEvent<HTMLButtonElement>) => {
-    if (sectionLocks(s).move) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    setDrag({ id: s.id, to: listed.indexOf(s) })
-  }
-  const onPointerMove = (e: PointerEvent<HTMLButtonElement>) => {
-    if (drag) setDrag({ id: drag.id, to: dropIndex(drag.id, e.clientY) })
-  }
-  const onPointerUp = (s: PageSection) => {
-    if (drag && drag.to !== listed.indexOf(s)) move(s, drag.to)
-    setDrag(null)
-  }
-  const onHandleKey = (s: PageSection, i: number, e: KeyboardEvent) => {
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
-    e.preventDefault()
-    move(s, i + (e.key === 'ArrowUp' ? -1 : 1))
-  }
-  const others = drag ? listed.filter((s) => s.id !== drag.id) : []
+  const reorder = usePointerReorder({
+    items: listed,
+    keyOf: (s) => s.id,
+    onMove: move,
+    locked: (s) => !!sectionLocks(s).move,
+  })
   const dropLine = <li aria-hidden="true" className="h-0.5 mx-2 rounded-full bg-accent" />
 
   return (
@@ -109,16 +87,13 @@ export function SectionList({
           const active = s.id === selected
           return (
             <Fragment key={s.id}>
-              {drag && others[drag.to]?.id === s.id && dropLine}
+              {reorder.dropBefore(s) && dropLine}
               <li
-                ref={(el) => {
-                  if (el) rows.current.set(s.id, el)
-                  else rows.current.delete(s.id)
-                }}
+                ref={reorder.rowRef(s)}
                 className={cn(
                   'gap-1 p-1 rounded-2xl flex items-center',
                   active ? 'bg-surface-2' : 'hover:bg-surface',
-                  drag?.id === s.id && 'opacity-60 ring-2 ring-accent',
+                  reorder.dragging === s.id && 'opacity-60 ring-2 ring-accent',
                 )}
               >
                 <Tooltip content={locks.move ?? 'Drag, or use the arrow keys, to move'}>
@@ -126,11 +101,7 @@ export function SectionList({
                     type="button"
                     aria-label={`Move ${label(s)}`}
                     aria-disabled={!!locks.move}
-                    onPointerDown={(e) => onPointerDown(s, e)}
-                    onPointerMove={onPointerMove}
-                    onPointerUp={() => onPointerUp(s)}
-                    onPointerCancel={() => setDrag(null)}
-                    onKeyDown={(e) => !locks.move && onHandleKey(s, i, e)}
+                    {...reorder.handle(s, i)}
                     className={cn(
                       'h-9 w-6 rounded-lg flex shrink-0 touch-none items-center justify-center text-muted',
                       locks.move ? 'cursor-not-allowed opacity-40' : 'cursor-grab hover:text-foreground',
@@ -194,7 +165,7 @@ export function SectionList({
             </Fragment>
           )
         })}
-        {drag && drag.to >= others.length && dropLine}
+        {reorder.dropAtEnd && dropLine}
       </ol>
 
       <Button variant="soft" size="sm" className="w-full" onClick={onAddProduct}>
@@ -258,7 +229,7 @@ export function SectionList({
 }
 
 /** A small row button. With a reason it stays focusable but does nothing, and the tooltip says why. */
-function RowAction({
+export function RowAction({
   icon: Icon,
   label,
   reason,

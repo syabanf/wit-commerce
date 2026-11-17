@@ -33,8 +33,21 @@ import { Fragment, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth'
 import { usePersistentState } from '../lib/storage'
+import { AreaTabs } from './AreaTabs'
 import { CreateMenu } from './CreateMenu'
-import { type BadgeKey, type NavLeaf, navFor, sectionFor } from './nav'
+import {
+  AREA_HOME,
+  type BadgeKey,
+  EMPLOYEE_NAV,
+  type NavArea,
+  type NavLeaf,
+  type NavSection,
+  areaNav,
+  areaOfPath,
+  areasFor,
+  navFor,
+  sectionFor,
+} from './nav'
 import { useNavCounts } from './useNavCounts'
 
 interface Shortcut {
@@ -48,8 +61,11 @@ const ORDERS: Shortcut = { label: 'Orders', to: '/commerce/orders', icon: Shoppi
 const CUSTOMERS: Shortcut = { label: 'Customers', to: '/customers/all', icon: UserRound }
 const ANALYTICS: Shortcut = { label: 'Analytics', to: '/analytics', icon: ChartColumn }
 
-/** Three phone shortcuts per role, around the round create button. */
-const SHORTCUTS: Record<Role, [Shortcut, Shortcut, Shortcut]> = {
+/** The employee area's bar: the person's own pages. */
+const EMPLOYEE_SHORTCUTS: Shortcut[] = EMPLOYEE_NAV.filter((page) => page.to !== AREA_HOME.employee)
+
+/** Three back-office phone shortcuts per role, around the round create button. */
+const SHORTCUTS: Partial<Record<Role, [Shortcut, Shortcut, Shortcut]>> = {
   platform_admin: [ORDERS, CUSTOMERS, ANALYTICS],
   tenant_admin: [ORDERS, CUSTOMERS, ANALYTICS],
   marketing: [
@@ -81,23 +97,27 @@ export function PhoneNav({
   const [recent, setRecent] = usePersistentState<string[]>('rc.admin.recent-nav', [])
   const [query, setQuery] = useState('')
   const [openSection, setOpenSection] = useState<string | null>(null)
+  const [sheetArea, setSheetArea] = useState<NavArea>('employee')
   if (!user) return null
   const is = (path: string) =>
-    path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`)
+    path === '/' || path === AREA_HOME.employee
+      ? pathname === path
+      : pathname === path || pathname.startsWith(`${path}/`)
   const current = sectionFor(pathname)
-  const nav = navFor(user.role)
-  const leaves: (NavLeaf & { section: string })[] = nav.flatMap((s) =>
-    (s.items ?? [{ to: s.to, code: s.code ?? '', label: s.label, icon: s.icon }]).map((i) => ({
-      ...i,
-      section: s.label,
-    })),
-  )
+  // A role with no back-office menu gets no tabs and the employee bar.
+  const tabs = areasFor(user.role).length > 1
+  const area: NavArea = tabs ? areaOfPath(pathname) : 'employee'
+  const shortcuts = (area === 'backoffice' && SHORTCUTS[user.role]) || EMPLOYEE_SHORTCUTS
+  const shownArea = tabs ? sheetArea : 'employee'
+  const nav = areaNav(user.role, shownArea)
+  const leaves: NavLeaf[] = [...navFor(user.role), ...EMPLOYEE_NAV].flatMap(pagesOf)
   const q = query.trim().toLowerCase()
 
   const change = (open: boolean) => {
     if (open) {
       setQuery('')
       setOpenSection(current.id)
+      setSheetArea(area)
     }
     onMoreChange(open)
   }
@@ -105,15 +125,14 @@ export function PhoneNav({
     setRecent((list) => [to, ...list.filter((x) => x !== to)].slice(0, 4))
     onMoreChange(false)
   }
-  const ordered = nav
 
   return (
     <>
       <BottomBar className="print:hidden">
-        <BottomBarItem asChild icon={<House />} label="Home" active={is('/')}>
-          <Link to="/" />
+        <BottomBarItem asChild icon={<House />} label="Home" active={is(AREA_HOME[area])}>
+          <Link to={AREA_HOME[area]} />
         </BottomBarItem>
-        {SHORTCUTS[user.role].slice(0, 1).map((s) => (
+        {shortcuts.slice(0, 1).map((s) => (
           <BottomBarItem
             key={s.to}
             asChild
@@ -132,7 +151,7 @@ export function PhoneNav({
             </BottomBarAction>
           }
         />
-        {SHORTCUTS[user.role].slice(1).map((s) => (
+        {shortcuts.slice(1).map((s) => (
           <BottomBarItem
             key={s.to}
             asChild
@@ -150,7 +169,8 @@ export function PhoneNav({
       <Sheet open={moreOpen} onOpenChange={change}>
         <SheetContent side="bottom" tone="dark" hideClose aria-describedby={undefined} className="pt-0">
           <SheetTitle className="sr-only">All destinations</SheetTitle>
-          <div className="top-0 px-4 pb-3 pt-4 sticky z-10 bg-ink">
+          <div className="top-0 gap-3 px-4 pb-3 pt-4 sticky z-10 flex flex-col bg-ink">
+            {tabs && <AreaTabs value={shownArea} onChange={setSheetArea} />}
             <label className="h-11 gap-2 rounded-2xl bg-white/10 px-3 flex items-center">
               <Search className="size-4 text-on-ink-muted" />
               <input
@@ -184,23 +204,29 @@ export function PhoneNav({
               </div>
             </div>
           )}
-          {ordered.map((section, index) => {
-            const pages: NavLeaf[] = section.items ?? [
-              { to: section.to, code: section.code ?? '', label: section.label, icon: section.icon },
-            ]
-            const items = pages.filter(
-              (i) => !q || i.label.toLowerCase().includes(q) || section.label.toLowerCase().includes(q),
-            )
-            if (!items.length) return null
-            const open = !!q || openSection === section.id
-            return (
-              <Fragment key={section.id}>
-                {!q && (index === 0 || ordered[index - 1]?.group !== section.group) && (
-                  <p className="px-5 pb-1 pt-4 font-semibold tracking-wider text-[0.6562rem] text-on-ink-muted uppercase">
-                    {section.group}
-                  </p>
-                )}
-                <div>
+          {shownArea === 'employee' ? (
+            <div className="gap-2 px-3 pb-2 pt-2 grid grid-cols-3">
+              {nav
+                .flatMap(pagesOf)
+                .filter((page) => !q || page.label.toLowerCase().includes(q))
+                .map((page) => (
+                  <Tile key={page.to} page={page} active={is(page.to)} onChoose={choose} />
+                ))}
+            </div>
+          ) : (
+            nav.map((section, index) => {
+              const items = pagesOf(section).filter(
+                (i) => !q || i.label.toLowerCase().includes(q) || section.label.toLowerCase().includes(q),
+              )
+              if (!items.length) return null
+              const open = !!q || openSection === section.id
+              return (
+                <Fragment key={section.id}>
+                  {!q && nav[index - 1]?.group !== section.group && (
+                    <p className="px-5 pb-1 pt-4 font-semibold tracking-wider text-[0.6562rem] text-on-ink-muted uppercase">
+                      {section.group}
+                    </p>
+                  )}
                   {!section.items ? (
                     <Link
                       to={section.to}
@@ -225,42 +251,23 @@ export function PhoneNav({
                       </button>
                       {open && (
                         <div className="gap-2 px-3 pb-2 grid grid-cols-3">
-                          {items.map((d) => {
-                            const Icon = d.icon
-                            const active = is(d.to)
-                            const badge = d.badge ? counts[d.badge] : 0
-                            return (
-                              <Link
-                                key={d.to}
-                                to={d.to}
-                                onClick={() => choose(d.to)}
-                                className="gap-2 rounded-2xl p-3 hover:bg-white/10 flex flex-col items-center text-center transition-colors"
-                              >
-                                <span
-                                  className={cn(
-                                    'size-11 rounded-2xl bg-white/10 [&_svg]:size-5 relative flex items-center justify-center',
-                                    active && 'text-white bg-accent shadow-glow',
-                                  )}
-                                >
-                                  <Icon />
-                                  {badge > 0 && (
-                                    <span className="-right-1 -top-1 bg-white px-1 font-bold absolute flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full text-[0.625rem] text-ink">
-                                      {badge > 99 ? '99+' : badge}
-                                    </span>
-                                  )}
-                                </span>
-                                <span className="text-xs font-medium leading-tight">{d.label}</span>
-                              </Link>
-                            )
-                          })}
+                          {items.map((page) => (
+                            <Tile
+                              key={page.to}
+                              page={page}
+                              active={is(page.to)}
+                              badge={page.badge ? counts[page.badge] : 0}
+                              onChoose={choose}
+                            />
+                          ))}
                         </div>
                       )}
                     </>
                   )}
-                </div>
-              </Fragment>
-            )
-          })}
+                </Fragment>
+              )
+            })
+          )}
           <div className="mt-3 gap-3 border-white/10 px-5 pt-4 flex items-center border-t">
             <Avatar name={user.name} color={user.color} size="md" />
             <div className="min-w-0 flex-1">
@@ -283,5 +290,45 @@ export function PhoneNav({
         </SheetContent>
       </Sheet>
     </>
+  )
+}
+
+/** The pages of a section: its sub-pages, or the section itself. */
+const pagesOf = (section: NavSection): NavLeaf[] =>
+  section.items ?? [{ to: section.to, code: section.code ?? '', label: section.label, icon: section.icon }]
+
+function Tile({
+  page,
+  active,
+  badge = 0,
+  onChoose,
+}: {
+  page: NavLeaf
+  active: boolean
+  badge?: number
+  onChoose: (to: string) => void
+}) {
+  const Icon = page.icon
+  return (
+    <Link
+      to={page.to}
+      onClick={() => onChoose(page.to)}
+      className="gap-2 rounded-2xl p-3 hover:bg-white/10 flex flex-col items-center text-center transition-colors"
+    >
+      <span
+        className={cn(
+          'size-11 rounded-2xl bg-white/10 [&_svg]:size-5 relative flex items-center justify-center',
+          active && 'text-white bg-accent shadow-glow',
+        )}
+      >
+        <Icon />
+        {badge > 0 && (
+          <span className="-right-1 -top-1 bg-white px-1 font-bold absolute flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full text-[0.625rem] text-ink">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </span>
+      <span className="text-xs font-medium leading-tight">{page.label}</span>
+    </Link>
   )
 }

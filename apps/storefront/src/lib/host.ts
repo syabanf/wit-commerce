@@ -27,6 +27,27 @@ const env = import.meta.env as ImportMetaEnv | undefined
 export const STORE_ROOT: string | null =
   (env?.VITE_STORE_ROOT_DOMAIN as string | undefined)?.trim() || (env?.DEV ? DEV_STORE_ROOT : null)
 
-/** The store this host serves, fixed at load. Null means path mode: /{store}/... under one host. */
-export const HOST_STORE: string | null =
+/**
+ * The host to look up as a brand's own domain, or null. Only a build served at the root (the store
+ * host build) runs on custom domains; the platform's own names, localhost and IP addresses never do.
+ */
+export function customDomainHost(hostname: string, root: string | null, base = '/'): string | null {
+  if (!root || base !== '/') return null
+  const host = hostname.toLowerCase().replace(/\.$/, '')
+  const own = root.toLowerCase().replace(/:\d+$/, '')
+  if (host === own || host.endsWith(`.${own}`)) return null
+  if (host === 'localhost' || host.endsWith('.localhost') || /^[\d.]+$/.test(host) || host.includes(':'))
+    return null
+  return host.includes('.') ? host : null
+}
+
+/**
+ * The store this host serves. Null means path mode: /{store}/... under one host. A store host sets it
+ * at load; main.tsx sets it for a custom domain before the routes load, so it never changes after.
+ */
+export let HOST_STORE: string | null =
   typeof window === 'undefined' ? null : resolveStore(window.location.hostname, STORE_ROOT)
+
+export const setHostStore = (store: string) => {
+  HOST_STORE = store
+}

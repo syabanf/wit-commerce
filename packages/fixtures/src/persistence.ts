@@ -40,6 +40,8 @@ export function loadLocalState(key: string): AppState {
         ...stored.state,
         // Saved before drafts existed.
         pageDrafts: stored.state.pageDrafts ?? [],
+        // Saved before returns existed.
+        returns: stored.state.returns ?? [],
         modifiers,
         modifierStock: needsSeed
           ? seed.modifierStock.filter((s) => activeOptions.has(s.optionId))

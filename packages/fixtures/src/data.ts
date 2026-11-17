@@ -92,6 +92,7 @@ const seed = {
   productDays: [],
   sellerBuyers: [],
   orders,
+  returns: [],
   segments,
   leads,
   tickets,

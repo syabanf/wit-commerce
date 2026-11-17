@@ -16,9 +16,11 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/seed"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
+	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 	"github.com/syabanf/wit-commerce/apps/api/internal/testdb"
 )
 
@@ -104,6 +106,8 @@ func TestServiceMatchesTheReducer(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := service.New(kernel.Runtime{DB: db, Clock: clock.New(clock.MustParse(clock.FixtureNow))})
+	// The reducer has no DNS to ask, so the golden domain check meets records that are right.
+	svc.Identity.Domains = identity.DomainConfig{StoreRoot: domain.DefaultStoreRoot, Resolver: goldenDNS{}}
 
 	for _, c := range golden.Cases {
 		t.Run(c.Name, func(t *testing.T) {
@@ -211,6 +215,19 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		}
 		parse(&a)
 		return s.SetDisplayCurrencies(ctx, m, a.TenantID, a.Currencies)
+	case "tenants/setDomain":
+		var a struct {
+			TenantID string
+			Domain   *string
+			Token    string
+		}
+		parse(&a)
+		return s.SetDomain(ctx, m, a.TenantID, a.Domain, a.Token)
+	case "tenants/verifyDomain":
+		var a struct{ TenantID string }
+		parse(&a)
+		_, d, err := s.VerifyDomain(ctx, m, a.TenantID)
+		return d, err
 	case "brand/toggleLock":
 		var a struct{ TenantID, Key string }
 		parse(&a)
@@ -449,6 +466,20 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		var a struct{ ID, Status string }
 		parse(&a)
 		return s.SetSellerStatus(ctx, m, a.ID, a.Status)
+	case "sellers/updateProfile":
+		var a struct {
+			ID string
+			service.SellerProfile
+		}
+		parse(&a)
+		return s.UpdateSellerProfile(ctx, m, a.ID, a.SellerProfile)
+	case "menus/save":
+		var a struct {
+			TenantID string
+			Menus    domain.StoreMenus
+		}
+		parse(&a)
+		return s.SaveMenus(ctx, m, a.TenantID, a.Menus)
 	case "integrations/toggle":
 		var a struct{ ID string }
 		parse(&a)
@@ -459,6 +490,69 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		return s.SyncIntegration(ctx, m, a.ID)
 	case "system/tick":
 		return s.Tick(ctx, m.At)
+	case "tenants/setShopSettings":
+		var a struct {
+			TenantID         string
+			ReturnWindowDays int
+			ShopperEmailsOff []string
+		}
+		parse(&a)
+		return s.SetShopSettings(ctx, m, a.TenantID, a.ReturnWindowDays, a.ShopperEmailsOff)
+	case "returns/request":
+		var a struct {
+			service.ReturnRequest
+			Who string
+		}
+		parse(&a)
+		// The reducer names the shopper in the action; the API knows them from their token.
+		if a.Who == "shopper" {
+			o, err := store.Get[domain.Order](ctx, s.DB.Pool, "orders", a.OrderID)
+			if err != nil {
+				return nil, err
+			}
+			m.P = auth.Principal{Kind: auth.KindCustomer, ID: o.CustomerID, TenantID: o.TenantID}
+		}
+		return s.RequestReturn(ctx, m, a.ReturnRequest)
+	case "returns/approve":
+		var a struct{ ID, Note string }
+		parse(&a)
+		return s.ApproveReturn(ctx, m, a.ID, a.Note)
+	case "returns/reject":
+		var a struct{ ID, Reason string }
+		parse(&a)
+		return s.RejectReturn(ctx, m, a.ID, a.Reason)
+	case "returns/cancel":
+		var a struct{ ID, Note string }
+		parse(&a)
+		return s.CancelReturn(ctx, m, a.ID, a.Note)
+	case "returns/receive":
+		var a struct {
+			ID      string
+			Restock bool
+		}
+		parse(&a)
+		return s.ReceiveReturn(ctx, m, a.ID, a.Restock)
+	case "returns/refund":
+		var a struct {
+			ID     string
+			Amount int
+			Note   string
+		}
+		parse(&a)
+		return s.RefundReturn(ctx, m, a.ID, a.Amount, a.Note)
 	}
 	return nil, fmt.Errorf("no service method for %s", head.Type)
 }
+
+// goldenDNS answers the golden domain check: the token the script set, and a CNAME to the store host.
+type goldenDNS struct{}
+
+func (goldenDNS) LookupTXT(context.Context, string) ([]string, error) {
+	return []string{"wit-verify-golden"}, nil
+}
+
+func (goldenDNS) LookupCNAME(context.Context, string) (string, error) {
+	return "teknika." + domain.DefaultStoreRoot + ".", nil
+}
+
+func (goldenDNS) LookupHost(context.Context, string) ([]string, error) { return nil, nil }

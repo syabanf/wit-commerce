@@ -51,7 +51,7 @@ export function GoLiveCard({ s }: { s: Scoped }) {
     // The server asks for a confirmed email before publishing only for stores made at sign-up.
     emailPending: emailPending && s.tenant.source === 'signup',
   })
-  const url = storefrontUrl(s.tenant.subdomain)
+  const url = storefrontUrl(s.tenant)
 
   if (live) {
     return (

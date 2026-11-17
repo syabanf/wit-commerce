@@ -5,6 +5,7 @@ package service
 
 import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/billing"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/catalog"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/crm"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
@@ -27,6 +28,7 @@ type Service struct {
 	*storefront.Storefront
 	*integrations.Integrations
 	*orders.Orders
+	*billing.Billing
 }
 
 // New builds the service and its modules on one runtime.
@@ -45,6 +47,7 @@ func New(rt kernel.Runtime) *Service {
 		Storefront:   &storefront.Storefront{Runtime: r},
 		Integrations: ints,
 		Orders:       &orders.Orders{Runtime: r, Payments: onlinePayments{rt: r, ints: ints}},
+		Billing:      &billing.Billing{Runtime: r},
 	}
 }
 

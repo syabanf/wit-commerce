@@ -150,6 +150,7 @@ export function QuickAddProduct({ onClose }: { onClose: () => void }) {
             <FormField label="Photo" htmlFor="quick-photo">
               <ImageUpload
                 id="quick-photo"
+                shape="square"
                 tenantId={s.tenantId}
                 label="Product photo"
                 value={imageUrl}

@@ -1,11 +1,12 @@
 import { type Permission, fmtIdr } from '@rc/fixtures'
-import { CAMPAIGN_STATUS_LABEL, LEAD_STAGE_LABEL, ORDER_STATUS_LABEL } from '@rc/types'
+import { CAMPAIGN_STATUS_LABEL, LEAD_STAGE_LABEL, ORDER_STATUS_LABEL, TICKET_STATUS_LABEL } from '@rc/types'
 import { Dialog, DialogContent, DialogTitle, cn, matchesQuery } from '@rc/ui'
 import {
   CheckCheck,
   CircleUser,
   Gem,
   Handshake,
+  Headset,
   History,
   Megaphone,
   Package,
@@ -22,7 +23,7 @@ import { usePersistentState } from '../lib/storage'
 import { type Scoped, useScoped } from '../state/scoped'
 import { useOrderQuery } from '../state/useOrderQuery'
 import { useCreateActions } from './CreateMenu'
-import { type BadgeKey, NAV, type NavSection, navFor } from './nav'
+import { type BadgeKey, EMPLOYEE_NAV, NAV, type NavSection, navFor } from './nav'
 import { useNavCounts } from './useNavCounts'
 
 interface Row {
@@ -95,7 +96,7 @@ const pageRows = (nav: NavSection[]): Row[] =>
   })
 
 /** Every page, for telling pages from records in the recent list. */
-const ALL_PAGES = pageRows(NAV)
+const ALL_PAGES = pageRows([...NAV, ...EMPLOYEE_NAV])
 
 function recordGroups(s: Scoped): Group[] {
   return [
@@ -171,6 +172,23 @@ function recordGroups(s: Scoped): Group[] {
   ]
 }
 
+/** The records of a person with the employee area only: the tickets assigned to them. */
+const ownRecordGroups = (s: Scoped): Group[] => [
+  {
+    title: 'My tickets',
+    rows: s.tickets
+      .filter((ticket) => ticket.assigneeId === s.user.id)
+      .map((ticket) => ({
+        key: ticket.id,
+        label: ticket.subject,
+        hint: TICKET_STATUS_LABEL[ticket.status],
+        code: ticket.code,
+        icon: <Headset />,
+        to: '/me/tasks',
+      })),
+  },
+]
+
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
@@ -223,18 +241,24 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
   const creates = useCreateActions()
   const { can, user } = useAuth()
   const navigate = useNavigate()
-  const pages = useMemo(() => pageRows(navFor(user?.role)), [user?.role])
+  const backOffice = useMemo(() => navFor(user?.role), [user?.role])
+  const pages = useMemo(() => pageRows([...backOffice, ...EMPLOYEE_NAV]), [backOffice])
+  // Without a back-office menu the search holds the employee pages and the person's own records.
+  const staffOnly = backOffice.length === 0
   const listId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
-  const records = useMemo(() => recordGroups(scoped), [scoped])
+  const records = useMemo(
+    () => (staffOnly ? ownRecordGroups(scoped) : recordGroups(scoped)),
+    [scoped, staffOnly],
+  )
   // With the API the state holds only open orders, so a search asks the server for every order.
   const typed = query.trim()
   const remote = useOrderQuery(
     { tenantId: scoped.tenantId, q: typed, pageSize: RECORD_LIMIT },
     scoped.orders,
-    !!typed,
+    !!typed && !staffOnly,
   )
   const remoteOrders = useMemo<Row[] | null>(
     () =>

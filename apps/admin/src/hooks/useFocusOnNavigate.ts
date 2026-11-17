@@ -4,11 +4,14 @@ import { useLocation } from 'react-router'
 
 /**
  * Moves focus to the main container or the first heading after a route change.
- * Improves keyboard/assistive‑technology navigation.
+ * Improves keyboard/assistive‑technology navigation. A navigation with `state.keepFocus` leaves
+ * focus where it is, as when the sidebar's area tabs change the page.
  */
 export function useFocusOnNavigate() {
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
+  const keepFocus = !!(state as { keepFocus?: boolean } | null)?.keepFocus
   useEffect(() => {
+    if (keepFocus) return
     const timer = setTimeout(() => {
       const main = document.getElementById('main')
       const heading = main?.querySelector<HTMLElement>('h1, h2')
@@ -17,5 +20,5 @@ export function useFocusOnNavigate() {
       ;(heading ?? main)?.focus({ preventScroll: true })
     }, 0)
     return () => clearTimeout(timer)
-  }, [pathname])
+  }, [pathname, keepFocus])
 }

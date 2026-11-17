@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -69,8 +70,12 @@ func RemoveOrders(ctx context.Context, q Querier, orderIDs []string) error {
 	return err
 }
 
-// Rebuild derives every row again. It is safe at any time, since the documents are the truth.
-func Rebuild(ctx context.Context, q Querier) error {
+// Rebuild derives every row again, with the sales window ending now. It is safe at any time, since
+// the documents are the truth.
+func Rebuild(ctx context.Context, q Querier) error { return RebuildAt(ctx, q, time.Now()) }
+
+// RebuildAt derives every row again, keeping daily sales facts from SalesCutoff(now) on.
+func RebuildAt(ctx context.Context, q Querier, now time.Time) error {
 	if _, err := q.Exec(ctx, `delete from order_rows`); err != nil {
 		return err
 	}
@@ -80,15 +85,16 @@ func Rebuild(ctx context.Context, q Querier) error {
 	if err := rebuildCustomerMetrics(ctx, q); err != nil {
 		return err
 	}
-	return rebuildSales(ctx, q)
+	return rebuildSales(ctx, q, SalesCutoff(now))
 }
 
 // EnsureBuilt rebuilds when a read model looks unbuilt next to its documents, as after a deploy
 // that adds a table to a database that already holds orders.
 func EnsureBuilt(ctx context.Context, q Querier) (bool, error) {
 	var orders, rows, metrics, sales int
+	// Months count as built sales facts too: a store whose orders are all old keeps none by the day.
 	if err := q.QueryRow(ctx, `select (select count(*) from orders), (select count(*) from order_rows),
-		(select count(*) from customer_metrics), (select count(*) from sales_days)`).Scan(&orders, &rows, &metrics, &sales); err != nil {
+		(select count(*) from customer_metrics), (select count(*) from sales_days) + (select count(*) from sales_months)`).Scan(&orders, &rows, &metrics, &sales); err != nil {
 		return false, err
 	}
 	var unfilled bool

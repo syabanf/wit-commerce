@@ -20,6 +20,7 @@ import {
   ExternalLink,
   History,
   LoaderCircle,
+  Menu,
   Monitor,
   Plus,
   Redo2,
@@ -36,6 +37,7 @@ import { LiveStorefront } from '../../components/LiveStorefront'
 import { StorefrontPreview } from '../../components/StorefrontPreview'
 import { storeAddress, storefrontUrl } from '../../lib/storefront'
 import { useScoped } from '../../state/scoped'
+import { MenusDialog } from './MenusDialog'
 import { NewPageDialog, createHomePage } from './NewPageDialog'
 import { PublishDialog } from './PublishDialog'
 import { QuickAddProduct } from './QuickAddProduct'
@@ -70,7 +72,7 @@ export function StoreEditorPage() {
           description="Editing the store needs store access. Ask the store owner to give it to you."
           action={
             <Button asChild variant="outline">
-              <a href={storefrontUrl(s.tenant.subdomain)} target="_blank" rel="noopener noreferrer">
+              <a href={storefrontUrl(s.tenant)} target="_blank" rel="noopener noreferrer">
                 <ExternalLink />
                 Open the store
               </a>
@@ -114,7 +116,9 @@ function Editor({
   )
   const [device, setDevice] = useState<Device>('desktop')
   const [tab, setTab] = useState<'sections' | 'edit'>('sections')
-  const [dialog, setDialog] = useState<'publish' | 'history' | 'page' | 'product' | 'discard' | null>(null)
+  const [dialog, setDialog] = useState<
+    'publish' | 'history' | 'page' | 'product' | 'discard' | 'menus' | null
+  >(null)
   const wide = useMediaQuery('(min-width: 1280px)')
   const [box, size] = useElementSize<HTMLDivElement>()
   const frame = useRef<{ openTab: () => void }>(null)
@@ -129,7 +133,7 @@ function Editor({
   // A live page has changes to publish once its draft exists or an edit is on its way there.
   const changes = !!pending || (page.status !== 'draft' && state !== 'saved')
   const isLive = page.status === 'published' && !changes
-  const liveUrl = storefrontUrl(s.tenant.subdomain, page.kind === 'home' ? '' : page.slug)
+  const liveUrl = storefrontUrl(s.tenant, page.kind === 'home' ? '' : page.slug)
 
   const discard = async () => {
     setDialog(null)
@@ -242,6 +246,10 @@ function Editor({
               <Redo2 />
             </Button>
           </Tooltip>
+          <Button variant="outline" size="sm" onClick={() => setDialog('menus')}>
+            <Menu />
+            Menus
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setDialog('history')}>
             <History />
             Version history
@@ -259,7 +267,9 @@ function Editor({
 
       <div className="gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px] grid grid-cols-1">
         {wide ? (
-          <Card className="min-w-0 p-3 xl:h-[calc(var(--admin-viewport-height)-11rem)] overflow-y-auto">{list}</Card>
+          <Card className="min-w-0 p-3 xl:h-[calc(var(--admin-viewport-height)-11rem)] overflow-y-auto">
+            {list}
+          </Card>
         ) : (
           <Card className="min-w-0 p-3">
             <PillTabs
@@ -311,7 +321,11 @@ function Editor({
           </div>
         </Card>
 
-        {wide && <Card className="min-w-0 p-4 xl:h-[calc(var(--admin-viewport-height)-11rem)] overflow-y-auto">{form}</Card>}
+        {wide && (
+          <Card className="min-w-0 p-4 xl:h-[calc(var(--admin-viewport-height)-11rem)] overflow-y-auto">
+            {form}
+          </Card>
+        )}
       </div>
 
       {dialog === 'publish' && (
@@ -337,6 +351,7 @@ function Editor({
         />
       )}
       {dialog === 'product' && <QuickAddProduct onClose={() => setDialog(null)} />}
+      {dialog === 'menus' && <MenusDialog onClose={() => setDialog(null)} />}
       <ConfirmDialog
         open={dialog === 'discard'}
         onOpenChange={(open) => !open && setDialog(null)}

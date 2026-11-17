@@ -19,6 +19,7 @@ const aiChatPath = prefix + "/shop/{store}/ai/chat"
 func NewAIHandler(o Options) http.Handler {
 	s := &Server{Options: o, aiClients: newKeyLimiter(aiRatePerClient), aiTotal: newKeyLimiter(aiRateTotal)}
 	s.svc = service.New(kernel.Runtime{DB: o.DB, Clock: o.Clock})
+	s.shareLimits()
 	s.assistant = aimodule.New(o.AI, s.svc.Catalog)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST "+aiChatPath, s.shopAIChat)

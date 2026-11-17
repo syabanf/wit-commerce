@@ -86,9 +86,13 @@ function renderSection(kind: SectionKind, ctx: Ctx): ReactNode {
     case 'hero':
       return (
         <div className="px-4 pb-5 pt-6 bg-(--sp-primary)/10 text-center">
-          <span className="size-14 text-base font-bold text-white mx-auto flex items-center justify-center rounded-full bg-(--sp-primary)">
-            {initials(seller.name)}
-          </span>
+          {seller.photoUrl ? (
+            <img src={seller.photoUrl} alt="" className="size-14 mx-auto rounded-full object-cover" />
+          ) : (
+            <span className="size-14 text-base font-bold text-white mx-auto flex items-center justify-center rounded-full bg-(--sp-primary)">
+              {initials(seller.name)}
+            </span>
+          )}
           <p className="mt-2 text-[11px] opacity-70">
             {seller.name} · {tenant.name}
           </p>

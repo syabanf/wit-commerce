@@ -35,9 +35,12 @@ import type {
   PromotionStatus,
   PromotionTrigger,
   RadiusScale,
+  ReturnReason,
+  ReturnStatus,
   Role,
   SectionKind,
   SectionRule,
+  ShopperEmailKind,
   SegmentField,
   SegmentOp,
   SellerKind,
@@ -98,6 +101,38 @@ export interface Tenant {
   source?: 'signup'
   /** ISO 4217 codes shoppers may see estimated prices in besides rupiah. Orders stay in rupiah. */
   displayCurrencies?: string[]
+  /** The value the brand puts in a TXT record at _wit-commerce.{domain} to prove the domain is theirs. */
+  domainToken?: string
+  /** When DNS proved the custom domain. Only a domain with this time is served and linked to. */
+  domainVerifiedAt?: IsoDate
+  /** When the API last re-checked a verified domain's DNS. */
+  domainCheckedAt?: IsoDate
+  /** Daily re-checks that failed in a row. At 3 the domain stops being served. */
+  domainCheckFailures?: number
+  /** The store's own header and footer links. Without it the theme shows its fixed links. */
+  menus?: StoreMenus
+  /** Days after delivery a shopper may ask for a return; 7 when unset, 0 takes no shopper requests. */
+  returnWindowDays?: number
+  /** Shopper emails the brand switched off; every other kind is sent. */
+  shopperEmailsOff?: ShopperEmailKind[]
+}
+
+/** Where a menu link goes: a store page, a category, a collection, the whole catalog, or a link. */
+export type MenuTarget =
+  | { kind: 'page' | 'category' | 'collection'; id: string }
+  | { kind: 'catalog' }
+  /** A full https link, or a store path that starts with "/". */
+  | { kind: 'url'; url: string }
+
+export interface MenuLink {
+  label: string
+  target: MenuTarget
+}
+
+/** A store's header and footer links, in the order shoppers see them. An empty list keeps the theme's own. */
+export interface StoreMenus {
+  header: MenuLink[]
+  footer: MenuLink[]
 }
 
 export interface User {
@@ -137,6 +172,8 @@ export interface Seller {
   commissionRate: number
   joinedAt: IsoDate
   color: string
+  /** The seller's uploaded photo; without it the storefront shows their initials. */
+  photoUrl?: string
 }
 
 // --- storefront ---
@@ -558,6 +595,47 @@ export interface Ticket {
   resolvedAt: IsoDate | null
 }
 
+// --- returns ---
+
+export interface ReturnItem {
+  productId: string
+  variantId: string
+  qty: number
+  reason: ReturnReason
+}
+
+export interface ReturnEvent {
+  id: string
+  at: IsoDate
+  by: string
+  status: ReturnStatus | null
+  note: string
+}
+
+/** A request to send bought items back for a refund (an RMA), with its own lifecycle. */
+export interface OrderReturn {
+  id: string
+  tenantId: string
+  code: string
+  orderId: string
+  customerId: string
+  items: ReturnItem[]
+  /** The main reason, shown in lists. */
+  reason: ReturnReason
+  note: string
+  status: ReturnStatus
+  /** Who asked for it. */
+  requestedBy: 'staff' | 'shopper'
+  /** What was refunded; 0 until the refund step. */
+  refundAmount: number
+  /** Whether the received units went back on the shelf. */
+  restock: boolean
+  /** Why staff rejected it. */
+  rejectReason?: string
+  events: ReturnEvent[]
+  createdAt: IsoDate
+}
+
 // --- growth ---
 
 export type Funnel = Record<FunnelStep, number>
@@ -761,5 +839,28 @@ export interface SellerBuyer {
   sellerId: string
   customerId: string
   day: string
+  orders: number
+}
+
+/**
+ * Read model: sales_days rolled up per WIB month for months older than the daily window. The console
+ * state never carries these; GET /views/sales-months serves them.
+ */
+export interface SalesMonth {
+  /** YYYY-MM in WIB. */
+  month: string
+  channel: Channel
+  sellerId: string | null
+  campaignId: string | null
+  orders: number
+  revenue: number
+}
+
+/** Read model: product_days rolled up per WIB month, served by GET /views/product-months. */
+export interface ProductMonth {
+  month: string
+  productId: string
+  units: number
+  revenue: number
   orders: number
 }

@@ -1,0 +1,20 @@
+# Any other host: a brand's own domain, served by the store build at the root. The storefront asks
+# /api/v1/shop/by-host which store the host is, and the API answers only for verified domains, so an
+# unknown host shows "No store at this address". TLS for these hosts comes from the proxy in front
+# (apps/api/cmd/README.md, Custom domains); the certificate mounted here covers the platform's names.
+server {
+  listen ${COMMERCE_LISTEN} default_server;
+  server_name _;
+  ${COMMERCE_TLS}
+  root /srv/web/store;
+
+  include /etc/nginx/conf.d/commerce/backend.inc;
+
+  location ^~ /assets/ {
+    include /etc/nginx/conf.d/commerce/immutable.inc;
+  }
+  location / {
+    include /etc/nginx/conf.d/commerce/no-cache.inc;
+    try_files $uri /index.html;
+  }
+}

@@ -5,6 +5,9 @@
 #   STORE_ROOT_DOMAIN  empty: one host, the storefront under /shop/. Set (shop.example.com): every
 #                      store on {store}.shop.example.com, and /shop/{store}/... redirects there.
 #   SPLIT_SERVICES     true: the AI chat and the storefront reads go to the ai and shop services.
+#   PUBLIC_URL         the console's address. With STORE_ROOT_DOMAIN also set, only its host (and
+#                      localhost) gets the admin, and every other host is a brand's own domain served by
+#                      the store build. Empty keeps the admin on every host that is not a store host.
 #   /etc/nginx/certs/fullchain.pem and privkey.pem, when mounted: HTTPS on 443, and 80 redirects.
 
 commerce_inc=/etc/nginx/conf.d/commerce
@@ -38,6 +41,26 @@ else
   COMMERCE_STORES=""
 fi
 
+# Custom domains: the main server answers its own host only, and a default server takes the rest.
+MAIN_HOST="${PUBLIC_URL#*://}"
+MAIN_HOST="${MAIN_HOST%%/*}"
+MAIN_HOST="${MAIN_HOST%%:*}"
+case "$MAIN_HOST" in
+  *[!a-z0-9.-]*)
+    echo "18-commerce.envsh: PUBLIC_URL='$PUBLIC_URL' does not hold a lower-case host" >&2
+    exit 1
+    ;;
+esac
+if [ -n "$STORE_ROOT_DOMAIN" ] && [ -n "$MAIN_HOST" ]; then
+  COMMERCE_MAIN_DEFAULT=""
+  COMMERCE_MAIN_NAMES="$MAIN_HOST localhost 127.0.0.1"
+  COMMERCE_DOMAINS="include $commerce_inc/domains.inc;"
+else
+  COMMERCE_MAIN_DEFAULT=" default_server"
+  COMMERCE_MAIN_NAMES="_"
+  COMMERCE_DOMAINS=""
+fi
+
 COMMERCE_SPLIT=""
 [ "$SPLIT_SERVICES" != true ] || COMMERCE_SPLIT="include $commerce_inc/split.inc;"
 
@@ -53,4 +76,4 @@ else
 fi
 
 export STORE_HOST STORE_SCHEME COMMERCE_SHOP COMMERCE_STORES COMMERCE_SPLIT \
-  COMMERCE_LISTEN COMMERCE_TLS COMMERCE_TLS_REDIRECT
+  COMMERCE_LISTEN COMMERCE_TLS COMMERCE_TLS_REDIRECT COMMERCE_MAIN_DEFAULT COMMERCE_MAIN_NAMES COMMERCE_DOMAINS

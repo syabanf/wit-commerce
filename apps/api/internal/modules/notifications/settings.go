@@ -212,12 +212,11 @@ func (n *Notifications) SendTest(ctx context.Context, to string) EmailTestResult
 	}
 	sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
-	err := r.client.Send(sendCtx, resend.Message{
-		To:      to,
-		Subject: "WIT Commerce test email",
-		Text:    "This test shows that WIT Commerce can send email from " + r.client.From + ".\n",
-		HTML:    "<p>This test shows that WIT Commerce can send email.</p>",
+	body, text := Render(PlatformBranding(n.PublicURL), Email{
+		Title: "WIT Commerce test email",
+		Intro: "This test shows that WIT Commerce can send email from " + r.client.From + ".",
 	})
+	err := r.client.Send(sendCtx, resend.Message{To: to, Subject: "WIT Commerce test email", Text: text, HTML: body})
 	if err == nil {
 		out.Ok = true
 		return out
