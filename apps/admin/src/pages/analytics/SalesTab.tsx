@@ -1,4 +1,4 @@
-import { fmtIdrShort, fmtNumber, fmtPercent, periodKpis, plural, sellerPerformance } from '@rc/fixtures'
+import { NO_BUYERS, fmtIdrShort, fmtNumber, fmtPercent, periodKpis, plural, sellerPerformance } from '@rc/fixtures'
 import { Avatar, BarList, Button, EmptyState, StatCard } from '@rc/ui'
 import { ArrowRight, BadgePercent, Store, UserRoundSearch, Wallet } from 'lucide-react'
 import { useMemo } from 'react'
@@ -21,7 +21,7 @@ export function SalesTab({ days, today }: { days: number; today: number }) {
       orders: sum('orders'),
       leads: sum('leads'),
       commission: sum('commission'),
-      storeRevenue: periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, today).revenue,
+      storeRevenue: periodKpis(s.facts.salesDays, NO_BUYERS, s.traffic, days, today).revenue,
     }
   }, [s.sellers, s.facts, s.traffic, s.leads, days, today])
 

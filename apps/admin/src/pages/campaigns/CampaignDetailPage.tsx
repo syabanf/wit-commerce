@@ -42,15 +42,17 @@ import {
   toast,
 } from '@rc/ui'
 import { Copy, MoreHorizontal, Pause, Pencil, Play, Rocket } from 'lucide-react'
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
 import { FilteredOrderTable } from '../../components/FilteredOrderTable'
 import { CustomerLink, OrderLink, paths } from '../../components/links'
+import { HTTP, api } from '../../lib/api'
 import { storefrontUrl } from '../../lib/storefront'
 import { useNow, useScoped } from '../../state/scoped'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { CampaignDialog } from './CampaignDialog'
 import { HeroMetric } from '../../components/HeroMetric'
 import { campaignSteps, clickToPurchase, emptyFunnel, fmtRoi, roi, ruleLines } from './lib'
@@ -66,15 +68,33 @@ export function CampaignDetailPage() {
   const [editing, setEditing] = useState(false)
   const campaign = s.campaigns.find((c) => c.id === id)
   const segmentId = campaign?.segmentId ?? null
-  // From the console's customer metrics, as the segments page counts: with the API the state holds
-  // neither every order nor the event history that audienceSize reads.
+  // From customer metrics, as the segments page counts: in the demo from every customer it holds,
+  // with the API from the summary and the campaign's audience, since the state holds few customers.
+  const summary = useCustomerSummary()
   const members = useMemo(() => {
     const segment = s.segments.find((seg) => seg.id === segmentId)
-    return segment ? segmentMembers(segment, s.customers, s.crm) : []
+    return segment && !HTTP ? segmentMembers(segment, s.customers, s.crm) : []
   }, [s.segments, s.customers, s.crm, segmentId])
-  const size = members.length
+  const size = HTTP ? (segmentId ? (summary?.segments[segmentId] ?? 0) : 0) : members.length
   // Marketing goes only to customers who agreed to it (UU PDP Pasal 20).
-  const reach = useMemo(() => marketingReach(members), [members])
+  const [audience, setAudience] = useState<{ reach: number; skipped: number } | null>(null)
+  const mayCount = can('campaign.manage')
+  useEffect(() => {
+    if (!HTTP || !id || !segmentId || !mayCount) return
+    let cancelled = false
+    api.privacy
+      .audience(id)
+      .then((a) => !cancelled && setAudience({ reach: a.reach, skipped: a.skipped }))
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [id, segmentId, mayCount, summary])
+  const reach = useMemo(() => {
+    if (HTTP) return segmentId ? audience : null
+    const local = marketingReach(members)
+    return { reach: local.reach.length, skipped: local.skipped }
+  }, [audience, members, segmentId])
 
   if (!campaign) {
     return (
@@ -347,10 +367,12 @@ export function CampaignDetailPage() {
                   {segment.name}
                 </Link>
                 <p className="mt-0.5 text-sm text-muted">{plural(size, 'customer')} today</p>
-                <p className="mt-0.5 text-sm text-muted">
-                  Reaches {fmtNumber(reach.reach.length)} with marketing consent
-                  {reach.skipped ? ` · skips ${fmtNumber(reach.skipped)} without` : ''}
-                </p>
+                {reach && (
+                  <p className="mt-0.5 text-sm text-muted">
+                    Reaches {fmtNumber(reach.reach)} with marketing consent
+                    {reach.skipped ? ` · skips ${fmtNumber(reach.skipped)} without` : ''}
+                  </p>
+                )}
                 <div className="mt-3 rounded-2xl px-3 py-2 text-sm bg-surface-2">
                   <p className="text-xs text-muted">Matches {segment.match === 'all' ? 'all' : 'any'} of:</p>
                   <ul className="mt-1 space-y-0.5">

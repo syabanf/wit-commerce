@@ -1,4 +1,13 @@
-import { fmtDate, newId, nowIso, plural, segmentMembers, segmentRemoveBlocker } from '@rc/fixtures'
+import {
+  fmtDate,
+  metricsFor,
+  metricsFromRows,
+  newId,
+  nowIso,
+  plural,
+  segmentMembers,
+  segmentRemoveBlocker,
+} from '@rc/fixtures'
 import type { Segment, SegmentRule } from '@rc/types'
 import {
   ActionMenu,
@@ -24,9 +33,11 @@ import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { CampaignStatusBadge } from '../../components/badges'
 import { paths } from '../../components/links'
+import { HTTP } from '../../lib/api'
 import { useScoped } from '../../state/scoped'
-import { customerCities } from '../customers/lib'
-import { PreviewCard } from './PreviewCard'
+import { useCustomerQuery } from '../../state/useCustomerQuery'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
+import { PREVIEW_SAMPLE, type Preview, PreviewCard } from './PreviewCard'
 import { RuleRow } from './RuleRow'
 import { defaultRule, ruleError, ruleSummary } from './lib'
 
@@ -74,11 +85,35 @@ function SegmentEditor({ segment }: { segment: Segment | null }) {
   const setRule = (index: number, rule: SegmentRule) =>
     set({ rules: draft.rules.map((r, i) => (i === index ? rule : r)) })
 
-  const cities = useMemo(() => customerCities(s.customers), [s.customers])
-  const members = useMemo(
-    () => segmentMembers({ rules: draft.rules, match: draft.match }, s.customers, s.crm),
-    [draft.rules, draft.match, s.customers, s.crm],
+  const summary = useCustomerSummary()
+  const cities = summary?.cities ?? []
+  // Who the draft rules match: counted here in the demo, by the server with the API.
+  const remote = useCustomerQuery(
+    { tenantId: s.tenantId, rules: JSON.stringify(draft.rules), match: draft.match, pageSize: PREVIEW_SAMPLE },
+    s.state.customers,
   )
+  const preview = useMemo<Preview | null>(() => {
+    if (HTTP) {
+      if (!remote.page) return null
+      const metrics = metricsFromRows(
+        remote.page.rows.flatMap((r) => (r.metrics ? [r.metrics] : [])),
+        s.products,
+      )
+      return {
+        members: remote.page.total,
+        byTier: remote.page.tierCounts,
+        sample: remote.page.rows.map((r) => ({ customer: r.customer, metrics: metricsFor(metrics, r.customer.id) })),
+      }
+    }
+    const members = segmentMembers({ rules: draft.rules, match: draft.match }, s.customers, s.crm)
+    const byTier: Preview['byTier'] = {}
+    for (const c of members) byTier[c.tier] = (byTier[c.tier] ?? 0) + 1
+    return {
+      members: members.length,
+      byTier,
+      sample: members.slice(0, PREVIEW_SAMPLE).map((c) => ({ customer: c, metrics: metricsFor(s.crm.metrics, c.id) })),
+    }
+  }, [remote.page, draft.rules, draft.match, s.customers, s.crm, s.products])
   const campaigns = segment ? s.campaigns.filter((c) => c.segmentId === segment.id) : []
   const removeBlock = segment ? segmentRemoveBlocker(segment, s.campaigns) : null
 
@@ -116,7 +151,7 @@ function SegmentEditor({ segment }: { segment: Segment | null }) {
     s.dispatch({ type: 'segments/save', segment: saved })
     toast(segment ? 'Segment saved' : 'Segment created', {
       tone: 'success',
-      description: `${name} · ${plural(members.length, 'customer')}`,
+      description: `${name} · ${plural(preview?.members ?? 0, 'customer')}`,
     })
     if (!segment) navigate(paths.segment(saved.id), { replace: true })
   }
@@ -339,7 +374,7 @@ function SegmentEditor({ segment }: { segment: Segment | null }) {
           )}
         </div>
         <div className="min-w-0">
-          <PreviewCard members={members} total={s.customers.length} />
+          <PreviewCard preview={preview} total={summary?.total ?? 0} />
         </div>
       </div>
 

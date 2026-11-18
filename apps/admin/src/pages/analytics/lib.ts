@@ -1,5 +1,4 @@
 import {
-  type CustomerMetrics,
   type ProductStats,
   DAY,
   change,
@@ -61,18 +60,6 @@ export function revenueByCategory(
     if (cat) map.set(cat, (map.get(cat) ?? 0) + d.revenue)
   }
   return [...map].sort((a, b) => b[1] - a[1])
-}
-
-/** Average net spend per customer who has bought at least once. */
-export function lifetimeValue(metrics: Map<string, CustomerMetrics>) {
-  let spend = 0
-  let buyers = 0
-  for (const m of metrics.values()) {
-    if (!m.orders) continue
-    spend += m.spend
-    buyers += 1
-  }
-  return { value: buyers ? spend / buyers : 0, buyers }
 }
 
 // Heat steps for retention cells, light to dark. White text only where ink text loses contrast.

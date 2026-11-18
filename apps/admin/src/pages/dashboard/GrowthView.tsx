@@ -1,4 +1,5 @@
 import {
+  NO_BUYERS,
   fmtAgo,
   fmtIdrShort,
   fmtNumber,
@@ -28,6 +29,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { paths } from '../../components/links'
 import type { Scoped } from '../../state/scoped'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { useCustomerEvents } from '../../state/useCustomerEvents'
 import { windowStart } from '../analytics/lib'
 
@@ -47,8 +49,10 @@ export function GrowthView({ s, now }: { s: Scoped; now: number }) {
     { excludeKind: 'registered', limit: 8 },
     now,
   )
+  const summary = useCustomerSummary()
   const data = useMemo(() => {
-    const month = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, 30, now)
+    const buyers = summary?.buyers ?? NO_BUYERS
+    const month = periodKpis(s.facts.salesDays, buyers, s.traffic, 30, now)
     // The last 30 WIB days, net of refunds, as the other figures count them.
     const first = dayKey(windowStart(30, now))
     const recent = s.facts.salesDays.filter((d) => d.day >= first)
@@ -70,7 +74,7 @@ export function GrowthView({ s, now }: { s: Scoped; now: number }) {
       .slice(0, 5)
     const stages = STAGES.map((st) => ({
       ...st,
-      count: s.customers.filter((c) => c.stage === st.stage).length,
+      count: summary?.byStage[st.stage] ?? 0,
     }))
     return {
       month,
@@ -80,9 +84,9 @@ export function GrowthView({ s, now }: { s: Scoped; now: number }) {
       sellers,
       stages,
       activity,
-      repeat: repeatRate(s.facts.customerMetrics),
+      repeat: repeatRate(buyers),
     }
-  }, [s, now, activity])
+  }, [s, now, activity, summary])
 
   const topRevenue = data.sellers[0]?.revenue ?? 0
 

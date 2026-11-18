@@ -1,6 +1,5 @@
 import type {
   Channel,
-  CustomerMetricsRow,
   Lead,
   Product,
   ProductDay,
@@ -10,6 +9,7 @@ import type {
   TrafficDay,
 } from '@rc/types'
 import { nowMs } from './clock'
+import { type BuyerFigures, buyersSince } from './customers'
 import { DAY, addMonths, dayKey, monthKey, startOfDay, startOfMonth, toMs } from './dates'
 import { fmtDateShort, fmtMonthShort } from './format'
 
@@ -54,7 +54,7 @@ const dayIn = (day: string, from: number, to: number) => day >= dayKey(from) && 
 /** Revenue, orders, AOV and conversion for the last `days` days, with the window before it. */
 export function periodKpis(
   sales: readonly SalesDay[],
-  customers: readonly CustomerMetricsRow[],
+  buyers: Pick<BuyerFigures, 'firstDays' | 'lastDays'>,
   traffic: readonly TrafficDay[],
   days: number,
   now = nowMs(),
@@ -78,14 +78,10 @@ export function periodKpis(
   const prev = sum(prevFrom, from)
   const visitors = visitorsIn(from, end)
   const prevVisitors = visitorsIn(prevFrom, from)
-  // A customer bought in the window when their last sold order falls in it; no order is later than today.
-  let buyers = 0
-  let newCustomers = 0
-  for (const c of customers) {
-    if (!c.orders || !c.lastAt || toMs(c.lastAt) < from) continue
-    buyers += 1
-    if (c.firstAt && toMs(c.firstAt) >= from) newCustomers += 1
-  }
+  // A customer bought in the window when their last sold order falls in it; no order is later than
+  // today. A new one's first order falls in it too.
+  const bought = buyersSince(buyers.lastDays, dayKey(from))
+  const newCustomers = buyersSince(buyers.firstDays, dayKey(from))
   return {
     revenue: cur.revenue,
     orders: cur.count,
@@ -93,7 +89,7 @@ export function periodKpis(
     visitors,
     conversion: visitors ? cur.count / visitors : 0,
     newCustomers,
-    returningCustomers: buyers - newCustomers,
+    returningCustomers: bought - newCustomers,
     prev: {
       revenue: prev.revenue,
       orders: prev.count,
@@ -115,26 +111,25 @@ export interface CohortRow {
 
 /** Monthly purchase cohorts: customers grouped by first-purchase month, with repeat rates after it. */
 export function cohorts(
-  customers: readonly CustomerMetricsRow[],
+  buyers: Pick<BuyerFigures, 'cohorts'>,
   months: number,
   horizon: number,
   now = nowMs(),
 ): CohortRow[] {
-  const buyers = customers.filter((c) => c.orders > 0 && c.firstAt)
   const current = startOfMonth(now)
   const rows: CohortRow[] = []
   for (let i = months - 1; i >= 0; i--) {
     const monthStart = addMonths(current, -i)
     const key = monthKey(monthStart)
-    const members = buyers.filter((c) => monthKey(toMs(c.firstAt!)) === key)
+    const cohort = buyers.cohorts[key]
+    const size = cohort?.size ?? 0
     const retention = Array.from({ length: horizon }, (_, k) => {
       const target = addMonths(monthStart, k + 1)
       if (target > current) return null
-      const tKey = monthKey(target)
-      if (!members.length) return 0
-      return members.filter((c) => c.buyMonths.includes(tKey)).length / members.length
+      if (!size) return 0
+      return (cohort?.bought[monthKey(target)] ?? 0) / size
     })
-    rows.push({ key, label: fmtMonthShort(monthStart), size: members.length, retention })
+    rows.push({ key, label: fmtMonthShort(monthStart), size, retention })
   }
   return rows
 }
@@ -302,8 +297,11 @@ export function cartAbandonment(traffic: readonly TrafficDay[], days: number, no
 }
 
 /** Repeat purchase rate: share of buyers with two or more sold orders. */
-export function repeatRate(customers: readonly CustomerMetricsRow[]): number {
-  const buyers = customers.filter((c) => c.orders > 0)
-  if (!buyers.length) return 0
-  return buyers.filter((c) => c.orders > 1).length / buyers.length
+export function repeatRate(buyers: Pick<BuyerFigures, 'buyers' | 'repeatBuyers'>): number {
+  return buyers.buyers ? buyers.repeatBuyers / buyers.buyers : 0
+}
+
+/** Average net spend per customer who has bought at least once. */
+export function lifetimeValue(buyers: Pick<BuyerFigures, 'buyers' | 'spend'>) {
+  return { value: buyers.buyers ? buyers.spend / buyers.buyers : 0, buyers: buyers.buyers }
 }

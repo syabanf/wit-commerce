@@ -18,7 +18,7 @@ func SegmentCounts(ctx context.Context, q Querier, tenantID string, segments []d
 	where := "c.tenant_id = $1"
 	if sellers != nil {
 		args = append(args, sellers)
-		where += fmt.Sprintf(" and c.data->>'sellerId' = any($%d)", len(args))
+		where += fmt.Sprintf(" and c.seller_id = any($%d)", len(args))
 	}
 	cols := []string{"count(*) filter (where " + rules.AbandonedSQL(2) + ")"}
 	for _, seg := range segments {

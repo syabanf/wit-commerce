@@ -109,7 +109,7 @@ export function OrderDetailPage() {
     )
   }
 
-  const customer = s.maps.customer.get(order.customerId)
+  const customer = s.customer(order.customerId)
   const metrics = metricsFor(s.crm.metrics, order.customerId)
   const next = nextOrderStatus(order)
   const advanceBlock = orderAdvanceBlocker(order, s.stock, s.modifierStock, s.modifiers, s.products)

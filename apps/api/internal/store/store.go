@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -83,7 +84,9 @@ func Open(ctx context.Context, url string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("database url: %w", err)
 	}
-	cfg.MaxConns = 16
+	if err := poolFromEnv(cfg, os.Getenv); err != nil {
+		return nil, err
+	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, err

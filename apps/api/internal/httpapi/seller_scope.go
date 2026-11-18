@@ -21,7 +21,7 @@ func (s *Server) ownSellers(ctx context.Context, p auth.Principal) ([]string, er
 	if p.Kind != auth.KindUser || p.Role != "sales" {
 		return nil, nil
 	}
-	rows, err := s.DB.Pool.Query(ctx, `select id from sellers where data->>'userId' = $1 order by id`, p.ID)
+	rows, err := s.DB.Pool.Query(ctx, `select id from sellers where user_id = $1 order by id`, p.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (s *Server) ownSellers(ctx context.Context, p auth.Principal) ([]string, er
 }
 
 // ownCustomers matches customer_id against the customers assigned to the sellers in parameter $n.
-const ownCustomers = `customer_id in (select id from customers where data->>'sellerId' = any($%[1]d))`
+const ownCustomers = `customer_id in (select id from customers where seller_id = any($%[1]d))`
 
 // ownOrders matches an orders or order_rows row sold by, or bought by a customer of, the sellers in $n.
 const ownOrders = `(data->>'sellerId' = any($%[1]d) or ` + ownCustomers + `)`
@@ -49,7 +49,7 @@ type sellerStream struct {
 }
 
 func (s *Server) sellerStreamScope(ctx context.Context, tenantIDs, sellers []string) (events.Scope, error) {
-	rows, err := s.DB.Pool.Query(ctx, `select id from customers where data->>'sellerId' = any($1)`, sellers)
+	rows, err := s.DB.Pool.Query(ctx, `select id from customers where seller_id = any($1)`, sellers)
 	if err != nil {
 		return events.Scope{}, err
 	}

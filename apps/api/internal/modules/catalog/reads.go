@@ -21,14 +21,23 @@ func ModifierGroup(t *kernel.Tx, id string) (domain.ModifierGroup, error) {
 	return store.Get[domain.ModifierGroup](t.Ctx, t.Tx, "modifiers", id)
 }
 
-// TenantProducts lists a tenant's products.
-func TenantProducts(t *kernel.Tx, tenantID string) ([]domain.Product, error) {
-	return kernel.TenantRows[domain.Product](t, "products", tenantID)
+// ProductsWithVariants lists the tenant's products that own any of the variants, in id order.
+func ProductsWithVariants(t *kernel.Tx, tenantID string, variantIDs []string) ([]domain.Product, error) {
+	if len(variantIDs) == 0 {
+		return nil, nil
+	}
+	return store.List[domain.Product](t.Ctx, t.Tx, "products", `tenant_id = $1 and exists (
+		select 1 from jsonb_array_elements(data->'variants') v where v->>'id' = any($2))`, tenantID, variantIDs)
 }
 
-// TenantModifierGroups lists a tenant's modifier groups.
-func TenantModifierGroups(t *kernel.Tx, tenantID string) ([]domain.ModifierGroup, error) {
-	return kernel.TenantRows[domain.ModifierGroup](t, "modifiers", tenantID)
+// ModifierGroupsWithOptions lists the tenant's modifier groups that hold any of the options, in id
+// order.
+func ModifierGroupsWithOptions(t *kernel.Tx, tenantID string, optionIDs []string) ([]domain.ModifierGroup, error) {
+	if len(optionIDs) == 0 {
+		return nil, nil
+	}
+	return store.List[domain.ModifierGroup](t.Ctx, t.Tx, "modifiers", `tenant_id = $1 and exists (
+		select 1 from jsonb_array_elements(data->'options') x where x->>'id' = any($2))`, tenantID, optionIDs)
 }
 
 // Products lists a tenant's products.

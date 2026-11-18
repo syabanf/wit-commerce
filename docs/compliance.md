@@ -146,8 +146,8 @@ Brands are the controllers of their shoppers' data; WIT Commerce processes it fo
   Indonesia. PP 80 Pasal 59(2)(h) and UU PDP Pasal 56 allow transfers only with equal protection.
   Choosing providers or regions is an operator decision; the code does not change it.
 - Sign data processing agreements with Resend, Midtrans and the AI provider.
-- Delete data when the retention periods end. Nothing prunes orders, events or erased customers after 10
-  and 5 years yet.
+- Delete data when the retention periods end. The hourly retention job prunes logs (see Performance and
+  retention below); nothing prunes orders, customer events or erased customers after 10 and 5 years yet.
 - Pasal 25 asks to keep customer data ("pelanggan") 5 years, while Pasal 59(3)-(4) and UU PDP give the
   right to erasure. The code keeps the pseudonymous customer row (code, points, dates) and erases the
   identifying fields. Confirm this reading with counsel.
@@ -192,3 +192,32 @@ refusals some `@rc/fixtures` rules return reach the shopper in English unless th
 them (`codeErrorText`, `returnBlockerText`, `complaintBlockerText`). Brands that sell to Indonesian
 consumers should write their product content in Indonesian too. The admin console and the seller
 PWA stay in English.
+
+## Performance and retention
+
+### PP 80/2019 Pasal 25: keep transaction data 10 years, other PMSE data 5 years
+
+The API's tick runs `service.PruneIfDue` once an hour (any API process, coordinated through the `meta`
+row `retention_pruned_at`). It deletes in batches of 5,000 rows, at most 20 batches per table per run,
+so a backlog clears over several runs without long locks. Every period can be changed by environment
+variable (`apps/api/cmd/README.md`); 0 keeps that log forever.
+
+| Table | Kept | Rule and reason |
+| --- | --- | --- |
+| `stock_moves` | 10 years (`RETAIN_STOCK_MOVES_YEARS`, floor 10) | Transaction data: each move records what an order, a return or a stock count did to stock. |
+| `integration_logs` | 5 years (`RETAIN_INTEGRATION_LOGS_YEARS`, floor 5) | Other PMSE data: a record of connector calls and their results. The transaction itself lives in orders and payments, which are never pruned. |
+| `traffic` | 5 years (`RETAIN_TRAFFIC_YEARS`, floor 5) | Other PMSE data: daily visit and conversion counts per store, with no personal data. |
+| `request_log` | 30 days (`RETAIN_REQUEST_LOG_DAYS`) | Operational: method, path, status, timing and the staff or key id, for debugging and the API key console (which reads the last 24 hours). |
+| `webhook_deliveries` | 30 days after creation, once delivered or failed (`RETAIN_WEBHOOK_DELIVERIES_DAYS`) | Operational queue. Pending deliveries are never pruned. A failed delivery can be retried from the console until it goes. |
+| `email_outbox` | 30 days, once sent or given up (`RETAIN_EMAIL_OUTBOX_DAYS`) | Operational queue. Sent rows already have no body; pruning also removes the recipient address, which UU PDP asks to keep no longer than its purpose needs. |
+| `event_log`, `rate_limits`, `assistant_log` | 10 minutes, the window's end, 90 days | Pruned as before by their own writers and the tick. |
+
+A value below a legal floor is raised to the floor and logged at start. The job never deletes from
+`orders`, `payments`, `payment_refunds`, `returns`, `invoices` or `customers`.
+
+### What the operator still has to do
+
+- Confirm with counsel that integration logs and traffic count as other PMSE data (5 years) and not
+  transaction data. If counsel says 10, set `RETAIN_INTEGRATION_LOGS_YEARS=10` and `RETAIN_TRAFFIC_YEARS=10`.
+- Backups keep pruned rows until the backups themselves expire. Set backup retention to match.
+

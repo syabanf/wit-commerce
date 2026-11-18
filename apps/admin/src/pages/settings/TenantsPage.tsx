@@ -2,11 +2,11 @@ import { DAY, dayKey, fmtIdrShort, fmtNumber, isSold, nowMs, startOfDay, toMs } 
 import { INDUSTRY_LABEL, TENANT_PLAN_LABEL, type Tenant } from '@rc/types'
 import { Badge, Button, Card, EmptyState, PageHeader, ProgressBar, StatCard, toast } from '@rc/ui'
 import { Building2, Globe, Plus, Rocket, Wallet } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { paths } from '../../components/links'
-import { HTTP } from '../../lib/api'
+import { HTTP, api } from '../../lib/api'
 import { useStore } from '../../state/store'
 import { storeAddress } from '../../lib/storefront'
 import { ONBOARDING_STEPS } from './lib'
@@ -22,6 +22,19 @@ export function TenantsPage() {
   const navigate = useNavigate()
   const admin = can('tenant.manage')
   const tenants = admin ? state.tenants : ownTenants
+
+  const [customerCounts, setCustomerCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!HTTP) return
+    let cancelled = false
+    api.views
+      .customerCounts()
+      .then(({ counts }) => !cancelled && setCustomerCounts(counts))
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [state.tenants])
 
   const stats = useMemo(() => {
     const from = startOfDay(nowMs()) + DAY - 30 * DAY
@@ -42,12 +55,20 @@ export function TenantsPage() {
         if (row) row.revenue += o.total - o.refundedAmount
       }
     }
-    for (const c of state.customers) {
-      const row = map.get(c.tenantId)
-      if (row) row.customers += 1
+    // The API's state holds few customers, so it counts them on the server.
+    if (HTTP) {
+      for (const [id, n] of Object.entries(customerCounts)) {
+        const row = map.get(id)
+        if (row) row.customers = n
+      }
+    } else {
+      for (const c of state.customers) {
+        const row = map.get(c.tenantId)
+        if (row) row.customers += 1
+      }
     }
     return map
-  }, [state.tenants, state.orders, state.salesDays, state.customers])
+  }, [state.tenants, state.orders, state.salesDays, state.customers, customerCounts])
 
   const setupSteps = (t: Tenant) => {
     const done = new Set(t.onboarding)

@@ -1,3 +1,4 @@
+import type { Customer } from '@rc/types'
 import { Avatar, cn } from '@rc/ui'
 import { Link } from 'react-router'
 import { HTTP } from '../lib/api'
@@ -26,18 +27,24 @@ export const paths = {
 
 const stop = (e: { stopPropagation: () => void }) => e.stopPropagation()
 
-/** Avatar, name and code of a customer, linking to their Customer 360. */
+/**
+ * Avatar, name and code of a customer, linking to their Customer 360. Pass `customer` when the caller
+ * read the record already; otherwise the state's copy shows, read from the server when it lacks one.
+ */
 export function CustomerLink({
   customerId,
+  customer,
   className,
   showAvatar = true,
 }: {
   customerId: string
+  customer?: Customer
   className?: string
   showAvatar?: boolean
 }) {
-  const { maps } = useScoped()
-  const c = maps.customer.get(customerId)
+  const s = useScoped()
+  const c = customer ?? s.customer(customerId)
+  if (!c && s.customerPending(customerId)) return <span className="text-xs text-muted">…</span>
   if (!c) return <span className="text-muted">Removed customer</span>
   return (
     <Link

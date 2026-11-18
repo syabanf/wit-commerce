@@ -25,13 +25,17 @@ func SalesCutoff(now time.Time) string {
 // wibMonth is an order's WIB calendar month.
 const wibMonth = `to_char((o.data->>'createdAt')::timestamptz at time zone 'Asia/Jakarta', 'YYYY-MM')`
 
-// soldInMonths selects the sold orders of the given tenant months.
+// soldInMonths selects the sold orders of the given tenant months. Like soldIn, the index range
+// reaches a day past each end of the month for the offsets createdAt may carry.
 const soldInMonths = `with keys as (select * from unnest($1::text[], $2::text[]) k(tenant_id, month)),
 sold as (
-	select o.id, o.tenant_id, ` + wibMonth + ` as month, o.data->>'channel' channel, o.data->>'sellerId' seller_id,
+	select o.id, o.tenant_id, k.month, o.data->>'channel' channel, o.data->>'sellerId' seller_id,
 		o.data->>'campaignId' campaign_id, o.data->'lines' lines,
 		(o.data->>'total')::bigint - coalesce((o.data->>'refundedAmount')::bigint, 0) net
-	from orders o join keys k on k.tenant_id = o.tenant_id and k.month = ` + wibMonth + `
+	from keys k join orders o on o.tenant_id = k.tenant_id
+		and o.created_at >= to_char((k.month || '-01')::date - 1, 'YYYY-MM-DD')
+		and o.created_at < to_char(((k.month || '-01')::date + interval '1 month')::date + 1, 'YYYY-MM-DD')
+		and k.month = ` + wibMonth + `
 	where o.status in ` + soldStatuses + `
 ) `
 
@@ -86,6 +90,9 @@ func RollUpSales(ctx context.Context, q Querier, cutoff string, limit int) (int,
 
 // rollUpMonths derives the given tenant months again from the orders and drops their daily rows.
 func rollUpMonths(ctx context.Context, q Querier, tenants, months []string) error {
+	if err := lockKeys(ctx, q, pairKeys("salesMonth", tenants, months)); err != nil {
+		return err
+	}
 	keys := `(tenant_id, month) in (select * from unnest($1::text[], $2::text[]))`
 	for _, m := range monthTables {
 		if _, err := q.Exec(ctx, `delete from `+m.table+` where `+keys, tenants, months); err != nil {

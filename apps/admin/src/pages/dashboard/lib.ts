@@ -14,8 +14,8 @@ export interface Queue {
   urgent: boolean
 }
 
-/** Work queues for the attention card, biggest first, empty ones left out. */
-export function attentionQueues(s: Scoped, now: number): Queue[] {
+/** Work queues for the attention card, biggest first, empty ones left out. abandoned counts carts. */
+export function attentionQueues(s: Scoped, now: number, abandoned: number): Queue[] {
   const lowStock = s.products.filter((p) => {
     const sum = s.stockByProduct.get(p.id)
     if (p.status !== 'active' || !sum) return false
@@ -77,7 +77,7 @@ export function attentionQueues(s: Scoped, now: number): Queue[] {
     {
       key: 'carts',
       label: 'Abandoned carts',
-      count: s.crm.abandoned.size,
+      count: abandoned,
       to: '/customers/segments',
       urgent: false,
     },

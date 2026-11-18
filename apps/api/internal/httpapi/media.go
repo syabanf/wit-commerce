@@ -75,7 +75,7 @@ func (s *Server) mayUpload(r *http.Request, tenantID string) (bool, error) {
 		return false, nil
 	}
 	var own bool
-	err := s.DB.Pool.QueryRow(r.Context(), `select exists (select 1 from sellers where data->>'userId' = $1 and tenant_id = $2)`, p.ID, tenantID).Scan(&own)
+	err := s.DB.Pool.QueryRow(r.Context(), `select exists (select 1 from sellers where user_id = $1 and tenant_id = $2)`, p.ID, tenantID).Scan(&own)
 	return own, err
 }
 

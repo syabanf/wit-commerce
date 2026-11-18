@@ -1,5 +1,5 @@
-import type { User } from '@rc/types'
-import { ApiError, applyDelta, emptyState, mergeState, type Delta } from '@rc/api'
+import type { Customer, CustomerMetricsRow, User } from '@rc/types'
+import { ApiError, applyDelta, emptyState, mergeState, type CustomerRow, type Delta } from '@rc/api'
 import {
   type AppState,
   type Envelope,
@@ -19,6 +19,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
@@ -33,6 +34,15 @@ interface StoreValue {
   ready: boolean
   /** API mode: lays a staff row the server answered with over the state. */
   mergeUser: (user: User) => void
+  /** API mode: lays rows read from a view over the state, as a delta's upserts. */
+  mergeRows: (rows: Delta['upserts']) => void
+  /**
+   * API mode: reads customers the state does not hold yet, with their metrics, and adds them. Calls
+   * in the same tick share one read; an id asked for once is not asked again. A no-op in the demo.
+   */
+  wantCustomers: (tenantId: string, ids: readonly string[]) => void
+  /** API mode: ids a read found no customer for. */
+  missingCustomers: ReadonlySet<string>
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -73,6 +83,9 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
       storageError,
       ready: true,
       mergeUser: () => undefined,
+      mergeRows: () => undefined,
+      wantCustomers: () => undefined,
+      missingCustomers: NONE,
     }),
     [state, storageError],
   )
@@ -87,6 +100,11 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const token = useSyncExternalStore(tokenStore.subscribe, tokenStore.get, tokenStore.get)
   const [state, setState] = useState<AppState>(emptyState)
   const [ready, setReady] = useState(!token)
+  const [missingCustomers, setMissing] = useState<ReadonlySet<string>>(NONE)
+  // Customers come one read at a time: the ids asked for, queued per brand until the tick ends.
+  const asked = useRef(new Set<string>())
+  const queued = useRef(new Map<string, Set<string>>())
+  const timer = useRef(0)
 
   useEffect(() => {
     if (!token) {
@@ -96,6 +114,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false
     setReady(false)
+    setMissing(NONE)
     api
       .state()
       .then(({ state: loaded, now }) => {
@@ -114,14 +133,68 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
           })
       })
     const close = api.subscribe(
-      (delta) => setState((s) => applyDelta(s, delta)),
+      (delta) => setState((s) => applyDelta(s, heldOnly(s, delta))),
       (now) => syncClock(now),
     )
+    const askedIds = asked.current
     return () => {
       cancelled = true
       close()
+      askedIds.clear()
     }
   }, [token])
+
+  const wantCustomers = useCallback((tenantId: string, ids: readonly string[]) => {
+    let set = queued.current.get(tenantId)
+    for (const id of ids) {
+      if (!id || asked.current.has(id)) continue
+      asked.current.add(id)
+      if (!set) queued.current.set(tenantId, (set = new Set()))
+      set.add(id)
+    }
+    if (!set || timer.current) return
+    timer.current = window.setTimeout(() => {
+      timer.current = 0
+      for (const [tenant, pending] of queued.current) {
+        const all = [...pending]
+        for (let i = 0; i < all.length; i += CUSTOMER_BATCH) {
+          const chunk = all.slice(i, i + CUSTOMER_BATCH)
+          api.views
+            .customers({ tenantId: tenant, ids: chunk.join(','), pageSize: CUSTOMER_BATCH })
+            .then((page) => {
+              setState((s) => applyDelta(s, customerRows(page.rows)))
+              const found = new Set(page.rows.map((r) => r.customer.id))
+              const absent = chunk.filter((id) => !found.has(id))
+              if (absent.length) setMissing((m) => new Set([...m, ...absent]))
+            })
+            // Forget the ask so the next screen that needs the customer tries again.
+            .catch(() => chunk.forEach((id) => asked.current.delete(id)))
+        }
+      }
+      queued.current.clear()
+    }, 0)
+  }, [])
+
+  // The open work in the state names customers: their names and records load right after it.
+  useEffect(() => {
+    if (!ready) return
+    const held = new Set(state.customers.map((c) => c.id))
+    const missing = new Map<string, string[]>()
+    const need = (tenantId: string, id: string | null | undefined) => {
+      if (!id || held.has(id) || asked.current.has(id)) return
+      missing.set(tenantId, [...(missing.get(tenantId) ?? []), id])
+    }
+    for (const o of state.orders) need(o.tenantId, o.customerId)
+    for (const r of state.returns) need(r.tenantId, r.customerId)
+    for (const t of state.tickets) need(t.tenantId, t.customerId)
+    for (const l of state.leads) need(l.tenantId, l.customerId)
+    for (const [tenantId, ids] of missing) wantCustomers(tenantId, ids)
+  }, [ready, state.customers, state.orders, state.returns, state.tickets, state.leads, wantCustomers])
+
+  const mergeRows = useCallback(
+    (rows: Delta['upserts']) => setState((s) => applyDelta(s, { upserts: rows, removes: {} } as Delta)),
+    [],
+  )
 
   const send = useCallback<Dispatch<Envelope>>(({ action }) => {
     if (action.type === 'system/tick') return
@@ -145,10 +218,57 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
     [],
   )
   const value = useMemo(
-    () => ({ state, send, commit, storageError: false, ready, mergeUser }),
-    [state, send, commit, ready, mergeUser],
+    () => ({
+      state,
+      send,
+      commit,
+      storageError: false,
+      ready,
+      mergeUser,
+      mergeRows,
+      wantCustomers,
+      missingCustomers,
+    }),
+    [state, send, commit, ready, mergeUser, mergeRows, wantCustomers, missingCustomers],
   )
   return <StoreContext value={value}>{children}</StoreContext>
+}
+
+const NONE: ReadonlySet<string> = new Set()
+
+/**
+ * Most customer ids one read asks for. The server takes 500, but the ids travel in the URL, and
+ * nginx refuses a request line over 8 KB by default.
+ */
+const CUSTOMER_BATCH = 200
+
+/** Customer rows read from GET /views/customers, as a delta that adds them and their metrics. */
+export function customerRows(rows: readonly CustomerRow[]): Delta {
+  return {
+    upserts: {
+      customers: rows.map((r) => r.customer),
+      customerMetrics: rows.flatMap((r) => (r.metrics ? [r.metrics] : [])),
+    },
+    removes: {},
+  } as Delta
+}
+
+/**
+ * The state holds some customers, not every one, so the stream only refreshes those it holds and
+ * their metrics. A customer it does not hold loads when a screen or an open order needs them.
+ */
+function heldOnly(state: AppState, delta: Delta): Delta {
+  const { customers, customerMetrics } = delta.upserts ?? {}
+  if (!customers?.length && !customerMetrics?.length) return delta
+  const held = new Set(state.customers.map((c) => c.id))
+  return {
+    ...delta,
+    upserts: {
+      ...delta.upserts,
+      customers: customers?.filter((c) => held.has((c as Customer).id)) ?? [],
+      customerMetrics: customerMetrics?.filter((m) => held.has((m as CustomerMetricsRow).customerId)) ?? [],
+    },
+  }
 }
 
 export function useStore() {

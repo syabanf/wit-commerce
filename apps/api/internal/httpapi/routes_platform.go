@@ -33,6 +33,13 @@ func (s *Server) platformRoutes(rt *router) {
 	rt.add("GET", "/ai/assistant/log", "", "", "A brand's assistant questions and outcomes, newest first (tenant admin)", s.user("", s.assistantLog))
 	rt.add("GET", "/ai/assistant/totals", "", "", "Assistant use per brand over 30 days (platform admin)", s.user("", s.assistantTotals))
 	rt.add("GET", "/views/customer-events", "", "", "Customer history, newest first: one customer, one kind, or the latest", s.reader("customers:read", s.customerEvents))
+	rt.add("GET", "/views/customers", "", "", "Customers with their metrics: filtered, searched, sorted and paged on the server", s.reader("customers:read", s.customerRows))
+	rt.add("GET", "/views/customer-summary", "", "", "Figures over every customer of a brand: tiers, stages, segment sizes, buyers and cohorts", s.reader("customers:read", s.customerSummary))
+	rt.add("GET", "/views/customer-counts", "", "", "How many customers each brand the user may open holds", s.reader("", s.customerCounts))
+	for _, path := range []string{"stock-moves", "modifier-stock-moves", "integration-logs"} {
+		h := historyCollections[path]
+		rt.add("GET", "/views/"+path, "", "", "Older rows of a log the state carries only the newest of, newest first", s.reader(h.scope, s.history(h.collection)))
+	}
 }
 
 // sessionRoutes registers the demo accounts, the user's dataset, its event stream and the timed jobs.

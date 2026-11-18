@@ -52,14 +52,24 @@ func (s *Server) tick(w http.ResponseWriter, r *http.Request) {
 	s.act(w, r, func(m service.Meta) (*service.Delta, error) { return s.svc.Tick(r.Context(), m.At) })
 }
 
-// housekeeping runs the timed jobs that write no collection: this month's invoices and the ended
-// rate limit windows. A failure is logged and tried again on the next tick.
+// housekeeping runs the timed jobs that write no collection: this month's invoices, the ended
+// rate limit windows and, once an hour, the logs past their retention. A failure is logged and
+// tried again on the next tick.
 func (s *Server) housekeeping(ctx context.Context) {
 	if _, err := s.svc.IssueInvoices(ctx, s.Clock.NowIso()); err != nil {
 		s.Log.Error("invoices not issued", "err", err)
 	}
 	if err := antispam.Prune(ctx, s.DB.Pool); err != nil {
 		s.Log.Error("rate limit windows not pruned", "err", err)
+	}
+	retention := service.DefaultRetention()
+	if s.Retention != nil {
+		retention = *s.Retention
+	}
+	if deleted, err := s.svc.PruneIfDue(ctx, s.Clock.Now(), retention); err != nil {
+		s.Log.Error("logs not pruned", "err", err)
+	} else if len(deleted) > 0 {
+		s.Log.Info("logs pruned", "deleted", deleted)
 	}
 }
 
@@ -131,7 +141,12 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !known {
 		hash = decoyHash()
 	}
-	if !auth.CheckPassword(hash, in.Password) || !known {
+	ok, err := s.passwords.Check(r.Context(), hash, in.Password)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	if !ok || !known {
 		// A constant answer for unknown emails and wrong passwords.
 		writeProblem(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "That email and password do not match.")
 		return
@@ -292,8 +307,24 @@ func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, col
 			if err == nil {
 				err = withShipmentsOnly(rows)
 			}
+		case "customers":
+			// Customer records load as screens need them (GET /views/customers). A sales user keeps the
+			// customers assigned to them, which the seller app lists.
+			if sellers != nil {
+				rows, err = store.Raw(ctx, s.DB.Pool, c, fmt.Sprintf("%s and seller_id = any($%d)", tenantWhere, len(tenantArgs)+1),
+					append(slices.Clone(tenantArgs), sellers)...)
+			}
 		case readmodel.CustomerMetricsCollection:
-			rows, err = readmodel.CustomerMetricsRows(ctx, s.DB.Pool, where, args...)
+			// As with customers: the views carry the metrics, and a sales user keeps their customers' own.
+			if sellers != nil {
+				rows, err = readmodel.CustomerMetricsRows(ctx, s.DB.Pool, where, args...)
+			}
+		case "traffic":
+			window := append(slices.Clone(args), trafficCutoff(s.Clock.Now()))
+			rows, err = store.Raw(ctx, s.DB.Pool, c, fmt.Sprintf("%s and day >= $%d", where, len(window)), window...)
+		case "stockMoves", "modifierStockMoves", "integrationLogs":
+			// The newest rows of each brand; GET /views/stock-moves and the like page through the rest.
+			rows, err = newestRows(ctx, s.DB.Pool, c, tenantIDs, "", "", historyInState)
 		case readmodel.SalesDaysCollection, readmodel.ProductDaysCollection, readmodel.SellerBuyersCollection:
 			// Only the daily window the console reads; older months are at GET /views/sales-months.
 			window := append(slices.Clone(args), readmodel.SalesCutoff(s.Clock.Now()))
@@ -323,8 +354,9 @@ func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, col
 }
 
 // stateCollections is what a signed-in console loads at once. Customer history is left out: screens
-// read it through GET /views/customer-events, a page at a time. Customer metrics come from their read
-// model in its place, so segment rules and customer lists need neither the history nor every order.
+// read it through GET /views/customer-events, a page at a time. Customers and their metrics come
+// empty, except a sales user's own: lists and records read GET /views/customers, and figures over
+// every customer GET /views/customer-summary.
 var stateCollections = append(slices.DeleteFunc(slices.Clone(store.Collections), func(c string) bool { return c == "customerEvents" }),
 	readmodel.Collections...)
 
@@ -529,7 +561,7 @@ func (s *Server) shopState(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"state": state, "now": s.Clock.NowIso(), "onlinePayments": online, "currencyRates": rates})
+	writeShopState(w, r, map[string]any{"state": state, "onlinePayments": online, "currencyRates": rates}, s.Clock.NowIso())
 }
 
 func (s *Server) shopEvents(w http.ResponseWriter, r *http.Request) {

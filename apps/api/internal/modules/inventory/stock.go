@@ -173,14 +173,19 @@ func (s *Inventory) ReceiveModifierStock(ctx context.Context, m kernel.Meta, in 
 	})
 }
 
-// StockAt loads and locks the levels of one warehouse, plus everything the blockers read.
-func StockAt(t *kernel.Tx, tenantID, warehouseID string) (stock []domain.StockLevel, modifierStock []domain.ModifierStockLevel, err error) {
-	stock, err = store.List[domain.StockLevel](t.Ctx, t.Tx, "stock",
-		"tenant_id = $1 and warehouse_id = $2 for update", tenantID, warehouseID)
-	if err != nil {
-		return nil, nil, err
+// StockAt loads and locks the levels of these variants and modifier options at one warehouse, in
+// id order, so two orders that share levels lock them in the same order.
+func StockAt(t *kernel.Tx, tenantID, warehouseID string, variantIDs, optionIDs []string) (stock []domain.StockLevel, modifierStock []domain.ModifierStockLevel, err error) {
+	if len(variantIDs) > 0 {
+		stock, err = store.List[domain.StockLevel](t.Ctx, t.Tx, "stock",
+			"tenant_id = $1 and warehouse_id = $2 and variant_id = any($3) for update", tenantID, warehouseID, variantIDs)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
-	modifierStock, err = store.List[domain.ModifierStockLevel](t.Ctx, t.Tx, "modifierStock",
-		"tenant_id = $1 and warehouse_id = $2 for update", tenantID, warehouseID)
+	if len(optionIDs) > 0 {
+		modifierStock, err = store.List[domain.ModifierStockLevel](t.Ctx, t.Tx, "modifierStock",
+			"tenant_id = $1 and warehouse_id = $2 and option_id = any($3) for update", tenantID, warehouseID, optionIDs)
+	}
 	return stock, modifierStock, err
 }

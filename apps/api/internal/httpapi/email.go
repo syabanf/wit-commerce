@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/crm"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
@@ -105,7 +104,7 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
 	if !checkNewPassword(w, in.NewPassword) {
 		return
 	}
-	hash, err := auth.HashPassword(in.NewPassword)
+	hash, err := s.passwords.Hash(r.Context(), in.NewPassword)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
@@ -194,7 +193,7 @@ func (s *Server) shopReset(w http.ResponseWriter, r *http.Request) {
 	if !checkNewPassword(w, in.NewPassword) {
 		return
 	}
-	hash, err := auth.HashPassword(in.NewPassword)
+	hash, err := s.passwords.Hash(r.Context(), in.NewPassword)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

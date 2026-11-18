@@ -1,20 +1,25 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/inventory"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/orders"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/storefront"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
@@ -32,10 +37,16 @@ func (s *Service) Tick(ctx context.Context, at string) (*Delta, error) {
 		if err != nil {
 			return err
 		}
+		var due []domain.Order
 		for _, o := range open {
-			if now-clock.Ms(o.CreatedAt) < PaymentWindowHours*clock.Hour {
-				continue
+			if now-clock.Ms(o.CreatedAt) >= PaymentWindowHours*clock.Hour {
+				due = append(due, o)
 			}
+		}
+		if err := lockStockFor(t, due); err != nil {
+			return err
+		}
+		for _, o := range due {
 			if err := orders.Expire(t, o, "payment_expired", fmt.Sprintf("No payment within %d hours", PaymentWindowHours), at, "system"); err != nil {
 				return err
 			}
@@ -116,4 +127,35 @@ func (s *Service) RollUpSales(ctx context.Context, now time.Time) error {
 	_, err = s.DB.Pool.Exec(ctx, `insert into sales_rollup (id, done_day) values (1, $1)
 		on conflict (id) do update set done_day = excluded.done_day`, today)
 	return err
+}
+
+// lockStockFor locks, before any expiry runs, every stock level the expiring orders release, one
+// warehouse at a time in id order. A checkout locks its own levels in the same order, so the two
+// queue instead of deadlocking when the tick expires several orders that share levels.
+func lockStockFor(t *tx, due []domain.Order) error {
+	type place struct{ tenant, warehouse string }
+	variants, options := map[place][]string{}, map[place][]string{}
+	var places []place
+	for _, o := range due {
+		at := place{o.TenantID, o.WarehouseID}
+		if _, seen := variants[at]; !seen {
+			places = append(places, at)
+		}
+		variants[at] = append(variants[at], rules.VariantDemand(o).Keys...)
+		options[at] = append(options[at], rules.ModifierDemand(o).Keys...)
+	}
+	slices.SortFunc(places, func(a, b place) int {
+		return cmp.Or(strings.Compare(a.tenant, b.tenant), strings.Compare(a.warehouse, b.warehouse))
+	})
+	for _, at := range places {
+		if _, _, err := inventory.StockAt(t, at.tenant, at.warehouse, sortedUnique(variants[at]), sortedUnique(options[at])); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sortedUnique(ids []string) []string {
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }

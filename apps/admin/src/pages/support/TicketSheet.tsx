@@ -51,7 +51,7 @@ function TicketPanel({ ticket, now }: { ticket: Ticket; now: number }) {
   const s = useScoped()
   const { can } = useAuth()
   const manage = can('ticket.manage')
-  const customer = s.maps.customer.get(ticket.customerId)
+  const customer = s.customer(ticket.customerId)
   const listed = ticket.orderId ? s.maps.order.get(ticket.orderId) : undefined
   // With the API a closed order is not in the state, so its row is read from the server.
   const read = useOrderQuery(

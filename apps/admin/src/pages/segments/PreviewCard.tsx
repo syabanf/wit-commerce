@@ -1,24 +1,31 @@
-import { fmtIdr, fmtNumber, fmtPercent, metricsFor, plural } from '@rc/fixtures'
-import type { Customer } from '@rc/types'
+import { type CustomerMetrics, fmtIdr, fmtNumber, fmtPercent, plural } from '@rc/fixtures'
+import type { Customer, LoyaltyTier } from '@rc/types'
 import { LOYALTY_TIER_FLOW, LOYALTY_TIER_LABEL } from '@rc/types'
 import { Card, CardContent, CardHeader, CardTitle, Donut, EmptyState, cn } from '@rc/ui'
 import { CustomerLink } from '../../components/links'
-import { useScoped } from '../../state/scoped'
 import { TIER_COLOR, TIER_FILL } from '../loyalty/lib'
 
-const SAMPLE = 8
+/** How many members the preview lists. */
+export const PREVIEW_SAMPLE = 8
+
+/** Who a set of rules matches: how many, by tier, and the first members with their metrics. */
+export interface Preview {
+  members: number
+  byTier: Partial<Record<LoyaltyTier, number>>
+  sample: { customer: Customer; metrics: CustomerMetrics }[]
+}
 
 /** Who the rules match right now: count, share, tier mix and the first members. */
-export function PreviewCard({ members, total }: { members: Customer[]; total: number }) {
-  const { crm } = useScoped()
+export function PreviewCard({ preview, total }: { preview: Preview | null; total: number }) {
+  const members = preview?.members ?? 0
   const byTier = LOYALTY_TIER_FLOW.map((tier) => ({
     key: tier,
     label: LOYALTY_TIER_LABEL[tier],
-    value: members.filter((c) => c.tier === tier).length,
+    value: preview?.byTier[tier] ?? 0,
     color: TIER_COLOR[tier],
   }))
-  const share = total ? members.length / total : 0
-  const sample = members.slice(0, SAMPLE)
+  const share = total ? members / total : 0
+  const sample = preview?.sample ?? []
 
   return (
     <Card>
@@ -32,7 +39,7 @@ export function PreviewCard({ members, total }: { members: Customer[]; total: nu
             segments={byTier}
             size={132}
             thickness={14}
-            centerValue={fmtNumber(members.length)}
+            centerValue={preview ? fmtNumber(members) : '…'}
             centerLabel="members"
             ariaLabel="Members by loyalty tier"
           />
@@ -58,29 +65,28 @@ export function PreviewCard({ members, total }: { members: Customer[]; total: nu
         {sample.length ? (
           <div>
             <p className="mb-2 font-semibold tracking-wider text-[0.6875rem] text-muted uppercase">
-              {members.length > SAMPLE ? `First ${SAMPLE} of ${fmtNumber(members.length)}` : 'Members'}
+              {members > PREVIEW_SAMPLE ? `First ${PREVIEW_SAMPLE} of ${fmtNumber(members)}` : 'Members'}
             </p>
             <ul className="space-y-1.5">
-              {sample.map((c) => {
-                const m = metricsFor(crm.metrics, c.id)
-                return (
-                  <li key={c.id} className="gap-3 rounded-2xl px-3 py-2 flex items-center bg-surface-2">
-                    <CustomerLink customerId={c.id} className="min-w-0 flex-1" />
-                    <span className="text-xs shrink-0 text-right tabular-nums">
-                      <span className="font-semibold block">{fmtIdr(m.spend)}</span>
-                      <span className="block text-muted">{plural(m.orders, 'order')}</span>
-                    </span>
-                  </li>
-                )
-              })}
+              {sample.map(({ customer: c, metrics: m }) => (
+                <li key={c.id} className="gap-3 rounded-2xl px-3 py-2 flex items-center bg-surface-2">
+                  <CustomerLink customerId={c.id} customer={c} className="min-w-0 flex-1" />
+                  <span className="text-xs shrink-0 text-right tabular-nums">
+                    <span className="font-semibold block">{fmtIdr(m.spend)}</span>
+                    <span className="block text-muted">{plural(m.orders, 'order')}</span>
+                  </span>
+                </li>
+              ))}
             </ul>
           </div>
-        ) : (
+        ) : preview ? (
           <EmptyState
             compact
             title="No customers match"
             description="Loosen a rule or switch to Match any to widen the audience."
           />
+        ) : (
+          <EmptyState compact title="Counting members" description="Reading who the rules match." />
         )}
       </CardContent>
     </Card>

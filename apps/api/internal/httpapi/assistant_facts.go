@@ -283,7 +283,7 @@ func (g *factGatherer) customers() error {
 	where, args := "c.tenant_id = $1 and m.spend > 0 and m.orders > 0", []any{g.tenantID}
 	if g.sellers != nil {
 		args = append(args, g.sellers)
-		where += fmt.Sprintf(" and c.data->>'sellerId' = any($%d)", len(args))
+		where += fmt.Sprintf(" and c.seller_id = any($%d)", len(args))
 	}
 	g.f.Customers, err = g.s.customerFacts(g.ctx, where, "m.spend desc, c.id", assistantTop, args)
 	return err

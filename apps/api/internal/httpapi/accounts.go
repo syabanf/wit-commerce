@@ -80,13 +80,13 @@ func checkNewPassword(w http.ResponseWriter, password string) bool {
 
 // sellersOf lists a user's active seller profiles, so the seller app can open one after sign-in.
 func (s *Server) sellersOf(ctx context.Context, userID string) ([]domain.Seller, error) {
-	all, err := store.List[domain.Seller](ctx, s.DB.Pool, "sellers", "")
+	all, err := store.List[domain.Seller](ctx, s.DB.Pool, "sellers", "user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}
 	mine := []domain.Seller{}
 	for _, seller := range all {
-		if seller.UserID != nil && *seller.UserID == userID && seller.Status != "suspended" {
+		if seller.Status != "suspended" {
 			mine = append(mine, seller)
 		}
 	}
@@ -109,12 +109,18 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var hash string
-	err := s.DB.Pool.QueryRow(r.Context(), `select password_hash from credentials where user_id = $1`, p.ID).Scan(&hash)
-	if err != nil || !auth.CheckPassword(hash, in.CurrentPassword) {
+	ok := false
+	if err := s.DB.Pool.QueryRow(r.Context(), `select password_hash from credentials where user_id = $1`, p.ID).Scan(&hash); err == nil {
+		if ok, err = s.passwords.Check(r.Context(), hash, in.CurrentPassword); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+	}
+	if !ok {
 		writeProblem(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "Your current password is not correct.")
 		return
 	}
-	next, err := auth.HashPassword(in.NewPassword)
+	next, err := s.passwords.Hash(r.Context(), in.NewPassword)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
@@ -168,7 +174,12 @@ func (s *Server) shopLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		hash = decoyHash()
 	}
-	if !auth.CheckPassword(hash, in.Password) || id == "" {
+	ok, err := s.passwords.Check(r.Context(), hash, in.Password)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	if !ok || id == "" {
 		writeProblem(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "That email and password do not match.")
 		return
 	}
@@ -203,7 +214,7 @@ func (s *Server) shopRegister(w http.ResponseWriter, r *http.Request) {
 	if !checkNewPassword(w, in.Password) || !s.captchaPassed(w, r, in.CaptchaToken) {
 		return
 	}
-	hash, err := auth.HashPassword(in.Password)
+	hash, err := s.passwords.Hash(r.Context(), in.Password)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
@@ -258,11 +269,18 @@ func (s *Server) shopPassword(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.writeError(w, r, err)
 		return
-	case !auth.CheckPassword(hash, in.CurrentPassword):
-		writeProblem(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "Your current password is not correct.")
-		return
+	default:
+		ok, err := s.passwords.Check(r.Context(), hash, in.CurrentPassword)
+		if err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		if !ok {
+			writeProblem(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "Your current password is not correct.")
+			return
+		}
 	}
-	next, err := auth.HashPassword(in.NewPassword)
+	next, err := s.passwords.Hash(r.Context(), in.NewPassword)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

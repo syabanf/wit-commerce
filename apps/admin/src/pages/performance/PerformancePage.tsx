@@ -1,4 +1,5 @@
 import {
+  NO_BUYERS,
   type SellerStats,
   fmtIdr,
   fmtIdrShort,
@@ -70,7 +71,7 @@ export function PerformancePage() {
   const totals = useMemo(() => {
     const sum = (pick: (r: Row) => number) => rows.reduce((n, r) => n + pick(r), 0)
     const revenue = sum((r) => r.revenue)
-    const storeRevenue = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, now).revenue
+    const storeRevenue = periodKpis(s.facts.salesDays, NO_BUYERS, s.traffic, days, now).revenue
     const byKind = KINDS.map((kind) => ({
       kind,
       value: rows.filter((r) => r.seller.kind === kind).reduce((n, r) => n + r.revenue, 0),

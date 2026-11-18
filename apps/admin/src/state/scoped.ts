@@ -33,6 +33,7 @@ const byId = <T extends { id: string }>(list: readonly T[]) => new Map(list.map(
 /** Everything a page needs for the current tenant, memoised on the store state. */
 export function useScoped() {
   const { state, dispatch, dispatchAsync } = useAppState()
+  const { wantCustomers, missingCustomers } = useStore()
   const { user, tenant } = useAuth()
   if (!user || !tenant) throw new Error('useScoped needs a signed-in user')
   const tenantId = tenant.id
@@ -80,6 +81,17 @@ export function useScoped() {
       paymentType: byId(state.paymentTypes),
       integration: byId(state.integrations),
     }
+    /**
+     * A customer by id. With the API the state holds only some customers: one it lacks is read in
+     * the background (one read per tick for every name on screen) and the screen renders again.
+     */
+    const customer = (id: string) => {
+      const c = maps.customer.get(id)
+      if (!c && HTTP && id) wantCustomers(tenantId, [id])
+      return c
+    }
+    /** True while a customer the state lacks is being read; false once found or known missing. */
+    const customerPending = (id: string) => HTTP && !!id && !maps.customer.has(id) && !missingCustomers.has(id)
     return {
       user,
       tenant,
@@ -98,7 +110,12 @@ export function useScoped() {
       modifierStockMoves: own(state.modifierStockMoves),
       stockByProduct: stockByProduct(stock),
       facts,
-      /** Order count, spend and cart state per customer, as segment rules read them. */
+      customer,
+      customerPending,
+      /**
+       * Order count, spend and cart state per customer, as segment rules read them. With the API it
+       * covers the customers the state holds; figures over every customer are in useCustomerSummary.
+       */
       crm: segmentContextFromRows(facts.customerMetrics, products),
       categories: own(state.categories),
       attributes: own(state.attributes),
@@ -139,13 +156,13 @@ export function useScoped() {
       categoryName: (id: string | null | undefined) =>
         id ? (maps.category.get(id)?.name ?? 'Uncategorised') : 'None',
       customerName: (id: string | null | undefined) =>
-        id ? (maps.customer.get(id)?.name ?? 'Removed customer') : 'None',
+        id ? (customer(id)?.name ?? (customerPending(id) ? '…' : 'Removed customer')) : 'None',
       sellerName: (id: string | null | undefined) =>
         id ? (maps.seller.get(id)?.name ?? 'Removed seller') : 'Direct',
       segmentName: (id: string | null | undefined) =>
         id ? (maps.segment.get(id)?.name ?? 'Removed segment') : 'No audience',
     }
-  }, [state, tenantId, tenant, user, dispatch, dispatchAsync])
+  }, [state, tenantId, tenant, user, dispatch, dispatchAsync, wantCustomers, missingCustomers])
 }
 
 export type Scoped = ReturnType<typeof useScoped>

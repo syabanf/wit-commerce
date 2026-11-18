@@ -7,6 +7,7 @@ import { seedState } from '../src/data.ts'
 import { toMs } from '../src/dates.ts'
 import { abandonedCheckouts, customerMetrics, segmentContextFromRows } from '../src/derive.ts'
 import { deriveFacts } from '../src/facts.ts'
+import { buyerFigures } from '../src/customers.ts'
 
 // The analytics now read facts (daily sales, product days, seller buyers, customer metrics). On the
 // seed they must give exactly what the order-based versions gave, for every tenant and window.
@@ -22,12 +23,13 @@ for (const tenant of state.tenants) {
   const leads = own(state.leads)
   const products = own(state.products)
   const facts = deriveFacts(orders, events)
+  const buyers = buyerFigures(facts.customerMetrics)
 
   describe(`analytics on facts, ${tenant.name}`, () => {
     for (const days of [7, 14, 30, 90]) {
       it(`period KPIs and daily revenue over ${days} days`, () => {
         assert.deepEqual(
-          after.periodKpis(facts.salesDays, facts.customerMetrics, traffic, days, now),
+          after.periodKpis(facts.salesDays, buyers, traffic, days, now),
           before.periodKpis(orders, traffic, days, now),
         )
         assert.deepEqual(after.dailyRevenue(facts.salesDays, days, now), before.dailyRevenue(orders, days, now))
@@ -45,8 +47,8 @@ for (const tenant of state.tenants) {
     }
     it('monthly revenue, cohorts, repeat rate and channel mix', () => {
       assert.deepEqual(after.monthlyRevenue(facts.salesDays, 12, now), before.monthlyRevenue(orders, 12, now))
-      assert.deepEqual(after.cohorts(facts.customerMetrics, 6, 5, now), before.cohorts(orders, 6, 5, now))
-      assert.equal(after.repeatRate(facts.customerMetrics), before.repeatRate(orders))
+      assert.deepEqual(after.cohorts(buyers, 6, 5, now), before.cohorts(orders, 6, 5, now))
+      assert.equal(after.repeatRate(buyers), before.repeatRate(orders))
       assert.deepEqual(after.channelMix(facts.salesDays), before.channelMix(orders))
     })
     it('customer metrics and abandoned carts', () => {

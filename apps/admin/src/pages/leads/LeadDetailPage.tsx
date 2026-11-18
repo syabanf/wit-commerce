@@ -1,4 +1,14 @@
-import { fmtDateTime, fmtIdr, fmtIdrShort, fmtWhen, leadMoveBlocker, newId, nowIso } from '@rc/fixtures'
+import {
+  type CustomerSummary,
+  fmtDateTime,
+  fmtIdr,
+  fmtIdrShort,
+  fmtWhen,
+  leadMoveBlocker,
+  newId,
+  nextCustomerColor,
+  nowIso,
+} from '@rc/fixtures'
 import type { Customer, Lead } from '@rc/types'
 import { LEAD_SOURCE_LABEL, LEAD_STAGE_FLOW, LEAD_STAGE_LABEL } from '@rc/types'
 import {
@@ -25,8 +35,9 @@ import { useAuth } from '../../auth/auth'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK } from '../../components/badges'
 import { CustomerLink, ProductLink, SellerChip, paths } from '../../components/links'
+import { HTTP, api } from '../../lib/api'
 import { type Scoped, useNow, useScoped } from '../../state/scoped'
-import { nextCustomerCode, nextCustomerColor } from '../customers/lib'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { LeadDialog } from './LeadDialog'
 import { LEAD_SOURCE_CHANNEL, isOpen, nextLeadStage, staleDays } from './lib'
 
@@ -52,10 +63,22 @@ function leadSteps(lead: Lead): StepsProps['steps'] {
   }))
 }
 
+/** The brand's customer with this phone number, read from the server with the API. */
+async function customerByPhone(s: Scoped, phone: string): Promise<Customer | undefined> {
+  const digits = phone.replace(/\D/g, '')
+  if (!digits) return undefined
+  if (!HTTP) return s.customers.find((c) => c.phone.replace(/\D/g, '') === digits)
+  const page = await api.views.customers({ tenantId: s.tenantId, phone: digits, pageSize: 1 })
+  return page.rows[0]?.customer
+}
+
 /** Links a won lead to a customer: an existing one with the same phone, or a new record. */
-function convertLead(s: Scoped, lead: Lead): { customer: Customer; created: boolean } {
-  const phone = lead.phone.replace(/\D/g, '')
-  const existing = phone ? s.customers.find((c) => c.phone.replace(/\D/g, '') === phone) : undefined
+async function convertLead(
+  s: Scoped,
+  summary: CustomerSummary,
+  lead: Lead,
+): Promise<{ customer: Customer; created: boolean }> {
+  const existing = await customerByPhone(s, lead.phone)
   if (existing) return { customer: existing, created: false }
   const category = lead.productId ? s.maps.product.get(lead.productId)?.categoryId : undefined
   const seller = lead.sellerId ? s.maps.seller.get(lead.sellerId) : undefined
@@ -64,7 +87,7 @@ function convertLead(s: Scoped, lead: Lead): { customer: Customer; created: bool
     customer: {
       id: newId('cus'),
       tenantId: s.tenantId,
-      code: nextCustomerCode(s.customers, s.tenant),
+      code: summary.nextCode,
       name: lead.name,
       email: '',
       phone: lead.phone,
@@ -78,7 +101,7 @@ function convertLead(s: Scoped, lead: Lead): { customer: Customer; created: bool
       sellerId: lead.sellerId,
       createdAt: nowIso(),
       birthday: null,
-      color: nextCustomerColor(s.customers, s.tenant.brand.colors.primary),
+      color: nextCustomerColor(summary, s.tenant.brand.colors.primary),
     },
   }
 }
@@ -91,6 +114,7 @@ export function LeadDetailPage() {
   const [pending, setPending] = useState<Pending>(null)
   const [reason, setReason] = useState('')
   const lead = s.leads.find((l) => l.id === id)
+  const summary = useCustomerSummary()
 
   if (!lead) {
     return (
@@ -129,14 +153,19 @@ export function LeadDetailPage() {
     setReason('')
   }
 
-  const convert = () => {
-    const { customer, created } = convertLead(s, lead)
-    if (created) s.dispatch({ type: 'customers/save', customer })
-    s.dispatch({ type: 'leads/save', lead: { ...lead, customerId: customer.id } })
-    toast(created ? 'Customer created' : 'Linked to existing customer', {
-      tone: 'success',
-      description: `${customer.name} · ${customer.code}${created ? '' : ' has the same phone number'}`,
-    })
+  const convert = async () => {
+    if (!summary) return
+    try {
+      const { customer, created } = await convertLead(s, summary, lead)
+      if (created) await s.dispatchAsync({ type: 'customers/save', customer })
+      s.dispatch({ type: 'leads/save', lead: { ...lead, customerId: customer.id } })
+      toast(created ? 'Customer created' : 'Linked to existing customer', {
+        tone: 'success',
+        description: `${customer.name} · ${customer.code}${created ? '' : ' has the same phone number'}`,
+      })
+    } catch (err) {
+      toast('The lead was not converted', { tone: 'danger', description: String((err as Error).message) })
+    }
   }
 
   const copyPhone = () => {
@@ -163,7 +192,7 @@ export function LeadDetailPage() {
             </Button>
           )}
           {canConvert && (
-            <Button variant="outline" onClick={convert}>
+            <Button variant="outline" onClick={convert} disabled={!summary}>
               <UserPlus />
               Convert to customer
             </Button>

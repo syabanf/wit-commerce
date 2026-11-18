@@ -84,7 +84,9 @@ export function CustomerDetailPage() {
   const now = useNow(60_000)
   const [pending, setPending] = useState<Pending>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
-  const customer = s.customers.find((c) => c.id === id)
+  // With the API the state may not hold this customer yet: s.customer reads it, with its metrics.
+  const found = id ? s.customer(id) : undefined
+  const customer = found?.tenantId === s.tenantId ? found : undefined
   // Orders placed, every status: counted locally in the demo, read from the server with the API.
   const localPlaced = useMemo(
     () => (HTTP ? 0 : s.orders.filter((o) => o.customerId === id).length),
@@ -93,6 +95,13 @@ export function CustomerDetailPage() {
   const counted = useOrderQuery({ tenantId: s.tenant.id, customerId: id, pageSize: 1 }, s.orders, !!id)
   const placed = HTTP ? counted.page?.total : localPlaced
 
+  if (!customer && id && s.customerPending(id)) {
+    return (
+      <Card>
+        <EmptyState title="Loading customer" description="Reading the record from the server." />
+      </Card>
+    )
+  }
   if (!customer) {
     return (
       <Card>

@@ -1,4 +1,4 @@
-import { fmtNumber, fmtPercent, segmentMembers } from '@rc/fixtures'
+import { fmtNumber, fmtPercent } from '@rc/fixtures'
 import type { Segment } from '@rc/types'
 import {
   Badge,
@@ -20,6 +20,7 @@ import { useAuth } from '../../auth/auth'
 import { paths } from '../../components/links'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useScoped } from '../../state/scoped'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { ruleSummary } from './lib'
 
 type Kind = 'builtIn' | 'custom'
@@ -33,16 +34,16 @@ export function SegmentsPage() {
   const [kind, setKind] = useHistoryState<Kind | null>('kind', null)
   const table = useTableHistory()
 
+  // Sizes count every customer of the brand: the summary carries them.
+  const summary = useCustomerSummary()
   const { all, stats } = useMemo(() => {
-    const total = s.customers.length
-    const inCustom = new Set<string>()
+    const total = summary?.total ?? 0
     const all: Row[] = s.segments.map((seg) => {
-      const members = segmentMembers(seg, s.customers, s.crm)
-      if (!seg.builtIn) for (const c of members) inCustom.add(c.id)
+      const members = summary?.segments[seg.id] ?? 0
       return {
         seg,
-        members: members.length,
-        share: total ? members.length / total : 0,
+        members,
+        share: total ? members / total : 0,
         campaigns: s.campaigns.filter((c) => c.segmentId === seg.id).length,
         summary: ruleSummary(seg, s.categoryName),
       }
@@ -56,12 +57,12 @@ export function SegmentsPage() {
       stats: {
         total,
         builtIn: all.filter((r) => r.seg.builtIn).length,
-        inCustom: inCustom.size,
+        inCustom: summary?.inCustomSegments ?? 0,
         cart,
-        cartCount: cart ? cart.members : s.crm.abandoned.size,
+        cartCount: cart ? cart.members : (summary?.abandoned ?? 0),
       },
     }
-  }, [s.segments, s.customers, s.crm, s.campaigns, s.categoryName])
+  }, [s.segments, summary, s.campaigns, s.categoryName])
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()

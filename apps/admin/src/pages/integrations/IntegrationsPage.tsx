@@ -44,6 +44,7 @@ import { HEALTH_TONE, HealthBadge } from '../../components/badges'
 import { HTTP } from '../../lib/api'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
+import { useOlderRows } from '../../state/useOlderRows'
 import { ConnectorDialog } from './ConnectorDialog'
 import { CATEGORY_ORDER, SYNC_DELAY_MS } from './lib'
 
@@ -91,6 +92,7 @@ export function IntegrationsPage() {
     () => [...s.integrationLogs].sort((a, b) => toMs(b.at) - toMs(a.at)),
     [s.integrationLogs],
   )
+  const older = useOlderRows('integrationLogs', logs)
 
   const [logQuery, setLogQuery] = useHistoryState('log.q', '')
   const [logResult, setLogResult] = useHistoryState<LogResult | null>('log.result', null)
@@ -340,6 +342,13 @@ export function IntegrationsPage() {
             }
             {...table}
           />
+          {older.more && (
+            <div className="mt-3 flex justify-center">
+              <Button variant="outline" size="sm" onClick={older.load} disabled={older.loading}>
+                {older.loading ? 'Loading older requests…' : 'Load older requests'}
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
     </>

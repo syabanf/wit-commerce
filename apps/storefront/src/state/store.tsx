@@ -165,7 +165,12 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         // Demo sign-in is off in this deployment; shoppers check out as new customers.
       })
-    const close = api.shop.subscribe(subdomain, (delta) => setState((s) => applyDelta(s, delta)))
+    // The dataset may come from the browser's cache, so the stream's hello sets the clock again.
+    const close = api.shop.subscribe(
+      subdomain,
+      (delta) => setState((s) => applyDelta(s, delta)),
+      (now) => syncClock(now),
+    )
     return () => {
       cancelled = true
       close()

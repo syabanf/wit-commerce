@@ -195,7 +195,7 @@ func (s *Server) createStaff(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	hash, err := auth.HashPassword(password)
+	hash, err := s.passwords.Hash(r.Context(), password)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
@@ -312,7 +312,7 @@ func (s *Server) resetStaffPassword(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	hash, err := auth.HashPassword(password)
+	hash, err := s.passwords.Hash(r.Context(), password)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

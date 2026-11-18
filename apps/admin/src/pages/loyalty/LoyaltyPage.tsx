@@ -22,6 +22,7 @@ import { paths } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
 import { REWARDS, TIER_FILL, tierRequirement } from './lib'
 import { useCustomerEvents } from '../../state/useCustomerEvents'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 
 const TIER_ICON: Record<LoyaltyTier, ReactNode> = {
   member: <Users />,
@@ -44,22 +45,23 @@ export function LoyaltyPage() {
     { kind: 'tier_upgraded', since, limit: 500 },
     now,
   )
+  // Tiers, points and the top members sum every customer of the brand: the summary carries them.
+  const summary = useCustomerSummary()
   const data = useMemo(() => {
     const byTier = Object.fromEntries(
-      LOYALTY_TIER_FLOW.map((t) => [t, s.customers.filter((c) => c.tier === t).length]),
+      LOYALTY_TIER_FLOW.map((t) => [t, summary?.byTier[t] ?? 0]),
     ) as Record<LoyaltyTier, number>
     const movedUp = new Set(upgrades.map((e) => e.customerId))
-    const top = [...s.customers].sort((a, b) => b.points - a.points).slice(0, TOP)
     return {
       byTier,
-      points: s.customers.reduce((n, c) => n + c.points, 0),
+      points: summary?.points ?? 0,
       movedUp: movedUp.size,
-      top,
-      canRedeem: REWARDS.map((r) => s.customers.filter((c) => c.points >= r.points).length),
+      top: (summary?.top ?? []).slice(0, TOP),
+      canRedeem: REWARDS.map((_, i) => summary?.redeemable[i] ?? 0),
     }
-  }, [s.customers, upgrades])
+  }, [summary, upgrades])
 
-  const total = s.customers.length
+  const total = summary?.total ?? 0
   const pointsOff = loyalty.pointsPer10k === 0
 
   return (

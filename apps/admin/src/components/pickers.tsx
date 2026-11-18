@@ -1,8 +1,10 @@
 import { LOYALTY_TIER_LABEL, PAYMENT_METHOD_LABEL, TEMPLATE_SCOPE_LABEL, type TemplateScope } from '@rc/types'
 import { categoryTreeIds, fmtIdr, metricsFor, plural } from '@rc/fixtures'
 import { Avatar, Combobox, MultiCombobox } from '@rc/ui'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { HTTP } from '../lib/api'
 import { useScoped } from '../state/scoped'
+import { useCustomerQuery } from '../state/useCustomerQuery'
 
 type Common = {
   id?: string
@@ -18,20 +20,36 @@ type Common = {
 type Single = Common & { value: string | null; onChange: (value: string | null) => void }
 type Multi = Common & { values: string[]; onChange: (values: string[]) => void }
 
+/** Customers the picker lists at once; with the API a search asks the server for more. */
+const CUSTOMER_PICKS = 20
+
 export function CustomerPicker(p: Single) {
-  const { customers, crm } = useScoped()
+  const s = useScoped()
+  const [query, setQuery] = useState('')
+  const remote = useCustomerQuery({ tenantId: s.tenantId, q: query.trim(), pageSize: CUSTOMER_PICKS }, null)
+  const selected = p.value ? s.customer(p.value) : undefined
+  const { items, orders } = useMemo(() => {
+    if (!remote.page) {
+      return { items: s.customers, orders: (id: string) => metricsFor(s.crm.metrics, id).orders }
+    }
+    const found = remote.page.rows.map((r) => r.customer)
+    const counts = new Map(remote.page.rows.map((r) => [r.customer.id, r.metrics?.orders ?? 0]))
+    return {
+      // The chosen customer stays listed, so the field can show its name.
+      items: selected && !found.some((c) => c.id === selected.id) ? [selected, ...found] : found,
+      orders: (id: string) => counts.get(id) ?? metricsFor(s.crm.metrics, id).orders,
+    }
+  }, [remote.page, selected, s.customers, s.crm])
   return (
     <Combobox
       {...p}
-      items={customers}
+      items={items}
+      onQueryChange={HTTP ? setQuery : undefined}
       placeholder={p.placeholder ?? 'Select customer'}
       searchPlaceholder="Search name, email, phone or code"
       getKey={(c) => c.id}
       getLabel={(c) => c.name}
-      getDescription={(c) => {
-        const m = metricsFor(crm.metrics, c.id)
-        return `${c.code} · ${LOYALTY_TIER_LABEL[c.tier]} · ${plural(m.orders, 'order')}`
-      }}
+      getDescription={(c) => `${c.code} · ${LOYALTY_TIER_LABEL[c.tier]} · ${plural(orders(c.id), 'order')}`}
       getKeywords={(c) => [c.email, c.phone, c.code, c.city]}
       renderIcon={(c) => <Avatar name={c.name} color={c.color} size="xs" />}
     />

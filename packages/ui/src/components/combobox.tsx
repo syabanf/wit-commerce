@@ -34,6 +34,8 @@ type ComboboxBaseProps<T> = {
   variant?: 'default' | 'soft' | 'inline'
   createLabel?: (query: string) => string
   onCreate?: (query: string) => void
+  /** Hears the search text as it changes, for items searched on a server. Opening resets it to "". */
+  onQueryChange?: (query: string) => void
   className?: string
   id?: string
   'aria-label'?: string
@@ -262,6 +264,7 @@ function ComboboxPanel<T>({
   emptyText = 'No options',
   createLabel,
   onCreate,
+  onQueryChange,
   selection,
   label,
   listId,
@@ -270,6 +273,7 @@ function ComboboxPanel<T>({
 }: RootProps<T> & { label: string; listId: string; inSheet: boolean; onClose: () => void }) {
   // The panel unmounts on close, so the query and highlight reset with it.
   const [query, setQuery] = useState('')
+  useEffect(() => onQueryChange?.(query), [query, onQueryChange])
   const [activeId, setActiveId] = useState<string | null>(() =>
     !selection.multi && selection.value !== null ? `o:${selection.value}` : null,
   )

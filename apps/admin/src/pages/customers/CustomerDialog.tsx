@@ -1,4 +1,4 @@
-import { newId, nowIso } from '@rc/fixtures'
+import { newId, nextCustomerColor, nowIso } from '@rc/fixtures'
 import type { Channel, Customer } from '@rc/types'
 import { CHANNEL_LABEL } from '@rc/types'
 import {
@@ -20,8 +20,11 @@ import { type FormEvent, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { paths } from '../../components/links'
 import { SellerPicker } from '../../components/pickers'
+import { HTTP } from '../../lib/api'
 import { useScoped } from '../../state/scoped'
-import { EMAIL_PATTERN, customerCities, nextCustomerCode, nextCustomerColor } from './lib'
+import { useCustomerQuery } from '../../state/useCustomerQuery'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
+import { EMAIL_PATTERN } from './lib'
 
 const SOURCE_OPTIONS = (Object.keys(CHANNEL_LABEL) as Channel[]).map((c) => ({
   value: c,
@@ -63,25 +66,29 @@ function CustomerForm({ editing, onClose }: { editing: Customer | null; onClose:
   const [tried, setTried] = useState(false)
   const set = (patch: Partial<typeof draft>) => setDraft((d) => ({ ...d, ...patch }))
 
+  // Cities, tags, the next code and colour come from every customer of the brand.
+  const summary = useCustomerSummary()
   const cities = useMemo(() => {
-    const list = customerCities(s.customers)
+    const list = summary?.cities ?? []
     return draft.city && !list.includes(draft.city) ? [draft.city, ...list] : list
-  }, [s.customers, draft.city])
-  const tags = useMemo(
-    () => [...new Set([...s.customers.flatMap((c) => c.tags), ...draft.tags])].sort(),
-    [s.customers, draft.tags],
-  )
+  }, [summary, draft.city])
+  const tags = useMemo(() => [...new Set([...(summary?.tags ?? []), ...draft.tags])].sort(), [summary, draft.tags])
 
   const name = draft.name.trim()
   const email = draft.email.trim()
   const phone = draft.phone.trim()
-  const emailOwner = email
-    ? s.customers.find((c) => c.id !== editing?.id && c.email.toLowerCase() === email.toLowerCase())
-    : undefined
+  const emailValid = EMAIL_PATTERN.test(email)
+  // With the API the console holds only some customers, so the server says who uses the address.
+  const sameEmail = useCustomerQuery({ tenantId: s.tenantId, email, pageSize: 2 }, null, emailValid)
+  const emailOwner = !emailValid
+    ? undefined
+    : HTTP
+      ? sameEmail.page?.rows.map((r) => r.customer).find((c) => c.id !== editing?.id)
+      : s.customers.find((c) => c.id !== editing?.id && c.email.toLowerCase() === email.toLowerCase())
   const errors = {
     name: name ? undefined : "Enter the customer's full name.",
     email:
-      email && !EMAIL_PATTERN.test(email)
+      email && !emailValid
         ? 'Enter an address such as nama@mail.id.'
         : emailOwner
           ? `${emailOwner.name} (${emailOwner.code}) already uses this address.`
@@ -110,10 +117,11 @@ function CustomerForm({ editing, onClose }: { editing: Customer | null; onClose:
       onClose()
       return
     }
+    if (!summary) return
     const customer: Customer = {
       id: newId('cus'),
       tenantId: s.tenantId,
-      code: nextCustomerCode(s.customers, s.tenant),
+      code: summary.nextCode,
       ...fields,
       source: draft.source,
       stage: 'registered',
@@ -121,11 +129,17 @@ function CustomerForm({ editing, onClose }: { editing: Customer | null; onClose:
       points: 0,
       interests: [],
       createdAt: nowIso(),
-      color: nextCustomerColor(s.customers, s.tenant.brand.colors.primary),
+      color: nextCustomerColor(summary, s.tenant.brand.colors.primary),
     }
-    s.dispatch({ type: 'customers/save', customer })
-    toast('Customer added', { tone: 'success', description: `${name} · ${customer.code}` })
-    navigate(paths.customer(customer.id), { replace: true })
+    // The record opens once the server has it, so its page does not ask for it too early.
+    s.dispatchAsync({ type: 'customers/save', customer })
+      .then(() => {
+        toast('Customer added', { tone: 'success', description: `${name} · ${customer.code}` })
+        navigate(paths.customer(customer.id), { replace: true })
+      })
+      .catch((err: unknown) =>
+        toast('The customer was not saved', { tone: 'danger', description: String((err as Error).message) }),
+      )
   }
 
   return (
@@ -251,7 +265,9 @@ function CustomerForm({ editing, onClose }: { editing: Customer | null; onClose:
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit">{editing ? 'Save changes' : 'Add customer'}</Button>
+        <Button type="submit" disabled={!editing && !summary}>
+          {editing ? 'Save changes' : 'Add customer'}
+        </Button>
       </DialogFooter>
     </form>
   )

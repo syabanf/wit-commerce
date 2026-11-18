@@ -18,7 +18,7 @@ func MergeGuest(ctx context.Context, tx pgx.Tx, c *domain.Customer, guest string
 	}
 	c.Points += g.Points
 	for _, table := range []string{"customer_events", "leads", "tickets"} {
-		if _, err := tx.Exec(ctx, `update `+table+` set data = jsonb_set(data, '{customerId}', to_jsonb($1::text)) where data->>'customerId' = $2`, c.ID, guest); err != nil {
+		if _, err := tx.Exec(ctx, `update `+table+` set data = jsonb_set(data, '{customerId}', to_jsonb($1::text)) where customer_id = $2`, c.ID, guest); err != nil {
 			return err
 		}
 	}

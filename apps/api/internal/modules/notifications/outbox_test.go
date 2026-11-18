@@ -133,7 +133,7 @@ func TestARowIsGivenUpAfterTheLastAttempt(t *testing.T) {
 	n, fake := outboxEnv(t)
 	n.MailUserReset(t.Context(), domain.User{ID: "usr-g", Email: "g@example.com"})
 	fake.fail.Store(true)
-	for range maxAttempts + 2 {
+	for range MaxAttempts + 2 {
 		if _, err := n.Drain(t.Context()); err != nil {
 			t.Fatal(err)
 		}
@@ -142,7 +142,7 @@ func TestARowIsGivenUpAfterTheLastAttempt(t *testing.T) {
 		}
 	}
 	r := readRow(t, n)
-	if r.sent || r.attempts != maxAttempts || r.body != "" {
+	if r.sent || r.attempts != MaxAttempts || r.body != "" {
 		t.Fatalf("given-up row: %+v", r)
 	}
 	if pending, err := n.Pending(t.Context()); err != nil || pending != 0 {

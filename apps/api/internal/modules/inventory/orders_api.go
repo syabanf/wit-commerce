@@ -49,8 +49,12 @@ func RecordShipment(t *kernel.Tx, l rules.StockLookup, o domain.Order, at, by st
 // Restock puts returned units back on the shelf of a warehouse and logs a return move for each. A
 // variant with no level there is skipped: it was never tracked at that warehouse.
 func Restock(t *kernel.Tx, tenantID, warehouseID string, items []domain.ReturnItem, note, at, by string) error {
+	variants := make([]string, len(items))
+	for i, item := range items {
+		variants[i] = item.VariantID
+	}
 	levels, err := store.List[domain.StockLevel](t.Ctx, t.Tx, "stock",
-		"tenant_id = $1 and warehouse_id = $2 for update", tenantID, warehouseID)
+		"tenant_id = $1 and warehouse_id = $2 and variant_id = any($3) for update", tenantID, warehouseID, variants)
 	if err != nil {
 		return err
 	}

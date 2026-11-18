@@ -1,4 +1,5 @@
 import {
+  NO_BUYERS,
   channelMix,
   dailyRevenue,
   fmtAgo,
@@ -81,7 +82,7 @@ export function OverviewView({ s, now, queues }: { s: Scoped; now: number; queue
   const openReturns = s.returns.filter((r) => isOpenReturn(r)).length
 
   const data = useMemo(() => {
-    const week = periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, 7, now)
+    const week = periodKpis(s.facts.salesDays, NO_BUYERS, s.traffic, 7, now)
     const days = dailyRevenue(s.facts.salesDays, 14, now)
     const mix = channelMix(s.facts.salesDays, windowStart(30, now))
     const perf = productPerformance(s.products, s.facts.productDays, 7, now)

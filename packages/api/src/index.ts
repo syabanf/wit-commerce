@@ -1,6 +1,7 @@
-import type { AppAction, AppState, DomainStatus } from '@rc/fixtures'
+import type { AppAction, AppState, CustomerSummary, DomainStatus } from '@rc/fixtures'
 import type {
   Customer,
+  CustomerMetricsRow,
   Order,
   OrderReturn,
   ProductMonth,
@@ -604,6 +605,52 @@ export interface SalesMonthsPage {
   cutoff: string
 }
 
+export interface CustomerRowsQuery {
+  tenantId: string
+  /** all, new (joined in 30 days), repeat (two orders or more) or at-risk (at risk and dormant). */
+  view?: string
+  stage?: string | null
+  tier?: string | null
+  sellerId?: string | null
+  /** Comma-separated customer ids, at most 500. */
+  ids?: string
+  /** Exact email, any case. */
+  email?: string
+  /** Phone digits; other characters are ignored on both sides. */
+  phone?: string
+  /** Words matched against name, code, email, phone and city. */
+  q?: string
+  /** Segment rules as JSON, with match: the customers a segment with these rules holds. */
+  rules?: string
+  match?: string
+  sort?: string
+  desc?: boolean
+  page?: number
+  /** At most 500. */
+  pageSize?: number
+}
+
+/** A customer with their metrics row, null when they never bought or left a checkout. */
+export interface CustomerRow {
+  customer: Customer
+  metrics: CustomerMetricsRow | null
+}
+
+export interface CustomerRowsPage {
+  rows: CustomerRow[]
+  total: number
+  /** Per stage under the view, the rules and the ids, as the page's chips count. */
+  stageCounts: Partial<Record<Customer['stage'], number>>
+  /** Per tier under every filter but the tier. */
+  tierCounts: Partial<Record<Customer['tier'], number>>
+}
+
+/** Older rows of a log the state carries only the newest of. */
+export interface HistoryPage<T> {
+  rows: T[]
+  more: boolean
+}
+
 /** One line of the staff history. Names stay as they were at the time. */
 export interface StaffEvent {
   id: number
@@ -1048,17 +1095,23 @@ export interface CampaignAudience {
 export function createApi({ baseUrl, getToken }: ApiOptions) {
   const root = `${baseUrl.replace(/\/$/, '')}/v1`
 
-  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-    return request<T>(method, path, body === undefined ? undefined : JSON.stringify(body), 'application/json')
+  async function call<T>(method: string, path: string, body?: unknown, cache?: RequestCache): Promise<T> {
+    return request<T>(method, path, body === undefined ? undefined : JSON.stringify(body), 'application/json', cache)
   }
 
   /** Sends a raw body. FormData sets its own multipart content type, so contentType stays unset for it. */
-  async function request<T>(method: string, path: string, body?: BodyInit, contentType?: string): Promise<T> {
+  async function request<T>(
+    method: string,
+    path: string,
+    body?: BodyInit,
+    contentType?: string,
+    cache?: RequestCache,
+  ): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' }
     if (body !== undefined && contentType) headers['Content-Type'] = contentType
     const token = getToken()
     if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(root + path, { method, headers, body })
+    const res = await fetch(root + path, { method, headers, body, cache })
     if (res.status === 204) return undefined as T
     if (res.ok) return (await res.json()) as T
     let problem: ApiProblem = { status: res.status, code: 'HTTP_' + res.status, detail: res.statusText }
@@ -1142,6 +1195,35 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
         for (const [key, value] of Object.entries(params))
           if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
         return call<OrderRowsPage>('GET', `/views/orders?${query}`)
+      },
+      /** Customers with their metrics; the state carries none but a sales user's own. */
+      customers: (params: CustomerRowsQuery) => {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params))
+          if (value !== undefined && value !== null && value !== '') query.set(key, String(value))
+        return call<CustomerRowsPage>('GET', `/views/customers?${query}`)
+      },
+      /** Figures over every customer of a brand; rewards are point amounts to count holders of. */
+      customerSummary: (tenantId: string, rewards: readonly number[] = []) => {
+        const query = new URLSearchParams({ tenantId })
+        if (rewards.length) query.set('rewards', rewards.join(','))
+        return call<CustomerSummary>('GET', `/views/customer-summary?${query}`)
+      },
+      /** Customers per brand the user may open. */
+      customerCounts: () => call<{ counts: Record<string, number> }>('GET', '/views/customer-counts'),
+      /** A page of a log after `before`, the oldest row held, in newest-first order. */
+      history: <K extends 'stockMoves' | 'modifierStockMoves' | 'integrationLogs'>(
+        collection: K,
+        tenantId: string,
+        before?: { at: string; id: string },
+      ) => {
+        const path = { stockMoves: 'stock-moves', modifierStockMoves: 'modifier-stock-moves', integrationLogs: 'integration-logs' }
+        const query = new URLSearchParams({ tenantId })
+        if (before) {
+          query.set('before', before.at)
+          query.set('beforeId', before.id)
+        }
+        return call<HistoryPage<AppState[K][number]>>('GET', `/views/${path[collection]}?${query}`)
       },
     },
     returns: {
@@ -1298,8 +1380,14 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       /** The store a verified custom domain serves; ApiError 404 for any other host. */
       byHost: (host: string) =>
         call<{ store: string }>('GET', `/shop/by-host?host=${encodeURIComponent(host)}`),
-      state: (store: string) => call<StateResponse>('GET', `/shop/${store}/state`),
-      subscribe: (store: string, onDelta: (delta: Delta) => void) => events(`/shop/${store}/events`, onDelta),
+      /**
+       * The store's public dataset. The browser asks again each time with the ETag it holds, so the
+       * store opens current and an unchanged dataset costs a 304; shared caches may keep it 30 s.
+       */
+      state: (store: string) => call<StateResponse>('GET', `/shop/${store}/state`, undefined, 'no-cache'),
+      /** onOpen gets the server clock, fresh even when the store's dataset came from a cache. */
+      subscribe: (store: string, onDelta: (delta: Delta) => void, onOpen?: (now: string) => void) =>
+        events(`/shop/${store}/events`, onDelta, onOpen),
       demoCustomers: (store: string) =>
         call<{ customers: Customer[] }>('GET', `/shop/${store}/demo-customers`),
       signIn: (store: string, customerId: string) =>

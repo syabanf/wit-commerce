@@ -37,7 +37,8 @@ Turning it off again is safe: `api` serves every route either way.
 - Email is sent at least once. A send cut off by a restart can arrive twice.
 - Forgot-password and confirmation emails wait for the next drain, up to 2 seconds. Staff
   invitations and admin resets still send at once, because the admin sees the result.
-- Sent `email_outbox` rows are kept without their body; nothing prunes them yet.
+- Sent `email_outbox` rows are kept without their body for 30 days, then pruned (see Performance and
+  retention).
 
 ## Returns
 
@@ -277,3 +278,95 @@ To test by hand:
 
 The notification is safe to repeat: a second `settlement` changes nothing, and a notification with a
 bad signature answers 401 and changes nothing.
+
+## Performance and retention
+
+### Environment
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `DB_MAX_CONNS` | 16 | Pool size per process (`api`, `ai`, `notifier`, `shop` each open one pool). |
+| `DB_MIN_CONNS` | 0 | Connections the pool keeps open while idle. |
+| `DB_MAX_CONN_LIFETIME` | `1h` | A connection is closed and replaced after this long. |
+| `DB_MAX_CONN_IDLE_TIME` | `30m` | An idle connection is closed after this long. |
+| `PASSWORD_HASH_SLOTS` | half the CPUs, at least 1 | Password hashes and checks that run at once (`api` only). |
+| `PASSWORD_HASH_WAIT` | `5s` | How long a sign-in waits for a slot before the answer is 503 with `Retry-After: 2`. |
+| `RETAIN_REQUEST_LOG_DAYS` | 30 | `request_log` rows older than this are deleted. |
+| `RETAIN_WEBHOOK_DELIVERIES_DAYS` | 30 | Delivered and failed `webhook_deliveries`; pending ones stay. |
+| `RETAIN_EMAIL_OUTBOX_DAYS` | 30 | Sent and given-up `email_outbox` rows; unsent ones stay. |
+| `RETAIN_STOCK_MOVES_YEARS` | 10 (floor 10) | `stock_moves`, transaction data under PP 80/2019 Pasal 25. |
+| `RETAIN_INTEGRATION_LOGS_YEARS` | 5 (floor 5) | `integration_logs`, other PMSE data. |
+| `RETAIN_TRAFFIC_YEARS` | 5 (floor 5) | `traffic`, other PMSE data. |
+
+Durations are Go durations (`90s`, `30m`, `2h`). A retention of 0 keeps that table forever; a value
+below its legal floor is raised to the floor with a warning at start. An unreadable pool or password
+value stops the process at start.
+
+### Retention
+
+The tick (every minute) calls `service.PruneIfDue`, which does the work at most once an hour across
+every API process: it claims the hour by updating the `meta` row `retention_pruned_at`. Each table
+gets deletes of 5,000 rows, at most 20 per run, so a first run over a large backlog commits in pieces
+and leaves the rest for the next hour. Migration 0032 indexes each prune condition. Orders, payments,
+refunds, returns, invoices and customers are never pruned. `docs/compliance.md` (Performance and
+retention) explains the periods.
+
+### Sign-in under load
+
+PBKDF2-SHA256 at 600,000 iterations costs about 350 ms of CPU per hash or check, by design. The
+password gate (`auth.PasswordGate`) lets `PASSWORD_HASH_SLOTS` run at once and queues the rest for up
+to `PASSWORD_HASH_WAIT`, so a burst of sign-ins cannot take every core from the requests already
+being served. The per-IP (30 a minute) and per-email (10 a minute) sign-in limits still run first, so a
+refused attempt never reaches the gate. Staff and shopper sign-in, password changes, resets, sign-up,
+shopper registration and staff invitations all go through it.
+
+Measured on the scaled copy (10 cores, 5 slots): a burst of 60 sign-ins took the health check from
+200 ms to 2 ms; a burst of 200 answered 154 within 5 s and told 46 to retry.
+
+### Indexes and generated columns (migration 0031)
+
+| Index | Serves |
+| --- | --- |
+| `orders_open_idx` (partial, open statuses) | Open orders in `GET /state`; the tick's unpaid-order scan. |
+| `customers.seller_id` + `customers_seller_idx` | A sales user's customers: state, event stream, segment counts, order views, assistant. |
+| `sellers.user_id` + `sellers_user_idx` | A staff user's seller profiles, on every request from a sales user and at sign-in. |
+| `leads.customer_id`, `tickets.customer_id` + indexes | Guest merges and personal data requests. |
+
+Each generated column is the same expression the queries used before (`data->>'sellerId'` and so on),
+so the answers do not change. `returns_order_idx` existed already (0023). `users` has no index on
+`data->'tenantIds'`: the table holds staff only, a few rows per brand, and a scan of it takes under
+0.1 ms; add a GIN index on `(data->'tenantIds')` if it grows past a few thousand rows.
+
+Migrations run inside a transaction, so they use plain `create index`, which blocks writes to that
+table while it builds (well under a second at today's sizes). On a production table with millions of
+rows, build the index first by hand, outside a transaction, then deploy; `if not exists` turns the
+migration's statement into a no-op:
+
+```sql
+create index concurrently if not exists customers_seller_idx on customers (seller_id);
+```
+
+A stored generated column cannot be added concurrently: `alter table ... add column ... generated`
+rewrites the table under an exclusive lock. On a large table, plan a short maintenance window, or add
+a plain column, backfill it in batches and switch the queries afterwards.
+
+### Postgres settings (docker-compose.prod.yml)
+
+The production compose starts Postgres with settings for a VPS with 2 to 4 GB of RAM and an SSD,
+shared with the API and nginx. Each can be overridden from `.env.production` where it has a variable.
+
+| Setting | Value | Why |
+| --- | --- | --- |
+| `shared_buffers` (`PG_SHARED_BUFFERS`) | 512MB | A quarter of 2 GB, an eighth of 4 GB; the rest stays for the API and the OS cache. |
+| `effective_cache_size` (`PG_EFFECTIVE_CACHE_SIZE`) | 1536MB | What the planner may expect the OS to cache. |
+| `work_mem` (`PG_WORK_MEM`) | 8MB | Per sort or hash; 80 connections with a few sorts each stay inside RAM. |
+| `maintenance_work_mem` (`PG_MAINTENANCE_WORK_MEM`) | 128MB | Faster index builds and vacuum. |
+| `max_connections` (`PG_MAX_CONNECTIONS`) | 80 | Four processes at `DB_MAX_CONNS` 16 is 64, plus room for psql and backups. Raise it when you raise a pool or add replicas: pools times processes plus 16. |
+| `random_page_cost` | 1.1 | SSD: random reads cost about the same as sequential ones, so the planner uses indexes. |
+| `effective_io_concurrency` | 200 | SSD. |
+| `log_min_duration_statement` | 500ms | Slow statements go to the Postgres log. |
+| `shared_preload_libraries` | `pg_stat_statements` | Per-statement timing. Run `create extension if not exists pg_stat_statements;` once in the `commerce` database to read the `pg_stat_statements` view. |
+
+On 8 GB or more, raise `PG_SHARED_BUFFERS` to a quarter of RAM and `PG_EFFECTIVE_CACHE_SIZE` to
+half. The dev compose keeps Postgres defaults.
+

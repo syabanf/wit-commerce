@@ -14,9 +14,9 @@ const (
 	// claimLease hides a claimed row from other workers. A worker that dies mid-batch leaves its rows
 	// to come back after the lease, so delivery is at least once.
 	claimLease = 5 * time.Minute
-	// maxAttempts sends, with backoff from 30 seconds doubling to an hour, span about an hour: as
+	// MaxAttempts sends, with backoff from 30 seconds doubling to an hour, span about an hour: as
 	// long as a reset link lives.
-	maxAttempts  = 8
+	MaxAttempts  = 8
 	firstBackoff = 30 * time.Second
 	maxBackoff   = time.Hour
 	// bookkeepingTimeout bounds the update after a send, which runs even while shutting down.
@@ -42,7 +42,7 @@ func (n *Notifications) claim(ctx context.Context) ([]queued, error) {
 	rows, err := n.DB.Pool.Query(ctx, `update email_outbox set attempts = attempts + 1, next_attempt_at = now() + $2 * interval '1 second'
 		where id in (select id from email_outbox where sent_at is null and attempts < $3 and next_attempt_at <= now()
 			order by next_attempt_at limit $1 for update skip locked)
-		returning id, attempts, "to", subject, html, text`, drainBatch, claimLease.Seconds(), maxAttempts)
+		returning id, attempts, "to", subject, html, text`, drainBatch, claimLease.Seconds(), MaxAttempts)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func backoff(attempts int) time.Duration {
 // Drain sends one batch of due email and reports how many went out. It reads the email settings
 // first, so a key saved in the console takes effect on the next drain. With no mail client it leaves
 // every row as it is. A row is marked sent after Resend accepts it; a failed send comes back after a
-// backoff, and after maxAttempts it stays unsent with its link blanked.
+// backoff, and after MaxAttempts it stays unsent with its link blanked.
 func (n *Notifications) Drain(ctx context.Context) (int, error) {
 	client := n.refresh(ctx).client
 	if client == nil {
@@ -107,7 +107,7 @@ func (n *Notifications) settle(ctx context.Context, q queued, sendErr error) err
 		return err
 	}
 	// Errors from mail name the status only, never the body, so they are safe to store and log.
-	if q.attempts >= maxAttempts {
+	if q.attempts >= MaxAttempts {
 		n.Log.Error("email given up", "err", sendErr, "id", q.id, "subject", q.msg.Subject)
 		_, err := n.DB.Pool.Exec(ctx, `update email_outbox set html = '', text = '', last_error = $2 where id = $1`, q.id, sendErr.Error())
 		return err
@@ -153,6 +153,6 @@ func (n *Notifications) Run(ctx context.Context, every time.Duration) {
 // Pending counts the rows still to be sent, given-up rows aside.
 func (n *Notifications) Pending(ctx context.Context) (int, error) {
 	var count int
-	err := n.DB.Pool.QueryRow(ctx, `select count(*) from email_outbox where sent_at is null and attempts < $1`, maxAttempts).Scan(&count)
+	err := n.DB.Pool.QueryRow(ctx, `select count(*) from email_outbox where sent_at is null and attempts < $1`, MaxAttempts).Scan(&count)
 	return count, err
 }

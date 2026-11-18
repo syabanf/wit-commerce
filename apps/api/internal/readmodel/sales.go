@@ -54,15 +54,29 @@ var factTables = []struct {
 	},
 }
 
-// soldIn selects the sold orders of the given tenant days, with what the facts read.
+// soldIn selects the sold orders of the given tenant days, with what the facts read. The orders'
+// created_at column holds createdAt as written, with whatever offset it carries, so the index range
+// takes the local dates from the day before to the day after, which covers every offset from -12h
+// to +14h, and the WIB day match then keeps the orders of the day itself.
 const soldIn = `with keys as (select * from unnest($1::text[], $2::text[]) k(tenant_id, day)),
-sold as (
-	select o.id, o.tenant_id, ` + wibDay + ` as day, o.data->>'channel' channel, o.data->>'sellerId' seller_id,
+sold as materialized (
+	select o.id, o.tenant_id, k.day, o.data->>'channel' channel, o.data->>'sellerId' seller_id,
 		o.data->>'campaignId' campaign_id, o.customer_id, o.data->'lines' lines,
 		(o.data->>'total')::bigint - coalesce((o.data->>'refundedAmount')::bigint, 0) net
-	from orders o join keys k on k.tenant_id = o.tenant_id and k.day = ` + wibDay + `
+	from keys k join orders o on o.tenant_id = k.tenant_id
+		and o.created_at >= to_char(k.day::date - 1, 'YYYY-MM-DD') and o.created_at < to_char(k.day::date + 2, 'YYYY-MM-DD')
+		and k.day = ` + wibDay + `
 	where o.status in ` + soldStatuses + `
 ) `
+
+// refreshFacts derives every fact table from one read of the sold orders.
+var refreshFacts = func() string {
+	sql := soldIn
+	for i, f := range factTables {
+		sql += fmt.Sprintf(", f%d as (%s) ", i, f.insert)
+	}
+	return sql + "select 1"
+}()
 
 // RefreshSalesDays derives the facts of the given tenant days again and reports, per collection,
 // the rows that now exist and the ids that went away.
@@ -71,6 +85,9 @@ func RefreshSalesDays(ctx context.Context, q Querier, tenants, days []string) (m
 	gone := map[string][]string{}
 	if len(tenants) == 0 {
 		return rows, gone, nil
+	}
+	if err := lockKeys(ctx, q, pairKeys("salesDay", tenants, days)); err != nil {
+		return nil, nil, err
 	}
 	keys := `(tenant_id, day) in (select * from unnest($1::text[], $2::text[]))`
 	// A change to an order in a month that already rolled up, such as a late refund, updates that
@@ -88,9 +105,9 @@ func RefreshSalesDays(ctx context.Context, q Querier, tenants, days []string) (m
 		if before[f.collection], err = pgx.CollectRows(removed, pgx.RowTo[string]); err != nil {
 			return nil, nil, err
 		}
-		if _, err := q.Exec(ctx, soldIn+f.insert, tenants, days); err != nil {
-			return nil, nil, fmt.Errorf("%s: %w", f.table, err)
-		}
+	}
+	if _, err := q.Exec(ctx, refreshFacts, tenants, days); err != nil {
+		return nil, nil, fmt.Errorf("sales facts: %w", err)
 	}
 	if len(oldTenants) > 0 {
 		if err := rollUpMonths(ctx, q, oldTenants, oldMonths); err != nil {

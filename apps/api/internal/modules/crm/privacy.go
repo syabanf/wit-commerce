@@ -51,7 +51,7 @@ func EraseCustomer(t *kernel.Tx, m kernel.Meta, c domain.Customer) (domain.Custo
 			}
 		}
 	}
-	leads, err := store.List[domain.Lead](t.Ctx, t.Tx, "leads", "data->>'customerId' = $1 for update", c.ID)
+	leads, err := store.List[domain.Lead](t.Ctx, t.Tx, "leads", "customer_id = $1 for update", c.ID)
 	if err != nil {
 		return c, err
 	}
@@ -64,7 +64,7 @@ func EraseCustomer(t *kernel.Tx, m kernel.Meta, c domain.Customer) (domain.Custo
 			}
 		}
 	}
-	tickets, err := store.List[domain.Ticket](t.Ctx, t.Tx, "tickets", "data->>'customerId' = $1 for update", c.ID)
+	tickets, err := store.List[domain.Ticket](t.Ctx, t.Tx, "tickets", "customer_id = $1 for update", c.ID)
 	if err != nil {
 		return c, err
 	}
@@ -224,10 +224,10 @@ func Records(ctx context.Context, q store.Querier, c domain.Customer) (CustomerR
 	if out.Events, err = store.List[domain.CustomerEvent](ctx, q, "customerEvents", "customer_id = $1", c.ID); err != nil {
 		return out, err
 	}
-	if out.Leads, err = store.List[domain.Lead](ctx, q, "leads", "data->>'customerId' = $1", c.ID); err != nil {
+	if out.Leads, err = store.List[domain.Lead](ctx, q, "leads", "customer_id = $1", c.ID); err != nil {
 		return out, err
 	}
-	if out.Tickets, err = store.List[domain.Ticket](ctx, q, "tickets", "data->>'customerId' = $1", c.ID); err != nil {
+	if out.Tickets, err = store.List[domain.Ticket](ctx, q, "tickets", "customer_id = $1", c.ID); err != nil {
 		return out, err
 	}
 	out.Requests, err = PrivacyRequests(ctx, q, PrivacyRequestFilter{TenantID: c.TenantID, CustomerID: c.ID})

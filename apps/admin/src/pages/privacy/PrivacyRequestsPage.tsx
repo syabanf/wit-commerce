@@ -240,7 +240,7 @@ function AnswerDialog({
 }) {
   const s = useScoped()
   const [note, setNote] = useState('')
-  const customer = s.maps.customer.get(request.customerId)
+  const customer = s.customer(request.customerId)
   const code = customer?.code ?? request.customerId
   const erasure = request.kind === 'erasure'
 

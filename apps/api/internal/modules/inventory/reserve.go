@@ -7,17 +7,19 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 )
 
-// Lookup loads everything the order blockers read for one warehouse, locking the stock rows.
+// Lookup loads what the order blockers read for the order's variants and modifier options at its
+// warehouse, locking those stock rows. Orders for other variants of the same warehouse do not wait.
 func Lookup(t *kernel.Tx, o domain.Order) (rules.StockLookup, error) {
-	stock, modifierStock, err := StockAt(t, o.TenantID, o.WarehouseID)
+	variants, options := rules.VariantDemand(o).Keys, rules.ModifierDemand(o).Keys
+	stock, modifierStock, err := StockAt(t, o.TenantID, o.WarehouseID, variants, options)
 	if err != nil {
 		return rules.StockLookup{}, err
 	}
-	modifiers, err := catalog.TenantModifierGroups(t, o.TenantID)
+	modifiers, err := catalog.ModifierGroupsWithOptions(t, o.TenantID, options)
 	if err != nil {
 		return rules.StockLookup{}, err
 	}
-	products, err := catalog.TenantProducts(t, o.TenantID)
+	products, err := catalog.ProductsWithVariants(t, o.TenantID, variants)
 	if err != nil {
 		return rules.StockLookup{}, err
 	}

@@ -1,5 +1,5 @@
-import { DAY, fmtDate, fmtWeekday, isSameDay, nextCode, startOfDay, toMs } from '@rc/fixtures'
-import type { Customer, CustomerEvent, CustomerEventKind, Tenant } from '@rc/types'
+import { DAY, fmtDate, fmtWeekday, isSameDay, startOfDay, toMs } from '@rc/fixtures'
+import type { CustomerEvent, CustomerEventKind } from '@rc/types'
 import type { LucideIcon } from 'lucide-react'
 import {
   Award,
@@ -39,28 +39,6 @@ export const CUSTOMER_EVENT_ICON: Record<CustomerEventKind, LucideIcon> = {
   points_earned: Coins,
   note: MessageSquare,
   privacy: ShieldCheck,
-}
-
-/** Next customer code of a tenant: LARI-C10001 → LARI-C10002. */
-export function nextCustomerCode(customers: readonly Customer[], tenant: Pick<Tenant, 'code'>): string {
-  return nextCode(
-    customers.map((c) => c.code),
-    `${tenant.code}-C`,
-    5,
-  )
-}
-
-/** Avatar colour for a new customer, taken in turn from the colours already in use. */
-export function nextCustomerColor(customers: readonly Customer[], fallback: string): string {
-  const palette = [...new Set(customers.map((c) => c.color))]
-  return palette[customers.length % Math.max(1, palette.length)] ?? fallback
-}
-
-/** Distinct customer cities, most common first. */
-export function customerCities(customers: readonly Customer[]): string[] {
-  const counts = new Map<string, number>()
-  for (const c of customers) if (c.city) counts.set(c.city, (counts.get(c.city) ?? 0) + 1)
-  return [...counts].sort((a, b) => b[1] - a[1]).map(([city]) => city)
 }
 
 export interface DayGroup {

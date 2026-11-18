@@ -12,6 +12,31 @@ services:
       POSTGRES_DB: commerce
       POSTGRES_USER: commerce
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/deploy-prod.sh}
+    # Sized for a VPS with 2 to 4 GB of RAM and an SSD that Postgres shares with the API and nginx;
+    # apps/api/cmd/README.md explains each value. max_connections covers four processes (api, ai,
+    # notifier, shop) at DB_MAX_CONNS 16 each, plus room for psql and backups. Raise it with the pools.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1536MB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-128MB}
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-80}
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - log_min_duration_statement=500ms
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=top
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -54,6 +79,16 @@ services:
       # notifier service sends the queued email in place of the API.
       EVENTS_NOTIFY: ${SPLIT_SERVICES:-false}
       NOTIFIER_EXTERNAL: ${SPLIT_SERVICES:-false}
+      # Pool, sign-in and retention knobs (apps/api/cmd/README.md); empty keeps the defaults.
+      DB_MAX_CONNS: ${DB_MAX_CONNS:-}
+      PASSWORD_HASH_SLOTS: ${PASSWORD_HASH_SLOTS:-}
+      PASSWORD_HASH_WAIT: ${PASSWORD_HASH_WAIT:-}
+      RETAIN_REQUEST_LOG_DAYS: ${RETAIN_REQUEST_LOG_DAYS:-}
+      RETAIN_WEBHOOK_DELIVERIES_DAYS: ${RETAIN_WEBHOOK_DELIVERIES_DAYS:-}
+      RETAIN_EMAIL_OUTBOX_DAYS: ${RETAIN_EMAIL_OUTBOX_DAYS:-}
+      RETAIN_STOCK_MOVES_YEARS: ${RETAIN_STOCK_MOVES_YEARS:-}
+      RETAIN_INTEGRATION_LOGS_YEARS: ${RETAIN_INTEGRATION_LOGS_YEARS:-}
+      RETAIN_TRAFFIC_YEARS: ${RETAIN_TRAFFIC_YEARS:-}
     # Uploaded images, written by the API as uid 10001 with mode 0644 and served by web from the same
     # place. An absolute path is a host folder, which deploy-prod.sh creates and hands to uid 10001;
     # a plain name such as "media" is a Docker volume instead.

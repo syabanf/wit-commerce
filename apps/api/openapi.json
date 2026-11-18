@@ -706,6 +706,46 @@
         ],
         "type": "object"
       },
+      "BuyerFigures": {
+        "properties": {
+          "buyers": {
+            "type": "integer"
+          },
+          "cohorts": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Cohort"
+            },
+            "type": "object"
+          },
+          "firstDays": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "lastDays": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "repeatBuyers": {
+            "type": "integer"
+          },
+          "spend": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "buyers",
+          "cohorts",
+          "firstDays",
+          "lastDays",
+          "repeatBuyers",
+          "spend"
+        ],
+        "type": "object"
+      },
       "Campaign": {
         "properties": {
           "budget": {
@@ -911,6 +951,24 @@
           "name",
           "parentId",
           "tenantId"
+        ],
+        "type": "object"
+      },
+      "Cohort": {
+        "properties": {
+          "bought": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bought",
+          "size"
         ],
         "type": "object"
       },
@@ -1429,6 +1487,104 @@
           "privacyRequests",
           "returns",
           "tickets"
+        ],
+        "type": "object"
+      },
+      "CustomerSummary": {
+        "properties": {
+          "abandoned": {
+            "type": "integer"
+          },
+          "buyers": {
+            "$ref": "#/components/schemas/BuyerFigures"
+          },
+          "bySeller": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "byStage": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "byTier": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "cities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "colors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "inCustomSegments": {
+            "type": "integer"
+          },
+          "newIn30": {
+            "type": "integer"
+          },
+          "nextCode": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer"
+          },
+          "redeemable": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "segments": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/Customer"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "abandoned",
+          "buyers",
+          "bySeller",
+          "byStage",
+          "byTier",
+          "cities",
+          "colors",
+          "inCustomSegments",
+          "newIn30",
+          "nextCode",
+          "points",
+          "redeemable",
+          "segments",
+          "tags",
+          "top",
+          "total"
         ],
         "type": "object"
       },
@@ -4530,6 +4686,20 @@
         ],
         "type": "object"
       },
+      "customerCountsResponse": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "counts"
+        ],
+        "type": "object"
+      },
       "customerEventsResponse": {
         "properties": {
           "events": {
@@ -4541,6 +4711,51 @@
         },
         "required": [
           "events"
+        ],
+        "type": "object"
+      },
+      "customerRow": {
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "metrics": {}
+        },
+        "required": [
+          "customer",
+          "metrics"
+        ],
+        "type": "object"
+      },
+      "customerRowsResponse": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/customerRow"
+            },
+            "type": "array"
+          },
+          "stageCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "tierCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows",
+          "stageCounts",
+          "tierCounts",
+          "total"
         ],
         "type": "object"
       },
@@ -4622,6 +4837,22 @@
         },
         "required": [
           "email"
+        ],
+        "type": "object"
+      },
+      "historyResponse": {
+        "properties": {
+          "more": {
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {},
+            "type": "array"
+          }
+        },
+        "required": [
+          "more",
+          "rows"
         ],
         "type": "object"
       },
@@ -22815,6 +23046,83 @@
         "x-required-permission": "user.manage"
       }
     },
+    "/views/customer-counts": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsCustomerCounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/customerCountsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "How many customers each brand the user may open holds",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
     "/views/customer-events": {
       "get": {
         "description": "For people signed in to the console. API keys cannot call this.",
@@ -22887,6 +23195,314 @@
           }
         ],
         "summary": "Customer history, newest first: one customer, one kind, or the latest",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/views/customer-summary": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsCustomerSummary",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerSummary"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Figures over every customer of a brand: tiers, stages, segment sizes, buyers and cohorts",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/views/customers": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsCustomers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/customerRowsResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Customers with their metrics: filtered, searched, sorted and paged on the server",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/views/integration-logs": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsIntegrationLogs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/historyResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Older rows of a log the state carries only the newest of, newest first",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/views/modifier-stock-moves": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsModifierStockMoves",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/historyResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Older rows of a log the state carries only the newest of, newest first",
         "tags": [
           "Orders"
         ]
@@ -23118,6 +23734,83 @@
           }
         ],
         "summary": "Sales and product totals per month for months older than the daily window",
+        "tags": [
+          "Orders"
+        ]
+      }
+    },
+    "/views/stock-moves": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getViewsStockMoves",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/historyResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Older rows of a log the state carries only the newest of, newest first",
         "tags": [
           "Orders"
         ]

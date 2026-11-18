@@ -76,6 +76,12 @@ type Options struct {
 	DomainTargetIPs []string
 	// DomainAskSecret, when set, is what GET /internal/domain-allowed needs as ?secret=.
 	DomainAskSecret string
+	// PasswordSlots bounds the password hashes and checks that run at once, and PasswordWait how
+	// long a request queues for one before the answer is 503; zero takes auth's defaults.
+	PasswordSlots int
+	PasswordWait  time.Duration
+	// Retention says how long the housekeeping keeps logs; nil takes service.DefaultRetention.
+	Retention *service.Retention
 }
 
 // Server holds the dependencies handlers read.
@@ -99,6 +105,7 @@ type Server struct {
 	currency                                *currency.Currency
 	antispam                                *antispam.Antispam
 	spec                                    []byte
+	passwords                               *auth.PasswordGate
 }
 
 // New builds the server and its handler chain.
@@ -110,6 +117,7 @@ func New(o Options) *Server {
 	s.svc.Identity.Domains = o.domainConfig()
 	s.assistantUsers, s.assistantTenants = newKeyLimiter(assistantRatePerUser), newPeriodLimiter(assistantDailyPerTenant, 24*time.Hour)
 	s.complaintClients = newPeriodLimiter(complaintsPerHour, time.Hour)
+	s.passwords = auth.NewPasswordGate(o.PasswordSlots, o.PasswordWait)
 	s.shareLimits()
 	s.antispam = &antispam.Antispam{Runtime: s.svc.Runtime}
 	s.notify = &notifications.Notifications{Runtime: s.svc.Runtime, Mail: o.Mail, ResendURL: o.ResendURL, PublicURL: o.PublicURL, StoreRootDomain: o.StoreRootDomain, Log: o.Log}
@@ -120,7 +128,7 @@ func New(o Options) *Server {
 	s.currency = &currency.Currency{Runtime: s.svc.Runtime, Log: o.Log, URL: o.CurrencyURL}
 	mux := http.NewServeMux()
 	s.routes(mux)
-	s.handler = s.requestID(s.cors(s.recover(s.logRequests(mux))))
+	s.handler = s.requestID(s.cors(gzipResponses(s.recover(s.logRequests(mux)))))
 	return s
 }
 
@@ -175,6 +183,9 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, err error) {
 		writeProblem(w, http.StatusForbidden, "FORBIDDEN", forbidden.Error())
 	case errors.Is(err, store.ErrNotFound):
 		writeProblem(w, http.StatusNotFound, "NOT_FOUND", "not found")
+	case errors.Is(err, auth.ErrBusy):
+		w.Header().Set("Retry-After", "2")
+		writeProblem(w, http.StatusServiceUnavailable, "BUSY", "Too many sign-ins at once. Try again in a few seconds.")
 	default:
 		s.Log.Error("request failed", "path", r.URL.Path, "err", err, "requestId", requestIDOf(r.Context()))
 		writeProblem(w, http.StatusInternalServerError, "INTERNAL", "Something went wrong on our side.")

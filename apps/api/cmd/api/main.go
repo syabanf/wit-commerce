@@ -47,6 +47,9 @@ type config struct {
 	port           int
 	allowedOrigins []string
 	tickEvery      time.Duration
+	// passwordSlots and passwordWait bound password hashing; zero takes auth's defaults.
+	passwordSlots int
+	passwordWait  time.Duration
 }
 
 // storeRootDomain is the parent domain of store hosts. Unset means commerce.reddie.id; set but empty
@@ -86,6 +89,20 @@ func loadConfig() (config, error) {
 			return c, fmt.Errorf("PORT: %w", err)
 		}
 		c.port = n
+	}
+	if v := os.Getenv("PASSWORD_HASH_SLOTS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			return c, fmt.Errorf("PASSWORD_HASH_SLOTS=%q: want a whole number of at least 1", v)
+		}
+		c.passwordSlots = n
+	}
+	if v := os.Getenv("PASSWORD_HASH_WAIT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d <= 0 {
+			return c, fmt.Errorf("PASSWORD_HASH_WAIT=%q: want a positive duration such as 5s", v)
+		}
+		c.passwordWait = d
 	}
 	c.demoLogin = os.Getenv("DEMO_LOGIN") != "false"
 	if c.demoLogin && c.demoPassword == "" {
@@ -204,6 +221,10 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		notifier = events.NewNotifier(db.Pool, log)
 		hub.Forward(notifier.Enqueue)
 	}
+	retention, warnings := service.RetentionFromEnv(os.Getenv)
+	for _, w := range warnings {
+		log.Warn(w)
+	}
 	srv := httpapi.New(httpapi.Options{
 		DB: db, Clock: clock.New(anchor), Signer: signer, Vault: vault,
 		Outbound: service.OutboundClient(allowInternal), AllowInternalWebhooks: allowInternal,
@@ -222,6 +243,7 @@ func run(ctx context.Context, log *slog.Logger, reset, exit, admin bool) error {
 		// TLS proxy sends to GET /internal/domain-allowed.
 		DomainTarget: strings.TrimSpace(os.Getenv("DOMAIN_TARGET")), DomainTargetIPs: strings.Fields(strings.ReplaceAll(os.Getenv("DOMAIN_TARGET_IPS"), ",", " ")),
 		DomainAskSecret: os.Getenv("DOMAIN_ASK_SECRET"),
+		PasswordSlots:   cfg.passwordSlots, PasswordWait: cfg.passwordWait, Retention: &retention,
 	})
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)

@@ -21,6 +21,7 @@ import { paths } from '../components/links'
 import { HTTP } from '../lib/api'
 import { usePersistentState } from '../lib/storage'
 import { type Scoped, useScoped } from '../state/scoped'
+import { useCustomerQuery } from '../state/useCustomerQuery'
 import { useOrderQuery } from '../state/useOrderQuery'
 import { useCreateActions } from './CreateMenu'
 import { type BadgeKey, EMPLOYEE_NAV, NAV, type NavSection, navFor } from './nav'
@@ -260,6 +261,24 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
     scoped.orders,
     !!typed && !staffOnly,
   )
+  // Customers too: the state holds only some of them.
+  const remoteCustomerPage = useCustomerQuery(
+    { tenantId: scoped.tenantId, q: typed, pageSize: RECORD_LIMIT, sort: 'customer' },
+    null,
+    !!typed && !staffOnly,
+  ).page
+  const remoteCustomers = useMemo<Row[] | null>(
+    () =>
+      remoteCustomerPage?.rows.map(({ customer: c }) => ({
+        key: c.id,
+        label: c.name,
+        hint: `${c.email} · ${c.city}`,
+        code: c.code,
+        icon: <CircleUser />,
+        to: paths.customer(c.id),
+      })) ?? null,
+    [remoteCustomerPage],
+  )
   const remoteOrders = useMemo<Row[] | null>(
     () =>
       remote.page?.rows.map((o) => ({
@@ -307,7 +326,12 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
       { title: 'Pages', rows: hits(pages) },
       ...records.map((g) => ({
         title: g.title,
-        rows: HTTP && g.title === 'Orders' ? (remoteOrders ?? []) : hits(g.rows).slice(0, RECORD_LIMIT),
+        rows:
+          HTTP && g.title === 'Orders'
+            ? (remoteOrders ?? [])
+            : HTTP && g.title === 'Customers'
+              ? (remoteCustomers ?? [])
+              : hits(g.rows).slice(0, RECORD_LIMIT),
       })),
     ]
     // A typed code goes first, so the code and Enter open it.
@@ -316,7 +340,7 @@ function Palette({ recent, onClose }: { recent: string[]; onClose: () => void })
       ? found.map((g) => ({ ...g, rows: g.rows.filter((r) => r.code !== exact.code) }))
       : found
     return [...(exact ? [{ title: 'Code', rows: [exact] }] : []), ...rest].filter((g) => g.rows.length)
-  }, [query, records, remoteOrders, recent, counts, creates, can, pages])
+  }, [query, records, remoteOrders, remoteCustomers, recent, counts, creates, can, pages])
 
   const flat = groups.flatMap((g) => g.rows)
 

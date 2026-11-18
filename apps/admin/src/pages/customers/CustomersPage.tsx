@@ -6,6 +6,7 @@ import {
   fmtNumber,
   fmtPercent,
   metricsFor,
+  metricsFromRows,
   repeatRate,
   toMs,
 } from '@rc/fixtures'
@@ -19,6 +20,7 @@ import {
   ChipRow,
   type Column,
   DataTable,
+  type DataTableState,
   EmptyState,
   Input,
   NativeSelect,
@@ -26,14 +28,17 @@ import {
   StatCard,
 } from '@rc/ui'
 import { Plus, Repeat, Search, TriangleAlert, UserPlus, Users } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { LifecycleBadge, TierBadge } from '../../components/badges'
 import { SellerChip, paths } from '../../components/links'
 import { SellerPicker } from '../../components/pickers'
+import { HTTP } from '../../lib/api'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
+import { useCustomerQuery } from '../../state/useCustomerQuery'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { CustomerDialog } from './CustomerDialog'
 
 const STAGES = Object.keys(LIFECYCLE_STAGE_LABEL) as LifecycleStage[]
@@ -49,6 +54,8 @@ const VIEW_LABEL: Record<Exclude<View, 'all'>, string> = {
 }
 
 type Row = { c: Customer; m: CustomerMetrics }
+
+const INITIAL_TABLE: DataTableState = { sort: { id: 'spend', desc: true }, page: 0 }
 
 export function CustomersPage() {
   const s = useScoped()
@@ -66,6 +73,23 @@ export function CustomersPage() {
   )
   const [sellerId, setSellerId] = useHistoryState<string | null>('seller', null)
   const table = useTableHistory()
+  // With the API the server filters, sorts and pages, so the page keeps the table's state to ask for it.
+  const [tableState, setTableState] = useState<DataTableState>(table.initialState ?? INITIAL_TABLE)
+  const summary = useCustomerSummary()
+  const remote = useCustomerQuery(
+    {
+      tenantId: s.tenantId,
+      view,
+      stage,
+      tier,
+      sellerId,
+      q: query.trim(),
+      sort: tableState.sort?.id,
+      desc: tableState.sort?.desc,
+      page: tableState.page,
+    },
+    s.state.customers,
+  )
 
   const setParam = (key: string, value: string | null) =>
     setParams(
@@ -79,8 +103,9 @@ export function CustomersPage() {
     )
   const setView = (next: View) => setParam('view', next === 'all' ? null : next)
 
+  // The demo holds every customer and filters here; with the API these stay empty.
   const all = useMemo<Row[]>(
-    () => s.customers.map((c) => ({ c, m: metricsFor(s.crm.metrics, c.id) })),
+    () => (HTTP ? [] : s.customers.map((c) => ({ c, m: metricsFor(s.crm.metrics, c.id) }))),
     [s.customers, s.crm],
   )
 
@@ -95,17 +120,35 @@ export function CustomersPage() {
     return { test, rows: all.filter(test[view]) }
   }, [all, view, now])
 
-  const stats = useMemo(
-    () => ({
-      newCount: all.filter(inView.test.new).length,
-      atRisk: all.filter((r) => r.c.stage === 'at_risk').length,
-      dormant: all.filter((r) => r.c.stage === 'dormant').length,
-      repeat: repeatRate(s.facts.customerMetrics),
-    }),
-    [all, inView, s.facts.customerMetrics],
-  )
+  const stats = {
+    total: summary?.total ?? 0,
+    newCount: summary?.newIn30 ?? 0,
+    atRisk: summary?.byStage.at_risk ?? 0,
+    dormant: summary?.byStage.dormant ?? 0,
+    repeat: summary ? repeatRate(summary.buyers) : 0,
+  }
+
+  const remoteRows = useMemo<Row[] | null>(() => {
+    if (!remote.page) return null
+    const metrics = metricsFromRows(
+      remote.page.rows.flatMap((r) => (r.metrics ? [r.metrics] : [])),
+      s.products,
+      now,
+    )
+    return remote.page.rows.map((r) => ({ c: r.customer, m: metricsFor(metrics, r.customer.id) }))
+  }, [remote.page, s.products, now])
+
+  // Chip counts within the view: from the server, or counted here.
+  const stageCounts = useMemo(() => {
+    if (remote.page) return remote.page.stageCounts
+    const counts: Partial<Record<LifecycleStage, number>> = {}
+    for (const r of inView.rows) counts[r.c.stage] = (counts[r.c.stage] ?? 0) + 1
+    return counts
+  }, [remote.page, inView])
+  const inViewCount = Object.values(stageCounts).reduce((n, c) => n + (c ?? 0), 0)
 
   const rows = useMemo(() => {
+    if (HTTP) return remoteRows ?? []
     const q = query.trim().toLowerCase()
     return inView.rows.filter(({ c }) => {
       if (stage && c.stage !== stage) return false
@@ -114,7 +157,7 @@ export function CustomersPage() {
       if (!q) return true
       return `${c.name} ${c.code} ${c.email} ${c.phone} ${c.city}`.toLowerCase().includes(q)
     })
-  }, [inView, query, stage, tier, sellerId])
+  }, [inView, query, stage, tier, sellerId, remoteRows])
 
   const columns: Column<Row>[] = [
     {
@@ -247,7 +290,7 @@ export function CustomersPage() {
         <div className="gap-3 sm:gap-4 xl:grid-cols-4 grid grid-cols-2">
           <StatCard
             label="Customers"
-            value={fmtNumber(all.length)}
+            value={fmtNumber(stats.total)}
             hint="All registered profiles"
             icon={<Users />}
             tone="ink"
@@ -280,11 +323,11 @@ export function CustomersPage() {
         </div>
         <div className="gap-2 flex flex-wrap items-center">
           <ChipRow className="max-w-full">
-            <Chip variant="filter" active={!stage} count={inView.rows.length} onClick={() => setStage(null)}>
+            <Chip variant="filter" active={!stage} count={inViewCount} onClick={() => setStage(null)}>
               All
             </Chip>
             {STAGES.map((st) => {
-              const count = inView.rows.filter((r) => r.c.stage === st).length
+              const count = stageCounts[st] ?? 0
               if (!count && stage !== st) return null
               return (
                 <Chip
@@ -320,12 +363,15 @@ export function CustomersPage() {
         <DataTable
           columns={columns}
           rows={rows}
+          totalRows={HTTP ? (remote.page?.total ?? 0) : undefined}
           getRowKey={(r) => r.c.id}
           onRowClick={(r) => navigate(paths.customer(r.c.id))}
           resetPageKey={`${query}|${stage}|${tier}|${sellerId}|${view}`}
           initialSort={{ id: 'spend', desc: true }}
           empty={
-            filtered ? (
+            HTTP && !remote.page ? (
+              <EmptyState compact title="Loading customers" description="Reading the list from the server." />
+            ) : filtered ? (
               <EmptyState
                 compact
                 title="No customers match"
@@ -344,7 +390,11 @@ export function CustomersPage() {
               />
             )
           }
-          {...table}
+          initialState={table.initialState}
+          onStateChange={(state) => {
+            setTableState(state)
+            table.onStateChange(state)
+          }}
         />
       </div>
       <CustomerDialog

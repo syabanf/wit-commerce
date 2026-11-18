@@ -1,4 +1,5 @@
 import {
+  NO_BUYERS,
   cartAbandonment,
   channelMix,
   dailyRevenue,
@@ -33,7 +34,7 @@ export function CommerceTab({ days, today }: { days: number; today: number }) {
     const from = windowStart(days, today)
     const mix = channelMix(s.facts.salesDays, from)
     return {
-      kpis: periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, today),
+      kpis: periodKpis(s.facts.salesDays, NO_BUYERS, s.traffic, days, today),
       revenue: dailyRevenue(s.facts.salesDays, days, today),
       visitors: visitorsPerDay(s.traffic, days, today),
       abandonment: cartAbandonment(s.traffic, days, today),

@@ -177,11 +177,14 @@ func TestCustomerMetricsFollowWritesAndReachTheConsole(t *testing.T) {
 		t.Errorf("the projected metrics differ from a rebuild: %d vs %d rows", len(projected), len(rebuilt))
 	}
 
-	var state struct {
-		State map[string][]json.RawMessage `json:"state"`
+	// The console reads a customer's metrics with the customer, not from its state.
+	var page struct {
+		Rows []struct {
+			Metrics *metricRow `json:"metrics"`
+		} `json:"rows"`
 	}
-	e.call("GET", "/state", e.admin, nil, &state)
-	if len(state.State["customerMetrics"]) == 0 {
-		t.Error("the state carries no customer metrics")
+	e.call("GET", "/views/customers?tenantId=ten-lari&ids="+buyer, e.admin, nil, &page)
+	if len(page.Rows) != 1 || page.Rows[0].Metrics == nil || page.Rows[0].Metrics.Spend != projected[buyer].Spend {
+		t.Errorf("the customer view does not carry the metrics: %+v", page.Rows)
 	}
 }

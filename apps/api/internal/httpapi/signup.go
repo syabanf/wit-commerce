@@ -60,7 +60,7 @@ func (s *Server) signUp(w http.ResponseWriter, r *http.Request) {
 	if !checkNewPassword(w, in.Password) || !s.captchaPassed(w, r, in.CaptchaToken) {
 		return
 	}
-	hash, err := auth.HashPassword(in.Password)
+	hash, err := s.passwords.Hash(r.Context(), in.Password)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

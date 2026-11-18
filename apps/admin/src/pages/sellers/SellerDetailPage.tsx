@@ -40,6 +40,7 @@ import { FilteredOrderTable } from '../../components/FilteredOrderTable'
 import { CustomerLink, OrderLink, ProductLink, paths } from '../../components/links'
 import { ProductsPicker } from '../../components/pickers'
 import { useNow, useScoped } from '../../state/scoped'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { HeroMetric } from '../../components/HeroMetric'
 import { PersonalStoreCard } from './PersonalStoreCard'
 import { SellerProfileCard } from './SellerProfileCard'
@@ -55,6 +56,7 @@ export function SellerDetailPage() {
   const now = useNow(60_000)
   const [suspending, setSuspending] = useState(false)
   const seller = s.sellers.find((x) => x.id === id)
+  const summary = useCustomerSummary()
 
   const stats = useMemo(
     () =>
@@ -99,7 +101,7 @@ export function SellerDetailPage() {
   const leads = s.leads
     .filter((l) => l.sellerId === seller.id)
     .sort((a, b) => toMs(b.updatedAt) - toMs(a.updatedAt))
-  const assigned = s.customers.filter((c) => c.sellerId === seller.id).length
+  const assigned = summary?.bySeller[seller.id] ?? 0
   const first = seller.name.split(' ')[0]
 
   const copyLink = () => {

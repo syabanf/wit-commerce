@@ -39,6 +39,7 @@ import { PersonChip, paths } from '../../components/links'
 import { CategoryPicker, ProductPicker, WarehousePicker } from '../../components/pickers'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
+import { useOlderRows } from '../../state/useOlderRows'
 import { AdjustDialog, AdjustModifierDialog, ReceiveDialog } from './dialogs'
 import { type ModifierStockRow, type StockRow, modifierStockRows, stockRows } from './lib'
 
@@ -319,6 +320,9 @@ export function InventoryPage() {
   const ofMoveKind = <T extends { kind: StockMoveKind }>(list: T[]) =>
     moveKind ? list.filter((m) => m.kind === moveKind) : list
   const moveBase: { kind: StockMoveKind }[] = perspective === 'modifier' ? searchedModifierMoves : searchedMoves
+  const olderMoves = useOlderRows('stockMoves', moves)
+  const olderModifierMoves = useOlderRows('modifierStockMoves', modifierMoves)
+  const older = perspective === 'modifier' ? olderModifierMoves : olderMoves
   const moveFilters = (moveQuery.trim() ? 1 : 0) + (moveKind ? 1 : 0)
   const clearMoveFilters = () => {
     setMoveQuery('')
@@ -1108,6 +1112,13 @@ export function InventoryPage() {
                   )
                 }
               />
+            )}
+            {older.more && (
+              <div className="mt-3 flex justify-center">
+                <Button variant="outline" size="sm" onClick={older.load} disabled={older.loading}>
+                  {older.loading ? 'Loading older moves…' : 'Load older moves'}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

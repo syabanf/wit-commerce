@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -46,15 +47,29 @@ on conflict (customer_id) do update set tenant_id = excluded.tenant_id, orders =
 	buy_months = excluded.buy_months`
 
 // metricsRow is how a row reads in the console: id is the customer's, so deltas replace it in place.
-const metricsRow = `jsonb_build_object('id', customer_id, 'tenantId', tenant_id, 'customerId', customer_id, 'orders', orders,
-	'spend', spend, 'firstAt', first_at, 'lastAt', last_at, 'productCounts', product_counts,
-	'lastAbandonedAt', last_abandoned_at, 'lastPurchaseEventAt', last_purchase_event_at, 'buyMonths', buy_months)`
+var metricsRow = MetricsJSON("")
+
+// MetricsJSON builds that row from the customer_metrics columns of a table named by alias ("m."),
+// for queries that join it.
+func MetricsJSON(alias string) string {
+	return strings.NewReplacer("$.", alias).Replace(`jsonb_build_object('id', $.customer_id, 'tenantId', $.tenant_id,
+	'customerId', $.customer_id, 'orders', $.orders, 'spend', $.spend, 'firstAt', $.first_at, 'lastAt', $.last_at,
+	'productCounts', $.product_counts, 'lastAbandonedAt', $.last_abandoned_at,
+	'lastPurchaseEventAt', $.last_purchase_event_at, 'buyMonths', $.buy_months)`)
+}
 
 // RefreshCustomerMetrics derives the rows of the given customers again. A customer who no longer
 // qualifies, or no longer exists, loses their row; the returned ids say which.
 func RefreshCustomerMetrics(ctx context.Context, q Querier, customerIDs []string) (removed []string, err error) {
 	if len(customerIDs) == 0 {
 		return nil, nil
+	}
+	locks := make([]string, len(customerIDs))
+	for i, id := range customerIDs {
+		locks[i] = "customerMetrics:" + id
+	}
+	if err := lockKeys(ctx, q, locks); err != nil {
+		return nil, err
 	}
 	if _, err := q.Exec(ctx, fmt.Sprintf(refreshMetrics, "c.id = any($1)"), customerIDs); err != nil {
 		return nil, err

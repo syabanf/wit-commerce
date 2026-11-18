@@ -9,7 +9,21 @@ import (
 // RedeemPromotions counts one use, and the order's total as revenue, for every promotion the
 // order earned: each discount line's promotion, or the voucher code on an order without lines.
 func RedeemPromotions(t *kernel.Tx, o domain.Order) error {
-	promotions, err := store.List[domain.Promotion](t.Ctx, t.Tx, "promotions", "tenant_id = $1 for update", o.TenantID)
+	// Only the promotions the order can have earned are locked, so checkouts on other promotions
+	// do not wait for this one.
+	ids := make([]string, len(o.DiscountLines))
+	for i, d := range o.DiscountLines {
+		ids[i] = d.PromotionID
+	}
+	var code *string
+	if o.DiscountLines == nil {
+		code = o.VoucherCode
+	}
+	if len(ids) == 0 && code == nil {
+		return nil
+	}
+	promotions, err := store.List[domain.Promotion](t.Ctx, t.Tx, "promotions",
+		"tenant_id = $1 and (id = any($2) or data->>'code' = $3) for update", o.TenantID, ids, code)
 	if err != nil {
 		return err
 	}

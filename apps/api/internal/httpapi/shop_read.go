@@ -38,5 +38,5 @@ func NewShopReadHandler(o Options) http.Handler {
 		}
 		mux.Handle(pattern, all)
 	}
-	return s.requestID(s.cors(s.recover(s.logRequests(mux))))
+	return s.requestID(s.cors(gzipResponses(s.recover(s.logRequests(mux)))))
 }

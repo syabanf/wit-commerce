@@ -6,7 +6,6 @@ import {
   fmtNumber,
   fmtPercent,
   plural,
-  segmentMembers,
   toMs,
 } from '@rc/fixtures'
 import { CAMPAIGN_STATUS_LABEL, MESSAGE_CHANNEL_LABEL, type Campaign, type CampaignStatus } from '@rc/types'
@@ -33,6 +32,7 @@ import { CampaignStatusBadge } from '../../components/badges'
 import { paths } from '../../components/links'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { windowStart } from '../analytics/lib'
 import { CampaignDialog } from './CampaignDialog'
 import { clickToPurchase, fmtRoi, roi } from './lib'
@@ -60,9 +60,10 @@ export function CampaignsPage() {
       { replace: true },
     )
 
+  const summary = useCustomerSummary()
   const audience = useMemo(
-    () => new Map(s.segments.map((seg) => [seg.id, segmentMembers(seg, s.customers, s.crm).length])),
-    [s.segments, s.customers, s.crm],
+    () => new Map(s.segments.map((seg) => [seg.id, summary?.segments[seg.id] ?? 0])),
+    [s.segments, summary],
   )
 
   const stats = useMemo(() => {

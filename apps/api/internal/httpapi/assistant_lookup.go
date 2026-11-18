@@ -60,7 +60,7 @@ func (s *Server) runLookup(ctx context.Context, tenantID, userID string, sellers
 		res.Orders, err = s.orderFacts(ctx, own(where, ownOrderRows), "created_at desc, id", n, args, true)
 	case aimodule.LookupCustomers:
 		args = append(args, upper, like(q))
-		where := own("c.tenant_id = $1 and (upper(c.code) = $2 or c.data->>'name' ilike $3)", "c.data->>'sellerId' = any($%d)")
+		where := own("c.tenant_id = $1 and (upper(c.code) = $2 or c.data->>'name' ilike $3)", "c.seller_id = any($%d)")
 		res.Customers, err = s.customerFacts(ctx, where, "coalesce(m.spend, 0) desc, c.id", n, args)
 	case aimodule.LookupProducts:
 		var rows []productRow

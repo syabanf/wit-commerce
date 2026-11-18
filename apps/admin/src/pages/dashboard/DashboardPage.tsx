@@ -8,6 +8,7 @@ import { LegalChecklist } from '../legal/LegalChecklist'
 import { GrowthView } from './GrowthView'
 import { OverviewView } from './OverviewView'
 import { RoleHome } from './RoleHome'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { attentionQueues } from './lib'
 
 type View = 'overview' | 'growth'
@@ -16,7 +17,8 @@ export function DashboardPage() {
   const s = useScoped()
   const now = useNow(60_000)
   const [view, setView] = usePersistentState<View>('rc.admin.dashboard.view', 'overview')
-  const queues = useMemo(() => attentionQueues(s, now), [s, now])
+  const abandoned = useCustomerSummary()?.abandoned ?? 0
+  const queues = useMemo(() => attentionQueues(s, now, abandoned), [s, now, abandoned])
 
   if (s.user.role === 'sales' || s.user.role === 'service') return <RoleHome s={s} now={now} />
 

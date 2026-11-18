@@ -1,4 +1,5 @@
 import {
+  NO_BUYERS,
   cohorts,
   fmtIdr,
   fmtIdrShort,
@@ -6,6 +7,7 @@ import {
   fmtPercent,
   monthlyRevenue,
   periodKpis,
+  lifetimeValue,
   plural,
   repeatRate,
 } from '@rc/fixtures'
@@ -13,23 +15,25 @@ import { ColumnChart, StatCard, cn } from '@rc/ui'
 import { Gem, Repeat, UserPlus, Users } from 'lucide-react'
 import { useMemo } from 'react'
 import { useScoped } from '../../state/scoped'
+import { useCustomerSummary } from '../../state/useCustomerSummary'
 import { ChartCard } from './ChartCard'
-import { HEAT_LEGEND, heatClass, lifetimeValue } from './lib'
+import { HEAT_LEGEND, heatClass } from './lib'
 
 const HORIZON = 5
 
 export function CustomerTab({ days, today }: { days: number; today: number }) {
   const s = useScoped()
+  const buyerFigures = useCustomerSummary()?.buyers ?? NO_BUYERS
 
   const d = useMemo(
     () => ({
-      kpis: periodKpis(s.facts.salesDays, s.facts.customerMetrics, s.traffic, days, today),
-      repeat: repeatRate(s.facts.customerMetrics),
-      ltv: lifetimeValue(s.crm.metrics),
-      cohorts: cohorts(s.facts.customerMetrics, 6, HORIZON, today),
+      kpis: periodKpis(s.facts.salesDays, buyerFigures, s.traffic, days, today),
+      repeat: repeatRate(buyerFigures),
+      ltv: lifetimeValue(buyerFigures),
+      cohorts: cohorts(buyerFigures, 6, HORIZON, today),
       monthly: monthlyRevenue(s.facts.salesDays, 12, today),
     }),
-    [s.facts, s.traffic, s.crm.metrics, days, today],
+    [s.facts, s.traffic, buyerFigures, days, today],
   )
   const buyers = d.kpis.newCustomers + d.kpis.returningCustomers
   const hasMonthly = d.monthly.some((m) => m.revenue > 0)

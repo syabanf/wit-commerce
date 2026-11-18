@@ -35,14 +35,14 @@ func returnStep(r domain.OrderReturn, status, note string, m kernel.Meta) domain
 	return r
 }
 
-// lockOrderReturns locks the order and loads the returns of its tenant, so two requests for one
-// order cannot both pass the quantity check.
+// lockOrderReturns locks the order and loads its returns, so two requests for one order cannot both
+// pass the quantity check.
 func lockOrderReturns(t *kernel.Tx, orderID string) (domain.Order, []domain.OrderReturn, error) {
 	o, err := kernel.Lock[domain.Order](t, "orders", orderID, "order")
 	if err != nil {
 		return o, nil, err
 	}
-	returns, err := kernel.TenantRows[domain.OrderReturn](t, "returns", o.TenantID)
+	returns, err := store.List[domain.OrderReturn](t.Ctx, t.Tx, "returns", "order_id = $1 and tenant_id = $2", o.ID, o.TenantID)
 	return o, returns, err
 }
 
