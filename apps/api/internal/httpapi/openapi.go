@@ -32,6 +32,8 @@ type routeDoc struct {
 	upload bool
 	// query lists further query parameters as name, type and description.
 	query [][3]string
+	// pdf means the answer is an application/pdf document.
+	pdf bool
 }
 
 // mediaTenant is the tenantId parameter of the media library's routes.
@@ -71,10 +73,6 @@ type (
 	}
 	advanceInput struct {
 		TrackingNo *string `json:"trackingNo"`
-	}
-	cancelInput struct {
-		Reason string `json:"reason"`
-		Note   string `json:"note"`
 	}
 	refundInput struct {
 		Amount int    `json:"amount"`
@@ -187,7 +185,7 @@ var routeDocs = map[string]routeDoc{
 	"POST /modifier-stock/receive":             {body: service.ReceiveInput{}},
 	"POST /orders":                             {body: placeOrderInput{}},
 	"POST /orders/{id}/advance":                {body: advanceInput{}},
-	"POST /orders/{id}/cancel":                 {body: cancelInput{}},
+	"POST /orders/{id}/cancel":                 {body: service.CancelInput{}},
 	"POST /orders/{id}/refund":                 {body: refundInput{}},
 	"POST /orders/{id}/notes":                  {body: noteInput{}},
 	"PUT /customers/{id}":                      {body: domain.Customer{}},
@@ -245,6 +243,13 @@ var routeDocs = map[string]routeDoc{
 	"POST /payments/midtrans/notification":     {body: midtransNotificationInput{}, response: okResponse{}},
 	"GET /orders/{id}/payment":                 {response: orderPaymentResponse{}},
 	"POST /shop/{store}/leads":                 {body: domain.Lead{}},
+
+	// Manual payment checks and cancellation refunds.
+	"POST /orders/{id}/payment/reject":                    {body: rejectInput{}},
+	"POST /orders/{id}/cancel-refund":                     {body: service.CancelRefundInput{}},
+	"POST /shop/{store}/orders/{id}/payment-confirmation": {body: service.PaymentConfirmationInput{}},
+	"POST /shop/{store}/payment-proof":                    {upload: true, response: media.MediaUpload{}, status: http.StatusCreated},
+
 	"POST /media": {upload: true, response: media.MediaUpload{}, status: http.StatusCreated, query: [][3]string{
 		{"purpose", "string", "seller-photo lets a seller upload the photo of their own profile without an upload permission."}}},
 	"GET /media": {response: media.MediaList{}, query: [][3]string{mediaTenant,
@@ -261,6 +266,11 @@ var routeDocs = map[string]routeDoc{
 	"POST /tickets":                 {body: service.Complaint{}},
 	"POST /shop/{store}/complaints": {body: shopComplaintInput{}},
 
+	// PPN settings and order invoices.
+	"PUT /tenants/{id}/tax":                     {body: domain.TaxSettings{}},
+	"GET /orders/{id}/invoice.pdf":              {pdf: true, query: [][3]string{{"tenantId", "string", "Required with a user token; an API key always reads its own tenant."}}},
+	"GET /shop/{store}/orders/{id}/invoice.pdf": {pdf: true},
+
 	// Personal data: erasure, consent, privacy requests.
 	"POST /customers/{id}/erase":                     {body: noteInput{}},
 	"POST /customers/{id}/consent":                   {body: consentInput{}},
@@ -272,7 +282,26 @@ var routeDocs = map[string]routeDoc{
 	"POST /shop/{store}/consent":                     {body: consentInput{}},
 	"GET /shop/{store}/privacy-requests":             {response: privacyRequestsResponse{}},
 	"POST /shop/{store}/privacy-requests":            {body: privacyRequestInput{}, response: privacyRequestsResponse{}},
-	"GET /shop/{store}/export":                       {response: service.CustomerExport{}},
+	"GET /shop/{store}/search": {response: service.SearchResult{}, query: [][3]string{
+		{"q", "string", "The words; case, accents and one typo per word do not matter."},
+		{"category", "string", "A category id; its sub-categories count too."},
+		{"collection", "string", "A collection's slug or id."},
+		{"attr.{code}", "string", "An attribute value, by the attribute's code or id; repeat for any of several."},
+		{"priceMin", "integer", "Lowest price in rupiah, inclusive."},
+		{"priceMax", "integer", "Highest price in rupiah, inclusive."},
+		{"inStock", "integer", "1 keeps products a shopper can buy now."},
+		{"sort", "string", "relevance (default), price_asc, price_desc, newest or best."},
+		{"page", "integer", "From 1."},
+		{"pageSize", "integer", "24 when left out, at most 60."},
+	}},
+	"GET /shop/{store}/suggest": {response: service.SuggestResult{}, query: [][3]string{{"q", "string", "What the shopper has typed so far."}}},
+	"GET /shop/{store}/export":  {response: service.CustomerExport{}},
+
+	// Audit log and product CSV.
+	"GET /audit-log":                   {response: AuditPage{}},
+	"POST /product-imports":            {body: service.ProductImportInput{}, response: service.ProductImport{}},
+	"GET /product-imports/{id}":        {response: service.ProductImport{}},
+	"POST /product-imports/{id}/apply": {body: productImportApply{}, response: service.ProductImport{}},
 }
 
 // hiddenRoutes are for the demo and for this server's own apps, so the published contract leaves them out.
@@ -291,6 +320,13 @@ var hiddenRoutes = map[string]bool{
 	"POST /unsubscribe":                true,
 	"GET /openapi.json":                true,
 	"GET /docs":                        true,
+	// Sitemaps and robots.txt are XML and text for crawlers, served on store hosts by the web container.
+	"GET /shop/{store}/sitemap.xml":    true,
+	"GET /shop/{store}/sitemap/{part}": true,
+	"GET /shop/{store}/robots.txt":     true,
+	"GET /seo/sitemap.xml":             true,
+	"GET /seo/sitemap/{part}":          true,
+	"GET /seo/robots.txt":              true,
 }
 
 // publicRoutes need no token.
@@ -316,6 +352,8 @@ var publicRoutes = map[string]bool{
 	"POST /shop/{store}/leads":             true,
 	"POST /payments/midtrans/notification": true,
 	"POST /shop/{store}/complaints":        true,
+	"GET /shop/{store}/search":             true,
+	"GET /shop/{store}/suggest":            true,
 }
 
 var pathParam = regexp.MustCompile(`\{([a-zA-Z]+)\}`)
@@ -399,6 +437,8 @@ func tagOf(path string) string {
 	switch first, _, _ := strings.Cut(strings.TrimPrefix(path, "/"), "/"); first {
 	case "products", "categories", "attributes", "modifiers", "collections":
 		return "Catalog"
+	case "product-imports":
+		return "Catalog"
 	case "stock", "modifier-stock", "warehouses":
 		return "Inventory"
 	case "orders", "returns", "views":
@@ -434,6 +474,8 @@ func tagOf(path string) string {
 		return "Platform"
 	case "config", "plan-requests", "invoices":
 		return "Plans"
+	case "audit-log":
+		return "Platform"
 	}
 	panic("openapi: no tag for " + path)
 }
@@ -491,6 +533,8 @@ func buildSpec(table []Route, version string) []byte {
 		var success map[string]any
 		isList := false
 		switch {
+		case doc.pdf:
+			success = map[string]any{"application/pdf": map[string]any{"schema": map[string]any{"type": "string", "format": "binary"}}}
 		case doc.response != nil:
 			success = jsonContent(defs.of(reflect.TypeOf(doc.response)))
 		case route.Method == http.MethodGet:

@@ -169,3 +169,14 @@ func TestEmailGiveUpCountMatchesThePruneIndex(t *testing.T) {
 		t.Fatalf("notifications.MaxAttempts is %d; update email_outbox_done_idx in a new migration", notifications.MaxAttempts)
 	}
 }
+
+func TestAuditLogKeepsAtLeastFiveYears(t *testing.T) {
+	env := map[string]string{"RETAIN_AUDIT_LOG_YEARS": "2", "RETAIN_PRODUCT_IMPORTS_DAYS": "7"}
+	r, warnings := service.RetentionFromEnv(func(k string) string { return env[k] })
+	if r.AuditLog != 5*365*24*time.Hour || r.ProductImports != 7*24*time.Hour || len(warnings) != 1 {
+		t.Errorf("audit %v imports %v warnings %v", r.AuditLog, r.ProductImports, warnings)
+	}
+	if d := service.DefaultRetention(); d.AuditLog != 5*365*24*time.Hour || d.ProductImports != 30*24*time.Hour {
+		t.Errorf("defaults %+v", d)
+	}
+}

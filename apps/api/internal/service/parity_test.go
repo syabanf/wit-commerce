@@ -330,9 +330,34 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		parse(&a)
 		return s.AdvanceOrder(ctx, m, a.ID, a.TrackingNo)
 	case "orders/cancel":
-		var a struct{ ID, Reason, Note string }
+		var a struct {
+			ID string
+			service.CancelInput
+		}
 		parse(&a)
-		return s.CancelOrder(ctx, m, a.ID, a.Reason, a.Note)
+		return s.CancelOrder(ctx, m, a.ID, a.CancelInput)
+	case "orders/submitPayment":
+		var a struct {
+			ID           string
+			Confirmation service.PaymentConfirmationInput
+		}
+		parse(&a)
+		return s.SubmitPaymentConfirmation(ctx, m, a.ID, a.Confirmation)
+	case "orders/confirmPayment":
+		var a struct{ ID string }
+		parse(&a)
+		return s.ConfirmTransfer(ctx, m, a.ID)
+	case "orders/rejectPayment":
+		var a struct{ ID, Reason string }
+		parse(&a)
+		return s.RejectPayment(ctx, m, a.ID, a.Reason)
+	case "orders/refundCancelled":
+		var a struct {
+			ID string
+			service.CancelRefundInput
+		}
+		parse(&a)
+		return s.RefundCancelled(ctx, m, a.ID, a.CancelRefundInput)
 	case "orders/refund":
 		var a struct {
 			ID     string
@@ -519,6 +544,13 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		}
 		parse(&a)
 		return s.SetLegal(ctx, m, a.TenantID, a.Legal)
+	case "tenants/setTax":
+		var a struct {
+			TenantID string
+			Tax      domain.TaxSettings
+		}
+		parse(&a)
+		return s.SetTax(ctx, m, a.TenantID, a.Tax)
 	case "tenants/setCourierEta":
 		var a struct {
 			TenantID       string

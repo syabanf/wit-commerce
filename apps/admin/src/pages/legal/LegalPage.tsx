@@ -38,6 +38,7 @@ import { useState } from 'react'
 import { useAuth } from '../../auth/auth'
 import { storefrontUrl } from '../../lib/storefront'
 import { useScoped } from '../../state/scoped'
+import { TaxCard } from './TaxCard'
 
 /** Seller identity, complaint service, terms choices and delivery days (PP 80/2019). */
 export function LegalPage() {
@@ -53,6 +54,7 @@ export function LegalPage() {
       <div className="space-y-4">
         {/* The drafts restart when the tenant switches or its saved values change. */}
         <LegalEditor key={`${tenant.id}:${JSON.stringify(legal)}`} saved={legal} />
+        <TaxCard key={`${tenant.id}:${JSON.stringify(tenant.tax ?? null)}`} />
         <DeliveryDaysCard key={`${tenant.id}:${JSON.stringify(etas)}`} />
       </div>
     </>

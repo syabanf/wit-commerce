@@ -720,3 +720,20 @@ export const STORE_LANGUAGE_LABEL: Record<StoreLanguage, string> = {
   id: 'Bahasa Indonesia',
   en: 'English',
 }
+
+/** A shopper's payment confirmation: waiting for staff, confirmed, or rejected with a reason. */
+export type PaymentConfirmationStatus = 'submitted' | 'confirmed' | 'rejected'
+export const PAYMENT_CONFIRMATION_STATUS_LABEL: Record<PaymentConfirmationStatus, string> = {
+  submitted: 'To verify',
+  confirmed: 'Verified',
+  rejected: 'Rejected',
+}
+
+/** A cancellation's refund: owed (nothing sent), pending (no gateway answer), failed, or succeeded. */
+export type CancelRefundStatus = 'owed' | 'pending' | 'failed' | 'succeeded'
+export const CANCEL_REFUND_STATUS_LABEL: Record<CancelRefundStatus, string> = {
+  owed: 'Refund owed',
+  pending: 'Refund pending',
+  failed: 'Refund failed',
+  succeeded: 'Refunded',
+}

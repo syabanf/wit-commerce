@@ -39,7 +39,7 @@ func (s *Service) Tick(ctx context.Context, at string) (*Delta, error) {
 		}
 		var due []domain.Order
 		for _, o := range open {
-			if now-clock.Ms(o.CreatedAt) >= PaymentWindowHours*clock.Hour {
+			if !rules.PaymentWindowOpen(o, now, PaymentWindowHours*clock.Hour) {
 				due = append(due, o)
 			}
 		}

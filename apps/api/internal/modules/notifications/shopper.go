@@ -25,6 +25,8 @@ type ShopperFacts struct {
 	Discount     int
 	Shipping     int
 	Total        int
+	// Tax is the order's PPN when the brand is a PKP; nil shows no tax rows.
+	Tax *TaxFacts
 	// AwaitingPayment is an online or transfer payment that has not arrived.
 	AwaitingPayment bool
 	// PayOnline means a provider collects the payment on its own page, opened from the order page.
@@ -41,115 +43,157 @@ type ShopperFacts struct {
 	// RefundReference traces a return's refund; RefundByTransfer says staff sent it by bank transfer.
 	RefundReference  string
 	RefundByTransfer bool
+	// RefundStatus is a cancellation refund's state: owed, pending, failed or succeeded.
+	RefundStatus string
+	// RejectReason is why staff did not accept a payment confirmation.
+	RejectReason string
 
 	// Lang is the store's language, "id" or "en" (rules.StoreLanguage). Empty means English.
 	Lang string
+}
+
+// TaxFacts is the PPN an order email shows. Rate is the percentage as text, such as "12".
+type TaxFacts struct {
+	DPP, PPN int
+	Rate     string
+	// Included means the prices already held the PPN; otherwise it was added to the total.
+	Included bool
 }
 
 // phrases holds every sentence of the shopper emails, the marketing footer and the unsubscribe page per
 // language. Each map has the same keys; English fills any key a language lacks.
 var phrases = map[string]map[string]string{
 	"en": {
-		"greeting":          "Hi %s,",
-		"placed.subject":    "Your %s order %s",
-		"placed.title":      "Thank you for your order",
-		"placed.intro":      "We have your order %s and will let you know when it ships.",
-		"placed.pay_online": "Your order waits for payment. Open the order page and press Pay now to pay %s.",
-		"placed.pay_manual": "Your order waits for payment of %s.",
-		"placed.cod":        "Pay the courier %s when the parcel arrives.",
-		"paid.subject":      "Payment received for %s",
-		"paid.title":        "Payment received",
-		"paid.intro":        "We received your payment of %s for order %s. We are getting it ready.",
-		"shipped.subject":   "Order %s is on its way",
-		"shipped.title":     "Your order is on its way",
-		"shipped.intro":     "Order %s left our warehouse.",
-		"cancelled.subject": "Order %s was cancelled",
-		"cancelled.title":   "Your order was cancelled",
-		"cancelled.intro":   "We cancelled order %s.",
-		"cancelled.refund":  "We are refunding %s to your original payment method.",
-		"refunded.subject":  "Refund for order %s",
-		"refunded.title":    "We sent your refund",
-		"refunded.intro":    "We refunded %s for order %s to your original payment method.",
-		"approved.subject":  "Return %s approved",
-		"approved.title":    "Your return is approved",
-		"approved.intro":    "We approved return %s for order %s. Send the items back and we will refund you once they arrive.",
-		"retrefund.subject": "Refund for return %s",
-		"retrefund.title":   "Your return is refunded",
-		"retrefund.intro":   "We received return %s and refunded %s to your original payment method.",
-		"retrefund.bank":    "We received return %s and sent %s to you by bank transfer.",
-		"label.reference":   "Reference",
-		"label.order":       "Order",
-		"label.subtotal":    "Subtotal",
-		"label.discount":    "Discount",
-		"label.shipping":    "Shipping",
-		"label.free":        "Free",
-		"label.total":       "Total",
-		"label.courier":     "Courier",
-		"label.tracking":    "Tracking number",
-		"label.return":      "Return",
-		"label.refund":      "Refund",
-		"action.order":      "See your order",
-		"action.pay":        "Pay now",
-		"footer":            "You get this email because you ordered from %s.",
-		"greeting.anyone":   "there",
-		"line.item":         "Item",
-		"line.qty":          "Qty %d",
-		"marketing.footer":  "You get this email because you agreed to offers and news from %s.",
-		"unsubscribe":       "Unsubscribe",
-		"unsubscribe.bad":   "This unsubscribe link is not valid. Ask the store to stop sending you offers.",
-		"unsubscribe.ask":   "Stop offers and news from this store? Email about your orders still arrives.",
-		"unsubscribe.done":  "You are unsubscribed. The store sends you no more offers or news.",
+		"greeting":                  "Hi %s,",
+		"placed.subject":            "Your %s order %s",
+		"placed.title":              "Thank you for your order",
+		"placed.intro":              "We have your order %s and will let you know when it ships.",
+		"placed.pay_online":         "Your order waits for payment. Open the order page and press Pay now to pay %s.",
+		"placed.pay_manual":         "Your order waits for payment of %s.",
+		"placed.cod":                "Pay the courier %s when the parcel arrives.",
+		"paid.subject":              "Payment received for %s",
+		"paid.title":                "Payment received",
+		"paid.intro":                "We received your payment of %s for order %s. We are getting it ready.",
+		"shipped.subject":           "Order %s is on its way",
+		"shipped.title":             "Your order is on its way",
+		"shipped.intro":             "Order %s left our warehouse.",
+		"cancelled.subject":         "Order %s was cancelled",
+		"cancelled.title":           "Your order was cancelled",
+		"cancelled.intro":           "We cancelled order %s.",
+		"cancelled.refund":          "We are refunding %s to your original payment method.",
+		"cancelled.refund_transfer": "We will send %s back to you by bank transfer and email you its reference.",
+		"cancelled.refunded":        "We refunded %s to your original payment method.",
+		"cancelled.refunded_bank":   "We sent %s back to you by bank transfer.",
+		"refunded.bank":             "We sent %s for order %s to you by bank transfer.",
+		"pcheck.subject":            "We received your payment confirmation for %s",
+		"pcheck.title":              "Payment confirmation received",
+		"pcheck.intro":              "You told us you sent %s for order %s. We will check it and email you once it is confirmed.",
+		"prejected.subject":         "We could not confirm your payment for %s",
+		"prejected.title":           "Payment not confirmed",
+		"prejected.intro":           "We could not confirm your payment for order %s.",
+		"prejected.note":            "Check the details and send a new confirmation from the order page.",
+		"label.reason":              "Reason",
+		"refunded.subject":          "Refund for order %s",
+		"refunded.title":            "We sent your refund",
+		"refunded.intro":            "We refunded %s for order %s to your original payment method.",
+		"approved.subject":          "Return %s approved",
+		"approved.title":            "Your return is approved",
+		"approved.intro":            "We approved return %s for order %s. Send the items back and we will refund you once they arrive.",
+		"retrefund.subject":         "Refund for return %s",
+		"retrefund.title":           "Your return is refunded",
+		"retrefund.intro":           "We received return %s and refunded %s to your original payment method.",
+		"retrefund.bank":            "We received return %s and sent %s to you by bank transfer.",
+		"label.reference":           "Reference",
+		"label.order":               "Order",
+		"label.subtotal":            "Subtotal",
+		"label.discount":            "Discount",
+		"label.shipping":            "Shipping",
+		"label.free":                "Free",
+		"label.total":               "Total",
+		"label.dpp":                 "Tax base (DPP)",
+		"label.ppn":                 "PPN %s%%",
+		"label.ppn_incl":            "Includes PPN %s%%",
+		"label.courier":             "Courier",
+		"label.tracking":            "Tracking number",
+		"label.return":              "Return",
+		"label.refund":              "Refund",
+		"action.order":              "See your order",
+		"action.pay":                "Pay now",
+		"footer":                    "You get this email because you ordered from %s.",
+		"greeting.anyone":           "there",
+		"line.item":                 "Item",
+		"line.qty":                  "Qty %d",
+		"marketing.footer":          "You get this email because you agreed to offers and news from %s.",
+		"unsubscribe":               "Unsubscribe",
+		"unsubscribe.bad":           "This unsubscribe link is not valid. Ask the store to stop sending you offers.",
+		"unsubscribe.ask":           "Stop offers and news from this store? Email about your orders still arrives.",
+		"unsubscribe.done":          "You are unsubscribed. The store sends you no more offers or news.",
 	},
 	"id": {
-		"greeting":          "Halo %s,",
-		"placed.subject":    "Pesanan %[2]s di %[1]s",
-		"placed.title":      "Terima kasih atas pesanan Anda",
-		"placed.intro":      "Pesanan %s sudah kami terima. Kami kabari lagi saat pesanan dikirim.",
-		"placed.pay_online": "Pesanan Anda menunggu pembayaran. Buka halaman pesanan dan tekan Bayar sekarang untuk membayar %s.",
-		"placed.pay_manual": "Pesanan Anda menunggu pembayaran sebesar %s.",
-		"placed.cod":        "Bayar %s ke kurir saat paket tiba.",
-		"paid.subject":      "Pembayaran untuk %s sudah diterima",
-		"paid.title":        "Pembayaran diterima",
-		"paid.intro":        "Pembayaran Anda sebesar %s untuk pesanan %s sudah kami terima. Pesanan sedang kami siapkan.",
-		"shipped.subject":   "Pesanan %s sedang dikirim",
-		"shipped.title":     "Pesanan Anda sedang dikirim",
-		"shipped.intro":     "Pesanan %s sudah keluar dari gudang kami.",
-		"cancelled.subject": "Pesanan %s dibatalkan",
-		"cancelled.title":   "Pesanan Anda dibatalkan",
-		"cancelled.intro":   "Kami membatalkan pesanan %s.",
-		"cancelled.refund":  "Kami mengembalikan dana %s ke metode pembayaran awal Anda.",
-		"refunded.subject":  "Pengembalian dana pesanan %s",
-		"refunded.title":    "Dana Anda sudah kami kembalikan",
-		"refunded.intro":    "Kami mengembalikan dana %s untuk pesanan %s ke metode pembayaran awal Anda.",
-		"approved.subject":  "Retur %s disetujui",
-		"approved.title":    "Retur Anda disetujui",
-		"approved.intro":    "Kami menyetujui retur %s untuk pesanan %s. Kirim kembali barangnya, dan kami kembalikan dana Anda setelah barang tiba.",
-		"retrefund.subject": "Pengembalian dana retur %s",
-		"retrefund.title":   "Dana retur Anda sudah dikembalikan",
-		"retrefund.intro":   "Retur %s sudah kami terima dan dana %s sudah dikembalikan ke metode pembayaran awal Anda.",
-		"retrefund.bank":    "Retur %s sudah kami terima dan dana %s sudah kami kirim lewat transfer bank.",
-		"label.reference":   "Referensi",
-		"label.order":       "Pesanan",
-		"label.subtotal":    "Subtotal",
-		"label.discount":    "Diskon",
-		"label.shipping":    "Ongkos kirim",
-		"label.free":        "Gratis",
-		"label.total":       "Total",
-		"label.courier":     "Kurir",
-		"label.tracking":    "Nomor resi",
-		"label.return":      "Retur",
-		"label.refund":      "Pengembalian dana",
-		"action.order":      "Lihat pesanan",
-		"action.pay":        "Bayar sekarang",
-		"footer":            "Anda menerima email ini karena berbelanja di %s.",
-		"greeting.anyone":   "Kak",
-		"line.item":         "Barang",
-		"line.qty":          "Jumlah %d",
-		"marketing.footer":  "Anda menerima email ini karena setuju menerima penawaran dan kabar dari %s.",
-		"unsubscribe":       "Berhenti berlangganan",
-		"unsubscribe.bad":   "Tautan berhenti berlangganan ini tidak berlaku. Minta toko berhenti mengirimi Anda penawaran.",
-		"unsubscribe.ask":   "Berhenti menerima penawaran dan kabar dari toko ini? Email tentang pesanan Anda tetap dikirim.",
-		"unsubscribe.done":  "Anda sudah berhenti berlangganan. Toko tidak mengirimi Anda penawaran atau kabar lagi.",
+		"greeting":                  "Halo %s,",
+		"placed.subject":            "Pesanan %[2]s di %[1]s",
+		"placed.title":              "Terima kasih atas pesanan Anda",
+		"placed.intro":              "Pesanan %s sudah kami terima. Kami kabari lagi saat pesanan dikirim.",
+		"placed.pay_online":         "Pesanan Anda menunggu pembayaran. Buka halaman pesanan dan tekan Bayar sekarang untuk membayar %s.",
+		"placed.pay_manual":         "Pesanan Anda menunggu pembayaran sebesar %s.",
+		"placed.cod":                "Bayar %s ke kurir saat paket tiba.",
+		"paid.subject":              "Pembayaran untuk %s sudah diterima",
+		"paid.title":                "Pembayaran diterima",
+		"paid.intro":                "Pembayaran Anda sebesar %s untuk pesanan %s sudah kami terima. Pesanan sedang kami siapkan.",
+		"shipped.subject":           "Pesanan %s sedang dikirim",
+		"shipped.title":             "Pesanan Anda sedang dikirim",
+		"shipped.intro":             "Pesanan %s sudah keluar dari gudang kami.",
+		"cancelled.subject":         "Pesanan %s dibatalkan",
+		"cancelled.title":           "Pesanan Anda dibatalkan",
+		"cancelled.intro":           "Kami membatalkan pesanan %s.",
+		"cancelled.refund":          "Kami mengembalikan dana %s ke metode pembayaran awal Anda.",
+		"cancelled.refund_transfer": "Kami akan mengirim kembali dana %s lewat transfer bank dan mengirimkan nomor referensinya lewat email.",
+		"cancelled.refunded":        "Dana %s sudah kami kembalikan ke metode pembayaran awal Anda.",
+		"cancelled.refunded_bank":   "Dana %s sudah kami kirim kembali lewat transfer bank.",
+		"refunded.bank":             "Dana %s untuk pesanan %s sudah kami kirim lewat transfer bank.",
+		"pcheck.subject":            "Konfirmasi pembayaran untuk %s sudah kami terima",
+		"pcheck.title":              "Konfirmasi pembayaran diterima",
+		"pcheck.intro":              "Anda memberi tahu kami bahwa Anda sudah mengirim %s untuk pesanan %s. Kami akan memeriksanya dan mengabari Anda lewat email setelah dikonfirmasi.",
+		"prejected.subject":         "Pembayaran untuk %s belum dapat kami konfirmasi",
+		"prejected.title":           "Pembayaran belum dikonfirmasi",
+		"prejected.intro":           "Pembayaran Anda untuk pesanan %s belum dapat kami konfirmasi.",
+		"prejected.note":            "Periksa kembali detailnya dan kirim konfirmasi baru dari halaman pesanan.",
+		"label.reason":              "Alasan",
+		"refunded.subject":          "Pengembalian dana pesanan %s",
+		"refunded.title":            "Dana Anda sudah kami kembalikan",
+		"refunded.intro":            "Kami mengembalikan dana %s untuk pesanan %s ke metode pembayaran awal Anda.",
+		"approved.subject":          "Retur %s disetujui",
+		"approved.title":            "Retur Anda disetujui",
+		"approved.intro":            "Kami menyetujui retur %s untuk pesanan %s. Kirim kembali barangnya, dan kami kembalikan dana Anda setelah barang tiba.",
+		"retrefund.subject":         "Pengembalian dana retur %s",
+		"retrefund.title":           "Dana retur Anda sudah dikembalikan",
+		"retrefund.intro":           "Retur %s sudah kami terima dan dana %s sudah dikembalikan ke metode pembayaran awal Anda.",
+		"retrefund.bank":            "Retur %s sudah kami terima dan dana %s sudah kami kirim lewat transfer bank.",
+		"label.reference":           "Referensi",
+		"label.order":               "Pesanan",
+		"label.subtotal":            "Subtotal",
+		"label.discount":            "Diskon",
+		"label.shipping":            "Ongkos kirim",
+		"label.free":                "Gratis",
+		"label.total":               "Total",
+		"label.dpp":                 "Dasar pengenaan pajak (DPP)",
+		"label.ppn":                 "PPN %s%%",
+		"label.ppn_incl":            "Termasuk PPN %s%%",
+		"label.courier":             "Kurir",
+		"label.tracking":            "Nomor resi",
+		"label.return":              "Retur",
+		"label.refund":              "Pengembalian dana",
+		"action.order":              "Lihat pesanan",
+		"action.pay":                "Bayar sekarang",
+		"footer":                    "Anda menerima email ini karena berbelanja di %s.",
+		"greeting.anyone":           "Kak",
+		"line.item":                 "Barang",
+		"line.qty":                  "Jumlah %d",
+		"marketing.footer":          "Anda menerima email ini karena setuju menerima penawaran dan kabar dari %s.",
+		"unsubscribe":               "Berhenti berlangganan",
+		"unsubscribe.bad":           "Tautan berhenti berlangganan ini tidak berlaku. Minta toko berhenti mengirimi Anda penawaran.",
+		"unsubscribe.ask":           "Berhenti menerima penawaran dan kabar dari toko ini? Email tentang pesanan Anda tetap dikirim.",
+		"unsubscribe.done":          "Anda sudah berhenti berlangganan. Toko tidak mengirimi Anda penawaran atau kabar lagi.",
 	},
 }
 
@@ -163,7 +207,8 @@ func Say(lang, key string, args ...any) string {
 }
 
 // ComposeShopper builds the email for one notice kind: order_placed, payment_received,
-// order_shipped, order_cancelled, order_refunded, return_approved or return_refunded.
+// payment_confirmation_received, payment_rejected, order_shipped, order_cancelled, order_refunded,
+// return_approved or return_refunded.
 func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
 	say := func(key string, args ...any) string { return Say(f.Lang, key, args...) }
 	name := firstWord(f.CustomerName)
@@ -179,11 +224,18 @@ func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
 		if f.Discount > 0 {
 			rows = append(rows, Row{say("label.discount"), Rupiah(-f.Discount)})
 		}
+		if f.Tax != nil && !f.Tax.Included {
+			rows = append(rows, Row{say("label.dpp"), Rupiah(f.Tax.DPP)}, Row{say("label.ppn", f.Tax.Rate), Rupiah(f.Tax.PPN)})
+		}
 		shipping := say("label.free")
 		if f.Shipping > 0 {
 			shipping = Rupiah(f.Shipping)
 		}
-		return append(rows, Row{say("label.shipping"), shipping}, Row{say("label.total"), Rupiah(f.Total)})
+		rows = append(rows, Row{say("label.shipping"), shipping}, Row{say("label.total"), Rupiah(f.Total)})
+		if f.Tax != nil && f.Tax.Included {
+			rows = append(rows, Row{say("label.ppn_incl", f.Tax.Rate), Rupiah(f.Tax.PPN)}, Row{say("label.dpp"), Rupiah(f.Tax.DPP)})
+		}
+		return rows
 	}
 	var subject string
 	switch kind {
@@ -214,11 +266,27 @@ func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
 		subject = say("cancelled.subject", f.OrderCode)
 		e.Title, e.Intro = say("cancelled.title"), say("cancelled.intro", f.OrderCode)
 		if f.Amount > 0 {
-			e.Note = say("cancelled.refund", Rupiah(f.Amount))
+			e.Note = say(cancelRefundPhrase(f), Rupiah(f.Amount))
+		}
+		if f.RefundReference != "" {
+			e.Rows = []Row{{say("label.refund"), Rupiah(f.Amount)}, {say("label.reference"), f.RefundReference}}
 		}
 	case "order_refunded":
 		subject = say("refunded.subject", f.OrderCode)
 		e.Title, e.Intro = say("refunded.title"), say("refunded.intro", Rupiah(f.Amount), f.OrderCode)
+		if f.RefundByTransfer {
+			e.Intro = say("refunded.bank", Rupiah(f.Amount), f.OrderCode)
+		}
+		if f.RefundReference != "" {
+			e.Rows = []Row{{say("label.reference"), f.RefundReference}}
+		}
+	case "payment_confirmation_received":
+		subject = say("pcheck.subject", f.OrderCode)
+		e.Title, e.Intro = say("pcheck.title"), say("pcheck.intro", Rupiah(f.Amount), f.OrderCode)
+	case "payment_rejected":
+		subject = say("prejected.subject", f.OrderCode)
+		e.Title, e.Intro, e.Note = say("prejected.title"), say("prejected.intro", f.OrderCode), say("prejected.note")
+		e.Rows = []Row{{say("label.reason"), f.RejectReason}}
 	case "return_approved":
 		subject = say("approved.subject", f.ReturnCode)
 		e.Title, e.Intro = say("approved.title"), say("approved.intro", f.ReturnCode, f.OrderCode)
@@ -238,6 +306,20 @@ func ComposeShopper(kind string, f ShopperFacts) (mail.Message, bool) {
 	}
 	body, text := Render(f.Brand, e)
 	return mail.Message{To: f.To, Subject: subject, HTML: body, Text: text}, true
+}
+
+// cancelRefundPhrase says where a cancellation's money stands: sent back, on its way through the
+// gateway, or owed by bank transfer.
+func cancelRefundPhrase(f ShopperFacts) string {
+	switch {
+	case f.RefundStatus == "succeeded" && f.RefundByTransfer:
+		return "cancelled.refunded_bank"
+	case f.RefundStatus == "succeeded":
+		return "cancelled.refunded"
+	case f.RefundByTransfer:
+		return "cancelled.refund_transfer"
+	}
+	return "cancelled.refund"
 }
 
 func firstWord(name string) string {

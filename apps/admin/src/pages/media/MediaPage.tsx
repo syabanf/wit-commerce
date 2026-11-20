@@ -15,6 +15,7 @@ const USE_LABEL: Record<MediaUse['kind'], string> = {
   page_draft: 'Unpublished page changes',
   page_history: 'Page version history',
   seller: 'Seller photo',
+  order: 'Payment proof',
 }
 
 const sizeOf = (bytes: number) =>

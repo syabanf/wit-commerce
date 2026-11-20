@@ -126,19 +126,27 @@ type Tx struct {
 	Created map[string]bool
 	events  []outboxEvent
 	notices []Notice
+	// audit records the rows a staff or API key action changes; nil when the action is not audited.
+	audit *auditTrail
 }
 
 // Notify asks for a shopper email about this action, sent only if the action commits.
 func (t *Tx) Notify(n Notice) { t.notices = append(t.notices, n) }
 
-// Run executes an action in one transaction, projects the read models from its delta and queues
-// its webhooks, so the write, the read side and the outbox commit together.
+// Run executes an action in one transaction, records it in the audit log when a staff member or an
+// API key runs it, projects the read models from its delta and queues its webhooks, so the write,
+// its audit row, the read side and the outbox commit together.
 func (r *Runtime) Run(ctx context.Context, fn func(t *Tx) error) (*Delta, error) {
 	d := NewDelta()
 	err := pgx.BeginFunc(ctx, r.DB.Pool, func(ptx pgx.Tx) error {
-		t := &Tx{Ctx: ctx, Tx: ptx, D: d, Created: map[string]bool{}}
+		t := &Tx{Ctx: ctx, Tx: ptx, D: d, Created: map[string]bool{}, audit: newTrail(ctx)}
 		if err := fn(t); err != nil {
 			return err
+		}
+		if t.audit != nil {
+			if err := t.writeAudit(); err != nil {
+				return err
+			}
 		}
 		if err := readmodel.Apply(ctx, ptx, d.Upserts, d.Removes); err != nil {
 			return err
@@ -159,8 +167,16 @@ func (r *Runtime) Run(ctx context.Context, fn func(t *Tx) error) (*Delta, error)
 
 // Put writes a row and records it.
 func (t *Tx) Put(collection, id string, v any) error {
+	if t.audit != nil {
+		if err := t.audit.track(t, collection, id); err != nil {
+			return err
+		}
+	}
 	if err := store.Put(t.Ctx, t.Tx, collection, id, v); err != nil {
 		return err
+	}
+	if t.audit != nil {
+		t.audit.wrote(collection, id, v)
 	}
 	t.D.Upserts[collection] = append(t.D.Upserts[collection], v)
 	return nil
@@ -168,8 +184,16 @@ func (t *Tx) Put(collection, id string, v any) error {
 
 // Del removes a row and records it.
 func (t *Tx) Del(collection, id string) error {
+	if t.audit != nil {
+		if err := t.audit.track(t, collection, id); err != nil {
+			return err
+		}
+	}
 	if err := store.Delete(t.Ctx, t.Tx, collection, id); err != nil {
 		return err
+	}
+	if t.audit != nil {
+		t.audit.removed(collection, id)
 	}
 	t.D.Removes[collection] = append(t.D.Removes[collection], id)
 	return nil

@@ -1,7 +1,8 @@
 import { cn } from '@rc/ui'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router'
-import { FilterControls, FilterSheetButton, SortSelect } from '../../components/filters'
+import { FilterControls, FilterSheetButton, LoadMore, SortSelect } from '../../components/filters'
+import { listingCount } from '../../features/listing'
 import { Scroller } from '../../components/ui'
 import type { ListingViewProps } from '../types'
 import { ProductGrid } from './ProductCard'
@@ -68,12 +69,15 @@ export function Listing({ title, description, crumbs, chips, listing, empty }: L
               className={cn('text-sm text-[color:var(--sf-muted)]', hasFilters && 'lg:block hidden')}
               aria-live="polite"
             >
-              {tp('theme.products', listing.results.length)}
+              {tp('theme.products', listingCount(listing))}
             </p>
             <SortSelect listing={listing} className="md:ml-auto" />
           </div>
           {listing.results.length ? (
-            <ProductGrid products={listing.results} className={hasFilters ? 'lg:grid-cols-3' : undefined} />
+            <>
+              <ProductGrid products={listing.results} className={hasFilters ? 'lg:grid-cols-3' : undefined} />
+              <LoadMore listing={listing} />
+            </>
           ) : (
             empty
           )}

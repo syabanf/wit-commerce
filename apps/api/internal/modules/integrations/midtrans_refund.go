@@ -11,18 +11,22 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Refunds through Midtrans for returns (PP 80/2019 Pasal 71). Each attempt is a payment_refunds
-// row with its own refund_key. An attempt Midtrans never answered stays pending and the next try
+// Refunds through Midtrans for returns and cancelled paid orders (PP 80/2019 Pasal 71). Each
+// attempt is a payment_refunds row with its own refund_key. An attempt Midtrans never answered stays pending and the next try
 // reuses its key, after asking Midtrans whether that key already refunded, so money moves once.
 
-// RefundRequest asks the gateway to refund part of an order's payment for one return.
+// RefundRequest asks the gateway to refund part of an order's payment for one return, or all that
+// is left of it for a cancellation.
 type RefundRequest struct {
 	TenantID string
 	OrderID  string
+	// ReturnID names what the refund is for: the return's id, or CancelSubject(order id).
 	ReturnID string
-	Amount   int
-	Reason   string
-	At       string
+	// Kind is return or cancellation.
+	Kind   string
+	Amount int
+	Reason string
+	At     string
 }
 
 // Refund is the outcome of a gateway refund: succeeded, failed (Midtrans said no) or pending
@@ -80,10 +84,14 @@ func (s *Integrations) RefundMidtrans(ctx context.Context, serverKey string, req
 		}
 	}
 	key := fmt.Sprintf("%s-%d", req.ReturnID, attempt)
-	if _, err := s.DB.Pool.Exec(ctx, `insert into payment_refunds (refund_key, order_id, tenant_id, return_id, attempt, provider, amount, status, created_at, updated_at)
-		values ($1, $2, $3, $4, $5, 'midtrans', $6, 'pending', $7, $7)
+	kind := req.Kind
+	if kind == "" {
+		kind = "return"
+	}
+	if _, err := s.DB.Pool.Exec(ctx, `insert into payment_refunds (refund_key, order_id, tenant_id, return_id, attempt, provider, amount, status, created_at, updated_at, kind)
+		values ($1, $2, $3, $4, $5, 'midtrans', $6, 'pending', $7, $7, $8)
 		on conflict (refund_key) do update set status = 'pending', updated_at = $7`,
-		key, req.OrderID, req.TenantID, req.ReturnID, attempt, req.Amount, req.At); err != nil {
+		key, req.OrderID, req.TenantID, req.ReturnID, attempt, req.Amount, req.At, kind); err != nil {
 		return Refund{}, err
 	}
 	body := map[string]any{"refund_key": key, "amount": req.Amount, "reason": req.Reason}
@@ -106,6 +114,9 @@ func (s *Integrations) RefundMidtrans(ctx context.Context, serverKey string, req
 	}
 	return s.settleRefund(ctx, key, out, req.At)
 }
+
+// CancelSubject is the ReturnID of a cancellation's refund, so its keys read cancel-<order>-<attempt>.
+func CancelSubject(orderID string) string { return "cancel-" + orderID }
 
 // midtransHasRefund asks Midtrans whether the transaction lists a refund under this key.
 func (s *Integrations) midtransHasRefund(ctx context.Context, serverKey, orderID, key string) (bool, error) {

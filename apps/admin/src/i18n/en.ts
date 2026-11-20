@@ -52,6 +52,8 @@ export const en = {
     planUsage: 'Plan & usage',
     plans: 'Plans',
     assistantLog: 'Assistant log',
+    auditLog: 'Audit log',
+    productImport: 'Import products',
     analytics: 'Analytics',
     integrations: 'Integrations',
     credentials: 'API credentials',

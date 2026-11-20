@@ -5,6 +5,7 @@ import * as agent from '../src/i18n/areas/agent'
 import * as catalog from '../src/i18n/areas/catalog'
 import * as checkout from '../src/i18n/areas/checkout'
 import * as common from '../src/i18n/areas/common'
+import * as payment from '../src/i18n/areas/payment'
 import * as shell from '../src/i18n/areas/shell'
 import * as theme from '../src/i18n/areas/theme'
 import { en } from '../src/i18n/en'
@@ -12,7 +13,7 @@ import { id } from '../src/i18n/id'
 import { chooseLanguage, currentLang, setStoreLanguage, t, tp } from '../src/i18n'
 import { etaLabel, fmtDate } from '../src/i18n/format'
 
-const areas = { account, agent, catalog, checkout, common, shell, theme }
+const areas = { account, agent, catalog, checkout, common, payment, shell, theme }
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 test('both dictionaries have the same keys, none empty', () => {

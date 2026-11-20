@@ -38,6 +38,11 @@ export const commerceRoutes: RouteObject[] = [
     lazy: page(() => import('../pages/products/ProductsPage'), 'ProductsPage'),
   },
   {
+    path: 'commerce/products/import',
+    handle: { breadcrumb: t.breadcrumb.productImport },
+    lazy: page(() => import('../pages/products/ProductImportPage'), 'ProductImportPage'),
+  },
+  {
     path: 'commerce/products/:id',
     handle: { breadcrumb: ({ params }: CrumbArgs) => t.breadcrumb.productDetail(params.id ?? '') },
     lazy: page(() => import('../pages/products/ProductDetailPage'), 'ProductDetailPage'),

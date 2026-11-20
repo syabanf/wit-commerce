@@ -1,0 +1,15 @@
+# A store host's sitemap.xml and robots.txt come from the API, which picks the store by the Host
+# header (proxy.inc passes it): {store}.{STORE_ROOT_DOMAIN} or a verified custom domain. A sitemap
+# over 50,000 URLs is an index of /sitemap/1.xml, /sitemap/2.xml and so on.
+location = /robots.txt {
+  proxy_pass $api/api/v1/seo/robots.txt;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+}
+location = /sitemap.xml {
+  proxy_pass $api/api/v1/seo/sitemap.xml;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+}
+location ~ ^/sitemap/([0-9]+\.xml)$ {
+  proxy_pass $api/api/v1/seo/sitemap/$1;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+}

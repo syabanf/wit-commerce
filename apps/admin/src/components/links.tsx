@@ -12,6 +12,7 @@ export const paths = {
   orderReturn: (id: string) => `/commerce/returns/${id}`,
   product: (id: string) => `/commerce/products/${id}`,
   newProduct: '/commerce/products/new',
+  productImport: '/commerce/products/import',
   customer: (id: string) => `/customers/all/${id}`,
   segment: (id: string) => `/customers/segments/${id}`,
   newSegment: '/customers/segments/new',

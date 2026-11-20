@@ -14,7 +14,7 @@ import (
 
 // Use is one place a brand shows an image.
 type Use struct {
-	// Kind is product, brand, page, page_draft, page_history or seller.
+	// Kind is product, brand, page, page_draft, page_history, seller or order (a payment proof).
 	Kind  string `json:"kind"`
 	ID    string `json:"id"`
 	Label string `json:"label"`
@@ -60,7 +60,8 @@ const (
 	sweepEvery = 24 * time.Hour
 )
 
-// List returns a brand's images, newest first; q filters by file name.
+// List returns a brand's images, newest first; q filters by file name. Payment proofs shoppers
+// uploaded stay out of the library: they belong to their orders.
 func (m *Media) List(ctx context.Context, meta kernel.Meta, tenantID, q string, limit, offset int) (MediaList, error) {
 	if err := kernel.Access(meta, tenantID); err != nil {
 		return MediaList{}, err
@@ -70,11 +71,11 @@ func (m *Media) List(ctx context.Context, meta kernel.Meta, tenantID, q string, 
 	}
 	out := MediaList{Items: []MediaItem{}, Limit: min(limit, maxPage), Offset: max(offset, 0)}
 	like := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.TrimSpace(q)) + "%"
-	if err := m.DB.Pool.QueryRow(ctx, `select count(*) from media where tenant_id = $1 and name ilike $2`, tenantID, like).Scan(&out.Total); err != nil {
+	if err := m.DB.Pool.QueryRow(ctx, `select count(*) from media where tenant_id = $1 and name ilike $2 and created_by <> 'storefront'`, tenantID, like).Scan(&out.Total); err != nil {
 		return out, err
 	}
 	rows, err := m.DB.Pool.Query(ctx, `select id, path, width, height, mime, size, name, created_at from media
-		where tenant_id = $1 and name ilike $2 order by created_at desc, id desc limit $3 offset $4`, tenantID, like, out.Limit, out.Offset)
+		where tenant_id = $1 and name ilike $2 and created_by <> 'storefront' order by created_at desc, id desc limit $3 offset $4`, tenantID, like, out.Limit, out.Offset)
 	if err != nil {
 		return out, err
 	}

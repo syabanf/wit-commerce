@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 
@@ -27,6 +28,9 @@ var noticeSetting = map[string]string{
 	"order_refunded":   "order_cancelled",
 	"return_approved":  "return_update",
 	"return_refunded":  "return_update",
+	// A payment check answers to the payment switch: it is the payment's story.
+	"payment_confirmation_received": "payment_received",
+	"payment_rejected":              "payment_received",
 }
 
 // courierLabel mirrors COURIER_LABEL in packages/types for the couriers stores offer.
@@ -84,6 +88,9 @@ func (sn ShopperNotices) queue(ctx context.Context, tx pgx.Tx, n kernel.Notice) 
 	if f.Courier == "" {
 		f.Courier = o.Courier
 	}
+	if o.Tax != nil {
+		f.Tax = &notifications.TaxFacts{DPP: o.Tax.DPP, PPN: o.Tax.PPN, Rate: strconv.FormatFloat(o.Tax.RatePct, 'f', -1, 64), Included: o.Tax.PricesIncludeTax}
+	}
 	if o.TrackingNo != nil {
 		f.TrackingNo = *o.TrackingNo
 	}
@@ -115,9 +122,23 @@ func (sn ShopperNotices) queue(ctx context.Context, tx pgx.Tx, n kernel.Notice) 
 				f.PaymentInstructions = pt.Instructions
 			}
 		}
-	case "order_refunded":
-		// Each partial refund is its own event: the total refunded so far tells them apart.
-		key = fmt.Sprintf("%s:%d", key, o.RefundedAmount)
+	case "order_cancelled", "order_refunded":
+		if r := o.CancelRefund; r != nil {
+			f.RefundStatus, f.RefundReference = r.Status, r.Reference
+			f.RefundByTransfer = r.Method == "manual" || r.Status == "owed"
+		}
+		if n.Kind == "order_refunded" {
+			// Each partial refund is its own event: the total refunded so far tells them apart.
+			key = fmt.Sprintf("%s:%d", key, o.RefundedAmount)
+		}
+	case "payment_confirmation_received", "payment_rejected":
+		pc := o.PaymentConfirmation
+		f.RejectReason = pc.RejectReason
+		// A shopper may send again after a rejection; each confirmation and each answer is its own email.
+		key = n.Kind + ":" + o.ID + ":" + pc.SubmittedAt
+		if n.Kind == "payment_rejected" {
+			key += ":" + pc.ReviewedAt
+		}
 	case "return_approved", "return_refunded":
 		f.ReturnCode = n.Return.Code
 		f.RefundReference, f.RefundByTransfer = n.Return.RefundReference, n.Return.RefundMethod == "manual"

@@ -40,13 +40,16 @@ import { ArrowRight, Ban, MoreHorizontal, NotebookPen, PackageOpen, Printer, Und
 import { type ReactNode, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
+import { AuditHistoryCard } from '../../components/AuditHistory'
 import { BackButton } from '../../components/BackButton'
-import { ON_INK, OrderStatusBadge, PaymentBadge, ReturnStatusBadge, TierBadge } from '../../components/badges'
+import { ON_INK, OrderStatusBadge, PaymentStateBadge, ReturnStatusBadge, TierBadge } from '../../components/badges'
 import { CustomerLink, ProductLink, SellerChip, paths } from '../../components/links'
 import { useNow, useScoped } from '../../state/scoped'
 import { useFullOrder } from '../../state/useFullOrder'
 import { useOrderPayment } from '../../state/useOrderPayment'
 import { CancelOrderDialog, NoteDialog, RefundDialog, ShipDialog } from './dialogs'
+import { CancelRefundCard, PaymentCheckCard } from './payments'
+import { InvoiceButton, OrderTaxRows } from './orderTax'
 import { HeroMetric } from '../../components/HeroMetric'
 import { StartReturnDialog } from '../returns/dialogs'
 import { useReturns } from '../returns/useReturns'
@@ -202,6 +205,7 @@ export function OrderDetailPage() {
               <ArrowRight />
             </Button>
           )}
+          <InvoiceButton order={order} />
           <ActionMenu
             title={order.code}
             trigger={
@@ -242,7 +246,7 @@ export function OrderDetailPage() {
           </div>
           <div className="gap-2 flex flex-wrap">
             <OrderStatusBadge status={order.status} className={ON_INK} />
-            <PaymentBadge status={order.paymentStatus} className={ON_INK} />
+            <PaymentStateBadge order={order} className={ON_INK} />
           </div>
         </div>
         <div className="mt-5 gap-4 sm:grid-cols-4 grid grid-cols-2">
@@ -306,14 +310,19 @@ export function OrderDetailPage() {
                     value={`-${fmtIdr(order.discount)}`}
                   />
                 )}
+                <OrderTaxRows order={order} placement="before" />
                 <Row label="Shipping" value={order.shipping ? fmtIdr(order.shipping) : 'Free'} />
                 <div className="gap-2 pt-2 flex items-center justify-between border-t border-border">
                   <dt className="font-semibold">Total</dt>
                   <dd className="text-base font-bold tabular-nums">{fmtIdr(order.total)}</dd>
                 </div>
+                <OrderTaxRows order={order} placement="after" />
               </dl>
             </CardContent>
           </Card>
+
+          <PaymentCheckCard order={order} />
+          <CancelRefundCard order={order} />
 
           {order.agent && <AgentMandateCard order={order} />}
 
@@ -369,6 +378,7 @@ export function OrderDetailPage() {
               ))}
             </CardContent>
           </Card>
+          <AuditHistoryCard collection="orders" entityId={order.id} />
         </div>
 
         <div className="min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-1 grid grid-cols-1 content-start">
@@ -418,7 +428,7 @@ export function OrderDetailPage() {
               labelWidth="sm"
               items={[
                 { label: 'Method', value: PAYMENT_METHOD_LABEL[order.paymentMethod] },
-                { label: 'Status', value: <PaymentBadge status={order.paymentStatus} /> },
+                { label: 'Status', value: <PaymentStateBadge order={order} /> },
                 {
                   label: 'Voucher',
                   value: order.voucherCode ? (

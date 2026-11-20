@@ -25,6 +25,7 @@ import { OPEN_RETURN_STATUSES, RETURN_REASON_LABEL, SECTION_KIND_LABEL } from '@
 import { DAY, startOfDay, toMs, wib } from './dates'
 import { modifierDemand, nextOrderStatus, variantDemand } from './derive'
 import { listOf } from './format'
+import { addedTax } from './tax'
 
 // Blockers return the sentence the UI shows beside a disabled action, or null when the action may run.
 // The reducer refuses the same action with the same check, so the two never disagree.
@@ -41,6 +42,8 @@ export function orderAdvanceBlocker(
   if (CLOSED.has(order.status)) return 'This order is closed.'
   const next = nextOrderStatus(order)
   if (!next) return 'This order has no next step.'
+  if (next === 'paid' && order.paymentConfirmation?.status === 'submitted')
+    return "Check the shopper's payment confirmation first: confirm or reject it."
   if (next === 'packed') {
     for (const [variantId, qty] of variantDemand(order)) {
       const level = stock.find((s) => s.variantId === variantId && s.warehouseId === order.warehouseId)
@@ -77,6 +80,7 @@ export function orderCancelBlocker(order: Order): string | null {
 export function orderRefundBlocker(order: Order): string | null {
   if (order.paymentStatus !== 'paid') return 'Nothing to refund: the payment never arrived.'
   if (order.refundedAmount >= order.total) return 'The full amount is already refunded.'
+  if (order.cancelRefund) return 'This order is cancelled. Record its cancellation refund instead.'
   return null
 }
 
@@ -422,7 +426,8 @@ export function returnItemsPaid(
     const total = lines.reduce((n, l) => n + l.qty * l.price, 0)
     if (units) value += Math.floor((item.qty * total) / units)
   }
-  const goods = Math.max(0, order.subtotal - order.discount)
+  // With prices excluding PPN the shopper also paid the PPN on top of the goods.
+  const goods = Math.max(0, order.subtotal - order.discount + addedTax(order.tax))
   return order.subtotal > 0 ? Math.floor((value * goods) / order.subtotal) : 0
 }
 

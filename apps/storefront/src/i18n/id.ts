@@ -3,6 +3,7 @@ import * as agent from './areas/agent'
 import * as catalog from './areas/catalog'
 import * as checkout from './areas/checkout'
 import * as common from './areas/common'
+import * as payment from './areas/payment'
 import * as shell from './areas/shell'
 import * as theme from './areas/theme'
 import type { MessageKey } from './en'
@@ -16,4 +17,5 @@ export const id: Record<MessageKey, string> = {
   ...checkout.id,
   ...account.id,
   ...agent.id,
+  ...payment.id,
 }

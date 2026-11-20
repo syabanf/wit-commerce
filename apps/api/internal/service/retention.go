@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
@@ -21,7 +22,9 @@ import (
 // keep 10 years. Integration logs (connector calls and their results) and traffic (daily visit counts,
 // no personal data) are records of the electronic system, so they keep the 5 years that apply to
 // other PMSE data. The request log, finished webhook deliveries and finished email are operational
-// queues and debugging aids, not the record of a transaction, and keep 30 days.
+// queues and debugging aids, not the record of a transaction, and keep 30 days. The audit log is
+// the record of who changed what in the system (UU PDP Pasal 31), other PMSE data, and keeps 5
+// years. Product CSV imports are working copies of an uploaded file and keep 30 days.
 type Retention struct {
 	RequestLog        time.Duration
 	WebhookDeliveries time.Duration
@@ -29,6 +32,8 @@ type Retention struct {
 	StockMoves        time.Duration
 	IntegrationLogs   time.Duration
 	Traffic           time.Duration
+	AuditLog          time.Duration
+	ProductImports    time.Duration
 }
 
 const (
@@ -47,6 +52,7 @@ func DefaultRetention() Retention {
 	return Retention{
 		RequestLog: 30 * day, WebhookDeliveries: 30 * day, EmailOutbox: 30 * day,
 		StockMoves: transactionYears * year, IntegrationLogs: pmseYears * year, Traffic: pmseYears * year,
+		AuditLog: pmseYears * year, ProductImports: 30 * day,
 	}
 }
 
@@ -80,6 +86,8 @@ func RetentionFromEnv(getenv func(string) string) (Retention, []string) {
 	read("RETAIN_STOCK_MOVES_YEARS", year, transactionYears, &r.StockMoves)
 	read("RETAIN_INTEGRATION_LOGS_YEARS", year, pmseYears, &r.IntegrationLogs)
 	read("RETAIN_TRAFFIC_YEARS", year, pmseYears, &r.Traffic)
+	read("RETAIN_AUDIT_LOG_YEARS", year, pmseYears, &r.AuditLog)
+	read("RETAIN_PRODUCT_IMPORTS_DAYS", day, 1, &r.ProductImports)
 	return r, warnings
 }
 
@@ -132,6 +140,8 @@ func (s *Service) Prune(ctx context.Context, realNow, appNow time.Time, r Retent
 		{"stock_moves", "at < $1", r.StockMoves, docs},
 		{"integration_logs", "at < $1", r.IntegrationLogs, docs},
 		{"traffic", "day < $1", r.Traffic, days},
+		{"audit_log", "at < $1", r.AuditLog, logs},
+		{"product_imports", "created_at < $1", r.ProductImports, logs},
 	}
 	deleted := map[string]int64{}
 	for _, j := range jobs {
@@ -141,7 +151,7 @@ func (s *Service) Prune(ctx context.Context, realNow, appNow time.Time, r Retent
 		sql := fmt.Sprintf(`delete from %[1]s where id in (select id from %[1]s where %[2]s limit %[3]d)`, j.table, j.where, pruneBatch)
 		cutoff := j.cutoff(j.keep)
 		for range pruneBatches {
-			tag, err := s.DB.Pool.Exec(ctx, sql, cutoff)
+			tag, err := s.pruneExec(ctx, j.table, sql, cutoff)
 			if err != nil {
 				return deleted, fmt.Errorf("prune %s: %w", j.table, err)
 			}
@@ -154,4 +164,22 @@ func (s *Service) Prune(ctx context.Context, realNow, appNow time.Time, r Retent
 		}
 	}
 	return deleted, nil
+}
+
+// pruneExec runs one prune delete. The audit log refuses deletes unless its transaction sets
+// audit.prune (see migration 0036), so its batches run in a transaction that does.
+func (s *Service) pruneExec(ctx context.Context, table, sql string, cutoff any) (pgconn.CommandTag, error) {
+	if table != "audit_log" {
+		return s.DB.Pool.Exec(ctx, sql, cutoff)
+	}
+	var tag pgconn.CommandTag
+	err := pgx.BeginFunc(ctx, s.DB.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `select set_config('audit.prune', 'on', true)`); err != nil {
+			return err
+		}
+		var err error
+		tag, err = tx.Exec(ctx, sql, cutoff)
+		return err
+	})
+	return tag, err
 }

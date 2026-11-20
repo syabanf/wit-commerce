@@ -24,6 +24,7 @@ import {
   Globe,
   Handshake,
   Headset,
+  History,
   Images,
   House,
   KeyRound,
@@ -323,6 +324,7 @@ export const NAV: NavSection[] = [
       { to: '/settings/plan', code: 'PLU', label: 'Plan & usage', icon: Gauge, needs: ['user.manage'] },
       { to: '/settings/plans', code: 'PLN', label: 'Plans', icon: WalletCards, platformOnly: true },
       { to: '/settings/assistant-log', code: 'ASL', label: 'Assistant log', icon: ScrollText, needs: ['user.manage'] },
+      { to: '/settings/audit-log', code: 'AUD', label: 'Audit log', icon: History, needs: ['user.manage'] },
     ],
   },
 ]

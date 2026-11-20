@@ -23,6 +23,7 @@ import {
   useSearchSubmit,
 } from '../../components/shell'
 import { IconButton } from '../../components/ui'
+import { SuggestInput } from '../../components/SearchSuggest'
 import { useStoreMenu } from '../../lib/menus'
 import { paths } from '../../lib/paths'
 import { MenuLink } from '../../components/MenuLink'
@@ -58,7 +59,7 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
       role="search"
       onSubmit={onSubmit}
       className={cn(
-        'h-12 min-w-0 p-1 flex items-center rounded-full border border-[color:var(--sf-line)] bg-[var(--sf-canvas)]',
+        'h-12 min-w-0 p-1 relative flex items-center rounded-full border border-[color:var(--sf-line)] bg-[var(--sf-canvas)]',
         className,
       )}
     >
@@ -90,11 +91,10 @@ function SearchPill({ withCategory, className }: { withCategory?: boolean; class
       <label htmlFor={`${id}-q`} className="sr-only">
         {t('shell.search.products')}
       </label>
-      <input
+      <SuggestInput
         id={`${id}-q`}
-        type="search"
         value={q}
-        onChange={(e) => setQ(e.target.value)}
+        onChange={setQ}
         placeholder={withCategory ? t('shell.search.productsAndBrands') : t('shell.search.products')}
         className="h-10 min-w-0 px-3 text-base md:text-sm flex-1 bg-transparent placeholder:text-[color:var(--sf-muted)]"
       />

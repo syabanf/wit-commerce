@@ -7,6 +7,7 @@ import type {
   BrandLockKey,
   Campaign,
   CancelReason,
+  CancelRefund,
   Category,
   Courier,
   EtaDays,
@@ -25,6 +26,7 @@ import type {
   PaymentType,
   LeadStage,
   Order,
+  OrderStatus,
   OrderEvent,
   OrderReturn,
   Page,
@@ -58,6 +60,7 @@ import type {
   ProductDay,
   SalesDay,
   SellerBuyer,
+  TaxSettings,
 } from '@rc/types'
 import { ORDER_STATUS_LABEL, SHOPPER_EMAIL_KINDS, STORE_LANGUAGES } from '@rc/types'
 import { cleanMenus, cleanSellerProfile, menusBlocker, sellerProfileBlocker } from './content'
@@ -83,6 +86,15 @@ import {
   variantDemand,
 } from './derive'
 import { newId, nextCode } from './ids'
+import {
+  type PaymentConfirmationInput,
+  cancelRefundBlocker,
+  eraseOrderDetails,
+  paymentConfirmationBlocker,
+  paymentReviewBlocker,
+  paymentWindowOpen,
+  shopperPlacement,
+} from './payments'
 import { can } from './permissions'
 import {
   ERASED_EVENT_KINDS,
@@ -122,6 +134,7 @@ import {
   sellerTemplateBlocker,
   stockAdjustBlocker,
 } from './rules'
+import { normalizeTax, taxBlocker, withOrderTax } from './tax'
 
 export interface AppState {
   tenants: Tenant[]
@@ -194,6 +207,8 @@ export type AppAction =
   | { type: 'tenants/setLegal'; tenantId: string; legal: SellerLegal }
   /** Delivery days per courier; an empty map brings back the platform's estimates. */
   | { type: 'tenants/setCourierEta'; tenantId: string; courierEtaDays: Partial<Record<Courier, EtaDays>> }
+  /** Whether the brand charges PPN, how prices hold it, and per product or category overrides. */
+  | { type: 'tenants/setTax'; tenantId: string; tax: TaxSettings }
   /** Connects a custom domain, or disconnects it with null. The API issues its own token. */
   | { type: 'tenants/setDomain'; tenantId: string; domain: string | null; token: string }
   /** Marks the domain verified. The API checks DNS first; the demo has no DNS to ask. */
@@ -236,7 +251,26 @@ export type AppAction =
     }
   | { type: 'orders/place'; order: Order; customer: Customer | null }
   | { type: 'orders/advance'; id: string; trackingNo?: string }
-  | { type: 'orders/cancel'; id: string; reason: CancelReason; note: string }
+  | {
+      type: 'orders/cancel'
+      id: string
+      reason: CancelReason
+      note: string
+      /** A bank transfer that already returned a paid order's money; without it the refund is owed. */
+      refundReference?: string
+      refundedOn?: string
+    }
+  | { type: 'orders/submitPayment'; id: string; confirmation: PaymentConfirmationInput }
+  | { type: 'orders/confirmPayment'; id: string }
+  | { type: 'orders/rejectPayment'; id: string; reason: string }
+  | {
+      type: 'orders/refundCancelled'
+      id: string
+      /** The API sets midtrans after the gateway refunded; staff record a manual transfer. */
+      method?: ReturnRefundMethod
+      reference: string
+      refundedOn: string
+    }
   | { type: 'orders/refund'; id: string; amount: number; note: string }
   | { type: 'orders/note'; id: string; note: string }
   | {
@@ -456,10 +490,18 @@ function shipModifierStock(stock: ModifierStockLevel[], order: Order): ModifierS
   })
 }
 
-function advanceOrder(state: AppState, order: Order, by: string, at: IsoDate, trackingNo?: string): AppState {
+function advanceOrder(
+  state: AppState,
+  order: Order,
+  by: string,
+  at: IsoDate,
+  trackingNo?: string,
+  /** The step to take instead of the next one, as a confirmed payment jumps to paid. */
+  step?: OrderStatus,
+): AppState {
   if (orderAdvanceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products))
     return state
-  const next = nextOrderStatus(order)!
+  const next = step ?? nextOrderStatus(order)!
   let stock = state.stock
   let stockMoves = state.stockMoves
   let modifierStock = state.modifierStock
@@ -664,7 +706,7 @@ function tick(state: AppState, at: IsoDate): AppState {
       (o.status === 'new' || o.status === 'confirmed') &&
       o.paymentStatus === 'pending' &&
       o.paymentMethod !== 'cod'
-    if (!unpaid || now - toMs(o.createdAt) < PAYMENT_WINDOW_HOURS * HOUR) return o
+    if (!unpaid || paymentWindowOpen(o, now, PAYMENT_WINDOW_HOURS * HOUR)) return o
     stock = releaseReservation(stock, o)
     modifierStock = releaseModifierReservation(modifierStock, o)
     return {
@@ -761,6 +803,8 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     case 'tenants/setLegal': {
       const legal = normalizeLegal(action.legal)
       if (legalBlocker(legal)) return state
+      // A PKP keeps its NPWP: PPN invoices name it.
+      if (state.tenants.find((t) => t.id === action.tenantId)?.tax?.pkp && !legal.npwp) return state
       return {
         ...state,
         tenants: patch(state.tenants, action.tenantId, ({ legal: _, ...t }) =>
@@ -777,6 +821,12 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
           Object.keys(etas).length ? { ...t, courierEtaDays: etas } : t,
         ),
       }
+    }
+    case 'tenants/setTax': {
+      const tax = normalizeTax(action.tax)
+      const tenant = state.tenants.find((t) => t.id === action.tenantId)
+      if (!tenant || taxBlocker(tax, tenant.legal)) return state
+      return { ...state, tenants: patch(state.tenants, tenant.id, (t) => ({ ...t, tax })) }
     }
     case 'tenants/setDomain': {
       const { domain, token } = action
@@ -1089,18 +1139,109 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     case 'orders/cancel': {
       const order = state.orders.find((o) => o.id === action.id)
       if (!order || orderCancelBlocker(order)) return state
-      const refund = order.paymentStatus === 'paid'
+      // A paid order owes its money back; it closes as refunded once staff recorded the transfer.
+      const paid = order.paymentStatus === 'paid'
+      const proven = paid && !!action.refundReference?.trim()
+      if (proven && returnRefundProofBlocker({ reference: action.refundReference, refundedOn: action.refundedOn }))
+        return state
+      const amount = order.total - order.refundedAmount
+      const cancelRefund: CancelRefund | undefined = !paid
+        ? undefined
+        : proven
+          ? {
+              amount,
+              status: 'succeeded',
+              method: 'manual',
+              reference: action.refundReference!.trim(),
+              refundedOn: action.refundedOn!.trim(),
+            }
+          : { amount, status: 'owed' }
       return {
         ...state,
         stock: releaseReservation(state.stock, order),
         modifierStock: releaseModifierReservation(state.modifierStock, order),
         orders: patch(state.orders, order.id, (o) => ({
           ...o,
-          status: refund ? 'refunded' : 'cancelled',
-          paymentStatus: refund ? 'refunded' : 'failed',
-          refundedAmount: refund ? o.total : 0,
+          status: proven ? 'refunded' : 'cancelled',
+          paymentStatus: proven ? 'refunded' : paid ? 'paid' : 'failed',
+          refundedAmount: proven ? o.refundedAmount + amount : paid ? o.refundedAmount : 0,
+          ...(cancelRefund && { cancelRefund }),
           cancelReason: action.reason,
           events: [orderEvent(at, by, 'cancelled', action.note || 'Cancelled'), ...o.events],
+        })),
+      }
+    }
+    case 'orders/submitPayment': {
+      const order = state.orders.find((o) => o.id === action.id)
+      const input = action.confirmation
+      if (!order || paymentConfirmationBlocker(order, input)) return state
+      const channel = input.channel.trim()
+      return {
+        ...state,
+        orders: patch(state.orders, order.id, (o) => ({
+          ...o,
+          paymentConfirmation: {
+            amount: input.amount,
+            channel,
+            senderName: input.senderName.trim(),
+            transferredAt: input.transferredAt.trim(),
+            ...(input.proofUrl && { proofUrl: input.proofUrl }),
+            submittedAt: at,
+            status: 'submitted',
+          },
+          events: [orderEvent(at, by, null, `Payment confirmation sent: ${input.amount} from ${channel}`), ...o.events],
+        })),
+      }
+    }
+    case 'orders/confirmPayment': {
+      const order = state.orders.find((o) => o.id === action.id)
+      if (!order || paymentReviewBlocker(order)) return state
+      const checked: Order = {
+        ...order,
+        paymentConfirmation: { ...order.paymentConfirmation!, status: 'confirmed', reviewedAt: at, reviewedBy: by },
+      }
+      return advanceOrder({ ...state, orders: patch(state.orders, order.id, () => checked) }, checked, by, at, undefined, 'paid')
+    }
+    case 'orders/rejectPayment': {
+      const order = state.orders.find((o) => o.id === action.id)
+      const reason = action.reason.trim()
+      if (!order || paymentReviewBlocker(order) || !reason) return state
+      return {
+        ...state,
+        orders: patch(state.orders, order.id, (o) => ({
+          ...o,
+          paymentConfirmation: {
+            ...o.paymentConfirmation!,
+            status: 'rejected',
+            reviewedAt: at,
+            reviewedBy: by,
+            rejectReason: reason,
+          },
+          events: [orderEvent(at, by, null, `Payment confirmation rejected: ${reason}`), ...o.events],
+        })),
+      }
+    }
+    case 'orders/refundCancelled': {
+      const order = state.orders.find((o) => o.id === action.id)
+      if (!order || cancelRefundBlocker(order) || returnRefundProofBlocker(action)) return state
+      const method = action.method ?? 'manual'
+      const { error: _, ...owed } = order.cancelRefund!
+      const reference = action.reference.trim()
+      return {
+        ...state,
+        orders: patch(state.orders, order.id, (o) => ({
+          ...o,
+          status: 'refunded',
+          paymentStatus: 'refunded',
+          refundedAmount: o.refundedAmount + owed.amount,
+          cancelRefund: {
+            ...owed,
+            status: 'succeeded',
+            method,
+            reference,
+            refundedOn: method === 'midtrans' ? at : action.refundedOn.trim(),
+          },
+          events: [orderEvent(at, by, 'refunded', `Refunded ${owed.amount} · ${reference}`), ...o.events],
         })),
       }
     }
@@ -1114,7 +1255,15 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       }
     }
     case 'orders/place': {
-      const { order, customer } = action
+      const { customer } = action
+      // A shopper's browser never decides that an order is paid.
+      const placed = by === 'storefront' ? shopperPlacement(action.order) : action.order
+      // The brand's PPN settings decide the order's tax, whatever the client sent.
+      const order = withOrderTax(
+        placed,
+        state.tenants.find((t) => t.id === placed.tenantId),
+        state.products,
+      )
       if (orderPlaceBlocker(order, state.stock, state.modifierStock, state.modifiers, state.products))
         return state
       const modifierQty = modifierDemand(order)
@@ -1383,7 +1532,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         ],
         leads: state.leads.map((l) => (mine(l) ? eraseLead(l) : l)),
         tickets: state.tickets.map((t) => (mine(t) ? eraseTicket(t) : t)),
-        orders: state.orders.map((o) => (mine(o) && o.city ? { ...o, city: '' } : o)),
+        orders: state.orders.map((o) => (mine(o) ? eraseOrderDetails(o) : o)),
         returns: state.returns.map((r) => (mine(r) && r.note ? { ...r, note: '' } : r)),
       }
     }

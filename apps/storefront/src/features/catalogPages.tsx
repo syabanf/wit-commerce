@@ -1,6 +1,6 @@
 import { attributesFor, lookFor, nowMs, sectionsInOrder } from '@rc/fixtures'
 import type { AttributeDef, Category, Collection, Page, Product, Seller } from '@rc/types'
-import { Heart, PackageSearch } from 'lucide-react'
+import { Heart, LoaderCircle, PackageSearch } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router'
 import { NotFound } from '../components/NotFound'
@@ -21,8 +21,11 @@ import {
   promoFor,
   sortLabel,
 } from '../lib/catalog'
+import { HTTP } from '../lib/api'
 import { EMBED, usePreviewPageId } from '../lib/embed'
+import { readSearch, topCategoryCounts } from '../lib/search'
 import { RESERVED_SEGMENTS, paths } from '../lib/paths'
+import { useProductSeo } from '../lib/useSeo'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
 import { useTheme } from '../themes/registry'
@@ -30,6 +33,7 @@ import type { ListingChip } from '../themes/types'
 import { useCartView } from './cartView'
 import { useHomeData } from './home'
 import { type ListingState, useListing } from './listing'
+import { useSearchListing } from './searchListing'
 import { useProductDetail } from './product'
 
 export function HomePage() {
@@ -222,8 +226,69 @@ function SearchListing() {
   )
 }
 
+/** The search page on the API: server ranking, typo tolerance and facets, a page at a time. */
+function ServerSearchListing() {
+  const theme = useTheme()
+  const { catalog, store } = useShop()
+  const { listing, facets, suggestion, loading, failed, retry } = useSearchListing(store, catalog)
+  const [params] = useSearchParams()
+  const { q, cat, sort } = readSearch(params)
+  const title = q
+    ? t('catalog.search.resultsFor', { query: q })
+    : sort && sort !== 'featured'
+      ? sortLabel(sort)
+      : t('catalog.search.all')
+  useTitle(`${title} · ${catalog.tenant.name}`)
+  const counts = topCategoryCounts(facets)
+  const all: ListingChip = { label: t('catalog.chip.all'), to: paths.search(store, q), active: !cat }
+  const chips: ListingChip[] = [
+    all,
+    ...catalog.topCategories.map((c) => ({
+      label: c.name,
+      to: paths.search(store, q, { cat: c.id }),
+      active: cat === c.id,
+      count: counts.get(c.id) ?? 0,
+    })),
+  ].filter((c) => c.active || c.count !== 0)
+  const empty = loading ? (
+    <p aria-live="polite" className="py-16 gap-2 text-sm flex items-center justify-center text-[color:var(--sf-muted)]">
+      <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+      {t('catalog.search.loading')}
+    </p>
+  ) : failed ? (
+    <EmptyState
+      icon={<PackageSearch aria-hidden="true" />}
+      title={t('catalog.search.failed')}
+      text={t('catalog.search.failedText')}
+      action={
+        <Button variant="dark" onClick={retry}>
+          {t('catalog.search.retry')}
+        </Button>
+      }
+    />
+  ) : q && !listing.activeCount ? (
+    <SearchSuggestions query={q} suggestion={suggestion} />
+  ) : (
+    <NoResults listing={listing} />
+  )
+  return (
+    <theme.Listing
+      title={title}
+      crumbs={[{ label: t('catalog.crumb.home'), to: paths.home(store) }]}
+      chips={chips}
+      listing={listing}
+      query={q}
+      empty={empty}
+    />
+  )
+}
+
 export function SearchPage() {
   const { search } = useLocation()
+  const [params] = useSearchParams()
+  // Deals and gifts depend on promotions the storefront already holds, so they filter in the browser,
+  // as every search does without an API.
+  if (HTTP && params.get('deals') !== '1' && params.get('gifts') !== '1') return <ServerSearchListing />
   return <SearchListing key={search} />
 }
 
@@ -233,6 +298,7 @@ function ProductView({ product }: { product: Product }) {
   const theme = useTheme()
   const detail = useProductDetail(product)
   useTitle(`${product.name} · ${useShop().tenant.name}`)
+  useProductSeo(product)
   return <theme.Product detail={detail} />
 }
 

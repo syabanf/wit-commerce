@@ -19,12 +19,13 @@ import {
 import { ChevronLeft, ChevronRight, CreditCard, PackageCheck, Search, Truck, Undo2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { OrderStatusBadge, PaymentBadge } from '../../components/badges'
+import { OrderStatusBadge, PaymentStateBadge } from '../../components/badges'
 import { CustomerLink, SellerChip, paths } from '../../components/links'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { HTTP } from '../../lib/api'
 import { useNow, useScoped } from '../../state/scoped'
 import { useOrderRows } from './useOrderRows'
+import { PaymentQueue } from './payments'
 import { toRow } from '../../state/orderRow'
 
 const STATUS_CHIPS: OrderStatus[] = [
@@ -199,7 +200,8 @@ export function OrdersPage() {
       header: 'Payment',
       hideBelow: 'lg',
       sortValue: (o) => o.paymentStatus,
-      cell: (o) => <PaymentBadge status={o.paymentStatus} />,
+      // The open order in state knows about a payment check or an owed refund; a list row does not.
+      cell: (o) => <PaymentStateBadge order={s.maps.order.get(o.id) ?? o} />,
     },
     {
       id: 'channel',
@@ -285,6 +287,7 @@ export function OrdersPage() {
             }
           />
         )}
+        <PaymentQueue />
         <div className="gap-3 sm:gap-4 xl:grid-cols-4 grid grid-cols-2">
           <StatCard
             label="To pack and ship"

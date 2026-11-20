@@ -58,6 +58,77 @@ func (s *Server) paymentRoutes(rt *router) {
 	rt.add("POST", "/payments/midtrans/notification", "", "", "Midtrans payment notification; the signature and a status check decide", s.midtransNotification)
 	rt.table = append(rt.table, Route{Method: "GET", Path: prefix + "/orders/{id}/payment", Scope: "orders:read", Summary: "The online payment record of an order, if it has one"})
 	rt.mux.HandleFunc("GET "+prefix+"/orders/{id}/payment", s.reader("orders:read", s.orderPayment))
+	rt.add("POST", "/orders/{id}/payment/confirm", "orders/confirmPayment", "order.refund", "Confirm a shopper's manual payment after checking the money arrived; the order turns paid", idOnly(s, s.svc.ConfirmTransfer))
+	rt.add("POST", "/orders/{id}/payment/reject", "orders/rejectPayment", "order.refund", "Reject a shopper's manual payment confirmation with a reason the shopper reads", func(w http.ResponseWriter, r *http.Request) {
+		var in rejectInput
+		if err := decode(r, &in); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+			return s.svc.RejectPayment(r.Context(), m, r.PathValue("id"), in.Reason)
+		})
+	})
+	rt.add("POST", "/orders/{id}/cancel-refund", "orders/refundCancelled", "order.refund", "Settle a cancelled order's refund: through Midtrans again when it took the payment, else record the bank transfer", func(w http.ResponseWriter, r *http.Request) {
+		var in service.CancelRefundInput
+		if err := decode(r, &in); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+			d, err := s.svc.RefundCancelled(r.Context(), m, r.PathValue("id"), in)
+			// A gateway refusal is recorded on the order; publish that before answering with the reason.
+			var failed service.RefundFailed
+			if errors.As(err, &failed) {
+				s.publish(failed.Delta)
+				return nil, service.Refusal{Reason: failed.Reason}
+			}
+			return d, err
+		})
+	})
+	rt.add("POST", "/shop/{store}/orders/{id}/payment-confirmation", "orders/submitPayment", "", "Tell the store you paid a manual transfer or static QRIS order; staff check it before the order turns paid", s.shopPaymentConfirmation)
+	rt.add("POST", "/shop/{store}/payment-proof", "", "", "Upload a PNG, JPEG or WebP image of a payment, at most 5 MB, for a payment confirmation", s.shopPaymentProof)
+}
+
+// shopPaymentConfirmation is the signed-in shopper's report of a manual payment of their own order.
+func (s *Server) shopPaymentConfirmation(w http.ResponseWriter, r *http.Request) {
+	tenant, err := s.storeTenant(r)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	p, ok := s.shopper(r, tenant.ID)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "UNAUTHENTICATED", "Sign in to tell the store you paid.")
+		return
+	}
+	var in service.PaymentConfirmationInput
+	if err := decode(r, &in); err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	d, err := s.svc.SubmitPaymentConfirmation(r.Context(), service.Meta{P: p, At: s.Clock.NowIso()}, r.PathValue("id"), in)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.publish(d))
+}
+
+// shopPaymentProof stores a signed-in shopper's image of their payment in the store's media, for the
+// proof of a payment confirmation.
+func (s *Server) shopPaymentProof(w http.ResponseWriter, r *http.Request) {
+	tenant, err := s.storeTenant(r)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	p, ok := s.shopper(r, tenant.ID)
+	if !ok {
+		writeProblem(w, http.StatusUnauthorized, "UNAUTHENTICATED", "Sign in to upload a payment proof.")
+		return
+	}
+	s.storeUpload(w, r, tenant.ID, service.Meta{P: p, At: s.Clock.NowIso()}, func() (bool, error) { return true, nil })
 }
 
 // orderPageURL is where the provider sends the shopper back: the order page of the storefront, on the

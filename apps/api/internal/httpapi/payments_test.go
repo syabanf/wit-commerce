@@ -79,7 +79,7 @@ func (f *fakeMidtrans) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v2/"), "/status")
 		var refunds []map[string]any
 		for key, amount := range f.refunds {
-			if strings.HasPrefix(key, "ret-") {
+			if strings.HasPrefix(key, "ret-") || strings.HasPrefix(key, "cancel-") {
 				refunds = append(refunds, map[string]any{"refund_key": key, "refund_amount": amount})
 			}
 		}
@@ -272,15 +272,17 @@ func TestMidtransOrderIsPlacedPendingWithAPaymentPage(t *testing.T) {
 	}
 }
 
-func TestBrandWithoutKeysKeepsTodaysCheckout(t *testing.T) {
+// TestBrandWithoutKeysPlacesTheOrderUnpaid: without a gateway the browser's "paid" counts for
+// nothing; the order waits for payment until staff confirm the money arrived.
+func TestBrandWithoutKeysPlacesTheOrderUnpaid(t *testing.T) {
 	e, fake := midtransEnv(t)
 	o, out := e.placeWith("aruna", "ten-aruna", "ord-mt-0002", "pay-aruna-qris", "qris")
-	if o.PaymentStatus != "paid" || o.Status != "paid" || out.Payment != nil || len(fake.snaps) != 0 {
-		t.Errorf("order %s/%s, payment %+v, snap calls %d", o.Status, o.PaymentStatus, out.Payment, len(fake.snaps))
+	if o.PaymentStatus != "pending" || o.Status != "confirmed" || paidSteps(o) != 0 || out.Payment != nil || len(fake.snaps) != 0 {
+		t.Errorf("order %s/%s, paid steps %d, payment %+v, snap calls %d", o.Status, o.PaymentStatus, paidSteps(o), out.Payment, len(fake.snaps))
 	}
-	// A brand with keys keeps today's behaviour for a provider other than Midtrans.
+	// A brand with keys places an unpaid order for a provider other than Midtrans too.
 	o, out = e.placeWith("lari", "ten-lari", "ord-mt-0003", "pay-lari-ovo", "ewallet")
-	if o.PaymentStatus != "paid" || out.Payment != nil || len(fake.snaps) != 0 {
+	if o.PaymentStatus != "pending" || out.Payment != nil || len(fake.snaps) != 0 {
 		t.Errorf("Xendit order %s, payment %+v", o.PaymentStatus, out.Payment)
 	}
 }

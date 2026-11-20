@@ -2,20 +2,23 @@ import { fmtIdr } from '@rc/fixtures'
 import { Bot, CircleCheck } from 'lucide-react'
 import { useParams } from 'react-router'
 import { SummaryRows } from '../components/cartParts'
+import { InvoiceButton } from '../components/InvoiceButton'
 import { NotFound } from '../components/NotFound'
 import { ProductImage } from '../components/product'
 import { ButtonLink, Pill, buttonClass } from '../components/ui'
 import { t, tx } from '../i18n'
 import { fmtDateTime } from '../i18n/format'
 import { demoPaymentNote } from '../lib/checkout'
+import { HTTP } from '../lib/api'
 import { firstName, paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
 import { PayInRupiahNote } from '../components/Money'
 import { RupiahOnlyArea } from '../state/currency'
 import { OrderReturns } from './OrderReturns'
+import { OrderPayment } from './OrderPayment'
 import { ShippingStatus } from '../components/ShippingStatus'
-import { agentKindLabel, channelLabel, courierLabel, paymentStatusLabel } from './accountLabels'
+import { agentKindLabel, channelLabel, courierLabel, orderStatusLabel, paymentStatusLabel } from './accountLabels'
 
 /** Order confirmation: code, items, totals, payment state and points. */
 export function OrderPage() {
@@ -27,7 +30,8 @@ export function OrderPage() {
   const customer = customers.find((c) => c.id === order.customerId)
   const seller = order.sellerId ? catalog.sellers.find((s) => s.id === order.sellerId) : undefined
   const payment = catalog.paymentTypes.find((t) => t.id === order.paymentTypeId)
-  const paid = order.paymentStatus === 'paid'
+  // A cancelled paid order still holds the money until its refund is recorded; it earned nothing.
+  const paid = order.paymentStatus === 'paid' && !order.cancelRefund
   const online = paysOnline(order.paymentTypeId)
   // Waiting for an online payment: the store stream turns this page paid when it arrives.
   const awaiting = order.paymentStatus === 'pending' && order.paymentMethod !== 'cod'
@@ -51,7 +55,7 @@ export function OrderPage() {
           )}
         </p>
         <PayInRupiahNote className="mt-2" />
-        {!online && <p className="mt-2 text-sm font-semibold">{demoPaymentNote()}</p>}
+        {!online && !HTTP && <p className="mt-2 text-sm font-semibold">{demoPaymentNote()}</p>}
         <div className="mt-4 gap-2 flex flex-wrap justify-center">
           <Pill tone={paid ? 'primary' : 'accent'}>{paymentStatusLabel(order.paymentStatus)}</Pill>
           {order.agent && (
@@ -65,7 +69,9 @@ export function OrderPage() {
           <Pill>{channelLabel(order.channel)}</Pill>
         </div>
         <p className="mt-4 text-sm" role="status">
-          {paid
+          {order.cancelRefund
+            ? orderStatusLabel(order.status)
+            : paid
             ? t('account.order.earned', { points: order.pointsEarned })
             : order.paymentStatus === 'failed'
               ? t('account.order.failed')
@@ -140,12 +146,15 @@ export function OrderPage() {
             }
             shipping={order.shipping}
             total={order.total}
+            tax={order.tax}
+            showDpp
           />
         </RupiahOnlyArea>
         <p className="mt-4 text-sm text-[color:var(--sf-muted)]">
           {t('account.order.deliveringTo', { city: order.city })}
         </p>
       </section>
+      <OrderPayment order={order} />
       <ShippingStatus order={order} />
       <OrderReturns order={order} />
       <div className="gap-2 flex flex-wrap justify-center">
@@ -158,6 +167,7 @@ export function OrderPage() {
         <ButtonLink to={`${paths.help(store)}?order=${order.id}`} variant="outline" size="lg">
           {t('account.order.help')}
         </ButtonLink>
+        <InvoiceButton order={order} store={store} />
       </div>
     </div>
   )

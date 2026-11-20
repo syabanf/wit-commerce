@@ -24,12 +24,19 @@ func CustomerOrders(ctx context.Context, q store.Querier, customerID string, loc
 }
 
 // EraseCustomer blanks the personal data copied onto a customer's orders and returns: the delivery
-// city and the shopper's note. Amounts, items, dates and payment records stay, since PP 80/2019
-// Pasal 25 keeps transaction data for 10 years.
+// city, the sender name and proof image of a payment confirmation, and the shopper's note. Amounts,
+// items, dates and payment records stay, since PP 80/2019 Pasal 25 keeps transaction data for 10 years.
 func EraseCustomer(t *kernel.Tx, orders []domain.Order, returns []domain.OrderReturn) error {
 	for _, o := range orders {
-		if o.City != "" {
+		pc := o.PaymentConfirmation
+		named := pc != nil && (pc.SenderName != "" || pc.ProofURL != "")
+		if o.City != "" || named {
 			o.City = ""
+			if named {
+				blank := *pc
+				blank.SenderName, blank.ProofURL = "", ""
+				o.PaymentConfirmation = &blank
+			}
 			if err := t.Put("orders", o.ID, o); err != nil {
 				return err
 			}

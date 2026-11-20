@@ -52,6 +52,11 @@ export const settingsRoutes: RouteObject[] = [
     handle: { breadcrumb: t.breadcrumb.assistantLog },
     lazy: page(() => import('../pages/settings/AssistantLogPage'), 'AssistantLogPage'),
   },
+  {
+    path: 'settings/audit-log',
+    handle: { breadcrumb: t.breadcrumb.auditLog },
+    lazy: page(() => import('../pages/settings/AuditLogPage'), 'AuditLogPage'),
+  },
 ]
 
 // Miscellaneous redirects and wildcard

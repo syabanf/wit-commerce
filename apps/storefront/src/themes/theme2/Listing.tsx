@@ -2,8 +2,10 @@ import { cn } from '@rc/ui'
 import { Search } from 'lucide-react'
 import { type FormEvent, useId, useState } from 'react'
 import { Link } from 'react-router'
-import { FilterControls, FilterSheetButton, SortSelect } from '../../components/filters'
+import { FilterControls, FilterSheetButton, LoadMore, SortSelect } from '../../components/filters'
+import { listingCount } from '../../features/listing'
 import { useSearchSubmit } from '../../components/shell'
+import { SuggestInput } from '../../components/SearchSuggest'
 import { Button, inputClass } from '../../components/ui'
 import type { ListingViewProps } from '../types'
 import { ProductGrid } from './ProductCard'
@@ -18,15 +20,14 @@ function SearchForm({ query }: { query: string }) {
     submit(q)
   }
   return (
-    <form role="search" onSubmit={onSubmit} className="mb-6 gap-2 flex">
+    <form role="search" onSubmit={onSubmit} className="mb-6 gap-2 relative flex">
       <label htmlFor={id} className="sr-only">
         {t('theme.searchProducts')}
       </label>
-      <input
+      <SuggestInput
         id={id}
-        type="search"
         value={q}
-        onChange={(e) => setQ(e.target.value)}
+        onChange={setQ}
         placeholder={t('theme.searchProducts')}
         className={cn(inputClass, 'rounded-[var(--sf-pill)]')}
       />
@@ -43,7 +44,7 @@ export function Listing({ title, description, crumbs, chips, listing, query, emp
   const hasFilters = listing.facets.length > 0
   return (
     <div>
-      {query !== undefined && <SearchForm query={query} />}
+      {query !== undefined && <SearchForm key={query} query={query} />}
       {crumbs.length > 0 && (
         <nav aria-label={t('theme.breadcrumb')} className="mb-1 md:block hidden">
           <ol className="gap-2 text-sm flex flex-wrap text-[color:var(--sf-muted)]">
@@ -101,12 +102,15 @@ export function Listing({ title, description, crumbs, chips, listing, query, emp
               className={cn('text-sm text-[color:var(--sf-muted)]', hasFilters && 'lg:block hidden')}
               aria-live="polite"
             >
-              {tp('theme.itemsFound', listing.results.length)}
+              {tp('theme.itemsFound', listingCount(listing))}
             </p>
             <SortSelect listing={listing} className="md:ml-auto" />
           </div>
           {listing.results.length ? (
-            <ProductGrid products={listing.results} className={hasFilters ? 'lg:grid-cols-3' : undefined} />
+            <>
+              <ProductGrid products={listing.results} className={hasFilters ? 'lg:grid-cols-3' : undefined} />
+              <LoadMore listing={listing} />
+            </>
           ) : (
             empty
           )}

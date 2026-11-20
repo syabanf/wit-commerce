@@ -1,10 +1,11 @@
-import { newId, nextCode, nowIso, termsVersion } from '@rc/fixtures'
+import { newId, nextCode, nowIso, orderTax, termsVersion, withOrderTax } from '@rc/fixtures'
 import type {
   Courier,
   Customer,
   ModifierStockLevel,
   Order,
   OrderEvent,
+  OrderTax,
   PaymentType,
   StockLevel,
   Tenant,
@@ -55,6 +56,14 @@ export const DEFAULT_COURIER = COURIERS.filter((c) => c.fee > 0).reduce((cheapes
   courier.fee < cheapest.fee ? courier : cheapest,
 )
 export const CHEAPEST_FEE = DEFAULT_COURIER.fee
+
+/** The PPN of the cart when the brand is a PKP, the way `orders/place` will compute it. */
+export function cartTax(tenant: Tenant, totals: CartTotals): OrderTax | undefined {
+  if (!tenant.tax?.pkp) return undefined
+  const lines = totals.items.map((i) => ({ productId: i.product.id, qty: i.line.qty, price: i.unit }))
+  const categories = new Map(totals.items.map((i) => [i.product.id, i.product.categoryId]))
+  return orderTax(lines, totals.discount, tenant.tax, (id) => categories.get(id))
+}
 
 /** The order with the shopper's consent to the store's current terms (PP 80/2019 Pasal 46). */
 export const withTerms = (order: Order, tenant: Tenant): Order => ({
@@ -202,20 +211,12 @@ export function buildOrder(input: PlaceInput): { order: Order; customer: Custome
   }))
   const shipping = courierFee(courier, totals.freeShipping)
   const total = Math.max(0, totals.subtotal - totals.discount + shipping)
-  const cod = payment.method === 'cod'
   const placed: OrderEvent = {
     id: newId('oev'),
     at,
     by: 'storefront',
     status: 'new',
     note: 'Order placed on the storefront',
-  }
-  const paid: OrderEvent = {
-    id: newId('oev'),
-    at,
-    by: 'storefront',
-    status: 'paid',
-    note: `Paid with ${payment.name}`,
   }
   const order: Order = {
     id: newId('ord'),
@@ -225,8 +226,9 @@ export function buildOrder(input: PlaceInput): { order: Order; customer: Custome
     channel,
     sellerId,
     campaignId: null,
-    status: cod ? 'confirmed' : 'paid',
-    paymentStatus: cod ? 'pending' : 'paid',
+    // The order waits for payment; only the store or the payment gateway marks it paid.
+    status: 'confirmed',
+    paymentStatus: 'pending',
     paymentMethod: payment.method,
     paymentTypeId: payment.id,
     courier: courier.id,
@@ -245,9 +247,13 @@ export function buildOrder(input: PlaceInput): { order: Order; customer: Custome
     cancelReason: null,
     refundedAmount: 0,
     // Newest first, as the order timeline reads.
-    events: cod ? [placed] : [paid, placed],
+    events: [placed],
   }
-  return { order, customer: newCustomer }
+  // A PKP brand's order carries its PPN; with prices excluding PPN the total and the points grow.
+  const taxed = withOrderTax(order, tenant, catalog.products)
+  if (taxed.total !== total)
+    taxed.pointsEarned = Math.floor(taxed.total / 10_000) * tenant.loyalty.pointsPer10k
+  return { order: taxed, customer: newCustomer }
 }
 
 /** The first interest of a signed-in customer leads their recommendations. */

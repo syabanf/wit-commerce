@@ -8,6 +8,7 @@ import { HOST_STORE } from '../lib/host'
 import { paths } from '../lib/paths'
 import { usePersisted } from '../lib/storage'
 import { useIsPhone } from '../lib/useIsPhone'
+import { useStoreSeo } from '../lib/useSeo'
 import { useTitle } from '../lib/useTitle'
 import { HTTP } from '../lib/api'
 import { AgentChatProvider } from '../state/agentChat'
@@ -38,12 +39,21 @@ function useThemeParam(setPreview: (theme: StorefrontTheme | null) => void) {
   }, [requested, setPreview])
 }
 
+/**
+ * Store-wide head tags and the fallback title. It sits before the pages, so its effects run first and
+ * each page's own title and product tags win.
+ */
+function StoreSeo() {
+  useStoreSeo()
+  useTitle(useShop().tenant.name)
+  return null
+}
+
 function ThemedStore() {
   const { tenant } = useShop()
   const { theme, setPreview } = useThemeChoice()
   useThemeParam(setPreview)
   useReferralParam()
-  useTitle(tenant.name)
   const { pathname } = useLocation()
   const isPhone = useIsPhone()
   const [introSeen] = usePersisted<boolean>('local', `rc.storefront.intro.${tenant.id}`, false)
@@ -55,6 +65,7 @@ function ThemedStore() {
   return (
     <BrandRoot brand={tenant.brand} theme={theme.id}>
       {!EMBED && <DemoBar />}
+      <StoreSeo />
       <theme.Layout>
         <Outlet />
       </theme.Layout>

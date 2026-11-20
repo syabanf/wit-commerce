@@ -98,6 +98,7 @@ type Server struct {
 	domainChecks, hostLookups               *keyLimiter
 	assistantUsers, assistantTenants        *keyLimiter
 	complaintClients                        *keyLimiter
+	searchLogs                              *keyLimiter
 	assistant                               *aimodule.AI
 	segments                                segmentCache
 	media                                   *media.Media
@@ -117,6 +118,7 @@ func New(o Options) *Server {
 	s.svc.Identity.Domains = o.domainConfig()
 	s.assistantUsers, s.assistantTenants = newKeyLimiter(assistantRatePerUser), newPeriodLimiter(assistantDailyPerTenant, 24*time.Hour)
 	s.complaintClients = newPeriodLimiter(complaintsPerHour, time.Hour)
+	s.searchLogs = newKeyLimiter(searchLogsPerClient)
 	s.passwords = auth.NewPasswordGate(o.PasswordSlots, o.PasswordWait)
 	s.shareLimits()
 	s.antispam = &antispam.Antispam{Runtime: s.svc.Runtime}

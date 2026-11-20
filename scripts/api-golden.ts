@@ -4,7 +4,7 @@
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Customer, MenuLink, Order, Page, ReturnReason, ShopperEmailKind } from '../packages/types/src/index.ts'
+import type { Customer, MenuLink, Order, Page, Product, ReturnReason, ShopperEmailKind } from '../packages/types/src/index.ts'
 import { FIXTURE_NOW } from '../packages/fixtures/src/clock.ts'
 import { seedState } from '../packages/fixtures/src/data.ts'
 import { DAY, HOUR, toIso, toMs } from '../packages/fixtures/src/dates.ts'
@@ -504,6 +504,98 @@ run('tickets/open refused for another order', {
 }, 'storefront')
 run('tenants/setShopSettings store language', { ...shopSettings(14, []), storeLanguage: 'en' }, 'usr-andi')
 run('tenants/setShopSettings refused for an unknown language', { ...shopSettings(14, []), storeLanguage: 'fr' as 'en' }, 'usr-andi')
+
+// --- payments: the server decides paid; manual payments wait for staff; cancellations owe refunds ---
+const paidByBrowser = fresh('ord-golden-pay-1', {
+  status: 'paid',
+  paymentStatus: 'paid',
+  events: [
+    { id: 'oev-golden-pay-paid', at: at(hours - 1), by: 'storefront', status: 'paid', note: 'Paid with QRIS' },
+    { id: 'oev-golden-pay-new', at: at(hours - 1), by: 'storefront', status: 'new', note: 'Placed' },
+  ],
+})
+run('orders/place shopper cannot place it paid', { type: 'orders/place', order: paidByBrowser, customer: null }, 'storefront')
+const reported = (amount: number) => ({ amount, channel: ' BCA ', senderName: ' Rina Wijaya ', transferredAt: '2026-10-06T10:00' })
+run('orders/submitPayment refused without a sender', {
+  type: 'orders/submitPayment',
+  id: paidByBrowser.id,
+  confirmation: { ...reported(paidByBrowser.total), senderName: ' ' },
+})
+run('orders/submitPayment', { type: 'orders/submitPayment', id: paidByBrowser.id, confirmation: reported(paidByBrowser.total) })
+run('orders/submitPayment refused while staff check', { type: 'orders/submitPayment', id: paidByBrowser.id, confirmation: reported(1) })
+run('orders/advance refused while staff check', { type: 'orders/advance', id: paidByBrowser.id })
+run('orders/rejectPayment refused without a reason', { type: 'orders/rejectPayment', id: paidByBrowser.id, reason: ' ' })
+run('orders/rejectPayment', { type: 'orders/rejectPayment', id: paidByBrowser.id, reason: 'No transfer from Rina Wijaya' })
+run('orders/confirmPayment refused after a rejection', { type: 'orders/confirmPayment', id: paidByBrowser.id })
+run('orders/submitPayment again', { type: 'orders/submitPayment', id: paidByBrowser.id, confirmation: reported(paidByBrowser.total) })
+run('orders/confirmPayment', { type: 'orders/confirmPayment', id: paidByBrowser.id })
+run('orders/confirmPayment refused when paid', { type: 'orders/confirmPayment', id: paidByBrowser.id })
+run('orders/cancel paid owes the refund', { type: 'orders/cancel', id: paidByBrowser.id, reason: 'out_of_stock', note: '' })
+run('orders/refund refused after a cancellation', { type: 'orders/refund', id: paidByBrowser.id, amount: 1000, note: '' })
+run('orders/refundCancelled refused without a date', {
+  type: 'orders/refundCancelled',
+  id: paidByBrowser.id,
+  reference: 'BCA-GOLD-1',
+  refundedOn: '',
+})
+run('orders/refundCancelled', { type: 'orders/refundCancelled', id: paidByBrowser.id, reference: ' BCA-GOLD-1 ', refundedOn: '2026-10-07' })
+run('orders/refundCancelled refused twice', { type: 'orders/refundCancelled', id: paidByBrowser.id, reference: 'BCA-GOLD-2', refundedOn: '2026-10-07' })
+const staffPaid = fresh('ord-golden-pay-2', { status: 'paid', paymentStatus: 'paid' })
+run('orders/place staff place a paid order', { type: 'orders/place', order: staffPaid, customer: null })
+run('orders/cancel paid with the transfer proof', {
+  type: 'orders/cancel',
+  id: staffPaid.id,
+  reason: 'customer_request',
+  note: '',
+  refundReference: 'BCA-GOLD-3',
+  refundedOn: '2026-10-07',
+})
+
+// PPN settings and taxed orders, added at the end so every case above keeps its output.
+const taxStock = state.stock.filter(
+  (l) =>
+    l.tenantId === lari &&
+    l.warehouseId === template.warehouseId &&
+    l.onHand - l.reserved >= 5 &&
+    state.products.some((p) => p.status === 'active' && p.variants.some((v) => v.id === l.variantId)),
+)
+// Three products: the first's category is luxury, the second is exempt itself, the third, from
+// another category, stays standard.
+const taxLine = (qty: number, price: number, test: (p: Product) => boolean) => {
+  const level = find(taxStock, (l) => test(find(state.products, (x) => x.variants.some((v) => v.id === l.variantId), 'product')), 'taxed stock')
+  const p = find(state.products, (x) => x.variants.some((v) => v.id === level.variantId), 'taxed product')
+  return { productId: p.id, categoryId: p.categoryId, line: { productId: p.id, variantId: level.variantId, qty, price } }
+}
+const luxuryLine = taxLine(3, 33_333, () => true)
+const exemptLine = taxLine(1, 111_111, (p) => p.id !== luxuryLine.productId)
+const standardLine = taxLine(2, 49_999, (p) => p.id !== exemptLine.productId && p.categoryId !== luxuryLine.categoryId)
+const taxedOrder = (id: string, discount: number, total: number) => {
+  const lines = [luxuryLine.line, exemptLine.line, standardLine.line]
+  const subtotal = lines.reduce((n, l) => n + l.qty * l.price, 0)
+  return fresh(id, { lines, subtotal, discount, shipping: 18_000, total: total || subtotal - discount + 18_000 })
+}
+const taxSettings = (pricesIncludeTax: boolean) => ({
+  pkp: true,
+  pricesIncludeTax,
+  profile: 'standard' as const,
+  overrides: [
+    { kind: 'category' as const, id: luxuryLine.categoryId, profile: 'luxury' as const },
+    { kind: 'product' as const, id: exemptLine.productId, profile: 'exempt' as const },
+  ],
+})
+run('tenants/setTax refused for an unknown profile', { type: 'tenants/setTax', tenantId: lari, tax: { pkp: false, pricesIncludeTax: true, profile: 'zero' as 'exempt' } }, 'usr-andi')
+run('tenants/setTax refused without an NPWP', { type: 'tenants/setTax', tenantId: 'ten-golden', tax: { pkp: true, pricesIncludeTax: true, profile: 'standard' } }, 'usr-dewi')
+run('tenants/setTax prices include PPN', { type: 'tenants/setTax', tenantId: lari, tax: taxSettings(true) }, 'usr-andi')
+run('orders/place PPN included', { type: 'orders/place', order: taxedOrder('ord-golden-tax-1', 10_001, 0), customer: null }, 'storefront')
+run('tenants/setTax prices exclude PPN', { type: 'tenants/setTax', tenantId: lari, tax: { ...taxSettings(false), ratePct: 12, dppNumerator: 11, dppDenominator: 12 } }, 'usr-andi')
+run('orders/place PPN added', { type: 'orders/place', order: taxedOrder('ord-golden-tax-2', 7_777, 1), customer: null }, 'storefront')
+run('tenants/setLegal refused without the NPWP of a PKP', { type: 'tenants/setLegal', tenantId: lari, legal: { entityName: 'PT Lari Nusantara' } }, 'usr-andi')
+run('tenants/setTax not PKP', { type: 'tenants/setTax', tenantId: lari, tax: { pkp: false, pricesIncludeTax: true, profile: 'standard' } }, 'usr-andi')
+run('orders/place drops tax from a brand that is not PKP', {
+  type: 'orders/place',
+  order: { ...fresh('ord-golden-tax-3'), tax: { pricesIncludeTax: true, ratePct: 12, dppNumerator: 11, dppDenominator: 12, lines: [], dpp: 1, ppn: 1 } },
+  customer: null,
+}, 'storefront')
 
 const generated = new Set<string>()
 const seedIds = new Set<string>()

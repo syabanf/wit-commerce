@@ -69,9 +69,38 @@ send the parcel back and refunds the receipt the shopper shows.
 - `returnRefundProofBlocker` / `ReturnRefundProofBlocker` refuse to mark a return refunded without a
   gateway reference or a recorded transfer, in both the TypeScript reducer and the API.
 
+- Cancellations: `orders/cancel` of a paid order (`Service.CancelOrder` in
+  `apps/api/internal/service/order_payments.go`) refunds through Midtrans first when Midtrans took the
+  payment, on the same `payment_refunds` path (`kind = 'cancellation'`, migration 0033, refund keys
+  `cancel-<order>-<attempt>`). A refusal or a lost answer still cancels the order and releases its
+  stock, with `Order.cancelRefund` recording the amount, `failed` or `pending` and the reason;
+  `orders/refundCancelled` (`POST /orders/{id}/cancel-refund`, permission `order.refund`) retries under
+  the same key while the last try had no answer, so the money moves once. For any other payment, and
+  after Midtrans said no, the order stays cancelled with the refund `owed` until staff record the bank
+  transfer reference and date, at cancel time or later; the same `returnRefundProofBlocker` refuses
+  without them. Only then does the order turn `refunded`. `orders/refund` refuses a cancelled order, so
+  a bare amount cannot stand in for the proof. The console lists owed refunds under Orders → Payments
+  to check; the shopper sees the status and reference on the order page and in the cancellation and
+  refund emails.
+
 Still to do: the brand keeps its Midtrans account able to refund (balance and enabled refund
-methods). Refunds of whole orders through `orders/refund` (a cancellation before shipping) still
-record the amount only; they do not yet call Midtrans or ask for a transfer reference.
+methods). The timer cancels only unpaid orders, so a paid order never expires into a refund.
+
+### Paid status: set by the server only
+
+The refund duty above rests on knowing what the shopper paid, so the paid status comes only from the
+server. A shopper's request can never set `paymentStatus` paid:
+`orders/place` from a shopper (`rules.ShopperPlacement`, `shopperPlacement` in
+`packages/fixtures/src/payments.ts`) arrives `confirmed` and `pending`, whatever the browser sent.
+Midtrans orders turn paid only from a notification whose signature matches and whose amount the
+status check confirms. Manual transfers and static QRIS: the shopper reports the payment
+(`orders/submitPayment`, `POST /shop/{store}/orders/{id}/payment-confirmation`, with an optional proof
+image through `POST /shop/{store}/payment-proof`); staff with `order.refund` confirm it
+(`orders/confirmPayment`), which marks the order paid, or reject it with a reason
+(`orders/rejectPayment`). While staff check, the timer does not expire the order; a rejection gives the
+shopper a new 24-hour window. COD still turns paid on delivery. The test
+`TestShopperCannotSetPaidByAnyRoute` tries every shop route that takes an order or payment body.
+An erasure blanks the sender name and proof image of a confirmation and keeps the amount and dates.
 
 ## Seller identity, terms and complaints
 
@@ -110,7 +139,7 @@ Brands are the controllers of their shoppers' data; WIT Commerce processes it fo
 
 | Rule | Covered by |
 | --- | --- |
-| PP 80 Pasal 59(3)-(4), UU PDP Pasal 8 and 43-45: erasure on request | `customers/erase` (`POST /customers/{id}/erase`, permission `privacy.manage`, owner roles only). `service.EraseCustomer` runs one transaction: `rules.EraseCustomer` blanks name, email, phone, city, birthday, tags, interests and consent on the customer; `crm.EraseCustomer` replaces the free text of their notes, reviews, support and search events, their leads and their tickets; `orders.EraseCustomer` blanks the city on their orders and the shopper's note on their returns; `identity.RevokeCustomer` ends the password and every token; `notifications.ForgetCustomer` deletes their email links, drops unsent email and blanks the address on sent email; `kernel.Tx.ScrubDeliveries` replaces their email, phone and name in webhook payloads. `order_rows` follows through the read model projection. The test `TestErasureRemovesPersonalDataEverywhere` searches every table for the email, phone and name afterwards. |
+| PP 80 Pasal 59(3)-(4), UU PDP Pasal 8 and 43-45: erasure on request | `customers/erase` (`POST /customers/{id}/erase`, permission `privacy.manage`, owner roles only). `service.EraseCustomer` runs one transaction: `rules.EraseCustomer` blanks name, email, phone, city, birthday, tags, interests and consent on the customer; `crm.EraseCustomer` replaces the free text of their notes, reviews, support and search events, their leads and their tickets; `orders.EraseCustomer` blanks the city and the payment confirmation's sender name and proof image on their orders and the shopper's note on their returns; `identity.RevokeCustomer` ends the password and every token; `notifications.ForgetCustomer` deletes their email links, drops unsent email and blanks the address on sent email; `kernel.Tx.ScrubDeliveries` replaces their email, phone and name in webhook payloads. `order_rows` follows through the read model projection. The test `TestErasureRemovesPersonalDataEverywhere` searches every table for the email, phone and name afterwards. |
 | PP 80 Pasal 25: keep transaction data 10 years, other PMSE data 5 years | Erasure keeps order amounts, items, dates, payment records (`payments`), delivery status and return records. The customer row stays with its code, points and tier, so totals and loyalty still add up. |
 | Erasure blocker | `CustomerEraseBlocker` (Go) and `customerEraseBlocker` (TS) refuse while an order is before delivery or a return is open, because the courier and the refund still need the contact details. |
 | UU PDP Pasal 20-24: lawful basis and proof of consent | `Customer.marketingConsent` holds granted, at, source (checkout, account, staff, unsubscribe, request) and the wording version (`MARKETING_CONSENT_VERSION`). Every change writes a `privacy` event on the customer timeline. `customers/save` keeps the stored consent and `erasedAt`, so an edit cannot forge them. |
@@ -121,6 +150,9 @@ Brands are the controllers of their shoppers' data; WIT Commerce processes it fo
 | UU PDP Pasal 30, 32, 40, 41: answer within 3x24 hours | `privacy_requests` (migration 0030) with `due_at = requested_at + 72 hours`. Admin page Customers → Privacy requests lists open requests by deadline, overdue in danger tone, and completes them (`POST /customers/privacy-requests/{id}/complete`). Completing an erasure erases; completing a consent withdrawal withdraws. Staff erasure without a request logs a completed one as a record. |
 | UU PDP Pasal 7: copy of the data | `GET /customers/{id}/export` (admin download as JSON) and `GET /shop/{store}/export` (the shopper, once their access request is completed). |
 | UU PDP Pasal 21: privacy notice | `apps/storefront/src/features/PrivacyPage.tsx`, in Bahasa Indonesia, built from the tenant: controller, data collected, purposes and lawful basis, retention, processors and transfers abroad, rights, response time, breach notice, contact. |
+| UU PDP Pasal 31: record of processing | `audit_log` (migration 0036): one row for every write a staff member or an API key makes, written by `kernel.Runtime.Run` in the action's own transaction, so a change cannot commit without its record. A row holds the actor (kind, id, name, role, API key id), the reducer action (`products/save`, `orders/cancel`, `customers/erase`), the record and every row it touched, a field diff with before and after, the request id and the caller's network truncated to /24 (IPv4) or /48 (IPv6). Password hashes, secrets, tokens, emails, phone numbers, addresses, birthdays, free text (notes, labels, descriptions, reasons) and a person's name, city and tags read "changed", never the value, so an erasure leaves nothing to scrub; `TestErasureRemovesPersonalDataEverywhere` searches this table too. A database trigger refuses every update and every delete except the retention prune. There is no write route. Settings → Audit log (`user.manage`) filters by person, action, record and date, pages by id and exports CSV; orders, products and customers show a History card. |
+| Shopper and system writes are not audited | A shopper's own writes (orders, account, returns) already sit on the order and customer timelines, and copying them into a 5-year table would keep shopper data longer than its purpose needs. The minute tick is the system acting on rules, not a person. |
+| UU PDP Pasal 16(2), 27: collect no more than the purpose needs | Storefront search terms (`searchTerms`, `modules/storefront/search_terms.go`) keep the folded words, daily counts and the result count, never the shopper, their address or their session. A query that looks like an email address or a phone number is not kept at all. |
 | UU PDP Pasal 46: breach notice within 3x24 hours | `docs/sop-insiden-data.md`: detect, contain, assess, notify shoppers and the authority with the Pasal 46(2) contents, record, review, with notice templates. |
 
 ### Defaults
@@ -207,6 +239,8 @@ variable (`apps/api/cmd/README.md`); 0 keeps that log forever.
 | `stock_moves` | 10 years (`RETAIN_STOCK_MOVES_YEARS`, floor 10) | Transaction data: each move records what an order, a return or a stock count did to stock. |
 | `integration_logs` | 5 years (`RETAIN_INTEGRATION_LOGS_YEARS`, floor 5) | Other PMSE data: a record of connector calls and their results. The transaction itself lives in orders and payments, which are never pruned. |
 | `traffic` | 5 years (`RETAIN_TRAFFIC_YEARS`, floor 5) | Other PMSE data: daily visit and conversion counts per store, with no personal data. |
+| `audit_log` | 5 years (`RETAIN_AUDIT_LOG_YEARS`, floor 5) | Other PMSE data: the record of who changed what in the electronic system (UU PDP Pasal 31). The prune sets `audit.prune` for its own transaction, which the append-only trigger checks. |
+| `product_imports` | 30 days (`RETAIN_PRODUCT_IMPORTS_DAYS`) | Operational: the checked rows of an uploaded product CSV between its dry run and its last batch. What the import changed stays in `audit_log`. |
 | `request_log` | 30 days (`RETAIN_REQUEST_LOG_DAYS`) | Operational: method, path, status, timing and the staff or key id, for debugging and the API key console (which reads the last 24 hours). |
 | `webhook_deliveries` | 30 days after creation, once delivered or failed (`RETAIN_WEBHOOK_DELIVERIES_DAYS`) | Operational queue. Pending deliveries are never pruned. A failed delivery can be retried from the console until it goes. |
 | `email_outbox` | 30 days, once sent or given up (`RETAIN_EMAIL_OUTBOX_DAYS`) | Operational queue. Sent rows already have no body; pruning also removes the recipient address, which UU PDP asks to keep no longer than its purpose needs. |
@@ -221,3 +255,59 @@ A value below a legal floor is raised to the floor and logged at start. The job 
   transaction data. If counsel says 10, set `RETAIN_INTEGRATION_LOGS_YEARS=10` and `RETAIN_TRAFFIC_YEARS=10`.
 - Backups keep pruned rows until the backups themselves expire. Set backup retention to match.
 
+
+## Tax
+
+PPN (Indonesian VAT) under UU PPN as amended by UU HPP, with the 2025 rate change. The rules sit
+in `packages/fixtures/src/tax.ts` and its Go twin `apps/api/internal/rules/tax.go`; the shared cases
+in `apps/api/testdata/tax_cases.json` keep the two equal to the rupiah.
+
+### What the code assumes
+
+- The rate is 12%. Most goods are taxed on a base (DPP, *nilai lain*) of 11/12 of the selling price,
+  so 11% in effect; luxury goods pay 12% on the full price. PwC's Indonesia tax summary (reviewed
+  June 2026) confirms this split. We could not read the PMK text itself, so the rate and the
+  fraction are settings (`Tenant.tax.ratePct`, `dppNumerator`, `dppDenominator`), with 12 and 11/12
+  when unset. A change in the law is a settings change, and every order keeps the rates of the day
+  it was placed in `Order.tax`.
+- Only a PKP charges PPN. A brand turns PKP on under Legal & policies → Tax (PPN), which needs
+  `brand.manage` and an NPWP in the seller identity. While PKP is on, the NPWP cannot be removed.
+  The code does not check the PKP turnover threshold; registering is the brand's decision.
+- Each brand picks one default profile (standard, luxury or exempt) and may override it for a
+  product or a category. A product's own override wins over its category's. A category override
+  covers products filed directly under that category, not under its sub-categories.
+- Shipping is the courier's charge passed through and carries no PPN from the brand. A brand that
+  sells delivery as its own service would need shipping taxed; that is not built.
+- Rounding: whole rupiah, half up, per line. The order discount is spread over the lines in
+  proportion to their value, rounding the running total so the shares add up to the discount
+  exactly. Prices including PPN: `ppn = amount × rate × base / (100 + rate × base)` and
+  `net = amount − ppn`, then `dpp = net × base`. Prices excluding PPN: `dpp = amount × base` and
+  `ppn = dpp × rate / 100`. The order's DPP and PPN are the sums of its lines, so lines and totals
+  reconcile with no remainder. We found no primary rule on invoice rounding; check this with the
+  brand's tax adviser.
+
+### What it changes
+
+- Brands that are not PKP see no change: their orders carry no `tax` and keep their totals. The
+  seed has no PKP brand, so `pnpm gen:fixtures` is unchanged.
+- Prices including PPN: the shopper pays what they pay today. The cart and checkout say
+  "Termasuk PPN", the order page, the shopper emails and the console show DPP and PPN.
+- Prices excluding PPN: checkout adds a PPN line and the total becomes
+  `subtotal − discount + PPN + shipping`. The API computes the tax itself from the brand's settings
+  when the order is placed, whatever the client sent. A return refunds the PPN paid on the returned
+  items with them.
+- Revenue in sales and analytics stays the order total, which is gross: it includes PPN in both
+  modes, as it did before.
+
+### Invoices
+
+`GET /orders/{id}/invoice.pdf` (staff who can read the order) and
+`GET /shop/{store}/orders/{id}/invoice.pdf` (the signed-in shopper, own orders only) render a PDF
+invoice with no outside library (`apps/api/internal/pdf`). It names the seller from the legal
+details, with the NPWP when the brand is a PKP, the buyer's name, contact and city (the product
+stores no street address), the lines, discount, DPP, PPN, shipping, total and payment status. The
+first download issues the number `INV/{brand code}/{YYYY}/{MM}/{seq}`, where seq runs per brand and
+never resets, and keeps it in `order_invoices`. An order cancelled before payment gets no invoice.
+
+The invoice says it is not a Faktur Pajak. A PKP still issues its e-Faktur through Coretax; that
+integration, and withholding taxes (PPh), are out of scope.

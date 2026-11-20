@@ -36,6 +36,7 @@ import { Archive, ArrowRight, MoreHorizontal, Pencil, Star, Undo2 } from 'lucide
 import { type ReactNode, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
+import { AuditHistoryCard } from '../../components/AuditHistory'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK, StockBadge } from '../../components/badges'
 import { paths } from '../../components/links'
@@ -363,6 +364,7 @@ function ProductRecord({ id }: { id: string }) {
           </Card>
 
           <AttributesCard product={product} />
+          <AuditHistoryCard collection="products" entityId={product.id} />
         </div>
 
         <div className="min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-1 grid grid-cols-1 content-start">

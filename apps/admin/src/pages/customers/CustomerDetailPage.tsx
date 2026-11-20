@@ -30,6 +30,7 @@ import { Coins, Copy, Download, MessageSquarePlus, MoreHorizontal, Pencil, UserX
 import { useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
+import { AuditHistoryCard } from '../../components/AuditHistory'
 import { BackButton } from '../../components/BackButton'
 import { ON_INK, OrderStatusBadge } from '../../components/badges'
 import { FilteredOrderTable } from '../../components/FilteredOrderTable'
@@ -335,6 +336,7 @@ export function CustomerDetailPage() {
               />
             )}
           </Card>
+          <AuditHistoryCard collection="customers" entityId={customer.id} />
         </div>
         <div className="min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-1 grid grid-cols-1 content-start">
           <IdentityCard customer={customer} />

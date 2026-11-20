@@ -1,0 +1,515 @@
+{
+ "note": "PPN cases both tax.ts and rules/tax.go must answer alike. Expected values are checked by hand in the tests.",
+ "cases": [
+  {
+   "name": "standard, prices exclude PPN",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": false
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 100000
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 100000,
+      "dpp": 91667,
+      "ppn": 11000
+     }
+    ],
+    "dpp": 91667,
+    "ppn": 11000
+   }
+  },
+  {
+   "name": "standard, prices include PPN",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": true
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 111000
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 100000,
+      "dpp": 91667,
+      "ppn": 11000
+     }
+    ],
+    "dpp": 91667,
+    "ppn": 11000
+   }
+  },
+  {
+   "name": "luxury, prices exclude PPN",
+   "tax": {
+    "pkp": true,
+    "profile": "luxury",
+    "pricesIncludeTax": false
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 100000
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "luxury",
+      "net": 100000,
+      "dpp": 100000,
+      "ppn": 12000
+     }
+    ],
+    "dpp": 100000,
+    "ppn": 12000
+   }
+  },
+  {
+   "name": "luxury, prices include PPN",
+   "tax": {
+    "pkp": true,
+    "profile": "luxury",
+    "pricesIncludeTax": true
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 112000
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "luxury",
+      "net": 100000,
+      "dpp": 100000,
+      "ppn": 12000
+     }
+    ],
+    "dpp": 100000,
+    "ppn": 12000
+   }
+  },
+  {
+   "name": "exempt default",
+   "tax": {
+    "pkp": true,
+    "profile": "exempt",
+    "pricesIncludeTax": false
+   },
+   "discount": 500,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 2,
+     "price": 5000
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "exempt",
+      "net": 9500,
+      "dpp": 0,
+      "ppn": 0
+     }
+    ],
+    "dpp": 0,
+    "ppn": 0
+   }
+  },
+  {
+   "name": "DPP half rounds up",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": false
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 6
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 6,
+      "dpp": 6,
+      "ppn": 1
+     }
+    ],
+    "dpp": 6,
+    "ppn": 1
+   }
+  },
+  {
+   "name": "PPN half rounds up at a 10% rate",
+   "tax": {
+    "pkp": true,
+    "profile": "luxury",
+    "pricesIncludeTax": false,
+    "ratePct": 10
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 5
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "luxury",
+      "net": 5,
+      "dpp": 5,
+      "ppn": 1
+     }
+    ],
+    "dpp": 5,
+    "ppn": 1
+   }
+  },
+  {
+   "name": "included PPN half rounds up",
+   "tax": {
+    "pkp": true,
+    "profile": "luxury",
+    "pricesIncludeTax": true,
+    "ratePct": 12
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 14
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "luxury",
+      "net": 12,
+      "dpp": 12,
+      "ppn": 2
+     }
+    ],
+    "dpp": 12,
+    "ppn": 2
+   }
+  },
+  {
+   "name": "discount shares follow the running total",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": false
+   },
+   "discount": 2,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 1
+    },
+    {
+     "productId": "p2",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 1
+    },
+    {
+     "productId": "p3",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 1
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 0,
+      "dpp": 0,
+      "ppn": 0
+     },
+     {
+      "profile": "standard",
+      "net": 1,
+      "dpp": 1,
+      "ppn": 0
+     },
+     {
+      "profile": "standard",
+      "net": 0,
+      "dpp": 0,
+      "ppn": 0
+     }
+    ],
+    "dpp": 1,
+    "ppn": 0
+   }
+  },
+  {
+   "name": "discount half share goes to the first line",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": true
+   },
+   "discount": 1,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 1
+    },
+    {
+     "productId": "p2",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 1
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 0,
+      "dpp": 0,
+      "ppn": 0
+     },
+     {
+      "profile": "standard",
+      "net": 1,
+      "dpp": 1,
+      "ppn": 0
+     }
+    ],
+    "dpp": 1,
+    "ppn": 0
+   }
+  },
+  {
+   "name": "discount above the goods is capped",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": false
+   },
+   "discount": 999999,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 1000
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 0,
+      "dpp": 0,
+      "ppn": 0
+     }
+    ],
+    "dpp": 0,
+    "ppn": 0
+   }
+  },
+  {
+   "name": "no goods",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": false
+   },
+   "discount": 100,
+   "lines": [],
+   "want": {
+    "lines": [],
+    "dpp": 0,
+    "ppn": 0
+   }
+  },
+  {
+   "name": "product override wins over category override",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": true,
+    "overrides": [
+     {
+      "kind": "category",
+      "id": "c1",
+      "profile": "luxury"
+     },
+     {
+      "kind": "product",
+      "id": "p2",
+      "profile": "exempt"
+     }
+    ]
+   },
+   "discount": 10001,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 3,
+     "price": 33333
+    },
+    {
+     "productId": "p2",
+     "categoryId": "c1",
+     "qty": 1,
+     "price": 111111
+    },
+    {
+     "productId": "p3",
+     "categoryId": "c2",
+     "qty": 2,
+     "price": 49999
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "luxury",
+      "net": 86414,
+      "dpp": 86414,
+      "ppn": 10370
+     },
+     {
+      "profile": "exempt",
+      "net": 107540,
+      "dpp": 0,
+      "ppn": 0
+     },
+     {
+      "profile": "standard",
+      "net": 87192,
+      "dpp": 79926,
+      "ppn": 9591
+     }
+    ],
+    "dpp": 166340,
+    "ppn": 19961
+   }
+  },
+  {
+   "name": "a new rate is a setting",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": false,
+    "ratePct": 11,
+    "dppNumerator": 1,
+    "dppDenominator": 1
+   },
+   "discount": 0,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 3,
+     "price": 19999
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 59997,
+      "dpp": 59997,
+      "ppn": 6600
+     }
+    ],
+    "dpp": 59997,
+    "ppn": 6600
+   }
+  },
+  {
+   "name": "large order",
+   "tax": {
+    "pkp": true,
+    "profile": "standard",
+    "pricesIncludeTax": true
+   },
+   "discount": 1234567,
+   "lines": [
+    {
+     "productId": "p1",
+     "categoryId": "c1",
+     "qty": 7,
+     "price": 18999999
+    },
+    {
+     "productId": "p2",
+     "categoryId": "c2",
+     "qty": 13,
+     "price": 2499999
+    }
+   ],
+   "want": {
+    "lines": [
+     {
+      "profile": "standard",
+      "net": 118926004,
+      "dpp": 109015504,
+      "ppn": 13081860
+     },
+     {
+      "profile": "standard",
+      "net": 29060855,
+      "dpp": 26639117,
+      "ppn": 3196694
+     }
+    ],
+    "dpp": 135654621,
+    "ppn": 16278554
+   }
+  }
+ ]
+}

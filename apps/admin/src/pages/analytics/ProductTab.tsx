@@ -75,6 +75,10 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
         .sort((a, b) => a.results - b.results || b.count30d - a.count30d),
     [s.searchTerms],
   )
+  const topSearches = useMemo(
+    () => [...s.searchTerms].sort((a, b) => b.count30d - a.count30d || a.term.localeCompare(b.term)).slice(0, 8),
+    [s.searchTerms],
+  )
   const [termQuery, setTermQuery] = useHistoryState('terms.q', '')
   const [yieldFilter, setYieldFilter] = useHistoryState<Yield | null>('terms.yield', null)
   const searchedTerms = searches.filter((t) => matchesQuery(termQuery, t.term))
@@ -260,6 +264,26 @@ export function ProductTab({ days, today }: { days: number; today: number }) {
           </Card>
         </div>
       </div>
+
+      <ChartCard
+        title="Top searches"
+        method="What shoppers typed into the storefront search most in the last 30 days, whatever the window. Products found beside each term."
+      >
+        {topSearches.length ? (
+          <BarList
+            ariaLabel="Top storefront searches, last 30 days"
+            items={topSearches.map((t) => ({
+              key: t.id,
+              label: <span className="font-mono text-xs font-semibold">{t.term}</span>,
+              hint: t.results === 0 ? 'No results' : plural(t.results, 'result'),
+              value: t.count30d,
+              display: fmtNumber(t.count30d),
+            }))}
+          />
+        ) : (
+          <EmptyState compact title="No searches yet" description="Terms appear here once shoppers search the store." />
+        )}
+      </ChartCard>
 
       <Card>
         <CardHeader>

@@ -87,6 +87,27 @@ type Tenant struct {
 	Legal *SellerLegal `json:"legal,omitempty"`
 	// CourierEtaDays overrides the platform's delivery estimate per courier.
 	CourierEtaDays map[string]EtaDays `json:"courierEtaDays,omitempty"`
+	// Tax is whether the brand charges PPN and how; nil charges none.
+	Tax *TaxSettings `json:"tax,omitempty"`
+}
+
+// TaxSettings mirrors TaxSettings in packages/types: the brand's PPN settings. Only a PKP with an
+// NPWP charges PPN. Nil rates mean the defaults in rules/tax.go.
+type TaxSettings struct {
+	PKP              bool          `json:"pkp"`
+	PricesIncludeTax bool          `json:"pricesIncludeTax"`
+	Profile          string        `json:"profile"`
+	RatePct          *float64      `json:"ratePct,omitempty"`
+	DppNumerator     *int          `json:"dppNumerator,omitempty"`
+	DppDenominator   *int          `json:"dppDenominator,omitempty"`
+	Overrides        []TaxOverride `json:"overrides,omitempty"`
+}
+
+// TaxOverride is a product or category taxed with another profile than the brand's default.
+type TaxOverride struct {
+	Kind    string `json:"kind"`
+	ID      string `json:"id"`
+	Profile string `json:"profile"`
 }
 
 // EtaDays is how many whole days a parcel takes after it ships.
@@ -356,6 +377,8 @@ type Product struct {
 	PublishAt   *IsoDate          `json:"publishAt"`
 	// ImageURL is an uploaded photo; empty means the storefront's stock photo.
 	ImageURL *string `json:"imageUrl,omitempty"`
+	// WeightGrams is the shipping weight, set from the product CSV import.
+	WeightGrams *int `json:"weightGrams,omitempty"`
 }
 
 type Warehouse struct {
@@ -487,6 +510,31 @@ type Order struct {
 	// TermsAcceptedAt when, by the API's clock.
 	TermsVersion    string  `json:"termsVersion,omitempty"`
 	TermsAcceptedAt IsoDate `json:"termsAcceptedAt,omitempty"`
+	// PaymentConfirmation is the shopper's word that they paid by manual transfer or static QRIS.
+	PaymentConfirmation *PaymentConfirmation `json:"paymentConfirmation,omitempty"`
+	// CancelRefund is the money a cancellation owes the shopper and how it went back.
+	CancelRefund *CancelRefund `json:"cancelRefund,omitempty"`
+	// Tax is the order's PPN with the rates of the day; only orders of a PKP brand carry it.
+	Tax *OrderTax `json:"tax,omitempty"`
+}
+
+// OrderTax mirrors OrderTax in packages/types. Lines follow the order's lines.
+type OrderTax struct {
+	PricesIncludeTax bool           `json:"pricesIncludeTax"`
+	RatePct          float64        `json:"ratePct"`
+	DppNumerator     int            `json:"dppNumerator"`
+	DppDenominator   int            `json:"dppDenominator"`
+	Lines            []OrderTaxLine `json:"lines"`
+	DPP              int            `json:"dpp"`
+	PPN              int            `json:"ppn"`
+}
+
+// OrderTaxLine is one line's share: Net excludes PPN, and Net + PPN is what the line costs.
+type OrderTaxLine struct {
+	Profile string `json:"profile"`
+	Net     int    `json:"net"`
+	DPP     int    `json:"dpp"`
+	PPN     int    `json:"ppn"`
 }
 
 type AgentPolicy struct {
@@ -739,6 +787,10 @@ type SearchTerm struct {
 	Term     string `json:"term"`
 	Count30d int    `json:"count30d"`
 	Results  int    `json:"results"`
+	// Days counts searches per WIB day (YYYY-MM-DD) over the last 30; Count30d is their sum.
+	Days map[string]int `json:"days,omitempty"`
+	// LastSearchedAt is when a shopper last searched the term.
+	LastSearchedAt string `json:"lastSearchedAt,omitempty"`
 }
 
 // AppState is the whole dataset as the apps hold it; the API serves it scoped to the caller.

@@ -118,4 +118,12 @@ func (s *Server) shopRoutes(rt *router) {
 	rt.add("POST", "/shop/{store}/returns", "returns/request", "", "Ask for a return of a delivered order, within the store's return window", s.shopReturn)
 	rt.add("POST", "/shop/{store}/returns/{id}/cancel", "returns/cancel", "", "Cancel the shopper's own return before it is received", s.shopReturn)
 	rt.add("POST", "/shop/{store}/ai/chat", "", "", "Ask the AI what a shopper's message means", s.shopAIChat)
+	rt.add("GET", "/shop/{store}/search", "", "", "Search a store's products: words with typo tolerance, filters, sort, pages and facets", s.shopSearch)
+	rt.add("GET", "/shop/{store}/suggest", "", "", "The top products and categories for what a shopper has typed", s.shopSuggest)
+	rt.add("GET", "/shop/{store}/sitemap.xml", "", "", "A store's sitemap on its canonical origin, or a sitemap index past 50,000 URLs", s.sitemap)
+	rt.add("GET", "/shop/{store}/sitemap/{part}", "", "", "One numbered part (1.xml) of a store's sitemap index", s.sitemap)
+	rt.add("GET", "/shop/{store}/robots.txt", "", "", "A store's robots.txt; closed while the store is not open", s.robots)
+	rt.add("GET", "/seo/sitemap.xml", "", "", "The sitemap of the store this Host serves (store host or verified custom domain)", s.sitemap)
+	rt.add("GET", "/seo/sitemap/{part}", "", "", "One numbered part of the sitemap of the store this Host serves", s.sitemap)
+	rt.add("GET", "/seo/robots.txt", "", "", "The robots.txt of the store this Host serves", s.robots)
 }

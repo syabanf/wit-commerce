@@ -10,10 +10,18 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
+	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 )
 
 // uploadMedia stores the multipart field "file" for ?tenantId= and answers with its URL.
 func (s *Server) uploadMedia(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.URL.Query().Get("tenantId")
+	s.storeUpload(w, r, tenantID, s.meta(r), func() (bool, error) { return s.mayUpload(r, tenantID) })
+}
+
+// storeUpload reads the multipart field "file", checks the caller may upload with allowed, and stores
+// the image for tenantID within the brand's media room.
+func (s *Server) storeUpload(w http.ResponseWriter, r *http.Request, tenantID string, m service.Meta, allowed func() (bool, error)) {
 	// The form's boundaries and headers need a little room beyond the file itself.
 	r.Body = http.MaxBytesReader(w, r.Body, media.MaxSize+64<<10)
 	file, header, err := r.FormFile("file")
@@ -27,8 +35,7 @@ func (s *Server) uploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	tenantID := r.URL.Query().Get("tenantId")
-	if ok, err := s.mayUpload(r, tenantID); err != nil {
+	if ok, err := allowed(); err != nil {
 		s.writeError(w, r, err)
 		return
 	} else if !ok {
@@ -45,7 +52,7 @@ func (s *Server) uploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Only a brand the person may upload for is measured; Upload refuses the rest itself.
-	if s.meta(r).P.CanAccess(tenantID) {
+	if m.P.CanAccess(tenantID) {
 		used, err := s.media.Used(r.Context(), tenantID)
 		if err == nil {
 			err = s.svc.MediaRoom(r.Context(), tenantID, used, int64(len(data)))
@@ -55,7 +62,7 @@ func (s *Server) uploadMedia(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	up, err := s.media.Upload(r.Context(), s.meta(r), tenantID, header.Filename, data)
+	up, err := s.media.Upload(r.Context(), m, tenantID, header.Filename, data)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

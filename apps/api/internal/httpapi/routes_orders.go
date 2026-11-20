@@ -23,17 +23,14 @@ func (s *Server) orderRoutes(rt *router) {
 			return s.svc.AdvanceOrder(r.Context(), m, r.PathValue("id"), in.TrackingNo)
 		})
 	})
-	rt.add("POST", "/orders/{id}/cancel", "orders/cancel", "order.fulfil", "Cancel an order; paid ones are refunded", func(w http.ResponseWriter, r *http.Request) {
-		var in struct {
-			Reason string `json:"reason"`
-			Note   string `json:"note"`
-		}
+	rt.add("POST", "/orders/{id}/cancel", "orders/cancel", "order.fulfil", "Cancel an order; a paid one is refunded through Midtrans when it took the payment, else owes the refund until the transfer is recorded", func(w http.ResponseWriter, r *http.Request) {
+		var in service.CancelInput
 		if err := decode(r, &in); err != nil {
 			s.writeError(w, r, err)
 			return
 		}
 		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
-			return s.svc.CancelOrder(r.Context(), m, r.PathValue("id"), in.Reason, in.Note)
+			return s.svc.CancelOrder(r.Context(), m, r.PathValue("id"), in)
 		})
 	})
 	rt.add("POST", "/orders/{id}/refund", "orders/refund", "order.refund", "Refund part or all of a paid order", func(w http.ResponseWriter, r *http.Request) {

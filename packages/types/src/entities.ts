@@ -59,6 +59,7 @@ import type {
   WebhookEvent,
 } from './enums'
 import type { ConsentSource, PrivacyRequestKind } from './enums'
+import type { CancelRefundStatus, PaymentConfirmationStatus } from './enums'
 
 // --- platform and tenants ---
 
@@ -130,6 +131,38 @@ export interface Tenant {
   legal?: SellerLegal
   /** Delivery days per courier, overriding the platform's estimate. */
   courierEtaDays?: Partial<Record<Courier, EtaDays>>
+  /** Whether the brand charges PPN and how. Without it the brand charges none. */
+  tax?: TaxSettings
+}
+
+/** How PPN applies to a product: on the 11/12 tax base, on the full price, or not at all. */
+export type TaxProfile = 'standard' | 'luxury' | 'exempt'
+
+/** A product or category taxed differently from the brand's default profile. */
+export interface TaxOverride {
+  kind: 'product' | 'category'
+  id: string
+  profile: TaxProfile
+}
+
+/**
+ * The brand's PPN settings. Only a PKP (a business registered for VAT, with an NPWP) charges PPN.
+ * Rates live here, so a change in the law is a settings change.
+ */
+export interface TaxSettings {
+  /** Registered as Pengusaha Kena Pajak. Needs an NPWP in the legal details. */
+  pkp: boolean
+  /** Catalog prices already include PPN; otherwise checkout adds it. */
+  pricesIncludeTax: boolean
+  /** The profile of every product without an override. */
+  profile: TaxProfile
+  /** PPN rate in percent; 12 when unset. */
+  ratePct?: number
+  /** The standard profile's tax base as a fraction of the selling price; 11/12 when unset. */
+  dppNumerator?: number
+  dppDenominator?: number
+  /** Products and categories taxed differently; a product's own override wins over its category's. */
+  overrides?: TaxOverride[]
 }
 
 /** Whole days a parcel takes, counted from when it ships. */
@@ -420,6 +453,8 @@ export interface Product {
   publishAt: IsoDate | null
   /** An uploaded photo; empty means the storefront's stock photo. */
   imageUrl?: string
+  /** Shipping weight in grams, set from the product CSV import. */
+  weightGrams?: number
 }
 
 export interface Warehouse {
@@ -534,6 +569,59 @@ export interface Order {
   termsVersion?: string
   /** When the shopper agreed; the API stamps its own clock. */
   termsAcceptedAt?: IsoDate
+  /** The shopper's word that they paid by manual transfer or static QRIS; staff confirm or reject it. */
+  paymentConfirmation?: PaymentConfirmation
+  /** The money a cancellation owes the shopper and how it went back. */
+  cancelRefund?: CancelRefund
+  /** The PPN on the order, with the rates at the time; only orders of a PKP brand carry it. */
+  tax?: OrderTax
+}
+
+/** One order line's share of the tax: `net` excludes PPN, and net + ppn is what the line costs. */
+export interface OrderTaxLine {
+  profile: TaxProfile
+  /** The line after its share of the discount, without PPN. */
+  net: number
+  /** Dasar Pengenaan Pajak, the tax base. */
+  dpp: number
+  ppn: number
+}
+
+/** The PPN of an order. Lines follow the order's lines; the totals are the sums of the lines. */
+export interface OrderTax {
+  pricesIncludeTax: boolean
+  ratePct: number
+  dppNumerator: number
+  dppDenominator: number
+  lines: OrderTaxLine[]
+  dpp: number
+  ppn: number
+}
+
+/** What a shopper reports after paying by manual transfer or static QRIS. Only staff turn the order paid. */
+export interface PaymentConfirmation {
+  amount: number
+  /** The bank or wallet the money came from. */
+  channel: string
+  senderName: string
+  transferredAt: string
+  proofUrl?: string
+  submittedAt: IsoDate
+  status: PaymentConfirmationStatus
+  reviewedAt?: IsoDate
+  reviewedBy?: string
+  rejectReason?: string
+}
+
+/** The refund a cancelled paid order owes, and how far it got. */
+export interface CancelRefund {
+  amount: number
+  status: CancelRefundStatus
+  /** midtrans when the gateway refunded, manual when staff recorded a bank transfer. */
+  method?: ReturnRefundMethod
+  reference?: string
+  refundedOn?: string
+  error?: string
 }
 
 /** The mandate chain behind an agent order: what the shopper asked for and how the agent closed it. */
@@ -875,6 +963,10 @@ export interface SearchTerm {
   term: string
   count30d: number
   results: number
+  /** Searches per WIB day (YYYY-MM-DD) over the last 30 days; count30d is their sum. */
+  days?: Record<string, number>
+  /** When a shopper last searched the term. */
+  lastSearchedAt?: IsoDate
 }
 
 /**

@@ -4,6 +4,7 @@ package orders
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 
@@ -28,6 +29,10 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 	if customer != nil && customer.ID != o.CustomerID {
 		return nil, kernel.Invalid{Reason: "The new customer must be the order's customer."}
 	}
+	// A shopper's browser never decides that an order is paid.
+	if m.P.Kind == "customer" {
+		o = rules.ShopperPlacement(o)
+	}
 	if o.PaymentMethod != "cod" && o.PaymentTypeID != nil && s.Payments != nil {
 		online, err := s.Payments.CollectsOnline(ctx, o.TenantID, *o.PaymentTypeID, o.Total)
 		if err != nil {
@@ -48,6 +53,12 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 		if why := rules.OrderPlaceBlocker(o, l); why != "" {
 			return kernel.Refuse(why)
 		}
+		tenant, err := identity.Tenant(t, o.TenantID)
+		if err != nil {
+			return err
+		}
+		// The brand's PPN settings decide the order's tax, whatever the client sent.
+		o = rules.WithOrderTax(o, tenant, l.Products)
 		// Two checkouts can pick the same next code; the second one takes the one after.
 		var taken bool
 		if err := t.QueryRow(t.Ctx, `select exists (select 1 from orders where tenant_id = $1 and code = $2)`,
@@ -55,10 +66,6 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 			return err
 		}
 		if taken {
-			tenant, err := identity.Tenant(t, o.TenantID)
-			if err != nil {
-				return err
-			}
 			rows, err := t.Query(t.Ctx, `select code from orders where tenant_id = $1`, o.TenantID)
 			if err != nil {
 				return err
@@ -166,11 +173,6 @@ func awaitingPayment(o domain.Order) domain.Order {
 	return o
 }
 
-// awaitsPayment is an open order whose payment has not arrived.
-func awaitsPayment(o domain.Order) bool {
-	return o.PaymentStatus == "pending" && o.PaymentMethod != "cod" && (o.Status == "new" || o.Status == "confirmed")
-}
-
 // ConfirmPayment marks an order paid when its provider confirms the money arrived. It follows the
 // same path as advancing to paid. An order already paid, or closed, is left alone, so a repeated
 // confirmation changes nothing.
@@ -183,7 +185,7 @@ func (s *Orders) ConfirmPayment(ctx context.Context, m kernel.Meta, id string) (
 		if err := kernel.Access(m, o.TenantID); err != nil {
 			return err
 		}
-		if !awaitsPayment(o) {
+		if !rules.AwaitsPayment(o) {
 			return nil
 		}
 		return advance(t, m, o, "paid", nil)
@@ -201,7 +203,7 @@ func (s *Orders) FailPayment(ctx context.Context, m kernel.Meta, id, reason, not
 		if err := kernel.Access(m, o.TenantID); err != nil {
 			return err
 		}
-		if !awaitsPayment(o) {
+		if !rules.AwaitsPayment(o) {
 			return nil
 		}
 		return Expire(t, o, reason, note, m.At, m.By())
@@ -224,8 +226,21 @@ func Expire(t *kernel.Tx, o domain.Order, reason, note, at, by string) error {
 	return t.Put("orders", o.ID, o)
 }
 
-// CancelOrder is orders/cancel: reservations go back; a paid order is refunded in full.
-func (s *Orders) CancelOrder(ctx context.Context, m kernel.Meta, id, reason, note string) (*kernel.Delta, error) {
+// CancelInput is orders/cancel. Reference and RefundedOn record a bank transfer that already
+// returned a paid order's money. Gateway is the outcome of the gateway refund the facade ran first;
+// the HTTP body cannot set it.
+type CancelInput struct {
+	Reason     string               `json:"reason"`
+	Note       string               `json:"note"`
+	Reference  string               `json:"refundReference,omitempty"`
+	RefundedOn string               `json:"refundedOn,omitempty"`
+	Gateway    *domain.CancelRefund `json:"-"`
+}
+
+// CancelOrder is orders/cancel: reservations go back. A paid order owes its money back: it closes as
+// refunded once the gateway refunded or staff recorded the transfer (PP 80/2019 Pasal 71), and
+// stays cancelled with the refund owed until then.
+func (s *Orders) CancelOrder(ctx context.Context, m kernel.Meta, id string, in CancelInput) (*kernel.Delta, error) {
 	return s.Run(ctx, func(t *kernel.Tx) error {
 		o, err := kernel.Lock[domain.Order](t, "orders", id, "order")
 		if err != nil {
@@ -237,6 +252,13 @@ func (s *Orders) CancelOrder(ctx context.Context, m kernel.Meta, id, reason, not
 		if why := rules.OrderCancelBlocker(o); why != "" {
 			return kernel.Refuse(why)
 		}
+		var refund *domain.CancelRefund
+		if o.PaymentStatus == "paid" {
+			refund, err = cancelRefund(o, in, m.At)
+			if err != nil {
+				return err
+			}
+		}
 		l, err := inventory.Lookup(t, o)
 		if err != nil {
 			return err
@@ -244,20 +266,48 @@ func (s *Orders) CancelOrder(ctx context.Context, m kernel.Meta, id, reason, not
 		if err := inventory.Reserve(t, l, o, -1, false); err != nil {
 			return err
 		}
-		refund := o.PaymentStatus == "paid"
-		if refund {
-			o.Status, o.PaymentStatus, o.RefundedAmount = "refunded", "refunded", o.Total
-		} else {
+		switch {
+		case refund == nil:
 			o.Status, o.PaymentStatus, o.RefundedAmount = "cancelled", "failed", 0
+		case refund.Status == "succeeded":
+			o.Status, o.PaymentStatus, o.RefundedAmount = "refunded", "refunded", o.RefundedAmount+refund.Amount
+		default:
+			o.Status = "cancelled"
 		}
-		o.CancelReason = kernel.Ptr(reason)
+		o.CancelRefund = refund
+		o.CancelReason = kernel.Ptr(in.Reason)
+		note := in.Note
 		if note == "" {
 			note = "Cancelled"
 		}
 		o.Events = append([]domain.OrderEvent{kernel.OrderEvent(m.At, m.By(), kernel.Ptr("cancelled"), note)}, o.Events...)
-		t.Notify(kernel.Notice{Kind: "order_cancelled", Order: o, Amount: o.RefundedAmount})
+		amount := 0
+		if refund != nil {
+			amount = refund.Amount
+		}
+		t.Notify(kernel.Notice{Kind: "order_cancelled", Order: o, Amount: amount})
 		return t.Put("orders", o.ID, o)
 	})
+}
+
+// cancelRefund is what a cancelled paid order owes and how far it got: the gateway's outcome, a
+// recorded transfer, or owed.
+func cancelRefund(o domain.Order, in CancelInput, at string) (*domain.CancelRefund, error) {
+	refund := &domain.CancelRefund{Amount: o.Total - o.RefundedAmount, Status: "owed"}
+	switch {
+	case in.Gateway != nil:
+		refund.Status, refund.Method, refund.Reference, refund.Error = in.Gateway.Status, "midtrans", in.Gateway.Reference, in.Gateway.Error
+		if refund.Status == "succeeded" {
+			refund.RefundedOn = at
+		}
+	case strings.TrimSpace(in.Reference) != "":
+		if why := rules.ReturnRefundProofBlocker("manual", in.Reference, in.RefundedOn); why != "" {
+			return nil, kernel.Invalid{Reason: why}
+		}
+		refund.Status, refund.Method = "succeeded", "manual"
+		refund.Reference, refund.RefundedOn = strings.TrimSpace(in.Reference), strings.TrimSpace(in.RefundedOn)
+	}
+	return refund, nil
 }
 
 // RefundOrder is orders/refund.

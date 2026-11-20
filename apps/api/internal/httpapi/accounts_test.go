@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -138,4 +139,27 @@ func (e *env) placeable(id, customerID string) map[string]any {
 	order["id"], order["customerId"], order["code"], order["status"] = id, customerID, "LARI-99999", "new"
 	order["termsVersion"] = e.termsVersion("ten-lari")
 	return order
+}
+
+// The storefront never holds the brand's customers, so every guest proposes the first customer code.
+// The first guest keeps it; the server gives the next one the next free code instead of failing on
+// the unique index.
+func TestGuestCheckoutsGetFreeCustomerCodes(t *testing.T) {
+	e := setup(t)
+	codes := map[string]bool{}
+	for i, id := range []string{"cus-guest-a", "cus-guest-b"} {
+		guest := map[string]any{"id": id, "tenantId": "ten-lari", "code": "LARI-C00001", "name": "Guest", "email": id + "@example.com"}
+		order := e.placeable(fmt.Sprintf("ord-guest-%d", i), id)
+		if code := e.call("POST", "/shop/lari/orders", "", map[string]any{"order": order, "customer": guest}, nil); code != 200 {
+			t.Fatalf("guest %s: %d", id, code)
+		}
+		var got string
+		if err := e.db.Pool.QueryRow(context.Background(), `select code from customers where id = $1`, id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if codes[got] {
+			t.Fatalf("guest %s took the code %s another customer holds", id, got)
+		}
+		codes[got] = true
+	}
 }

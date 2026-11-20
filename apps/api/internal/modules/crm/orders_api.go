@@ -1,7 +1,12 @@
 package crm
 
 import (
+	"strings"
+
+	"github.com/jackc/pgx/v5"
+
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
@@ -25,6 +30,9 @@ func RecordOrderPlaced(t *kernel.Tx, o domain.Order, customer *domain.Customer, 
 	if isNew {
 		events = append(events, kernel.CustomerEvent(o, "registered", "Created an account at checkout", at, by))
 		c := *customer
+		if err := freeCustomerCode(t, &c); err != nil {
+			return err
+		}
 		if paid {
 			c.Points += o.PointsEarned
 		}
@@ -66,4 +74,26 @@ func creditOrderPoints(t *kernel.Tx, o domain.Order) error {
 	}
 	c.Points += o.PointsEarned
 	return t.Put("customers", c.ID, c)
+}
+
+// freeCustomerCode gives a new customer the next free code when the one the browser picked is taken.
+// The storefront never holds the brand's customer list, so a guest checkout always proposes the first
+// code; a code taken by another checkout is handled the same way.
+func freeCustomerCode(t *kernel.Tx, c *domain.Customer) error {
+	var taken bool
+	if err := t.QueryRow(t.Ctx, `select exists (select 1 from customers where tenant_id = $1 and code = $2)`,
+		c.TenantID, c.Code).Scan(&taken); err != nil || !taken {
+		return err
+	}
+	prefix := strings.TrimRight(c.Code, "0123456789")
+	rows, err := t.Query(t.Ctx, `select code from customers where tenant_id = $1 and code like $2`, c.TenantID, prefix+"%")
+	if err != nil {
+		return err
+	}
+	codes, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return err
+	}
+	c.Code = ids.NextCode(codes, prefix, len(c.Code)-len(prefix))
+	return nil
 }

@@ -303,7 +303,9 @@ func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, col
 			// Only orders still under way: the queues, notifications and badges work on these. Every
 			// other order is one query away (GET /views/orders, GET /orders/{id}). Each carries only the
 			// shipment from its history; a detail reads the whole order.
-			rows, err = store.Raw(ctx, s.DB.Pool, c, where+" and status in ('new', 'confirmed', 'paid', 'processing', 'packed', 'shipped')", args...)
+			// A cancelled order whose refund is still owed stays too, so staff see it to settle.
+			rows, err = store.Raw(ctx, s.DB.Pool, c, where+" and (status in ('new', 'confirmed', 'paid', 'processing', 'packed', 'shipped')"+
+				" or status = 'cancelled' and data->'cancelRefund'->>'status' in ('owed', 'pending', 'failed'))", args...)
 			if err == nil {
 				err = withShipmentsOnly(rows)
 			}

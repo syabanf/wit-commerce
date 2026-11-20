@@ -237,6 +237,67 @@ it in front of `web`:
   Keep the platform's own names (the console and `*.{STORE_ROOT_DOMAIN}`) on their own site blocks with
   the wildcard certificate, since the ask endpoint answers 404 for them.
 
+## Storefront search
+
+`GET /api/v1/shop/{store}/search` answers the storefront's search page from Postgres with `pg_trgm`
+(migration 0035). Parameters: `q`, `category` (its sub-categories count too), `collection` (slug or
+id), `attr.{code}` (repeat for any of several values), `priceMin` and `priceMax` (rupiah, inclusive),
+`inStock=1`, `sort` (`relevance`, `price_asc`, `price_desc`, `newest`, `best`), `page` and `pageSize`
+(24, at most 60). Only active products of a live store come back.
+
+- Matching: `products.search_text` is a stored generated column of the folded name, code, tags, best
+  for, variant SKUs and barcodes, and attribute values (`product_search_text`), with a GIN trigram
+  index. Folding lowers case, strips Latin accents and turns punctuation into spaces (`search_fold`
+  in SQL, `service.FoldSearch` in Go). Every query word must match: by `word_similarity` of at least
+  0.55 (one typo in a six-letter word still finds it), as the start of a word for words under three
+  letters, or through the name of the product's category or its parent. A small table of Indonesian and
+  English pairs (`sepatu` and `shoes`, `kaos` and `tshirt`, `wanita` and `women`) lets either word
+  match (`service/search_text.go`).
+- Ranking for `relevance`: the exact name, then names that start with the query, then a name word
+  that does, then the whole query typed elsewhere (a SKU, a code, a category name), then by how well
+  the words match the name, then by views and newest.
+- Facets: categories (with parents counted), each filterable attribute's values, price buckets
+  (under 100 rb up to 5 jt and above) and the in-stock count, each ignoring its own filter.
+- "Did you mean": when the words find nothing, each word is swapped for the closest word of the
+  store's vocabulary, and the suggestion is offered only if it finds something.
+- `GET /api/v1/shop/{store}/suggest?q=` gives the search box the top 5 products and categories.
+
+A first-page search with words and no filters counts in the brand's `searchTerms` (Analytics → Product:
+top searches and searches with no or few results): one row per folded term, searches per WIB day for
+the last 30 days, `count30d` their sum and `results` the latest count. Terms that look like an email
+address or a phone number are not kept, each client adds at most 30 terms a minute, and a store keeps
+at most 5,000 terms.
+
+Measured on a laptop (Postgres 17 in Docker under colima) with 4,000 generated products in one store,
+30 runs each (`SEARCH_LATENCY=4000 go test ./internal/service -run SearchLatency -v`): one word p50
+21 ms, a typo 22 ms, two words 46 ms, a synonym matching 2,500 products 72 ms, filters without words
+14 ms, no match with "did you mean" 25 ms. Most of it is `word_similarity` on the rows that match, so
+the time follows the size of the result set more than the catalogue.
+
+## Sitemaps and robots.txt
+
+Each store serves `sitemap.xml` and `robots.txt` on every address it answers:
+
+| Address | Served by |
+| --- | --- |
+| `{store}.{STORE_ROOT_DOMAIN}/sitemap.xml`, `/robots.txt` | `web` sends them to `GET /api/v1/seo/sitemap.xml` and `/seo/robots.txt`, which pick the store from the `Host` header (`docker/web/templates/commerce/seo.inc.template`). |
+| A verified custom domain, the same paths | The same routes: a host that is not under the root must be a verified custom domain. |
+| `{PUBLIC_URL}/shop/{store}/sitemap.xml`, `/robots.txt` (no store root) | `web` sends them to `GET /api/v1/shop/{store}/sitemap.xml` and `/robots.txt` (`shop-path.inc.template`). |
+
+The sitemap lists home, published store pages, categories, collections, active products and the
+personal pages of active sellers, each with `lastmod` from the row's `updated_at`. Every URL is on the
+store's canonical origin: the verified custom domain, else `https://{store}.{root}`, else
+`{PUBLIC_URL}/shop/{store}`, whichever address the crawler used. Past 50,000 URLs `sitemap.xml` is an
+index of `sitemap/1.xml`, `sitemap/2.xml` and so on.
+
+robots.txt lets every crawler in, keeps it out of the cart, checkout, account, orders, wishlist, page
+previews and search results with a query (`/search?`), and names the sitemap. A store that is not open
+yet (no published homepage) answers `Disallow: /` and has no sitemap. Both answers may be cached for an
+hour.
+
+The storefront sets `<link rel="canonical">` and Open Graph tags on every page from the same origin,
+and product pages add schema.org `Product` data with the offer in IDR (`apps/storefront/src/lib/seo.ts`).
+
 ## Midtrans sandbox
 
 A brand that saves Midtrans keys collects real payments at checkout. A brand without keys keeps the
@@ -297,6 +358,8 @@ bad signature answers 401 and changes nothing.
 | `RETAIN_STOCK_MOVES_YEARS` | 10 (floor 10) | `stock_moves`, transaction data under PP 80/2019 Pasal 25. |
 | `RETAIN_INTEGRATION_LOGS_YEARS` | 5 (floor 5) | `integration_logs`, other PMSE data. |
 | `RETAIN_TRAFFIC_YEARS` | 5 (floor 5) | `traffic`, other PMSE data. |
+| `RETAIN_AUDIT_LOG_YEARS` | 5 (floor 5) | `audit_log`, the record of who changed what; other PMSE data. |
+| `RETAIN_PRODUCT_IMPORTS_DAYS` | 30 | `product_imports`, the working copy of an uploaded product CSV. |
 
 Durations are Go durations (`90s`, `30m`, `2h`). A retention of 0 keeps that table forever; a value
 below its legal floor is raised to the floor with a warning at start. An unreadable pool or password

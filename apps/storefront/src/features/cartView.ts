@@ -1,9 +1,10 @@
-import type { Product } from '@rc/types'
+import { addedTax } from '@rc/fixtures'
+import type { OrderTax, Product } from '@rc/types'
 import { useMemo, useState } from 'react'
 import { t } from '../i18n'
 import { codeErrorText, describePromotion } from '../i18n/format'
 import type { CartItem, CartTotals } from '../lib/cart'
-import { defaultCourierFor } from '../lib/checkout'
+import { cartTax, defaultCourierFor } from '../lib/checkout'
 import { isBuyable } from '../lib/catalog'
 import { useShop } from '../state/shop'
 
@@ -23,6 +24,8 @@ export interface CartView {
   }
   /** Shipping estimate: free, or the cheapest courier. */
   shipping: number
+  /** The cart's PPN when the brand is a PKP. */
+  tax: OrderTax | undefined
   total: number
   /** "5% off when you pay with QRIS". */
   paymentHints: string[]
@@ -34,6 +37,7 @@ export function useCartView(): CartView {
   const [input, setInput] = useState(cart.cart.voucher ?? '')
   const [localError, setLocalError] = useState<string | null>(null)
   const shipping = totals.freeShipping ? 0 : defaultCourierFor(tenant).fee
+  const tax = useMemo(() => cartTax(tenant, totals), [tenant, totals])
   const crossSell = useMemo(() => {
     const inCart = new Set(totals.items.map((i) => i.product.id))
     const cats = new Set(totals.items.map((i) => i.product.categoryId))
@@ -73,7 +77,8 @@ export function useCartView(): CartView {
       error: localError ?? (cart.cart.voucher && totals.codeError ? codeErrorText(totals.codeError) : null),
     },
     shipping,
-    total: Math.max(0, totals.subtotal - totals.discount + shipping),
+    tax,
+    total: Math.max(0, totals.subtotal - totals.discount + addedTax(tax) + shipping),
     paymentHints: totals.paymentOffers.map((p) => describePromotion(p, paymentName)),
     crossSell,
   }

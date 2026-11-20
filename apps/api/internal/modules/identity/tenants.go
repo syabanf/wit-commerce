@@ -242,10 +242,34 @@ func (s *Identity) SetLegal(ctx context.Context, m kernel.Meta, tenantID string,
 		if err != nil {
 			return err
 		}
+		// A PKP keeps its NPWP: PPN invoices name it.
+		if tenant.Tax != nil && tenant.Tax.PKP && legal.NPWP == "" {
+			return kernel.Refuse("Turn PKP off in the tax settings before removing the NPWP.")
+		}
 		tenant.Legal = nil
 		if !rules.LegalEmpty(legal) {
 			tenant.Legal = &legal
 		}
+		return t.Put("tenants", tenant.ID, tenant)
+	})
+}
+
+// SetTax is tenants/setTax: whether the brand charges PPN, how its prices hold it, and the
+// products and categories taxed differently. PKP needs an NPWP in the legal details.
+func (s *Identity) SetTax(ctx context.Context, m kernel.Meta, tenantID string, tax domain.TaxSettings) (*kernel.Delta, error) {
+	if err := kernel.Access(m, tenantID); err != nil {
+		return nil, err
+	}
+	tax = rules.NormalizeTax(tax)
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		tenant, err := kernel.Lock[domain.Tenant](t, "tenants", tenantID, "tenant")
+		if err != nil {
+			return err
+		}
+		if why := rules.TaxBlocker(tax, tenant.Legal); why != "" {
+			return kernel.Invalid{Reason: why}
+		}
+		tenant.Tax = &tax
 		return t.Put("tenants", tenant.ID, tenant)
 	})
 }

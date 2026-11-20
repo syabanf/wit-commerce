@@ -6,6 +6,7 @@ server {
   root /srv/web/store;
 
   include /etc/nginx/conf.d/commerce/backend.inc;
+  include /etc/nginx/conf.d/commerce/seo.inc;
 
   location ^~ /assets/ {
     include /etc/nginx/conf.d/commerce/immutable.inc;

@@ -75,6 +75,9 @@ func OrderAdvanceBlocker(o domain.Order, s StockLookup) string {
 	if !ok {
 		return "This order has no next step."
 	}
+	if next == "paid" && o.PaymentConfirmation != nil && o.PaymentConfirmation.Status == "submitted" {
+		return "Check the shopper's payment confirmation first: confirm or reject it."
+	}
 	if next != "packed" {
 		return ""
 	}
@@ -126,6 +129,9 @@ func OrderRefundBlocker(o domain.Order) string {
 	}
 	if o.RefundedAmount >= o.Total {
 		return "The full amount is already refunded."
+	}
+	if o.CancelRefund != nil {
+		return "This order is cancelled. Record its cancellation refund instead."
 	}
 	return ""
 }

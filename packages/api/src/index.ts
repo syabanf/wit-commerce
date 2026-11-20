@@ -14,6 +14,7 @@ import type {
   Industry,
 } from '@rc/types'
 import type { Lead, PrivacyRequest, PrivacyRequestKind, Ticket } from '@rc/types'
+import type { Product } from '@rc/types'
 
 // The HTTP client for apps/api. Every reducer action maps to one request (actionRequest), every
 // answer is a Delta the app lays over its AppState (applyDelta), and the event stream delivers the
@@ -110,6 +111,8 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
       }
     case 'tenants/setLegal':
       return { method: 'PUT', path: `/tenants/${action.tenantId}/legal`, body: action.legal }
+    case 'tenants/setTax':
+      return { method: 'PUT', path: `/tenants/${action.tenantId}/tax`, body: action.tax }
     case 'tenants/setCourierEta':
       return {
         method: 'PUT',
@@ -189,12 +192,25 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
         path: `/orders/${action.id}/advance`,
         body: { trackingNo: action.trackingNo ?? null },
       }
-    case 'orders/cancel':
+    case 'orders/cancel': {
+      // The API refunds through Midtrans when it took the payment; the reference records a transfer.
+      const { type: _type, id: _id, ...body } = action
+      return { method: 'POST', path: `/orders/${action.id}/cancel`, body }
+    }
+    case 'orders/submitPayment':
       return {
         method: 'POST',
-        path: `/orders/${action.id}/cancel`,
-        body: { reason: action.reason, note: action.note },
+        path: `/shop/${store}/orders/${action.id}/payment-confirmation`,
+        body: action.confirmation,
       }
+    case 'orders/confirmPayment':
+      return { method: 'POST', path: `/orders/${action.id}/payment/confirm` }
+    case 'orders/rejectPayment':
+      return { method: 'POST', path: `/orders/${action.id}/payment/reject`, body: { reason: action.reason } }
+    case 'orders/refundCancelled': {
+      const { type: _type, id: _id, ...body } = action
+      return { method: 'POST', path: `/orders/${action.id}/cancel-refund`, body }
+    }
     case 'orders/refund':
       return {
         method: 'POST',
@@ -1004,6 +1020,101 @@ export interface AssistantLogFilter {
   before?: string
 }
 
+/** One row an audited action touched. A field is { before, after }, or "changed" when the value is personal, secret or large. */
+export interface AuditChange {
+  collection: string
+  id: string
+  op: 'create' | 'update' | 'delete' | 'more'
+  fields?: Record<string, 'changed' | { before?: unknown; after?: unknown }>
+  /** On the "more" entry: how many rows were left out. */
+  more?: number
+}
+
+/** Who changed what: one staff or API key action. */
+export interface AuditEntry {
+  id: string
+  at: string
+  tenantId?: string
+  actorKind: 'user' | 'api_key'
+  actorId: string
+  actorName: string
+  actorRole?: string
+  apiKeyId?: string
+  action: string
+  entityCollection: string
+  entityIds: string[]
+  changes: AuditChange[]
+  requestId?: string
+  /** The caller's network: the /24 of IPv4 or the /48 of IPv6. */
+  ip?: string
+}
+
+export interface AuditPage {
+  entries: AuditEntry[]
+  nextBefore?: string
+}
+
+export interface AuditFilter {
+  actorId?: string
+  /** Exact, or a prefix ending in "/" such as "orders/". */
+  action?: string
+  collection?: string
+  entityId?: string
+  /** YYYY-MM-DD, WIB. */
+  from?: string
+  to?: string
+  before?: string
+  limit?: number
+}
+
+export type CsvDelimiterName = 'comma' | 'semicolon'
+
+export interface ProductImportIssue {
+  /** The line in the file; 0 for the whole file. */
+  line: number
+  handle?: string
+  sku?: string
+  column?: string
+  message: string
+}
+
+export interface ProductImport {
+  id: string
+  tenantId: string
+  fileName: string
+  status: 'ready' | 'applying' | 'done'
+  rows: number
+  /** Valid products to apply. */
+  total: number
+  /** How many of them apply has taken. */
+  next: number
+  plan: { create: number; update: number; unchanged: number; invalid: number }
+  created: number
+  updated: number
+  unchanged: number
+  skipped: number
+  issues: ProductImportIssue[]
+  createdAt: string
+  finishedAt?: string
+}
+
+export interface ProductImportInput {
+  tenantId: string
+  fileName: string
+  csv: string
+  delimiter?: ',' | ';'
+  /** File column → field; "" drops the column. */
+  mapping?: Record<string, string>
+}
+
+export interface ProductExportFilter {
+  status?: string
+  categoryId?: string
+  q?: string
+  ids?: string[]
+  delimiter?: CsvDelimiterName
+}
+
 export interface AssistantBrandTotals {
   tenantId: string
   tenantName: string
@@ -1050,7 +1161,7 @@ export interface MediaUpload {
 
 /** One place a brand shows an image. */
 export interface MediaUse {
-  kind: 'product' | 'brand' | 'page' | 'page_draft' | 'page_history' | 'seller'
+  kind: 'product' | 'brand' | 'page' | 'page_draft' | 'page_history' | 'seller' | 'order'
   id: string
   label: string
 }
@@ -1070,6 +1181,73 @@ export interface MediaList {
 
 export interface PrivacyRequestsResponse {
   requests: PrivacyRequest[]
+}
+
+/** GET /shop/{store}/search. attrs maps an attribute's code (or id) to the values any of which match. */
+export interface ShopSearchParams {
+  q?: string
+  category?: string
+  collection?: string
+  attrs?: Record<string, string[]>
+  priceMin?: number
+  priceMax?: number
+  inStock?: boolean
+  sort?: 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'best'
+  page?: number
+  pageSize?: number
+}
+
+/** Search facets. Each ignores its own filter, so a shopper sees what another value would give. */
+export interface ShopSearchFacets {
+  categories: { id: string; name: string; parentId: string | null; count: number }[]
+  attributes: {
+    id: string
+    code: string
+    name: string
+    type: string
+    unit: string | null
+    values: { value: string; count: number }[]
+  }[]
+  /** From min up to, not including, max; a null max has no top. Rupiah. */
+  prices: { min: number; max: number | null; count: number }[]
+  inStock: number
+}
+
+export interface ShopSearchResult {
+  query: string
+  total: number
+  page: number
+  pageSize: number
+  pages: number
+  products: Product[]
+  facets: ShopSearchFacets
+  /** A corrected query when the words matched nothing. */
+  suggestion: string | null
+}
+
+export interface ShopSuggestResult {
+  products: { id: string; name: string; price: number; imageUrl?: string }[]
+  categories: { id: string; name: string }[]
+}
+
+/** The query string of a store search, attribute filters as attr.{code}. */
+export function shopSearchQuery(params: ShopSearchParams): string {
+  const qs = new URLSearchParams()
+  const set = (key: string, value: string | number | undefined) => {
+    if (value !== undefined && value !== '') qs.set(key, String(value))
+  }
+  set('q', params.q?.trim())
+  set('category', params.category)
+  set('collection', params.collection)
+  for (const [code, values] of Object.entries(params.attrs ?? {}))
+    for (const value of values) qs.append(`attr.${code}`, value)
+  set('priceMin', params.priceMin)
+  set('priceMax', params.priceMax)
+  if (params.inStock) qs.set('inStock', '1')
+  set('sort', params.sort)
+  set('page', params.page)
+  set('pageSize', params.pageSize)
+  return qs.toString()
 }
 
 /** Everything a store holds about one customer, for an access request (UU PDP Pasal 7). */
@@ -1128,6 +1306,30 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
     throw new ApiError(problem)
   }
 
+  /** Reads a file the API serves, such as a CSV export. */
+  async function download(path: string): Promise<Blob> {
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    if (token) headers.Authorization = `Bearer ${token}`
+    const res = await fetch(root + path, { headers })
+    if (!res.ok) throw new ApiError({ status: res.status, code: 'HTTP_' + res.status, detail: res.statusText })
+    return res.blob()
+  }
+
+  /** Fetches a file the API renders, such as an invoice PDF. */
+  async function file(path: string): Promise<Blob> {
+    const token = getToken()
+    const res = await fetch(root + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (res.ok) return res.blob()
+    let detail = res.statusText
+    try {
+      detail = ((await res.json()) as Partial<ApiProblem>).detail ?? detail
+    } catch {
+      // Keep the status text.
+    }
+    throw new ApiError({ status: res.status, code: 'HTTP_' + res.status, detail })
+  }
+
   /** Opens the event stream; returns a function that closes it. */
   function events(path: string, onDelta: (delta: Delta) => void, onOpen?: (now: string) => void) {
     const token = getToken()
@@ -1167,6 +1369,9 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
           'GET',
           `/orders/${id}/payment?tenantId=${encodeURIComponent(tenantId)}`,
         ),
+      /** The order's invoice PDF; the first download issues its number. */
+      invoice: (id: string, tenantId: string) =>
+        file(`/orders/${id}/invoice.pdf?tenantId=${encodeURIComponent(tenantId)}`),
     },
     views: {
       customerEvents: (params: CustomerEventsQuery) => {
@@ -1285,6 +1490,27 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       },
       /** Use per brand over 30 days (platform admin). */
       totals: () => call<AssistantTotals>('GET', '/ai/assistant/totals'),
+    },
+    audit: {
+      /** A brand's audit log, newest first, paged by nextBefore (user.manage). */
+      list: (tenantId: string, filter: AuditFilter = {}) =>
+        call<AuditPage>('GET', `/audit-log?${query({ tenantId, ...filter })}`),
+      /** The filtered log as CSV. */
+      exportCsv: (tenantId: string, filter: AuditFilter = {}, delimiter: CsvDelimiterName = 'comma') =>
+        download(`/audit-log/export.csv?${query({ tenantId, ...filter, delimiter })}`),
+    },
+    productCsv: {
+      /** Products as CSV, one row per variant (product.manage). */
+      exportCsv: (tenantId: string, filter: ProductExportFilter = {}) =>
+        download(`/products/export.csv?${query({ tenantId, ...filter, ids: filter.ids?.join(',') })}`),
+      template: (delimiter: CsvDelimiterName = 'comma') =>
+        download(`/products/import-template.csv?${query({ delimiter })}`),
+      /** Checks every row and stores the valid products; nothing changes yet. */
+      plan: (input: ProductImportInput) => call<ProductImport>('POST', '/product-imports', input),
+      get: (id: string) => call<ProductImport>('GET', `/product-imports/${id}`),
+      /** Applies the next batch (100 products at most) in one transaction. */
+      apply: (id: string, batch?: number) =>
+        call<ProductImport>('POST', `/product-imports/${id}/apply`, { batch: batch ?? 0 }),
     },
     state: () => call<StateResponse>('GET', '/state'),
     /** Sends an action; the answer is the delta it produced. */
@@ -1407,6 +1633,8 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       sendVerifyEmail: (store: string) => call<{ message: string }>('POST', `/shop/${store}/verify-email`),
       verifyEmail: (store: string, token: string) => call<void>('POST', `/shop/${store}/verify`, { token }),
       me: (store: string) => call<MeResponse>('GET', `/shop/${store}/me`),
+      /** The signed-in shopper's invoice PDF for one of their orders. */
+      invoice: (store: string, orderId: string) => file(`/shop/${store}/orders/${orderId}/invoice.pdf`),
       ai: (store: string, input: AIChatInput) => call<AIChatAnswer>('POST', `/shop/${store}/ai/chat`, input),
       privacyRequests: (store: string) =>
         call<PrivacyRequestsResponse>('GET', `/shop/${store}/privacy-requests`),
@@ -1414,8 +1642,27 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
         call<PrivacyRequestsResponse>('POST', `/shop/${store}/privacy-requests`, { kind, note }),
       /** The shopper's data, once the store completed their access request. */
       exportData: (store: string) => call<CustomerExport>('GET', `/shop/${store}/export`),
+      /** One page of the store's products for words and filters, with facets. */
+      search: (store: string, params: ShopSearchParams) =>
+        call<ShopSearchResult>('GET', `/shop/${store}/search?${shopSearchQuery(params)}`),
+      /** The top products and categories for what a shopper has typed so far. */
+      suggest: (store: string, q: string) =>
+        call<ShopSuggestResult>('GET', `/shop/${store}/suggest?q=${encodeURIComponent(q)}`),
+      /** Stores the signed-in shopper's image of a payment, for the proof of a payment confirmation. */
+      uploadPaymentProof: (store: string, file: File) => {
+        const form = new FormData()
+        form.append('file', file)
+        return request<MediaUpload>('POST', `/shop/${store}/payment-proof`, form)
+      },
     },
   }
+}
+
+/** A query string from the set values. */
+function query(values: Record<string, string | number | undefined>) {
+  const q = new URLSearchParams()
+  for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '') q.set(key, String(value))
+  return q.toString()
 }
 
 export type Api = ReturnType<typeof createApi>

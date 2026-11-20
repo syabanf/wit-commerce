@@ -3,17 +3,24 @@ import { BadgePercent, Ticket } from 'lucide-react'
 import { type FormEvent, useId } from 'react'
 import type { CartView } from '../features/cartView'
 import type { AppliedDiscount } from '@rc/fixtures'
+import type { OrderTax } from '@rc/types'
 import { Button, describedBy, inputClass } from './ui'
 import { Money } from './Money'
 import { t, tx } from '../i18n'
 
-/** Subtotal, each discount by its label, shipping and total. */
+/**
+ * Subtotal, each discount by its label, shipping and total. A PKP brand's PPN shows as its own line
+ * before shipping when checkout adds it, or under the total when the prices already include it.
+ * `showDpp` adds the tax base too, for the order page.
+ */
 export function SummaryRows({
   subtotal,
   discounts,
   shipping,
   shippingLabel = t('checkout.summary.shipping'),
   total,
+  tax,
+  showDpp = false,
   className,
 }: {
   subtotal: number
@@ -21,8 +28,19 @@ export function SummaryRows({
   shipping: number | null
   shippingLabel?: string
   total: number
+  tax?: OrderTax
+  showDpp?: boolean
   className?: string
 }) {
+  const rate = tax ? String(tax.ratePct) : ''
+  const dpp = tax && showDpp && (
+    <div className="gap-4 flex justify-between text-[color:var(--sf-muted)]">
+      <dt>{t('checkout.summary.dpp')}</dt>
+      <dd className="tabular-nums">
+        <Money idr={tax.dpp} />
+      </dd>
+    </div>
+  )
   return (
     <dl className={cn('space-y-2 text-sm', className)}>
       <div className="gap-4 flex justify-between">
@@ -39,6 +57,17 @@ export function SummaryRows({
           </dd>
         </div>
       ))}
+      {tax && !tax.pricesIncludeTax && (
+        <>
+          {dpp}
+          <div className="gap-4 flex justify-between">
+            <dt>{t('checkout.summary.ppn', { rate })}</dt>
+            <dd className="font-semibold tabular-nums">
+              <Money idr={tax.ppn} />
+            </dd>
+          </div>
+        </>
+      )}
       <div className="gap-4 flex justify-between">
         <dt>{shippingLabel}</dt>
         <dd className="font-semibold tabular-nums">
@@ -57,6 +86,17 @@ export function SummaryRows({
           <Money idr={total} />
         </dd>
       </div>
+      {tax?.pricesIncludeTax && (
+        <>
+          <div className="gap-4 flex justify-between text-[color:var(--sf-muted)]">
+            <dt>{t('checkout.summary.ppnIncluded', { rate })}</dt>
+            <dd className="tabular-nums">
+              <Money idr={tax.ppn} />
+            </dd>
+          </div>
+          {dpp}
+        </>
+      )}
     </dl>
   )
 }

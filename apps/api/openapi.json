@@ -537,6 +537,113 @@
         ],
         "type": "object"
       },
+      "AuditChange": {
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "more": {
+            "type": "integer"
+          },
+          "op": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection",
+          "id",
+          "op"
+        ],
+        "type": "object"
+      },
+      "AuditEntry": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "actorKind": {
+            "type": "string"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "actorRole": {
+            "type": "string"
+          },
+          "apiKeyId": {
+            "type": "string"
+          },
+          "at": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/AuditChange"
+            },
+            "type": "array"
+          },
+          "entityCollection": {
+            "type": "string"
+          },
+          "entityIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "actorId",
+          "actorKind",
+          "actorName",
+          "at",
+          "changes",
+          "entityCollection",
+          "entityIds",
+          "id"
+        ],
+        "type": "object"
+      },
+      "AuditPage": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            },
+            "type": "array"
+          },
+          "nextBefore": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
       "Automation": {
         "properties": {
           "converted30d": {
@@ -842,6 +949,72 @@
           "inSegment",
           "reach",
           "skipped"
+        ],
+        "type": "object"
+      },
+      "CancelInput": {
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "refundReference": {
+            "type": "string"
+          },
+          "refundedOn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "note",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "CancelRefund": {
+        "properties": {
+          "amount": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "refundedOn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CancelRefundInput": {
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "refundedOn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "refundedOn"
         ],
         "type": "object"
       },
@@ -1786,6 +1959,53 @@
         ],
         "type": "object"
       },
+      "ImportIssue": {
+        "properties": {
+          "column": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "line",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ImportPlan": {
+        "properties": {
+          "create": {
+            "type": "integer"
+          },
+          "invalid": {
+            "type": "integer"
+          },
+          "unchanged": {
+            "type": "integer"
+          },
+          "update": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "create",
+          "invalid",
+          "unchanged",
+          "update"
+        ],
+        "type": "object"
+      },
       "Invoice": {
         "properties": {
           "amount": {
@@ -2293,6 +2513,14 @@
             "nullable": true,
             "type": "string"
           },
+          "cancelRefund": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CancelRefund"
+              }
+            ],
+            "nullable": true
+          },
           "channel": {
             "type": "string"
           },
@@ -2335,6 +2563,14 @@
             },
             "type": "array"
           },
+          "paymentConfirmation": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentConfirmation"
+              }
+            ],
+            "nullable": true
+          },
           "paymentMethod": {
             "type": "string"
           },
@@ -2363,6 +2599,14 @@
           },
           "subtotal": {
             "type": "integer"
+          },
+          "tax": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrderTax"
+              }
+            ],
+            "nullable": true
           },
           "tenantId": {
             "type": "string"
@@ -2587,6 +2831,67 @@
           "restock",
           "status",
           "tenantId"
+        ],
+        "type": "object"
+      },
+      "OrderTax": {
+        "properties": {
+          "dpp": {
+            "type": "integer"
+          },
+          "dppDenominator": {
+            "type": "integer"
+          },
+          "dppNumerator": {
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderTaxLine"
+            },
+            "type": "array"
+          },
+          "ppn": {
+            "type": "integer"
+          },
+          "pricesIncludeTax": {
+            "type": "boolean"
+          },
+          "ratePct": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dpp",
+          "dppDenominator",
+          "dppNumerator",
+          "lines",
+          "ppn",
+          "pricesIncludeTax",
+          "ratePct"
+        ],
+        "type": "object"
+      },
+      "OrderTaxLine": {
+        "properties": {
+          "dpp": {
+            "type": "integer"
+          },
+          "net": {
+            "type": "integer"
+          },
+          "ppn": {
+            "type": "integer"
+          },
+          "profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dpp",
+          "net",
+          "ppn",
+          "profile"
         ],
         "type": "object"
       },
@@ -2846,6 +3151,75 @@
           "tenantId",
           "transactionId",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PaymentConfirmation": {
+        "properties": {
+          "amount": {
+            "type": "integer"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "proofUrl": {
+            "type": "string"
+          },
+          "rejectReason": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string"
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "type": "string"
+          },
+          "transferredAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "channel",
+          "senderName",
+          "status",
+          "submittedAt",
+          "transferredAt"
+        ],
+        "type": "object"
+      },
+      "PaymentConfirmationInput": {
+        "properties": {
+          "amount": {
+            "type": "integer"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "proofUrl": {
+            "type": "string"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "transferredAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "channel",
+          "senderName",
+          "transferredAt"
         ],
         "type": "object"
       },
@@ -3235,6 +3609,10 @@
           },
           "views30d": {
             "type": "integer"
+          },
+          "weightGrams": {
+            "nullable": true,
+            "type": "integer"
           }
         },
         "required": [
@@ -3261,6 +3639,110 @@
           "type",
           "variants",
           "views30d"
+        ],
+        "type": "object"
+      },
+      "ProductImport": {
+        "properties": {
+          "created": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Time"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Time"
+              }
+            ],
+            "nullable": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ImportIssue"
+            },
+            "type": "array"
+          },
+          "next": {
+            "type": "integer"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/ImportPlan"
+          },
+          "rows": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "unchanged": {
+            "type": "integer"
+          },
+          "updated": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "createdAt",
+          "fileName",
+          "id",
+          "issues",
+          "next",
+          "plan",
+          "rows",
+          "skipped",
+          "status",
+          "tenantId",
+          "total",
+          "unchanged",
+          "updated"
+        ],
+        "type": "object"
+      },
+      "ProductImportInput": {
+        "properties": {
+          "csv": {
+            "type": "string"
+          },
+          "delimiter": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mapping": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "csv",
+          "delimiter",
+          "fileName",
+          "mapping",
+          "tenantId"
         ],
         "type": "object"
       },
@@ -3719,6 +4201,175 @@
         ],
         "type": "object"
       },
+      "SearchAttributeFacet": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "unit": {
+            "nullable": true,
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/SearchFacetValue"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "id",
+          "name",
+          "type",
+          "unit",
+          "values"
+        ],
+        "type": "object"
+      },
+      "SearchCategoryFacet": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "id",
+          "name",
+          "parentId"
+        ],
+        "type": "object"
+      },
+      "SearchFacetValue": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "value"
+        ],
+        "type": "object"
+      },
+      "SearchFacets": {
+        "properties": {
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/SearchAttributeFacet"
+            },
+            "type": "array"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SearchCategoryFacet"
+            },
+            "type": "array"
+          },
+          "inStock": {
+            "type": "integer"
+          },
+          "prices": {
+            "items": {
+              "$ref": "#/components/schemas/SearchPriceBucket"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "attributes",
+          "categories",
+          "inStock",
+          "prices"
+        ],
+        "type": "object"
+      },
+      "SearchPriceBucket": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "max": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "min": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "max",
+          "min"
+        ],
+        "type": "object"
+      },
+      "SearchResult": {
+        "properties": {
+          "facets": {
+            "$ref": "#/components/schemas/SearchFacets"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "pages": {
+            "type": "integer"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "suggestion": {
+            "nullable": true,
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "facets",
+          "page",
+          "pageSize",
+          "pages",
+          "products",
+          "query",
+          "suggestion",
+          "total"
+        ],
+        "type": "object"
+      },
       "Segment": {
         "properties": {
           "builtIn": {
@@ -4022,6 +4673,121 @@
         ],
         "type": "object"
       },
+      "SuggestCategory": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "SuggestProduct": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price"
+        ],
+        "type": "object"
+      },
+      "SuggestResult": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestCategory"
+            },
+            "type": "array"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestProduct"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "categories",
+          "products"
+        ],
+        "type": "object"
+      },
+      "TaxOverride": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "profile"
+        ],
+        "type": "object"
+      },
+      "TaxSettings": {
+        "properties": {
+          "dppDenominator": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "dppNumerator": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/TaxOverride"
+            },
+            "type": "array"
+          },
+          "pkp": {
+            "type": "boolean"
+          },
+          "pricesIncludeTax": {
+            "type": "boolean"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "ratePct": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "pkp",
+          "pricesIncludeTax",
+          "profile"
+        ],
+        "type": "object"
+      },
       "Tenant": {
         "properties": {
           "brand": {
@@ -4125,6 +4891,14 @@
           },
           "subdomain": {
             "type": "string"
+          },
+          "tax": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TaxSettings"
+              }
+            ],
+            "nullable": true
           }
         },
         "required": [
@@ -4620,21 +5394,6 @@
         },
         "required": [
           "attributes"
-        ],
-        "type": "object"
-      },
-      "cancelInput": {
-        "properties": {
-          "note": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "note",
-          "reason"
         ],
         "type": "object"
       },
@@ -5413,6 +6172,17 @@
         },
         "required": [
           "requests"
+        ],
+        "type": "object"
+      },
+      "productImportApply": {
+        "properties": {
+          "batch": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch"
         ],
         "type": "object"
       },
@@ -6674,6 +7444,162 @@
         "x-action": "attributes/save",
         "x-required-permission": "product.manage",
         "x-required-scope": "catalog:write"
+      }
+    },
+    "/audit-log": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getAuditLog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Page through a brand's audit log, newest first",
+        "tags": [
+          "Platform"
+        ],
+        "x-required-permission": "user.manage"
+      }
+    },
+    "/audit-log/export.csv": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getAuditLogExportCsv",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The filtered audit log as CSV",
+        "tags": [
+          "Platform"
+        ],
+        "x-required-permission": "user.manage"
       }
     },
     "/auth/forgot": {
@@ -12596,7 +13522,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/cancelInput"
+                "$ref": "#/components/schemas/CancelInput"
               }
             }
           },
@@ -12678,13 +13604,228 @@
             "session": []
           }
         ],
-        "summary": "Cancel an order; paid ones are refunded",
+        "summary": "Cancel an order; a paid one is refunded through Midtrans when it took the payment, else owes the refund until the transfer is recorded",
         "tags": [
           "Orders"
         ],
         "x-action": "orders/cancel",
         "x-required-permission": "order.fulfil",
         "x-required-scope": "orders:write"
+      }
+    },
+    "/orders/{id}/cancel-refund": {
+      "post": {
+        "description": "API keys need the scope `orders:write`.",
+        "operationId": "postOrdersIdCancelRefund",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRefundInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Settle a cancelled order's refund: through Midtrans again when it took the payment, else record the bank transfer",
+        "tags": [
+          "Orders"
+        ],
+        "x-action": "orders/refundCancelled",
+        "x-required-permission": "order.refund",
+        "x-required-scope": "orders:write"
+      }
+    },
+    "/orders/{id}/invoice.pdf": {
+      "get": {
+        "description": "API keys need the scope `orders:read`.",
+        "operationId": "getOrdersIdInvoicePdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required with a user token; an API key always reads its own tenant.",
+            "in": "query",
+            "name": "tenantId",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "The order's invoice as a PDF; the first download issues its number",
+        "tags": [
+          "Orders"
+        ],
+        "x-required-scope": "orders:read"
       }
     },
     "/orders/{id}/notes": {
@@ -12891,6 +14032,214 @@
           "Orders"
         ],
         "x-required-scope": "orders:read"
+      }
+    },
+    "/orders/{id}/payment/confirm": {
+      "post": {
+        "description": "API keys need the scope `orders:write`.",
+        "operationId": "postOrdersIdPaymentConfirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Confirm a shopper's manual payment after checking the money arrived; the order turns paid",
+        "tags": [
+          "Orders"
+        ],
+        "x-action": "orders/confirmPayment",
+        "x-required-permission": "order.refund",
+        "x-required-scope": "orders:write"
+      }
+    },
+    "/orders/{id}/payment/reject": {
+      "post": {
+        "description": "API keys need the scope `orders:write`.",
+        "operationId": "postOrdersIdPaymentReject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/rejectInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Reject a shopper's manual payment confirmation with a reason the shopper reads",
+        "tags": [
+          "Orders"
+        ],
+        "x-action": "orders/rejectPayment",
+        "x-required-permission": "order.refund",
+        "x-required-scope": "orders:write"
       }
     },
     "/orders/{id}/refund": {
@@ -14327,6 +15676,310 @@
         ]
       }
     },
+    "/product-imports": {
+      "post": {
+        "description": "API keys need the scope `catalog:write`.",
+        "operationId": "postProductImports",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductImportInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductImport"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Check a product CSV row by row and store it for apply; nothing changes yet",
+        "tags": [
+          "Catalog"
+        ],
+        "x-required-permission": "product.manage",
+        "x-required-scope": "catalog:write"
+      }
+    },
+    "/product-imports/{id}": {
+      "get": {
+        "description": "API keys need the scope `catalog:write`.",
+        "operationId": "getProductImportsId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductImport"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Read a product import's plan and progress",
+        "tags": [
+          "Catalog"
+        ],
+        "x-required-permission": "product.manage",
+        "x-required-scope": "catalog:write"
+      }
+    },
+    "/product-imports/{id}/apply": {
+      "post": {
+        "description": "API keys need the scope `catalog:write`.",
+        "operationId": "postProductImportsIdApply",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/productImportApply"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductImport"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Apply the next batch of a product import in one transaction",
+        "tags": [
+          "Catalog"
+        ],
+        "x-required-permission": "product.manage",
+        "x-required-scope": "catalog:write"
+      }
+    },
     "/products": {
       "get": {
         "description": "API keys need the scope `catalog:read`.",
@@ -14471,6 +16124,182 @@
           "Catalog"
         ],
         "x-required-scope": "catalog:read"
+      }
+    },
+    "/products/export.csv": {
+      "get": {
+        "description": "API keys need the scope `catalog:write`.",
+        "operationId": "getProductsExportCsv",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "A brand's products as CSV, one row per variant",
+        "tags": [
+          "Catalog"
+        ],
+        "x-required-permission": "product.manage",
+        "x-required-scope": "catalog:write"
+      }
+    },
+    "/products/import-template.csv": {
+      "get": {
+        "description": "API keys need the scope `catalog:write`.",
+        "operationId": "getProductsImportTemplateCsv",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "The product CSV template",
+        "tags": [
+          "Catalog"
+        ],
+        "x-required-permission": "product.manage",
+        "x-required-scope": "catalog:write"
       }
     },
     "/products/{id}": {
@@ -18640,6 +20469,208 @@
         "x-action": "orders/place"
       }
     },
+    "/shop/{store}/orders/{id}/invoice.pdf": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getShopStoreOrdersIdInvoicePdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "The signed-in shopper's invoice for one of their own orders, as a PDF",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
+    "/shop/{store}/orders/{id}/payment-confirmation": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postShopStoreOrdersIdPaymentConfirmation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentConfirmationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Tell the store you paid a manual transfer or static QRIS order; staff check it before the order turns paid",
+        "tags": [
+          "Storefront"
+        ],
+        "x-action": "orders/submitPayment"
+      }
+    },
     "/shop/{store}/password": {
       "post": {
         "operationId": "postShopStorePassword",
@@ -18707,6 +20738,122 @@
         },
         "security": [],
         "summary": "Set or change the signed-in shopper's password",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
+    "/shop/{store}/payment-proof": {
+      "post": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "postShopStorePaymentProof",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The brand the image belongs to.",
+            "in": "query",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "PNG, JPEG or WebP, at most 5 MB. SVG is refused.",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUpload"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Upload a PNG, JPEG or WebP image of a payment, at most 5 MB, for a payment confirmation",
         "tags": [
           "Storefront"
         ]
@@ -19312,6 +21459,218 @@
           "Storefront"
         ],
         "x-action": "returns/cancel"
+      }
+    },
+    "/shop/{store}/search": {
+      "get": {
+        "operationId": "getShopStoreSearch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The words; case, accents and one typo per word do not matter.",
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A category id; its sub-categories count too.",
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A collection's slug or id.",
+            "in": "query",
+            "name": "collection",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "An attribute value, by the attribute's code or id; repeat for any of several.",
+            "in": "query",
+            "name": "attr.{code}",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Lowest price in rupiah, inclusive.",
+            "in": "query",
+            "name": "priceMin",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Highest price in rupiah, inclusive.",
+            "in": "query",
+            "name": "priceMax",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "1 keeps products a shopper can buy now.",
+            "in": "query",
+            "name": "inStock",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "relevance (default), price_asc, price_desc, newest or best.",
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "From 1.",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "24 when left out, at most 60.",
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "Search a store's products: words with typo tolerance, filters, sort, pages and facets",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
+    "/shop/{store}/suggest": {
+      "get": {
+        "operationId": "getShopStoreSuggest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "What the shopper has typed so far.",
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestResult"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "The top products and categories for what a shopper has typed",
+        "tags": [
+          "Storefront"
+        ]
       }
     },
     "/shop/{store}/verify": {
@@ -21772,6 +24131,115 @@
           "Store"
         ],
         "x-action": "tenants/setShopSettings",
+        "x-required-permission": "brand.manage",
+        "x-required-scope": "store:write"
+      }
+    },
+    "/tenants/{id}/tax": {
+      "put": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "putTenantsIdTax",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set whether the brand charges PPN, how its prices hold it, and product or category overrides; PKP needs an NPWP",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "tenants/setTax",
         "x-required-permission": "brand.manage",
         "x-required-scope": "store:write"
       }

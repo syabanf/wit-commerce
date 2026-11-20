@@ -3,6 +3,7 @@ import * as agent from './areas/agent'
 import * as catalog from './areas/catalog'
 import * as checkout from './areas/checkout'
 import * as common from './areas/common'
+import * as payment from './areas/payment'
 import * as shell from './areas/shell'
 import * as theme from './areas/theme'
 
@@ -15,6 +16,7 @@ export const en = {
   ...checkout.en,
   ...account.en,
   ...agent.en,
+  ...payment.en,
 }
 
 export type MessageKey = keyof typeof en

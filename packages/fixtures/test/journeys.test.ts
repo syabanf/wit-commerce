@@ -244,6 +244,14 @@ describe('order journey', () => {
     state = run(state, { type: 'orders/advance', id })
     state = run(state, { type: 'orders/advance', id })
     state = run(state, { type: 'orders/cancel', id, reason: 'customer_request', note: '' }, 'usr-sari')
+    // The refund is owed until staff record the transfer (PP 80/2019 Pasal 71).
+    assert.equal(order(state, id).status, 'cancelled')
+    assert.equal(order(state, id).cancelRefund?.status, 'owed')
+    state = run(
+      state,
+      { type: 'orders/refundCancelled', id, reference: 'BCA-1', refundedOn: '2026-10-06' },
+      'usr-sari',
+    )
     assert.equal(order(state, id).status, 'refunded')
     assert.equal(order(state, id).refundedAmount, order(state, id).total)
 

@@ -1,7 +1,7 @@
 import { cn } from '@rc/ui'
 import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { useId, useState } from 'react'
-import type { ListingState } from '../features/listing'
+import { type ListingState, listingCount } from '../features/listing'
 import { t, tp } from '../i18n'
 import { SORT_LABEL, type SortKey, isSortKey, sortLabel } from '../lib/catalog'
 import { Drawer } from './Drawer'
@@ -134,12 +134,24 @@ export function FilterSheetButton({
         title={t('catalog.filter.title')}
         footer={
           <Button variant="dark" full onClick={() => setOpen(false)}>
-            {tp('catalog.filter.show', listing.results.length)}
+            {tp('catalog.filter.show', listingCount(listing))}
           </Button>
         }
       >
         <FilterControls listing={listing} />
       </Drawer>
     </>
+  )
+}
+
+/** "Show more" under a listing that loads its results a page at a time. */
+export function LoadMore({ listing }: { listing: ListingState }) {
+  if (!listing.loadMore) return null
+  return (
+    <div className="mt-8 flex justify-center">
+      <Button variant="outline" onClick={listing.loadMore} disabled={listing.loadingMore} aria-busy={listing.loadingMore}>
+        {listing.loadingMore ? t('catalog.search.loading') : t('catalog.search.more')}
+      </Button>
+    </div>
   )
 }

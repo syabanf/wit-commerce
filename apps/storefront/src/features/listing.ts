@@ -27,7 +27,15 @@ export interface ListingState {
   clear: () => void
   activeCount: number
   results: Product[]
+  /** Every match, when results hold only the pages loaded so far. */
+  total?: number
+  /** Loads the next page; absent once every match is shown. */
+  loadMore?: () => void
+  loadingMore?: boolean
 }
+
+/** How many products the listing found, loaded or not. */
+export const listingCount = (listing: ListingState) => listing.total ?? listing.results.length
 
 function buildFacets(products: readonly Product[], defs: readonly AttributeDef[]): Facet[] {
   return defs

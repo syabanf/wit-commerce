@@ -9,3 +9,14 @@ location /shop/ {
     include /etc/nginx/conf.d/commerce/immutable.inc;
   }
 }
+
+# Each store's sitemap.xml and robots.txt at /shop/{store}/..., from the API. Regex locations win over
+# the /shop/ prefix above.
+location ~ ^/shop/([a-z0-9-]+)/(sitemap\.xml|robots\.txt)$ {
+  proxy_pass $api/api/v1/shop/$1/$2;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+}
+location ~ ^/shop/([a-z0-9-]+)/sitemap/([0-9]+\.xml)$ {
+  proxy_pass $api/api/v1/shop/$1/sitemap/$2;
+  include /etc/nginx/conf.d/commerce/proxy.inc;
+}

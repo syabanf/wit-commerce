@@ -234,7 +234,8 @@ func ReturnItemsPaid(o domain.Order, items []domain.ReturnItem) int {
 	if o.Subtotal <= 0 {
 		return 0
 	}
-	return value * max(0, o.Subtotal-o.Discount) / o.Subtotal
+	// With prices excluding PPN the shopper also paid the PPN on top of the goods.
+	return value * max(0, o.Subtotal-o.Discount+AddedTax(o.Tax)) / o.Subtotal
 }
 
 // ReturnRefundCap mirrors returnRefundCap.

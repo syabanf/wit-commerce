@@ -8,8 +8,8 @@ import (
 )
 
 // mediaUseRows lists, for one tenant, every row that names an uploaded image, with the text to
-// search: products, the brand, pages (their sections, then their history), page drafts and seller
-// photos. A page's history counts as a use, because a rollback would show the image again.
+// search: products, the brand, pages (their sections, then their history), page drafts, seller
+// photos and the payment proofs shoppers sent with orders. A page's history counts as a use, because a rollback would show the image again.
 const mediaUseRows = `select kind, id, label, body from (
 	select 0 as ord, 'product' as kind, id, data->>'name' as label, data::text as body from products where tenant_id = $1 and data::text like '%/med-%'
 	union all
@@ -23,6 +23,9 @@ const mediaUseRows = `select kind, id, label, body from (
 	select 4, 'page_history', id, data->>'title', (data->'revisions')::text from pages where tenant_id = $1 and data::text like '%/med-%'
 	union all
 	select 5, 'seller', id, data->>'name', data->>'photoUrl' from sellers where tenant_id = $1 and data->>'photoUrl' like '%/med-%'
+	union all
+	select 6, 'order', id, data->>'code', data->'paymentConfirmation'->>'proofUrl' from orders
+		where tenant_id = $1 and data->'paymentConfirmation'->>'proofUrl' like '%/med-%'
 ) uses order by ord, id`
 
 // MediaUses implements media.UseFinder. It lives in the facade because the rows belong to

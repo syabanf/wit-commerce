@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 
@@ -36,6 +37,9 @@ func (rt *router) add(method, path, action, permission, summary string, h http.H
 	if permission != "" || action == "system/tick" {
 		h = rt.s.user(permission, h)
 	}
+	if permission != "" && method != "GET" {
+		h = rt.s.audited(cmp.Or(action, method+" "+path), h)
+	}
 	rt.mux.HandleFunc(method+" "+prefix+path, h)
 }
 
@@ -57,10 +61,12 @@ func (s *Server) routes(mux *http.ServeMux) {
 	s.storefrontRoutes(rt)
 	s.integrationRoutes(rt)
 	s.paymentRoutes(rt)
+	s.invoiceRoutes(rt)
 	s.mediaRoutes(rt)
 	s.currencyRoutes(rt)
 	s.planRoutes(rt)
 	s.privacyRoutes(rt)
+	s.auditRoutes(rt)
 
 	// Reads for connected systems, paged by id
 	for _, c := range readable {

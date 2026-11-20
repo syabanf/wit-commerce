@@ -1,4 +1,4 @@
-import { availablePaymentTypes, fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
+import { addedTax, availablePaymentTypes, fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
 import type { Courier, LoyaltyTier, PaymentMethod, PaymentType } from '@rc/types'
 import { cn } from '@rc/ui'
 import {
@@ -28,6 +28,7 @@ import {
   EMAIL_PATTERN,
   PHONE_PATTERN,
   buildOrder,
+  cartTax,
   courierFee,
   withTerms,
 } from '../lib/checkout'
@@ -256,7 +257,6 @@ export function CheckoutPage() {
   const firstCourier = defaultCourierFor(tenant)
   const [courierId, setCourierId] = useState<Courier>(firstCourier.id)
   const [paymentId, setPaymentId] = useState<string | null>(null)
-  const [qrisPaid, setQrisPaid] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [placeError, setPlaceError] = useState<string | null>(null)
   const [agreed, setAgreed] = useState(false)
@@ -276,7 +276,8 @@ export function CheckoutPage() {
   )
   const courier = availableCouriers.find((c) => c.id === courierId) ?? firstCourier
   const shipping = courierFee(courier, totals.freeShipping)
-  const total = Math.max(0, totals.subtotal - totals.discount + shipping)
+  const tax = useMemo(() => cartTax(tenant, totals), [tenant, totals])
+  const total = Math.max(0, totals.subtotal - totals.discount + addedTax(tax) + shipping)
   const payable = availablePaymentTypes(
     catalog.paymentTypes,
     shop.totals.subtotal - shop.totals.discount + shipping,
@@ -335,8 +336,6 @@ export function CheckoutPage() {
     }
     if (s === 2) {
       if (!payment) e.payment = t('checkout.error.payment')
-      else if (payment.method === 'qris' && !qrisPaid && !paysOnline(payment.id))
-        e.payment = t('checkout.error.qris')
     }
     return e
   }
@@ -651,10 +650,7 @@ export function CheckoutPage() {
                     key={pt.id}
                     name="payment"
                     checked={paymentId === pt.id}
-                    onChange={() => {
-                      setPaymentId(pt.id)
-                      setQrisPaid(false)
-                    }}
+                    onChange={() => setPaymentId(pt.id)}
                     icon={<Icon aria-hidden="true" />}
                     title={pt.name}
                     note={offers.length ? offers.join(' · ') : pt.provider}
@@ -674,18 +670,7 @@ export function CheckoutPage() {
                               { store: tenant.name },
                             )}
                           </p>
-                          {qrisPaid ? (
-                            <p
-                              role="status"
-                              className="gap-2 text-sm font-semibold flex items-center text-[color:var(--sf-primary-text)]"
-                            >
-                              <Check className="size-4" aria-hidden="true" /> {t('checkout.paymentReceived')}
-                            </p>
-                          ) : (
-                            <Button variant="dark" onClick={() => setQrisPaid(true)}>
-                              {t('checkout.iHavePaid')}
-                            </Button>
-                          )}
+                          <p className="text-sm text-[color:var(--sf-muted)]">{t('payment.qrisAfter')}</p>
                         </div>
                       </div>
                     )}
@@ -736,7 +721,9 @@ export function CheckoutPage() {
                       ? t('checkout.review.cod')
                       : paysOnline(payment?.id)
                         ? t('checkout.review.midtrans')
-                        : demoPaymentNote()}
+                        : HTTP
+                          ? t('payment.qrisAfter')
+                          : demoPaymentNote()}
                   </dd>
                 </div>
               </dl>
@@ -824,6 +811,7 @@ export function CheckoutPage() {
               discounts={totals.discounts}
               shipping={shipping}
               total={total}
+              tax={tax}
             />
           </RupiahOnlyArea>
           <PayInRupiahNote />

@@ -204,13 +204,22 @@ export function useSearchSubmit() {
   )
 }
 
-/** Zero-result help: popular categories and a way back. */
-export function SearchSuggestions({ query }: { query: string }) {
+/** Zero-result help: a corrected query when the search found one, popular categories and a way back. */
+export function SearchSuggestions({ query, suggestion }: { query: string; suggestion?: string | null }) {
   const { catalog, store } = useShop()
   const popular = popularCategories(catalog).slice(0, 6)
   return (
     <div className="sf-card px-5 py-10 text-center">
       <h2 className="sf-display text-xl font-bold">{t('shell.noMatch.title', { query })}</h2>
+      {suggestion && (
+        <p className="mt-2 text-base">
+          {t('catalog.search.didYouMean')}{' '}
+          <Link to={paths.search(store, suggestion)} className="font-bold underline underline-offset-4">
+            {suggestion}
+          </Link>
+          ?
+        </p>
+      )}
       <p className="mt-1 max-w-md text-sm mx-auto text-[color:var(--sf-muted)]">
         {t('shell.noMatch.text')}
       </p>

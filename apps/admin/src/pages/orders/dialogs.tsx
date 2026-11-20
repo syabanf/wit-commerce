@@ -1,4 +1,4 @@
-import { fmtIdr } from '@rc/fixtures'
+import { dayKey, fmtIdr, nowMs, returnRefundProofBlocker } from '@rc/fixtures'
 import type { CancelReason, Order } from '@rc/types'
 import { CANCEL_REASON_LABEL, COURIER_LABEL } from '@rc/types'
 import { ConfirmDialog, FormField, Input, NativeSelect, Textarea, toast } from '@rc/ui'
@@ -61,10 +61,15 @@ export function CancelOrderDialog({ order, open, onOpenChange }: DialogProps) {
 }
 
 function CancelForm({ order, onOpenChange }: Omit<DialogProps, 'open'>) {
-  const { dispatch } = useScoped()
+  const { dispatchAsync } = useScoped()
   const [reason, setReason] = useState<CancelReason | ''>('')
   const [note, setNote] = useState('')
+  const [reference, setReference] = useState('')
+  const [refundedOn, setRefundedOn] = useState(dayKey(nowMs()))
   const paid = order.paymentStatus === 'paid'
+  const owed = order.total - order.refundedAmount
+  // A transfer already sent closes the order refunded now; without one the refund stays owed.
+  const proof = reference.trim() ? returnRefundProofBlocker({ reference, refundedOn }) : null
   return (
     <ConfirmDialog
       open
@@ -73,23 +78,27 @@ function CancelForm({ order, onOpenChange }: Omit<DialogProps, 'open'>) {
       title={`Cancel ${order.code}?`}
       description={
         paid
-          ? `Reserved stock goes back on sale and ${fmtIdr(order.total)} is refunded to the customer.`
+          ? `Reserved stock goes back on sale and the customer is owed ${fmtIdr(owed)}. Midtrans refunds its own payments; for any other payment, record the bank transfer here or once you sent it.`
           : 'Reserved stock goes back on sale. The customer gets a cancellation message.'
       }
       confirmLabel="Cancel order"
       cancelLabel="Keep order"
-      confirmDisabled={!reason}
+      confirmDisabled={!reason || !!proof}
       onConfirm={() => {
         if (!reason) return
-        dispatch({
+        dispatchAsync({
           type: 'orders/cancel',
           id: order.id,
           reason,
           note: note.trim() || CANCEL_REASON_LABEL[reason],
+          ...(paid && reference.trim() && { refundReference: reference.trim(), refundedOn }),
         })
-        toast(`${order.code} cancelled`, {
-          description: paid ? `${fmtIdr(order.total)} refunded.` : 'Stock released.',
-        })
+          .then(() =>
+            toast(`${order.code} cancelled`, {
+              description: paid ? 'See the cancellation refund on the order.' : 'Stock released.',
+            }),
+          )
+          .catch((err: unknown) => toast('Not cancelled', { tone: 'danger', description: (err as Error).message }))
         onOpenChange(false)
       }}
     >
@@ -104,6 +113,32 @@ function CancelForm({ order, onOpenChange }: Omit<DialogProps, 'open'>) {
             options={REASONS.map((r) => ({ value: r, label: CANCEL_REASON_LABEL[r] }))}
           />
         </FormField>
+        {paid && (
+          <div className="gap-3 sm:grid-cols-2 grid grid-cols-1">
+            <FormField
+              label="Transfer reference"
+              hint="Optional. Only if you already sent the money by bank transfer."
+              htmlFor="cancel-refund-reference"
+            >
+              <Input
+                id="cancel-refund-reference"
+                variant="soft"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="BCA 0123456789"
+              />
+            </FormField>
+            <FormField label="Sent on" error={proof ?? undefined} htmlFor="cancel-refund-date">
+              <Input
+                id="cancel-refund-date"
+                variant="soft"
+                type="date"
+                value={refundedOn}
+                onChange={(e) => setRefundedOn(e.target.value)}
+              />
+            </FormField>
+          </div>
+        )}
         <FormField label="Note" hint="Optional. Your team sees it on the timeline." htmlFor="cancel-note">
           <Textarea
             id="cancel-note"

@@ -48,6 +48,16 @@ func (s *Server) legalRoutes(rt *router) {
 			return s.svc.SetCourierEta(r.Context(), m, r.PathValue("id"), in.CourierEtaDays)
 		})
 	})
+	rt.add("PUT", "/tenants/{id}/tax", "tenants/setTax", "brand.manage", "Set whether the brand charges PPN, how its prices hold it, and product or category overrides; PKP needs an NPWP", func(w http.ResponseWriter, r *http.Request) {
+		var in domain.TaxSettings
+		if err := decode(r, &in); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+			return s.svc.SetTax(r.Context(), m, r.PathValue("id"), in)
+		})
+	})
 	rt.add("POST", "/tickets", "tickets/open", "ticket.manage", "Log a shopper's complaint, due in the store's complaint days", body(s, s.svc.OpenTicket))
 	rt.add("POST", "/shop/{store}/complaints", "tickets/open", "", "Send the store a complaint; it opens a ticket due in the store's complaint days", s.shopComplaint)
 }

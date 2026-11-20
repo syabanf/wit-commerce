@@ -1,4 +1,6 @@
 import type {
+  CancelRefundStatus,
+  Order,
   ReturnStatus,
   AutomationStatus,
   CampaignStatus,
@@ -17,6 +19,8 @@ import type {
   TicketStatus,
 } from '@rc/types'
 import {
+  CANCEL_REFUND_STATUS_LABEL,
+  PAYMENT_CONFIRMATION_STATUS_LABEL,
   AUTOMATION_STATUS_LABEL,
   CAMPAIGN_STATUS_LABEL,
   CHANNEL_LABEL,
@@ -93,6 +97,40 @@ export function PaymentBadge({ status, className }: { status: PaymentStatus; cla
       {PAYMENT_STATUS_LABEL[status]}
     </Badge>
   )
+}
+
+const CANCEL_REFUND_VARIANT: Record<CancelRefundStatus, Variant> = {
+  owed: 'warning',
+  pending: 'info',
+  failed: 'danger',
+  succeeded: 'muted',
+}
+
+/**
+ * The payment as staff act on it: a shopper's confirmation waiting for a check, a cancellation's
+ * refund still owed, or the payment status.
+ */
+export function PaymentStateBadge({
+  order,
+  className,
+}: {
+  order: Pick<Order, 'paymentStatus' | 'paymentConfirmation' | 'cancelRefund'>
+  className?: string
+}) {
+  if (order.paymentConfirmation?.status === 'submitted' && order.paymentStatus === 'pending')
+    return (
+      <Badge variant="warning" className={className}>
+        {PAYMENT_CONFIRMATION_STATUS_LABEL.submitted}
+      </Badge>
+    )
+  const refund = order.cancelRefund
+  if (refund && refund.status !== 'succeeded')
+    return (
+      <Badge variant={CANCEL_REFUND_VARIANT[refund.status]} className={className}>
+        {CANCEL_REFUND_STATUS_LABEL[refund.status]}
+      </Badge>
+    )
+  return <PaymentBadge status={order.paymentStatus} className={className} />
 }
 
 const PRODUCT_VARIANT: Record<ProductStatus, Variant> = {

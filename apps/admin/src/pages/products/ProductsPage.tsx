@@ -12,14 +12,17 @@ import {
   Input,
   PageHeader,
   StatCard,
+  toast,
 } from '@rc/ui'
-import { CircleCheck, Handshake, PackageX, PenLine, Plus, Search } from 'lucide-react'
-import { useMemo } from 'react'
+import { CircleCheck, Download, Handshake, PackageX, PenLine, Plus, Search, Upload } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../../auth/auth'
 import { ProductStatusBadge, StockBadge } from '../../components/badges'
 import { paths } from '../../components/links'
 import { CategoryPicker } from '../../components/pickers'
+import { HTTP, api } from '../../lib/api'
+import { saveBlob } from '../../lib/download'
 import { useHistoryState, useTableHistory } from '../../lib/history-state'
 import { useNow, useScoped } from '../../state/scoped'
 import { optionAxes, productStock } from './lib'
@@ -47,6 +50,7 @@ export function ProductsPage() {
   const [status, setStatus] = useHistoryState<ProductStatus | null>('status', null)
   const [categoryId, setCategoryId] = useHistoryState<string | null>('category', null)
   const table = useTableHistory()
+  const [exporting, setExporting] = useState(false)
 
   const setView = (next: View) =>
     setParams(
@@ -104,6 +108,23 @@ export function ProductsPage() {
         .includes(q)
     })
   }, [inView, query, status])
+
+  /** Exports what the list shows: by id for a short filtered list, by status, category and search otherwise. */
+  const exportCsv = async () => {
+    setExporting(true)
+    const filtered = rows.length < s.products.length
+    try {
+      const filter =
+        filtered && rows.length <= 300
+          ? { ids: rows.map((p) => p.id) }
+          : { status: status ?? undefined, categoryId: categoryId ?? undefined, q: query.trim() || undefined }
+      saveBlob(await api.productCsv.exportCsv(s.tenantId, filter), `products-${s.tenant.subdomain}.csv`)
+    } catch {
+      toast('The export did not download', { tone: 'danger', description: 'Try again in a moment.' })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const columns: Column<Product>[] = [
     {
@@ -219,6 +240,18 @@ export function ProductsPage() {
               onChange={(e) => setQuery(e.target.value)}
               className="min-w-0 sm:w-72 sm:flex-none flex-1"
             />
+            {HTTP && can('product.manage') && (
+              <>
+                <Button variant="outline" aria-label="Export CSV" loading={exporting} onClick={() => void exportCsv()}>
+                  <Download />
+                  <span className="sm:inline hidden">Export CSV</span>
+                </Button>
+                <Button variant="outline" aria-label="Import CSV" onClick={() => navigate(paths.productImport)}>
+                  <Upload />
+                  <span className="sm:inline hidden">Import CSV</span>
+                </Button>
+              </>
+            )}
             {can('product.manage') && (
               <Button onClick={() => navigate(paths.newProduct)}>
                 <Plus />

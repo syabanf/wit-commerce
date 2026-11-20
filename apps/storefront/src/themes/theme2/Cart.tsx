@@ -119,6 +119,7 @@ export function Cart({ view }: { view: CartView }) {
               shipping={view.shipping}
               shippingLabel={t('checkout.summary.shippingEstimate')}
               total={view.total}
+              tax={view.tax}
             />
             <ButtonLink to={paths.checkout(store)} variant="dark" size="lg" full>
               {t('checkout.cart.checkout')}
