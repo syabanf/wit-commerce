@@ -35,6 +35,7 @@ export const en = {
   'checkout.terms.terms': 'Terms',
   'checkout.terms.privacy': 'Privacy Policy',
   'checkout.terms.changed': 'The store changed its terms. Read them again and tick the box to agree before you place the order.',
+  'checkout.priceChanged': 'Prices or offers changed since you opened the checkout. The summary shows the new total. Check it and place the order again.',
   // Offer information on the product page (components/OfferInfo.tsx)
   'checkout.offer.payment': 'Payment',
   'checkout.offer.payWithin': 'Pay within {hours} hours of ordering, or the order cancels.',
@@ -170,6 +171,7 @@ export const id: Record<keyof typeof en, string> = {
   'checkout.terms.approving': 'Dengan menyetujui, Anda menerima {terms} dan {privacy}.',
   'checkout.terms.terms': 'Syarat & Ketentuan',
   'checkout.terms.changed': 'Toko mengubah syarat dan ketentuannya. Baca lagi, lalu centang kotak persetujuan sebelum membuat pesanan.',
+  'checkout.priceChanged': 'Harga atau promo berubah sejak Anda membuka checkout. Ringkasan menampilkan total baru. Periksa, lalu buat pesanan lagi.',
   'checkout.terms.privacy': 'Kebijakan Privasi',
   'checkout.offer.payment': 'Pembayaran',
   'checkout.offer.payWithin': 'Bayar dalam {hours} jam setelah memesan, atau pesanan batal.',

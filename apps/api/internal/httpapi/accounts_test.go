@@ -139,6 +139,7 @@ func (e *env) placeable(id, customerID string) map[string]any {
 	}
 	order["id"], order["customerId"], order["code"], order["status"] = id, customerID, "LARI-99999", "new"
 	order["termsVersion"] = e.termsVersion("ten-lari")
+	e.price(order)
 	return order
 }
 

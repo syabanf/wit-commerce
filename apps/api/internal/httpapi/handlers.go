@@ -695,6 +695,8 @@ func (s *Server) shopPrice(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
+	// Segment-only promotions are not offered in the store, and a placed order does not earn them.
+	promotions = slices.DeleteFunc(promotions, func(p domain.Promotion) bool { return p.SegmentID != nil })
 	categories, err := store.ListTenant[domain.Category](r.Context(), s.DB.Pool, "categories", tenant.ID)
 	if err != nil {
 		s.writeError(w, r, err)
@@ -758,7 +760,7 @@ func (s *Server) shopPlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.Order.TermsAcceptedAt = s.Clock.NowIso()
-	d, err := s.svc.PlaceOrder(r.Context(), service.Meta{P: p, At: s.Clock.NowIso()}, in.Order, in.Customer)
+	d, err := s.svc.PlaceShopperOrder(r.Context(), service.Meta{P: p, At: s.Clock.NowIso()}, in.Order, in.Customer)
 	if err != nil {
 		s.writeError(w, r, err)
 		return

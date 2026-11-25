@@ -46,3 +46,26 @@ func RedeemPromotions(t *kernel.Tx, o domain.Order) error {
 	}
 	return nil
 }
+
+// UsageSpent locks the promotions the order earned and reports whether one reached its usage limit
+// after the order was priced, so two checkouts cannot both take its last use.
+func UsageSpent(t *kernel.Tx, o domain.Order) (bool, error) {
+	ids := make([]string, len(o.DiscountLines))
+	for i, d := range o.DiscountLines {
+		ids[i] = d.PromotionID
+	}
+	if len(ids) == 0 {
+		return false, nil
+	}
+	promotions, err := store.List[domain.Promotion](t.Ctx, t.Tx, "promotions",
+		"tenant_id = $1 and id = any($2) for update", o.TenantID, ids)
+	if err != nil {
+		return false, err
+	}
+	for _, p := range promotions {
+		if p.UsageLimit != nil && p.Used >= *p.UsageLimit {
+			return true, nil
+		}
+	}
+	return false, nil
+}

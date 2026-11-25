@@ -122,6 +122,8 @@ export const en = {
   'agent.chat.changeDiscount': 'Change discount',
   'agent.chat.anotherProduct': 'Another product',
   'agent.chat.couldNotPlace': 'I could not place it: {reason}',
+  'agent.chat.priceChanged':
+    'The store changed its prices or offers, so I did not place the order. Ask me again and I will work out the new total.',
   'agent.chat.done': 'Done. Anything else I can find for you?',
   'agent.chat.declined': 'No problem, nothing was paid. Want me to look again?',
   'agent.chat.cheaper': 'Cheaper',
@@ -308,6 +310,8 @@ export const id: Record<keyof typeof en, string> = {
   'agent.chat.changeDiscount': 'Ganti diskon',
   'agent.chat.anotherProduct': 'Produk lain',
   'agent.chat.couldNotPlace': 'Pesanan gagal dibuat: {reason}',
+  'agent.chat.priceChanged':
+    'Toko mengubah harga atau promonya, jadi pesanan tidak saya buat. Minta lagi, nanti saya hitung total barunya.',
   'agent.chat.done': 'Selesai. Ada lagi yang bisa saya carikan?',
   'agent.chat.declined': 'Tidak apa-apa, belum ada yang dibayar. Mau saya cari lagi?',
   'agent.chat.cheaper': 'Lebih murah',

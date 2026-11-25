@@ -50,6 +50,7 @@ func (e *env) guestOrder(orderID, customerID string, change ...func(map[string]a
 	for _, c := range change {
 		c(order)
 	}
+	e.price(order)
 	customer := map[string]any{"id": customerID, "tenantId": "ten-lari", "code": "LARI-C9" + customerID[len(customerID)-4:], "name": "Rina Guest", "email": customerID + "@example.com"}
 	var out struct {
 		Token string `json:"token"`

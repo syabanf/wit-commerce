@@ -175,6 +175,7 @@ func (e *env) placeWith(store, tenantID, orderID, paymentTypeID, method string) 
 		map[string]any{"id": "oev-paid-" + orderID, "at": order["createdAt"], "by": "storefront", "status": "paid", "note": "Paid"},
 		map[string]any{"id": "oev-new-" + orderID, "at": order["createdAt"], "by": "storefront", "status": "new", "note": "Order placed on the storefront"},
 	}
+	e.price(order)
 	guest := map[string]any{"id": customerID, "tenantId": tenantID, "code": "C-" + orderID, "name": "Guest " + orderID, "email": orderID + "@example.com", "phone": "+62812000"}
 	var out placed
 	if code := e.call("POST", "/shop/"+store+"/orders", "", map[string]any{"order": order, "customer": guest}, &out); code != 200 {

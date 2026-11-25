@@ -1,9 +1,9 @@
 import { fmtIdr, nowMs, orderPlaceBlocker } from '@rc/fixtures'
 import type { AgentPolicy, Customer, Industry, Order, Product } from '@rc/types'
-import type { AIChatAnswer } from '@rc/api'
+import { type AIChatAnswer, ApiError } from '@rc/api'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { type MessageKey, t } from '../i18n'
-import { problemText, refusalText } from '../i18n/refusals'
+import { REFUSAL_SENTENCES, problemText, refusalText } from '../i18n/refusals'
 import {
   type AgentPlan,
   type MandateInput,
@@ -149,7 +149,7 @@ const AgentChatContext = createContext<AgentChat | null>(null)
  * pays only when the shopper approves.
  */
 export function AgentChatProvider({ children }: { children: ReactNode }) {
-  const { catalog, tenant, customer, send } = useShop()
+  const { catalog, tenant, customer, send, reloadStore } = useShop()
   const { state } = useStore()
   const policy = state.agentPolicies.find((p) => p.tenantId === tenant.id) ?? null
   const examples = EXAMPLES[tenant.industry].map((key) => t(key))
@@ -376,17 +376,32 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
       push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason }) })
       return
     }
+    const receiptId = id()
+    const doneId = id()
     send({ type: 'orders/place', order: withTerms(placed, tenant, catalog.paymentTypes), customer: null }).catch((err: unknown) => {
       const reason = problemText(err)
       patch(cart.id, { status: 'failed', note: reason })
-      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason }) })
+      // The server priced the order differently: drop the receipt and the closing line, load the
+      // store's prices again and let the shopper ask for a new total.
+      const repriced = err instanceof ApiError && err.code === 'PRICE_CHANGED'
+      if (repriced) {
+        reloadStore()
+        setOrders((list) => list.filter((o) => o.id !== placed.id))
+        setItems((list) => list.filter((i) => i.id !== receiptId && i.id !== doneId))
+      }
+      const generic = repriced && REFUSAL_SENTENCES[err.message] === 'refusal.order.priceChanged'
+      push({
+        id: id(),
+        kind: 'bot',
+        text: generic ? t('agent.chat.priceChanged') : t('agent.chat.couldNotPlace', { reason }),
+      })
     })
     setOrders((list) => [placed, ...list])
     patch(cart.id, { status: 'paid' })
     push(
-      { id: id(), kind: 'receipt', order: placed, plan: cart.plan },
+      { id: receiptId, kind: 'receipt', order: placed, plan: cart.plan },
       {
-        id: id(),
+        id: doneId,
         kind: 'bot',
         text: t('agent.chat.done'),
         replies: examples.filter((e) => e !== ctx?.task).slice(0, 2),

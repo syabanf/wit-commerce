@@ -8,6 +8,7 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 
+	"github.com/syabanf/wit-commerce/apps/api/internal/clock"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/crm"
@@ -19,7 +20,21 @@ import (
 )
 
 // PlaceOrder is orders/place: the storefront's order, with the new customer it created, if any.
+// Staff placing an order in the console set its amounts, and the amounts stand.
 func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, customer *domain.Customer) (*kernel.Delta, error) {
+	return s.place(ctx, m, o, customer, false)
+}
+
+// PlaceShopperOrder is orders/place from the storefront: every amount is priced again from the
+// store's data inside the transaction, and the order is refused when the shopper saw another price.
+func (s *Orders) PlaceShopperOrder(ctx context.Context, m kernel.Meta, o domain.Order, customer *domain.Customer) (*kernel.Delta, error) {
+	return s.place(ctx, m, o, customer, true)
+}
+
+func (s *Orders) place(ctx context.Context, m kernel.Meta, o domain.Order, customer *domain.Customer, reprice bool) (*kernel.Delta, error) {
+	if reprice && s.Prices == nil {
+		return nil, fmt.Errorf("orders: no price book to check a shopper's order")
+	}
 	if err := kernel.Access(m, o.TenantID); err != nil {
 		return nil, err
 	}
@@ -57,8 +72,14 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 		if err != nil {
 			return err
 		}
-		// The brand's PPN settings decide the order's tax, whatever the client sent.
-		o = rules.WithOrderTax(o, tenant, l.Products)
+		if reprice {
+			if o, err = s.reprice(t, o, tenant, l, m.At); err != nil {
+				return err
+			}
+		} else {
+			// The brand's PPN settings decide the order's tax, whatever the client sent.
+			o = rules.WithOrderTax(o, tenant, l.Products)
+		}
 		// Checkouts of one brand pick their order and customer codes one at a time: two that read the
 		// same highest code would both insert it. The lock holds until commit.
 		if _, err := t.Exec(t.Ctx, `select pg_advisory_xact_lock(hashtext('codes:' || $1))`, o.TenantID); err != nil {
@@ -96,6 +117,31 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 		// Every promotion the order earned counts one use.
 		return marketing.RedeemPromotions(t, o)
 	})
+}
+
+// reprice checks a shopper's order against the store's prices, promotions, shipping, PPN and agent
+// policy, and returns it with the store's amounts.
+func (s *Orders) reprice(t *kernel.Tx, o domain.Order, tenant domain.Tenant, l rules.StockLookup, at string) (domain.Order, error) {
+	book, err := s.Prices.PriceBook(t, o.TenantID)
+	if err != nil {
+		return o, err
+	}
+	book.Tenant, book.Products, book.Modifiers, book.Now = tenant, l.Products, l.Modifiers, clock.Ms(at)
+	priced, why := rules.RepriceShopperOrder(o, book)
+	if why == "" {
+		// Another checkout may have taken the last use of a promotion since the book was read.
+		var spent bool
+		if spent, err = marketing.UsageSpent(t, priced); err != nil {
+			return o, err
+		}
+		if spent {
+			why = rules.PriceChanged
+		}
+	}
+	if why != "" {
+		return o, kernel.Conflict{Code: "PRICE_CHANGED", Reason: why}
+	}
+	return priced, nil
 }
 
 // AdvanceOrder is orders/advance: the next lifecycle step, with payment, points and stock effects.

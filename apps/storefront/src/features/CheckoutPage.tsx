@@ -414,6 +414,13 @@ export function CheckoutPage() {
           setPlaceError({ text: () => t('checkout.terms.changed') })
           return
         }
+        // The store's prices or offers moved since this page loaded: load them again so the summary
+        // shows the total the server will charge.
+        if (err instanceof ApiError && err.code === 'PRICE_CHANGED') {
+          reloadStore()
+          setPlaceError({ text: () => t('checkout.priceChanged') })
+          return
+        }
         setPlaceError({ text: () => problemText(err) })
       })
   }

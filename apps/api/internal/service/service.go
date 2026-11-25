@@ -46,7 +46,7 @@ func New(rt kernel.Runtime) *Service {
 		Marketing:    mkt,
 		Storefront:   &storefront.Storefront{Runtime: r},
 		Integrations: ints,
-		Orders:       &orders.Orders{Runtime: r, Payments: onlinePayments{rt: r, ints: ints}},
+		Orders:       &orders.Orders{Runtime: r, Payments: onlinePayments{rt: r, ints: ints}, Prices: priceBooks{}},
 		Billing:      &billing.Billing{Runtime: r},
 	}
 }

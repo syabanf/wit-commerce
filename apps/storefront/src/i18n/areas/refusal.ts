@@ -21,6 +21,10 @@ export const en = {
   'refusal.order.paymentDidNotOpen':
     'Your order is in, but the payment page did not open. The store will contact you.',
   'refusal.order.noInvoice': 'A cancelled order gets no invoice.',
+  'refusal.order.priceChanged':
+    'Prices or offers changed since you opened the checkout. Check the new total and place the order again.',
+  'refusal.order.agentDiscount':
+    'The store does not allow this agent discount. Ask the agent for a new total.',
   // Talk to sales
   'refusal.lead.otherStore': 'The lead belongs to another store.',
   'refusal.lead.sent': 'This lead was already sent.',
@@ -116,6 +120,9 @@ export const id: Record<keyof typeof en, string> = {
   'refusal.order.paymentDidNotOpen':
     'Pesanan Anda sudah masuk, tetapi halaman pembayaran tidak terbuka. Toko akan menghubungi Anda.',
   'refusal.order.noInvoice': 'Pesanan yang dibatalkan tidak mendapat faktur.',
+  'refusal.order.priceChanged':
+    'Harga atau promo berubah sejak Anda membuka checkout. Periksa total baru, lalu buat pesanan lagi.',
+  'refusal.order.agentDiscount': 'Toko tidak mengizinkan diskon agen ini. Minta total baru kepada agen.',
   'refusal.lead.otherStore': 'Permintaan ini milik toko lain.',
   'refusal.lead.sent': 'Permintaan ini sudah terkirim.',
   'refusal.return.cancel': 'Hanya retur yang belum diterima toko yang bisa dibatalkan.',

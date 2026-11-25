@@ -26,6 +26,11 @@ export const REFUSAL_SENTENCES: Record<string, MessageKey> = {
   'Your order is in, but the payment page did not open. The store will contact you.':
     'refusal.order.paymentDidNotOpen',
   'A cancelled order gets no invoice.': 'refusal.order.noInvoice',
+  // RepriceShopperOrder
+  'Prices or offers changed since you opened the checkout. Check the new total and place the order again.':
+    'refusal.order.priceChanged',
+  'The store does not allow this agent discount. Ask the agent for a new total.':
+    'refusal.order.agentDiscount',
   // shopLead
   'The lead belongs to another store.': 'refusal.lead.otherStore',
   'This lead was already sent.': 'refusal.lead.sent',
@@ -148,6 +153,7 @@ export const REFUSAL_CODES: Record<string, MessageKey> = {
   BAD_CREDENTIALS: 'refusal.account.badCredentials',
   ACCOUNT_EXISTS: 'refusal.account.exists',
   TERMS_NOT_ACCEPTED: 'refusal.order.terms',
+  PRICE_CHANGED: 'refusal.order.priceChanged',
   LINK_EXPIRED: 'refusal.account.linkExpired',
   CAPTCHA_FAILED: 'refusal.account.captcha',
   CAPTCHA_UNAVAILABLE: 'refusal.code.unavailable',
