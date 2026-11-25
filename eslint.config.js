@@ -32,4 +32,11 @@ export default tseslint.config(
     },
   },
   { files: ['scripts/**/*.ts'], rules: { 'no-console': 'off' } },
+  // k6 runs these, with its own globals.
+  {
+    files: ['perf/k6/**/*.js'],
+    languageOptions: {
+      globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly', console: 'readonly' },
+    },
+  },
 )

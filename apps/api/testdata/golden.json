@@ -3808,13 +3808,13 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -3997,13 +3997,13 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 12,
-      "createdAt": "2026-10-06T16:41:00+07:00",
+      "createdAt": "2026-10-06T17:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-2",
-        "at": "2026-10-06T16:41:00+07:00",
+        "at": "2026-10-06T17:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4089,7 +4089,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -4102,7 +4102,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4191,7 +4191,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -4211,7 +4211,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4262,7 +4262,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -4289,7 +4289,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4340,7 +4340,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -4374,7 +4374,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4451,7 +4451,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -4492,7 +4492,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4544,7 +4544,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -4592,7 +4592,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4658,7 +4658,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 1000,
       "events": [
@@ -4713,7 +4713,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4766,7 +4766,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-06T15:41:00+07:00",
+      "createdAt": "2026-10-06T16:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 276000,
       "events": [
@@ -4828,7 +4828,7 @@
        },
        {
         "id": "oev-ord-golden-1",
-        "at": "2026-10-06T15:41:00+07:00",
+        "at": "2026-10-06T16:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -4893,7 +4893,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 12,
-      "createdAt": "2026-10-06T16:41:00+07:00",
+      "createdAt": "2026-10-06T17:41:00+07:00",
       "cancelReason": "duplicate",
       "refundedAmount": 0,
       "events": [
@@ -4906,7 +4906,7 @@
        },
        {
         "id": "oev-ord-golden-2",
-        "at": "2026-10-06T16:41:00+07:00",
+        "at": "2026-10-06T17:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -5032,13 +5032,13 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-07T03:41:00+07:00",
+      "createdAt": "2026-10-07T04:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-3",
-        "at": "2026-10-07T03:41:00+07:00",
+        "at": "2026-10-07T04:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -5103,7 +5103,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-07T03:41:00+07:00",
+      "createdAt": "2026-10-07T04:41:00+07:00",
       "cancelReason": "customer_request",
       "refundedAmount": 0,
       "events": [
@@ -5116,7 +5116,7 @@
        },
        {
         "id": "oev-ord-golden-3",
-        "at": "2026-10-07T03:41:00+07:00",
+        "at": "2026-10-07T04:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -5236,13 +5236,13 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-07T05:41:00+07:00",
+      "createdAt": "2026-10-07T06:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-4",
-        "at": "2026-10-07T05:41:00+07:00",
+        "at": "2026-10-07T06:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -9934,7 +9934,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-07T05:41:00+07:00",
+      "createdAt": "2026-10-07T06:41:00+07:00",
       "cancelReason": "payment_expired",
       "refundedAmount": 0,
       "events": [
@@ -9947,7 +9947,7 @@
        },
        {
         "id": "oev-ord-golden-4",
-        "at": "2026-10-07T05:41:00+07:00",
+        "at": "2026-10-07T06:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11242,13 +11242,13 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11299,7 +11299,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11312,7 +11312,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11403,7 +11403,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11423,7 +11423,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11474,7 +11474,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11501,7 +11501,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11552,7 +11552,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11586,7 +11586,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11662,7 +11662,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11703,7 +11703,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11754,7 +11754,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11802,7 +11802,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -11884,7 +11884,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -11939,7 +11939,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -12215,7 +12215,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 129000,
       "events": [
@@ -12277,7 +12277,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -12396,7 +12396,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 129000,
       "events": [
@@ -12465,7 +12465,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -12627,7 +12627,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 129000,
       "events": [
@@ -12703,7 +12703,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -12852,7 +12852,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 129000,
       "events": [
@@ -12935,7 +12935,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13140,7 +13140,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-10T19:41:00+07:00",
+      "createdAt": "2026-10-10T20:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 516000,
       "events": [
@@ -13230,7 +13230,7 @@
        },
        {
         "id": "oev-ord-golden-r1",
-        "at": "2026-10-10T19:41:00+07:00",
+        "at": "2026-10-10T20:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13503,13 +13503,13 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13560,7 +13560,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -13573,7 +13573,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13664,7 +13664,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -13684,7 +13684,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13735,7 +13735,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -13762,7 +13762,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13813,7 +13813,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -13847,7 +13847,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -13923,7 +13923,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -13964,7 +13964,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -14015,7 +14015,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -14063,7 +14063,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -14145,7 +14145,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -14200,7 +14200,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -14447,7 +14447,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 144000,
       "events": [
@@ -14509,7 +14509,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -14711,7 +14711,7 @@
       "total": 534000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-11T21:41:00+07:00",
+      "createdAt": "2026-10-11T22:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 144000,
       "events": [
@@ -14780,7 +14780,7 @@
        },
        {
         "id": "oev-ord-golden-r2",
-        "at": "2026-10-11T21:41:00+07:00",
+        "at": "2026-10-11T22:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16085,13 +16085,13 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16165,7 +16165,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -16178,7 +16178,7 @@
        },
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16278,7 +16278,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -16298,7 +16298,7 @@
        },
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16377,7 +16377,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -16404,7 +16404,7 @@
        },
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16503,7 +16503,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
@@ -16537,7 +16537,7 @@
        },
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16623,7 +16623,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": "out_of_stock",
       "refundedAmount": 0,
       "events": [
@@ -16664,7 +16664,7 @@
        },
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -16757,7 +16757,7 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-13T08:41:00+07:00",
+      "createdAt": "2026-10-13T09:41:00+07:00",
       "cancelReason": "out_of_stock",
       "refundedAmount": 276000,
       "events": [
@@ -16805,7 +16805,7 @@
        },
        {
         "id": "oev-golden-pay-new",
-        "at": "2026-10-13T08:41:00+07:00",
+        "at": "2026-10-13T09:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -17419,13 +17419,13 @@
       "total": 319107,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-14T05:41:00+07:00",
+      "createdAt": "2026-10-14T06:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-tax-1",
-        "at": "2026-10-14T05:41:00+07:00",
+        "at": "2026-10-14T06:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -17760,13 +17760,13 @@
       "total": 343756,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-14T07:41:00+07:00",
+      "createdAt": "2026-10-14T08:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-tax-2",
-        "at": "2026-10-14T07:41:00+07:00",
+        "at": "2026-10-14T08:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
@@ -18050,19 +18050,1385 @@
       "total": 276000,
       "voucherCode": null,
       "pointsEarned": 27,
-      "createdAt": "2026-10-14T10:41:00+07:00",
+      "createdAt": "2026-10-14T11:41:00+07:00",
       "cancelReason": null,
       "refundedAmount": 0,
       "events": [
        {
         "id": "oev-ord-golden-tax-3",
-        "at": "2026-10-14T10:41:00+07:00",
+        "at": "2026-10-14T11:41:00+07:00",
         "by": "storefront",
         "status": "new",
         "note": "Placed"
        }
       ],
       "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setClosedDays",
+   "action": {
+    "type": "tenants/setClosedDays",
+    "tenantId": "ten-lari",
+    "closedDays": [
+     "2026-12-29",
+     " 2026-12-29",
+     "2026-12-31"
+    ]
+   },
+   "by": "usr-andi",
+   "at": "2026-12-01T10:00:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 14,
+      "legal": {
+       "entityName": "PT Lari Nusantara",
+       "businessType": "pt",
+       "nib": "1234567890123",
+       "npwp": "01.234.567.8-901.000",
+       "address": "Jl. Senopati 10, Jakarta Selatan",
+       "city": "Jakarta Selatan",
+       "phone": "+62 21 555 0101",
+       "email": "help@lari.co.id",
+       "complaintDays": 5,
+       "disputeForum": "bpsk"
+      },
+      "courierEtaDays": {
+       "jne": {
+        "min": 1,
+        "max": 2
+       },
+       "pickup": {
+        "min": 0,
+        "max": 0
+       }
+      },
+      "storeLanguage": "en",
+      "tax": {
+       "pkp": false,
+       "pricesIncludeTax": true,
+       "profile": "standard"
+      },
+      "closedDays": [
+       "2026-12-29",
+       "2026-12-31"
+      ]
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setClosedDays refused for a bad date",
+   "action": {
+    "type": "tenants/setClosedDays",
+    "tenantId": "ten-lari",
+    "closedDays": [
+     "2026-12-32"
+    ]
+   },
+   "by": "usr-andi",
+   "at": "2026-12-01T11:00:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "tenants/setShopSettings two days for the calendar",
+   "action": {
+    "type": "tenants/setShopSettings",
+    "tenantId": "ten-lari",
+    "returnWindowDays": 2,
+    "shopperEmailsOff": []
+   },
+   "by": "usr-andi",
+   "at": "2026-12-01T12:00:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 2,
+      "legal": {
+       "entityName": "PT Lari Nusantara",
+       "businessType": "pt",
+       "nib": "1234567890123",
+       "npwp": "01.234.567.8-901.000",
+       "address": "Jl. Senopati 10, Jakarta Selatan",
+       "city": "Jakarta Selatan",
+       "phone": "+62 21 555 0101",
+       "email": "help@lari.co.id",
+       "complaintDays": 5,
+       "disputeForum": "bpsk"
+      },
+      "courierEtaDays": {
+       "jne": {
+        "min": 1,
+        "max": 2
+       },
+       "pickup": {
+        "min": 0,
+        "max": 0
+       }
+      },
+      "storeLanguage": "en",
+      "tax": {
+       "pkp": false,
+       "pricesIncludeTax": true,
+       "profile": "standard"
+      },
+      "closedDays": [
+       "2026-12-29",
+       "2026-12-31"
+      ]
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/place before Christmas",
+   "action": {
+    "type": "orders/place",
+    "order": {
+     "id": "ord-golden-hol",
+     "tenantId": "ten-lari",
+     "code": "LARI-9-hol",
+     "customerId": "cus-lari-0235",
+     "channel": "marketplace",
+     "sellerId": null,
+     "campaignId": null,
+     "status": "new",
+     "paymentStatus": "pending",
+     "paymentMethod": "qris",
+     "courier": "gojek",
+     "trackingNo": null,
+     "warehouseId": "wh-lari-ckr",
+     "city": "Jakarta",
+     "lines": [
+      {
+       "productId": "prd-lr-118",
+       "variantId": "var-lr-118-1",
+       "qty": 4,
+       "price": 129000
+      }
+     ],
+     "subtotal": 516000,
+     "discount": 0,
+     "shipping": 18000,
+     "total": 534000,
+     "voucherCode": null,
+     "pointsEarned": 27,
+     "createdAt": "2026-12-21T10:00:00+07:00",
+     "cancelReason": null,
+     "refundedAmount": 0,
+     "events": [
+      {
+       "id": "oev-ord-golden-hol",
+       "at": "2026-12-21T10:00:00+07:00",
+       "by": "storefront",
+       "status": "new",
+       "note": "Placed"
+      }
+     ],
+     "discountLines": []
+    },
+    "customer": null
+   },
+   "by": "storefront",
+   "at": "2026-12-21T10:00:00+07:00",
+   "upserts": {
+    "stock": [
+     {
+      "id": "stk-var-lr-118-1-ckr",
+      "tenantId": "ten-lari",
+      "productId": "prd-lr-118",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "onHand": 11,
+      "reserved": 9,
+      "safety": 8
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdcmrsjoh",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0235",
+      "kind": "checkout_started",
+      "at": "2026-12-21T10:00:00+07:00",
+      "label": "Checked out on the storefront",
+      "productId": null,
+      "orderId": "ord-golden-hol",
+      "campaignId": null,
+      "by": "storefront"
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "new",
+      "paymentStatus": "pending",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance confirm before Christmas",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-hol"
+   },
+   "by": "usr-budi",
+   "at": "2026-12-22T09:00:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "confirmed",
+      "paymentStatus": "pending",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance pay before Christmas",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-hol"
+   },
+   "by": "usr-budi",
+   "at": "2026-12-22T10:00:00+07:00",
+   "upserts": {
+    "customers": [
+     {
+      "id": "cus-lari-0235",
+      "tenantId": "ten-lari",
+      "code": "LARI-C10235",
+      "name": "Teguh Susanto",
+      "email": "teguh.susanto234@mail.id",
+      "phone": "+62 815 3042 4228",
+      "city": "Jakarta",
+      "source": "web",
+      "stage": "at_risk",
+      "tier": "silver",
+      "points": 371,
+      "tags": [
+       "golden"
+      ],
+      "interests": [
+       "cat-lari-acc",
+       "cat-lari-road"
+      ],
+      "sellerId": null,
+      "createdAt": "2026-03-23T17:41:00+07:00",
+      "birthday": "1980-07-12",
+      "color": "#5c5c7a"
+     }
+    ],
+    "customerEvents": [
+     {
+      "id": "ev-7sdc375gc2",
+      "tenantId": "ten-lari",
+      "customerId": "cus-lari-0235",
+      "kind": "purchase",
+      "at": "2026-12-22T10:00:00+07:00",
+      "label": "Order LARI-9-hol",
+      "productId": null,
+      "orderId": "ord-golden-hol",
+      "campaignId": null,
+      "by": "usr-budi"
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "paid",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdc5g1s75",
+        "at": "2026-12-22T10:00:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance process before Christmas",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-hol"
+   },
+   "by": "usr-budi",
+   "at": "2026-12-22T11:00:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "processing",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcy5q4lj",
+        "at": "2026-12-22T11:00:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc5g1s75",
+        "at": "2026-12-22T10:00:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance pack before Christmas",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-hol"
+   },
+   "by": "usr-budi",
+   "at": "2026-12-22T12:00:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "packed",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcjgnwyc",
+        "at": "2026-12-22T12:00:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdcy5q4lj",
+        "at": "2026-12-22T11:00:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc5g1s75",
+        "at": "2026-12-22T10:00:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance ship before Christmas",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-hol"
+   },
+   "by": "usr-budi",
+   "at": "2026-12-22T13:00:00+07:00",
+   "upserts": {
+    "stock": [
+     {
+      "id": "stk-var-lr-118-1-ckr",
+      "tenantId": "ten-lari",
+      "productId": "prd-lr-118",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "onHand": 7,
+      "reserved": 5,
+      "safety": 8
+     }
+    ],
+    "stockMoves": [
+     {
+      "id": "mv-7sdcjsrj1o",
+      "tenantId": "ten-lari",
+      "variantId": "var-lr-118-1",
+      "warehouseId": "wh-lari-ckr",
+      "kind": "sale",
+      "qty": -4,
+      "at": "2026-12-22T13:00:00+07:00",
+      "by": "usr-budi",
+      "note": "LARI-9-hol"
+     }
+    ],
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "shipped",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdc1j7qsc",
+        "at": "2026-12-22T13:00:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcjgnwyc",
+        "at": "2026-12-22T12:00:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdcy5q4lj",
+        "at": "2026-12-22T11:00:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc5g1s75",
+        "at": "2026-12-22T10:00:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "orders/advance deliver before Christmas",
+   "action": {
+    "type": "orders/advance",
+    "id": "ord-golden-hol"
+   },
+   "by": "usr-budi",
+   "at": "2026-12-23T14:00:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcqgobd5",
+        "at": "2026-12-23T14:00:00+07:00",
+        "by": "usr-budi",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-7sdc1j7qsc",
+        "at": "2026-12-22T13:00:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcjgnwyc",
+        "at": "2026-12-22T12:00:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdcy5q4lj",
+        "at": "2026-12-22T11:00:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc5g1s75",
+        "at": "2026-12-22T10:00:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "returns/request refused changed mind after the brand window",
+   "action": {
+    "type": "returns/request",
+    "id": "ret-golden-hol-1",
+    "orderId": "ord-golden-hol",
+    "items": [
+     {
+      "variantId": "var-lr-118-1",
+      "qty": 1,
+      "reason": "changed_mind"
+     }
+    ],
+    "note": "",
+    "who": "shopper"
+   },
+   "by": "storefront",
+   "at": "2026-12-28T10:00:00+07:00",
+   "upserts": {},
+   "removes": {}
+  },
+  {
+   "name": "returns/request damaged across a public holiday",
+   "action": {
+    "type": "returns/request",
+    "id": "ret-golden-hol-2",
+    "orderId": "ord-golden-hol",
+    "items": [
+     {
+      "variantId": "var-lr-118-1",
+      "qty": 1,
+      "reason": "damaged"
+     }
+    ],
+    "note": "",
+    "who": "shopper"
+   },
+   "by": "storefront",
+   "at": "2026-12-30T20:00:00+07:00",
+   "upserts": {
+    "orders": [
+     {
+      "id": "ord-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-9-hol",
+      "customerId": "cus-lari-0235",
+      "channel": "marketplace",
+      "sellerId": null,
+      "campaignId": null,
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "qris",
+      "courier": "gojek",
+      "trackingNo": null,
+      "warehouseId": "wh-lari-ckr",
+      "city": "Jakarta",
+      "lines": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 4,
+        "price": 129000
+       }
+      ],
+      "subtotal": 516000,
+      "discount": 0,
+      "shipping": 18000,
+      "total": 534000,
+      "voucherCode": null,
+      "pointsEarned": 27,
+      "createdAt": "2026-12-21T10:00:00+07:00",
+      "cancelReason": null,
+      "refundedAmount": 0,
+      "events": [
+       {
+        "id": "oev-7sdcgra89h",
+        "at": "2026-12-30T20:00:00+07:00",
+        "by": "storefront",
+        "status": null,
+        "note": "Return LARI-R0007 requested"
+       },
+       {
+        "id": "oev-7sdcqgobd5",
+        "at": "2026-12-23T14:00:00+07:00",
+        "by": "usr-budi",
+        "status": "delivered",
+        "note": "Delivered"
+       },
+       {
+        "id": "oev-7sdc1j7qsc",
+        "at": "2026-12-22T13:00:00+07:00",
+        "by": "usr-budi",
+        "status": "shipped",
+        "note": "Shipped"
+       },
+       {
+        "id": "oev-7sdcjgnwyc",
+        "at": "2026-12-22T12:00:00+07:00",
+        "by": "usr-budi",
+        "status": "packed",
+        "note": "Packed"
+       },
+       {
+        "id": "oev-7sdcy5q4lj",
+        "at": "2026-12-22T11:00:00+07:00",
+        "by": "usr-budi",
+        "status": "processing",
+        "note": "Processing"
+       },
+       {
+        "id": "oev-7sdc5g1s75",
+        "at": "2026-12-22T10:00:00+07:00",
+        "by": "usr-budi",
+        "status": "paid",
+        "note": "Paid"
+       },
+       {
+        "id": "oev-7sdc4i44sm",
+        "at": "2026-12-22T09:00:00+07:00",
+        "by": "usr-budi",
+        "status": "confirmed",
+        "note": "Confirmed"
+       },
+       {
+        "id": "oev-ord-golden-hol",
+        "at": "2026-12-21T10:00:00+07:00",
+        "by": "storefront",
+        "status": "new",
+        "note": "Placed"
+       }
+      ],
+      "discountLines": []
+     }
+    ],
+    "returns": [
+     {
+      "id": "ret-golden-hol-2",
+      "tenantId": "ten-lari",
+      "code": "LARI-R0007",
+      "orderId": "ord-golden-hol",
+      "customerId": "cus-lari-0235",
+      "items": [
+       {
+        "productId": "prd-lr-118",
+        "variantId": "var-lr-118-1",
+        "qty": 1,
+        "reason": "damaged"
+       }
+      ],
+      "reason": "damaged",
+      "note": "",
+      "status": "requested",
+      "requestedBy": "shopper",
+      "refundAmount": 0,
+      "restock": false,
+      "shippingPaidBy": "brand",
+      "events": [
+       {
+        "id": "oev-7sdchfyxbh",
+        "at": "2026-12-30T20:00:00+07:00",
+        "by": "storefront",
+        "status": "requested",
+        "note": "Requested by the shopper"
+       }
+      ],
+      "createdAt": "2026-12-30T20:00:00+07:00"
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tickets/open across a public holiday",
+   "action": {
+    "type": "tickets/open",
+    "complaint": {
+     "id": "tic-golden-hol",
+     "tenantId": "ten-lari",
+     "customerId": null,
+     "orderId": null,
+     "subject": "Parcel late",
+     "message": "My parcel has not arrived after a week.",
+     "contact": {
+      "name": " Rina ",
+      "email": "rina@example.com",
+      "phone": ""
+     }
+    }
+   },
+   "by": "storefront",
+   "at": "2026-12-23T10:00:00+07:00",
+   "upserts": {
+    "tickets": [
+     {
+      "id": "tic-golden-hol",
+      "tenantId": "ten-lari",
+      "code": "LARI-T0003",
+      "customerId": "",
+      "orderId": null,
+      "kind": "complaint",
+      "status": "open",
+      "subject": "Parcel late",
+      "channel": "web",
+      "assigneeId": null,
+      "createdAt": "2026-12-23T10:00:00+07:00",
+      "slaDueAt": "2027-01-07T10:00:00+07:00",
+      "resolvedAt": null,
+      "message": "My parcel has not arrived after a week.",
+      "contact": {
+       "name": "Rina",
+       "email": "rina@example.com",
+       "phone": ""
+      }
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setShopSettings back after the calendar",
+   "action": {
+    "type": "tenants/setShopSettings",
+    "tenantId": "ten-lari",
+    "returnWindowDays": 14,
+    "shopperEmailsOff": []
+   },
+   "by": "usr-andi",
+   "at": "2026-12-31T12:00:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 14,
+      "legal": {
+       "entityName": "PT Lari Nusantara",
+       "businessType": "pt",
+       "nib": "1234567890123",
+       "npwp": "01.234.567.8-901.000",
+       "address": "Jl. Senopati 10, Jakarta Selatan",
+       "city": "Jakarta Selatan",
+       "phone": "+62 21 555 0101",
+       "email": "help@lari.co.id",
+       "complaintDays": 5,
+       "disputeForum": "bpsk"
+      },
+      "courierEtaDays": {
+       "jne": {
+        "min": 1,
+        "max": 2
+       },
+       "pickup": {
+        "min": 0,
+        "max": 0
+       }
+      },
+      "storeLanguage": "en",
+      "tax": {
+       "pkp": false,
+       "pricesIncludeTax": true,
+       "profile": "standard"
+      },
+      "closedDays": [
+       "2026-12-29",
+       "2026-12-31"
+      ]
+     }
+    ]
+   },
+   "removes": {}
+  },
+  {
+   "name": "tenants/setClosedDays cleared",
+   "action": {
+    "type": "tenants/setClosedDays",
+    "tenantId": "ten-lari",
+    "closedDays": []
+   },
+   "by": "usr-andi",
+   "at": "2026-12-31T13:00:00+07:00",
+   "upserts": {
+    "tenants": [
+     {
+      "id": "ten-lari",
+      "code": "LARI",
+      "name": "Lari Running Co.",
+      "industry": "sport",
+      "plan": "growth",
+      "subdomain": "lari",
+      "domain": "www.lari.co.id",
+      "domainVerified": true,
+      "createdAt": "2026-02-07T10:00:00+07:00",
+      "brand": {
+       "colors": {
+        "primary": "#d62839",
+        "secondary": "#111111",
+        "accent": "#ffb703",
+        "background": "#ffffff",
+        "text": "#111111"
+       },
+       "fonts": {
+        "heading": "DM Sans",
+        "body": "DM Sans"
+       },
+       "theme": "theme1",
+       "radius": "soft",
+       "buttonStyle": "pill",
+       "personality": "bold",
+       "tone": "energetic",
+       "tagline": "Golden tagline",
+       "locks": {
+        "logo": false,
+        "primary_color": true,
+        "button_style": true,
+        "hero_image": true,
+        "headline": false,
+        "featured_product": false,
+        "layout": false
+       }
+      },
+      "loyalty": {
+       "pointsPer10k": 1,
+       "thresholds": {
+        "silver": 1500000,
+        "gold": 5000000,
+        "platinum": 10000000
+       },
+       "freeShippingMin": 750000
+      },
+      "onboarding": [
+       "business",
+       "brand",
+       "template",
+       "commerce",
+       "payment",
+       "shipping",
+       "products",
+       "users",
+       "preview",
+       "publish",
+       "golden-step"
+      ],
+      "displayCurrencies": [
+       "USD",
+       "SGD"
+      ],
+      "returnWindowDays": 14,
+      "legal": {
+       "entityName": "PT Lari Nusantara",
+       "businessType": "pt",
+       "nib": "1234567890123",
+       "npwp": "01.234.567.8-901.000",
+       "address": "Jl. Senopati 10, Jakarta Selatan",
+       "city": "Jakarta Selatan",
+       "phone": "+62 21 555 0101",
+       "email": "help@lari.co.id",
+       "complaintDays": 5,
+       "disputeForum": "bpsk"
+      },
+      "courierEtaDays": {
+       "jne": {
+        "min": 1,
+        "max": 2
+       },
+       "pickup": {
+        "min": 0,
+        "max": 0
+       }
+      },
+      "storeLanguage": "en",
+      "tax": {
+       "pkp": false,
+       "pricesIncludeTax": true,
+       "profile": "standard"
+      }
      }
     ]
    },

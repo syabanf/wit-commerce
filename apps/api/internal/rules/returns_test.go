@@ -23,7 +23,7 @@ func TestLegalReturnDeadlineCountsWorkingDaysInWIB(t *testing.T) {
 		// 00:30 WIB on Saturday is Friday evening in UTC; the WIB day decides.
 		{"2026-10-10T00:30:00+07:00", "2026-10-13T23:59:59.999+07:00"},
 	} {
-		if got, want := LegalReturnDeadline(clock.Ms(c.delivered)), clock.MustParse(c.want).UnixMilli(); got != want {
+		if got, want := LegalReturnDeadline(clock.Ms(c.delivered), nil), clock.MustParse(c.want).UnixMilli(); got != want {
 			t.Errorf("delivered %s: deadline %d ms, want %d", c.delivered, got, want)
 		}
 	}
@@ -43,7 +43,7 @@ func TestReturnWindowFloorAndReasons(t *testing.T) {
 	// Delivered Friday evening: the legal window runs to the end of Tuesday.
 	o := deliveredOrder("2026-10-09T18:00:00+07:00")
 	ask := func(reason string, now string, window int) string {
-		return ReturnRequestBlocker(o, nil, []domain.ReturnItem{{VariantID: "v1", Qty: 1, Reason: reason}}, "shopper", clock.Ms(now), window)
+		return ReturnRequestBlocker(o, nil, []domain.ReturnItem{{VariantID: "v1", Qty: 1, Reason: reason}}, "shopper", clock.Ms(now), window, nil)
 	}
 	monday := "2026-10-12T12:00:00+07:00"
 	wednesday := "2026-10-14T08:00:00+07:00"

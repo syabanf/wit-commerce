@@ -22,7 +22,8 @@ import type {
   Tenant,
 } from '@rc/types'
 import { OPEN_RETURN_STATUSES, RETURN_REASON_LABEL, SECTION_KIND_LABEL } from '@rc/types'
-import { DAY, startOfDay, toMs, wib } from './dates'
+import { DAY, startOfDay, toMs } from './dates'
+import { type ClosedDays, isWorkingDay, NO_CLOSED_DAYS } from './holidays'
 import { modifierDemand, nextOrderStatus, variantDemand } from './derive'
 import { listOf } from './format'
 import { addedTax } from './tax'
@@ -263,15 +264,14 @@ export const LEGAL_RETURN_REASONS: readonly ReturnReason[] = [
 export const isLegalReturnReason = (reason: ReturnReason) => LEGAL_RETURN_REASONS.includes(reason)
 
 /**
- * The end of the second working day (Monday to Friday, WIB) after the day the parcel arrived.
- * Public holidays are not counted out.
+ * The end of the second working day after the day the parcel arrived: Monday to Friday in WIB, not a
+ * public holiday and not one of the brand's closed days.
  */
-export function legalReturnDeadline(deliveredMs: number): number {
+export function legalReturnDeadline(deliveredMs: number, closedDays: ClosedDays = NO_CLOSED_DAYS): number {
   let day = startOfDay(deliveredMs)
   for (let left = LEGAL_RETURN_WORKING_DAYS; left > 0;) {
     day += DAY
-    const weekday = wib(day).weekday
-    if (weekday !== 0 && weekday !== 6) left--
+    if (isWorkingDay(day, closedDays)) left--
   }
   return day + DAY - 1
 }
@@ -322,11 +322,12 @@ export function returnDeadline(
   order: Pick<Order, 'events' | 'createdAt'>,
   windowDays: number,
   reason: ReturnReason,
+  closedDays: ClosedDays = NO_CLOSED_DAYS,
 ): number | null {
   const delivered = toMs(deliveredAt(order))
   const brand = windowDays > 0 ? delivered + windowDays * DAY : null
   if (!isLegalReturnReason(reason)) return brand
-  return Math.max(brand ?? 0, legalReturnDeadline(delivered))
+  return Math.max(brand ?? 0, legalReturnDeadline(delivered, closedDays))
 }
 
 /** Why a shopper may not ask to return an item for this reason now, or null when they may. */
@@ -335,8 +336,9 @@ function returnWindowBlocker(
   windowDays: number,
   reason: ReturnReason,
   now: number,
+  closedDays: ClosedDays,
 ): string | null {
-  const deadline = returnDeadline(order, windowDays, reason)
+  const deadline = returnDeadline(order, windowDays, reason, closedDays)
   if (deadline === null)
     return 'This store takes change-of-mind and fit returns by message. Contact the store.'
   if (now <= deadline) return null
@@ -357,6 +359,7 @@ export function returnRequestBlocker(
   who: 'staff' | 'shopper',
   now: number,
   windowDays: number,
+  closedDays: ClosedDays = NO_CLOSED_DAYS,
 ): string | null {
   const delivered = order.status === 'delivered' || order.status === 'completed'
   if (who === 'shopper') {
@@ -378,7 +381,7 @@ export function returnRequestBlocker(
     if (seen.has(item.variantId)) return 'List each item once.'
     seen.add(item.variantId)
     if (!(item.reason in RETURN_REASON_LABEL)) return 'Choose a reason for each item.'
-    const closed = who === 'shopper' && returnWindowBlocker(order, windowDays, item.reason, now)
+    const closed = who === 'shopper' && returnWindowBlocker(order, windowDays, item.reason, now, closedDays)
     if (closed) return closed
     if (!Number.isInteger(item.qty) || item.qty < 1) return 'Enter how many units to return.'
     if (open.has(item.variantId)) return 'One item already has an open return. Finish that one first.'

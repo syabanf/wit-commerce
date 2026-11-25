@@ -1,4 +1,3 @@
-import { ApiError } from '@rc/api'
 import { addWorkingDays, complaintBlocker, complaintDays, newId, nowIso } from '@rc/fixtures'
 import type { Ticket } from '@rc/types'
 import { CircleCheck, Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react'
@@ -8,9 +7,9 @@ import { Button, Field, describedBy, inputClass } from '../components/ui'
 import { paths, waLink } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { t, tx } from '../i18n'
+import { problemText, refusalText } from '../i18n/refusals'
 import { fmtDateTime } from '../i18n/format'
 import { useShop } from '../state/shop'
-import { complaintBlockerText } from './accountLabels'
 
 /** The platform's complaint steps, used when the brand wrote none of its own. */
 const defaultSteps = () => [
@@ -132,7 +131,7 @@ function Contact({ icon, label, children }: { icon: ReactNode; label: string; ch
 }
 
 function ComplaintForm() {
-  const { tenant, customer, orders, send } = useShop()
+  const { tenant, customer, orders, send, closedDays } = useShop()
   const uid = useId()
   const [params] = useSearchParams()
   const own = customer ? orders.filter((o) => o.customerId === customer.id) : []
@@ -156,7 +155,7 @@ function ComplaintForm() {
     e.preventDefault()
     const why = complaintBlocker({ subject, message, contact })
     if (why) {
-      setError(complaintBlockerText(why))
+      setError(refusalText(why))
       return
     }
     setBusy(true)
@@ -177,10 +176,10 @@ function ComplaintForm() {
       const ticket = delta?.upserts.tickets?.[0] as Ticket | undefined
       setSent({
         code: ticket?.code,
-        due: ticket?.slaDueAt ?? addWorkingDays(nowIso(), complaintDays(tenant)),
+        due: ticket?.slaDueAt ?? addWorkingDays(nowIso(), complaintDays(tenant), closedDays),
       })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('account.noAnswer'))
+      setError(problemText(err))
     }
     setBusy(false)
   }

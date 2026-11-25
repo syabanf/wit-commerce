@@ -12,9 +12,11 @@ import (
 // the shopper's claim until staff confirm it, and Midtrans says so only through a verified status.
 
 // ShopperPlacement is the order a shopper may place: open and waiting for payment, whatever the
-// browser sent. Cash on delivery turns paid on delivery, a gateway from its verified status, and a
-// transfer once staff confirm it.
-func ShopperPlacement(o domain.Order) domain.Order {
+// browser sent, dated by the server. Cash on delivery turns paid on delivery, a gateway from its
+// verified status, and a transfer once staff confirm it.
+func ShopperPlacement(o domain.Order, at string) domain.Order {
+	// The server's clock starts the 24-hour payment window, never the browser's.
+	o.CreatedAt = domain.IsoDate(at)
 	if o.Status != "new" && o.Status != "confirmed" {
 		o.Status = "confirmed"
 	}
@@ -27,6 +29,7 @@ func ShopperPlacement(o domain.Order) domain.Order {
 	events := make([]domain.OrderEvent, 0, len(o.Events))
 	for _, e := range o.Events {
 		if e.Status == nil || *e.Status == "new" || *e.Status == "confirmed" {
+			e.At = domain.IsoDate(at)
 			events = append(events, e)
 		}
 	}

@@ -24,6 +24,9 @@ type Branding struct {
 	Color string
 	// HomeURL is where the footer links.
 	HomeURL string
+	// Contact is the brand's customer service email. Marketing email offers it as the mailto
+	// unsubscribe; empty leaves the one-click link alone.
+	Contact string
 }
 
 // platformColor is WIT red, the accent of the console's theme.

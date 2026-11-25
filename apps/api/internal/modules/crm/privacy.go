@@ -32,6 +32,10 @@ func LockCustomer(t *kernel.Tx, m kernel.Meta, id string) (domain.Customer, erro
 	return c, kernel.Access(m, c.TenantID)
 }
 
+// ErasedEventLabel names the timeline line an erasure leaves. Retention skips it when it measures a
+// customer's last activity, so the erasure does not restart the clock.
+const ErasedEventLabel = "Personal data erased"
+
 // EraseCustomer replaces the personal data crm holds about a customer: the record, the free text in
 // its history, and its leads and tickets. The timeline keeps one line saying when it happened.
 func EraseCustomer(t *kernel.Tx, m kernel.Meta, c domain.Customer) (domain.Customer, error) {
@@ -79,7 +83,7 @@ func EraseCustomer(t *kernel.Tx, m kernel.Meta, c domain.Customer) (domain.Custo
 	if _, err := t.Exec(t.Ctx, `update privacy_requests set note = '' where customer_id = $1`, c.ID); err != nil {
 		return c, err
 	}
-	e := noteEvent(c, "privacy", "Personal data erased", m.At, m.By())
+	e := noteEvent(c, "privacy", ErasedEventLabel, m.At, m.By())
 	return c, t.Put("customerEvents", e.ID, e)
 }
 

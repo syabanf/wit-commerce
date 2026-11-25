@@ -19,7 +19,7 @@ import { tint } from '../lib/brand'
 import { type Catalog, bestSellers } from '../lib/catalog'
 import { EMBED_FRAME, useFocusedSection } from '../lib/embed'
 import { firstName, paths, waLink } from '../lib/paths'
-import { RETURNS_POLICY } from '../lib/policy'
+import { returnsPolicy } from '../lib/policy'
 import { useShop } from '../state/shop'
 import { Sticker } from './ornaments'
 import { CouponCode, PromoValue, Ticket, promoTerms } from './promo'
@@ -320,7 +320,7 @@ export function Faq({
         },
         {
           q: t('catalog.faq.returnQ'),
-          a: RETURNS_POLICY[tenant.industry],
+          a: returnsPolicy(tenant).sentence,
         },
         {
           q: t('catalog.faq.payQ'),

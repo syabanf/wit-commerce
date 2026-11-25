@@ -47,8 +47,11 @@ func (s *Marketing) Audience(ctx context.Context, m kernel.Meta, id string) (Cam
 		if err := kernel.Access(m, c.TenantID); err != nil {
 			return err
 		}
-		reach, skipped, err := Recipients(t, c.TenantID, c.SegmentID, clock.Ms(m.At))
-		out = CampaignAudience{InSegment: len(reach) + skipped, Reach: len(reach), Skipped: skipped}
+		if c.SegmentID == nil {
+			return nil
+		}
+		in, reach, err := crm.SegmentReach(t, c.TenantID, *c.SegmentID, clock.Ms(m.At))
+		out = CampaignAudience{InSegment: in, Reach: reach, Skipped: in - reach}
 		return err
 	})
 	return out, err

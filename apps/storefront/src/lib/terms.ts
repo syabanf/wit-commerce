@@ -184,5 +184,5 @@ export function buildTerms(tenant: Tenant, paymentTypes: PaymentType[], couriers
         'Ketentuan tambahan ini tidak mengurangi hak Konsumen menurut ketentuan di atas maupun menurut peraturan perundang-undangan.',
       ],
     })
-  return { version: termsVersion(tenant), sections }
+  return { version: termsVersion(tenant, paymentTypes), sections }
 }

@@ -89,6 +89,8 @@ type Tenant struct {
 	CourierEtaDays map[string]EtaDays `json:"courierEtaDays,omitempty"`
 	// Tax is whether the brand charges PPN and how; nil charges none.
 	Tax *TaxSettings `json:"tax,omitempty"`
+	// ClosedDays are days (YYYY-MM-DD, WIB) the brand is closed besides weekends and public holidays.
+	ClosedDays []string `json:"closedDays,omitempty"`
 }
 
 // TaxSettings mirrors TaxSettings in packages/types: the brand's PPN settings. Only a PKP with an

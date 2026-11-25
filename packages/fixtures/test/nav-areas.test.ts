@@ -34,7 +34,7 @@ describe('back-office menu per role', () => {
     const all = NAV.flatMap((s) => s.items?.map((i) => i.code) ?? [s.code])
     assert.deepEqual(
       all.filter((code) => !pages('tenant_admin').includes(code)),
-      ['EML', 'FXR', 'PLN'],
+      ['EML', 'FXR', 'HOL', 'PLN'],
     )
   })
 

@@ -135,8 +135,9 @@ func CourierEtaBlocker(etas map[string]domain.EtaDays) string {
 	return ""
 }
 
-// AddWorkingDays mirrors addWorkingDays: n working days (Monday to Friday, WIB) after at.
-func AddWorkingDays(at string, n int) string {
+// AddWorkingDays mirrors addWorkingDays: n working days after at, skipping weekends in WIB and the
+// closed days.
+func AddWorkingDays(at string, n int, closed ClosedDays) string {
 	t, err := clock.Parse(at)
 	if err != nil {
 		return at
@@ -144,7 +145,7 @@ func AddWorkingDays(at string, n int) string {
 	t = t.In(clock.WIB)
 	for n > 0 {
 		t = t.Add(24 * time.Hour)
-		if wd := t.Weekday(); wd != time.Saturday && wd != time.Sunday {
+		if IsWorkingDay(t, closed) {
 			n--
 		}
 	}
@@ -177,8 +178,8 @@ func TrimContact(c domain.TicketContact) domain.TicketContact {
 }
 
 // TermsVersion mirrors termsVersion: the template revision and an FNV-1a hash of the brand's values
-// the terms page prints.
-func TermsVersion(t domain.Tenant) string {
+// the terms page prints, its enabled payment types among them.
+func TermsVersion(t domain.Tenant, paymentTypes []domain.PaymentType) string {
 	var l domain.SellerLegal
 	if t.Legal != nil {
 		l = *t.Legal
@@ -198,8 +199,21 @@ func TermsVersion(t domain.Tenant) string {
 			etas = append(etas, fmt.Sprintf("%s:%d-%d", c, eta.Min, eta.Max))
 		}
 	}
-	parts = append(parts, strings.Join(etas, ","))
+	parts = append(parts, strings.Join(etas, ","), PaymentTermsPart(t.ID, paymentTypes))
 	h := fnv.New32a()
 	h.Write([]byte(strings.Join(parts, "\x1f")))
 	return fmt.Sprintf("%d.%08x", TermsRevision, h.Sum32())
+}
+
+// PaymentTermsPart mirrors paymentTermsPart: the brand's enabled payment types as method:name,
+// sorted, the way the terms page lists them.
+func PaymentTermsPart(tenantID string, paymentTypes []domain.PaymentType) string {
+	var pays []string
+	for _, p := range paymentTypes {
+		if p.Enabled && p.TenantID == tenantID {
+			pays = append(pays, p.Method+":"+p.Name)
+		}
+	}
+	slices.Sort(pays)
+	return strings.Join(pays, ",")
 }

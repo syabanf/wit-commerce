@@ -2,6 +2,7 @@ package readmodel
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -38,68 +39,48 @@ func Buyers(ctx context.Context, q Querier, tenantID string, sellers []string, n
 		args = append(args, sellers)
 		where += fmt.Sprintf(" and m.customer_id in (select id from customers where seller_id = any($%d))", len(args))
 	}
-	out := BuyerFigures{FirstDays: map[string]int{}, LastDays: map[string]int{}, Cohorts: map[string]Cohort{}}
-	if err := q.QueryRow(ctx, `select count(*), count(*) filter (where m.orders > 1), coalesce(sum(m.spend), 0)
-		from customer_metrics m where `+where, args...).Scan(&out.Buyers, &out.RepeatBuyers, &out.Spend); err != nil {
-		return out, err
-	}
-	cutoff := SalesCutoff(now)
-	window := append(append([]any{}, args...), cutoff)
-	n := len(window)
-	const day, month = `'YYYY-MM-DD'`, `'YYYY-MM'`
-	wib := func(column, format string) string {
-		return "to_char(" + column + " at time zone 'Asia/Jakarta', " + format + ")"
-	}
-	counts := func(sql string, into map[string]int) error {
-		rows, err := q.Query(ctx, sql, window...)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var key string
-			var count int
-			if err := rows.Scan(&key, &count); err != nil {
-				return err
-			}
-			into[key] = count
-		}
-		return rows.Err()
-	}
-	for _, c := range []struct {
-		column string
-		into   map[string]int
-	}{{"m.first_at", out.FirstDays}, {"m.last_at", out.LastDays}} {
-		key := wib(c.column, day)
-		if err := counts(fmt.Sprintf(`select %s, count(*) from customer_metrics m where %s and %s >= $%d group by 1`,
-			key, where, key, n), c.into); err != nil {
-			return out, err
-		}
-	}
-	first := wib("m.first_at", month)
-	sizes := map[string]int{}
-	if err := counts(fmt.Sprintf(`select %s, count(*) from customer_metrics m where %s and %s >= left($%d, 7) group by 1`,
-		first, where, first, n), sizes); err != nil {
-		return out, err
-	}
-	for key, size := range sizes {
-		out.Cohorts[key] = Cohort{Size: size, Bought: map[string]int{}}
-	}
-	rows, err := q.Query(ctx, fmt.Sprintf(`select %s, bought, count(*) from customer_metrics m, unnest(m.buy_months) bought
-		where %s and %s >= left($%d, 7) group by 1, 2`, first, where, first, n), window...)
+	args = append(args, SalesCutoff(now))
+	cutoff := fmt.Sprintf("$%d", len(args))
+	// One scan: the WIB days are worked out once per row, and each figure groups the scanned rows.
+	// A cohort month is the first day's first seven characters.
+	out := BuyerFigures{Cohorts: map[string]Cohort{}}
+	var firstDays, lastDays, sizes, bought []byte
+	err := q.QueryRow(ctx, `with m as materialized (
+			select m.orders, m.spend, m.buy_months,
+				to_char(m.first_at at time zone 'Asia/Jakarta', 'YYYY-MM-DD') first_day,
+				to_char(m.last_at at time zone 'Asia/Jakarta', 'YYYY-MM-DD') last_day
+			from customer_metrics m where `+where+`)
+		select (select count(*) from m), (select count(*) from m where orders > 1), (select coalesce(sum(spend), 0) from m),
+			(select coalesce(json_object_agg(k, n), '{}') from (select first_day k, count(*) n from m where first_day >= `+cutoff+` group by 1) x),
+			(select coalesce(json_object_agg(k, n), '{}') from (select last_day k, count(*) n from m where last_day >= `+cutoff+` group by 1) x),
+			(select coalesce(json_object_agg(k, n), '{}') from (select left(first_day, 7) k, count(*) n from m
+				where left(first_day, 7) >= left(`+cutoff+`, 7) group by 1) x),
+			(select coalesce(json_agg(json_build_array(k, b, n)), '[]') from (select left(first_day, 7) k, b, count(*) n
+				from m, unnest(m.buy_months) b where left(first_day, 7) >= left(`+cutoff+`, 7) group by 1, 2) x)`, args...).
+		Scan(&out.Buyers, &out.RepeatBuyers, &out.Spend, &firstDays, &lastDays, &sizes, &bought)
 	if err != nil {
 		return out, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var key, bought string
-		var count int
-		if err := rows.Scan(&key, &bought, &count); err != nil {
+	var cohortSizes map[string]int
+	var cohortBought [][3]any
+	for _, f := range []struct {
+		raw  []byte
+		into any
+	}{{firstDays, &out.FirstDays}, {lastDays, &out.LastDays}, {sizes, &cohortSizes}, {bought, &cohortBought}} {
+		if err := json.Unmarshal(f.raw, f.into); err != nil {
 			return out, err
 		}
+	}
+	for key, size := range cohortSizes {
+		out.Cohorts[key] = Cohort{Size: size, Bought: map[string]int{}}
+	}
+	for _, row := range cohortBought {
+		key, _ := row[0].(string)
+		month, _ := row[1].(string)
+		count, _ := row[2].(float64)
 		if c, ok := out.Cohorts[key]; ok {
-			c.Bought[bought] = count
+			c.Bought[month] = int(count)
 		}
 	}
-	return out, rows.Err()
+	return out, nil
 }

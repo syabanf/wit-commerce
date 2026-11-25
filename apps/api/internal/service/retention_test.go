@@ -87,7 +87,6 @@ func TestPruneDeletesOnlyWhatRetentionHasPassed(t *testing.T) {
 	put("integrationLogs", "log-kept", map[string]any{"at": iso(4)})
 	put("traffic", "trf-old", map[string]any{"day": iso(6)[:10]})
 	put("traffic", "trf-kept", map[string]any{"day": iso(4)[:10]})
-	put("orders", "ord-old", map[string]any{"code": "O-1", "status": "delivered", "createdAt": iso(20)})
 
 	deleted, err := svc.Prune(ctx, time.Now(), appNow, service.DefaultRetention())
 	if err != nil {
@@ -125,7 +124,6 @@ func TestPruneDeletesOnlyWhatRetentionHasPassed(t *testing.T) {
 		`select id from stock_moves`:       {"mov-kept"},
 		`select id from integration_logs`:  {"log-kept"},
 		`select id from traffic`:           {"trf-kept"},
-		`select id from orders`:            {"ord-old"},
 	} {
 		if got := left(sql); !slices.Equal(got, want) {
 			t.Errorf("%s: %q, want %q", sql, got, want)

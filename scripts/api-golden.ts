@@ -597,6 +597,49 @@ run('orders/place drops tax from a brand that is not PKP', {
   customer: null,
 }, 'storefront')
 
+// Working-day calendar, added at the end so every case above keeps its output. The reducer counts
+// the seeded public holidays (PUBLIC_HOLIDAYS, which migration 0039 also seeds) and the brand's
+// closed days. These cases run around Christmas 2026, so they carry their own time.
+const runAt = (name: string, action: AppAction, when: string, by = 'usr-budi') => {
+  const after = reduce(state, { action, meta: { by, at: when } })
+  cases.push({ name, action, by, at: when, ...diff(state, after) })
+  state = after
+}
+const xmas = (day: number, hour = 10) => `2026-12-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00+07:00`
+runAt('tenants/setClosedDays', { type: 'tenants/setClosedDays', tenantId: lari, closedDays: ['2026-12-29', ' 2026-12-29', '2026-12-31'] }, xmas(1), 'usr-andi')
+runAt('tenants/setClosedDays refused for a bad date', { type: 'tenants/setClosedDays', tenantId: lari, closedDays: ['2026-12-32'] }, xmas(1, 11), 'usr-andi')
+runAt('tenants/setShopSettings two days for the calendar', shopSettings(2, []), xmas(1, 12), 'usr-andi')
+const holidayOrder = fresh('ord-golden-hol', {
+  lines: [line],
+  subtotal: line.qty * line.price,
+  discount: 0,
+  total: line.qty * line.price + template.shipping,
+  createdAt: xmas(21),
+  events: [{ id: 'oev-ord-golden-hol', at: xmas(21), by: 'storefront', status: 'new', note: 'Placed' }],
+})
+runAt('orders/place before Christmas', { type: 'orders/place', order: holidayOrder, customer: null }, xmas(21), 'storefront')
+for (const [i, step] of ['confirm', 'pay', 'process', 'pack', 'ship', 'deliver'].entries())
+  runAt(`orders/advance ${step} before Christmas`, { type: 'orders/advance', id: holidayOrder.id }, xmas(i < 5 ? 22 : 23, 9 + i))
+const askHoliday = (id: string, reason: ReturnReason) =>
+  ({
+    type: 'returns/request' as const,
+    id,
+    orderId: holidayOrder.id,
+    items: [{ variantId: line.variantId, qty: 1, reason }],
+    note: '',
+    who: 'shopper' as const,
+  })
+// Delivered Wednesday 23 December: the 24th and 25th are holidays, so the 2 working days are Monday
+// 28 and Wednesday 30 (the brand closed the 29th). The 2-day brand window ended on the 25th.
+runAt('returns/request refused changed mind after the brand window', askHoliday('ret-golden-hol-1', 'changed_mind'), xmas(28), 'storefront')
+runAt('returns/request damaged across a public holiday', askHoliday('ret-golden-hol-2', 'damaged'), xmas(30, 20), 'storefront')
+runAt('tickets/open across a public holiday', {
+  type: 'tickets/open',
+  complaint: { id: 'tic-golden-hol', tenantId: lari, customerId: null, orderId: null, subject: 'Parcel late', message: 'My parcel has not arrived after a week.', contact },
+}, xmas(23), 'storefront')
+runAt('tenants/setShopSettings back after the calendar', shopSettings(14, []), xmas(31, 12), 'usr-andi')
+runAt('tenants/setClosedDays cleared', { type: 'tenants/setClosedDays', tenantId: lari, closedDays: [] }, xmas(31, 13), 'usr-andi')
+
 const generated = new Set<string>()
 const seedIds = new Set<string>()
 for (const key of Object.keys(seedState()) as Collection[])

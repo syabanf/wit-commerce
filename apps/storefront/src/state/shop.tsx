@@ -1,4 +1,4 @@
-import { nowMs } from '@rc/fixtures'
+import { type ClosedDays, closedDaysOf, nowMs } from '@rc/fixtures'
 import type { AppAction } from '@rc/fixtures'
 import type { Customer, Order, OrderReturn, Seller, Tenant } from '@rc/types'
 import {
@@ -10,9 +10,10 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { setStoreLanguage, t } from '../i18n'
+import { setStoreLanguage } from '../i18n'
+import { problemText } from '../i18n/refusals'
 import { type CartApi, type CartTotals, cartTotals, useCartStore } from '../lib/cart'
-import { ApiError, type Delta, type PaymentLink, type ShopperResponse } from '@rc/api'
+import { type Delta, type PaymentLink, type ShopperResponse } from '@rc/api'
 import { HTTP, api, setCurrentTenant, shopperToken } from '../lib/api'
 import { EMBED } from '../lib/embed'
 import { type Catalog, buildCatalog } from '../lib/catalog'
@@ -66,12 +67,15 @@ export interface ShopValue {
   paysOnline: (paymentTypeId?: string | null) => boolean
   /** API mode: the payment pages of the shopper's orders still waiting for payment, by order id. */
   payments: Record<string, PaymentLink>
+  /** Public holidays and the store's closed days, which working-day deadlines skip. */
+  closedDays: ClosedDays
+  /** API mode: reads the store's dataset again, as after its terms changed. */
+  reloadStore: () => void
 }
 
 const ShopContext = createContext<ShopValue | null>(null)
 
 /** The app clock, refreshed every `ms`, for countdowns and promotion windows. */
-const failure = (err: unknown) => (err instanceof ApiError ? err.message : t('account.noAnswer'))
 
 export function useNow(ms = 60_000) {
   const [now, setNow] = useState(nowMs)
@@ -86,7 +90,7 @@ export function useNow(ms = 60_000) {
 export function ShopProvider({ tenant, children }: { tenant: Tenant; children: ReactNode }) {
   // Before paint, so a store set to English never flashes in Indonesian.
   useLayoutEffect(() => setStoreLanguage(tenant.storeLanguage), [tenant.storeLanguage])
-  const { state, send, loadStore, merge, onlinePayments, currencyRates } = useStore()
+  const { state, send, loadStore, merge, onlinePayments, currencyRates, holidays, reloadStore } = useStore()
   const now = useNow()
   // API mode: this store's dataset and event stream, and the token requests carry.
   useEffect(() => {
@@ -167,6 +171,24 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per signed-in shopper
   }, [customerId, tenant.id, accountVersion])
+  // API mode: brand voucher codes stay off the public dataset, so a typed code fetches its promotion
+  // and the cart prices it like any other. An unknown code stays unknown and the cart says so.
+  const voucher = cart.cart.voucher?.trim().toUpperCase() ?? ''
+  useEffect(() => {
+    if (!HTTP || !voucher || state.promotions.some((p) => p.code.toUpperCase() === voucher)) return
+    let cancelled = false
+    api.shop
+      .voucher(tenant.subdomain, voucher)
+      .then((promotion) => {
+        if (!cancelled)
+          merge({ promotions: [...state.promotions.filter((p) => p.id !== promotion.id), promotion] })
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per typed code
+  }, [voucher, tenant.subdomain])
   const referral = catalog.sellers.find((s) => s.id === referralId && s.status === 'active') ?? null
   const totals = useMemo(
     () => cartTotals(catalog, cart.cart, referral?.id ?? null, now),
@@ -183,7 +205,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
         setCustomerId(me.id)
         return null
       } catch (err) {
-        return failure(err)
+        return problemText(err)
       }
     }
     return {
@@ -215,7 +237,7 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
           setHasPassword(true)
           return null
         } catch (err) {
-          return failure(err)
+          return problemText(err)
         }
       },
       signOut: () => {
@@ -240,6 +262,8 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
       send,
       paysOnline: (id) => !!id && onlinePayments.includes(id),
       payments,
+      closedDays: closedDaysOf(holidays, tenant),
+      reloadStore,
     }
   }, [
     catalog,
@@ -263,6 +287,8 @@ export function ShopProvider({ tenant, children }: { tenant: Tenant; children: R
     send,
     onlinePayments,
     payments,
+    holidays,
+    reloadStore,
   ])
 
   return (

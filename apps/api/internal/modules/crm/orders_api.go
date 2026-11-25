@@ -3,8 +3,6 @@ package crm
 import (
 	"strings"
 
-	"github.com/jackc/pgx/v5"
-
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
@@ -86,14 +84,7 @@ func freeCustomerCode(t *kernel.Tx, c *domain.Customer) error {
 		return err
 	}
 	prefix := strings.TrimRight(c.Code, "0123456789")
-	rows, err := t.Query(t.Ctx, `select code from customers where tenant_id = $1 and code like $2`, c.TenantID, prefix+"%")
-	if err != nil {
-		return err
-	}
-	codes, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return err
-	}
-	c.Code = ids.NextCode(codes, prefix, len(c.Code)-len(prefix))
-	return nil
+	highest, err := store.HighestCode(t.Ctx, t.Tx, "customers", c.TenantID, prefix)
+	c.Code = ids.NextCode([]string{highest}, prefix, len(c.Code)-len(prefix))
+	return err
 }

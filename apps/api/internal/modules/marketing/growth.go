@@ -24,8 +24,8 @@ func audience(t *kernel.Tx, tenantID string, segmentID *string, now int64) (int,
 	if segmentID == nil {
 		return 0, nil
 	}
-	customers, err := crm.SegmentAudience(t, tenantID, *segmentID, now)
-	return len(customers), err
+	size, _, err := crm.SegmentReach(t, tenantID, *segmentID, now)
+	return size, err
 }
 
 // LaunchCampaign is campaigns/launch: it runs now, or waits for its start.

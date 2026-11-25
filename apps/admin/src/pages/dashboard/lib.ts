@@ -1,5 +1,6 @@
 import { HOUR, nowMs, stockState, toMs } from '@rc/fixtures'
 import type { Order } from '@rc/types'
+import { LIVE_INTEGRATIONS } from '@rc/types'
 import type { Scoped } from '../../state/scoped'
 
 export const toFulfil = (o: Order) =>
@@ -40,7 +41,9 @@ export function attentionQueues(s: Scoped, now: number, abandoned: number): Queu
     {
       key: 'failing',
       label: 'Integrations failing',
-      count: s.integrations.filter((i) => i.enabled && i.health === 'failing').length,
+      count: s.integrations.filter(
+        (i) => i.enabled && i.health === 'failing' && LIVE_INTEGRATIONS.includes(i.provider),
+      ).length,
       to: '/integrations',
       urgent: true,
     },

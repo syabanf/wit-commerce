@@ -5,6 +5,7 @@ import {
   type Envelope,
   loadLocalState,
   nowIso,
+  PUBLIC_HOLIDAY_DATES,
   reduce,
   saveLocalState,
   syncClock,
@@ -42,6 +43,10 @@ interface StoreValue {
   onlinePayments: string[]
   /** API mode: rates for the store's display currencies; the local mode uses the built-in ones. */
   currencyRates: ShopRate[]
+  /** Public holiday dates working-day deadlines skip; the built-in list until the API answers. */
+  holidays: readonly string[]
+  /** API mode: reads the open store's dataset again, as after its terms changed. */
+  reloadStore: () => void
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -100,6 +105,8 @@ function LocalStateProvider({ children }: { children: ReactNode }) {
       ready: true,
       onlinePayments: [],
       currencyRates: [],
+      holidays: PUBLIC_HOLIDAY_DATES,
+      reloadStore: noop,
     }),
     [shown, send],
   )
@@ -116,6 +123,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false)
   const [onlinePayments, setOnlinePayments] = useState<string[]>([])
   const [currencyRates, setCurrencyRates] = useState<ShopRate[]>([])
+  const [holidays, setHolidays] = useState<readonly string[]>(PUBLIC_HOLIDAY_DATES)
   const current = useRef<{ subdomain: string; tenantId: string } | null>(null)
 
   useEffect(() => {
@@ -141,24 +149,34 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
 
   const merge = useCallback((loaded: Partial<AppState>) => setState((s) => mergeState(s, loaded)), [])
 
-  const loadStore = useCallback((subdomain: string, tenantId: string) => {
-    current.current = { subdomain, tenantId }
-    let cancelled = false
+  const readStore = useCallback((subdomain: string, live: () => boolean) => {
     api.shop
       .state(subdomain)
-      .then(({ state: loaded, now, onlinePayments: online, currencyRates: rates }) => {
-        if (cancelled) return
+      .then(({ state: loaded, now, onlinePayments: online, currencyRates: rates, holidays: days }) => {
+        if (!live()) return
         syncClock(now)
         setOnlinePayments(online ?? [])
         setCurrencyRates(rates ?? [])
+        if (days) setHolidays(days)
         // The tenants list stays whole; everything else is this store's.
         const { tenants: _tenants, ...rest } = loaded
         setState((s) => mergeState(s, rest))
       })
       .catch((err: unknown) => {
         console.error('store did not load', err)
-        if (!cancelled) setOffline(true)
+        if (live()) setOffline(true)
       })
+  }, [])
+
+  const reloadStore = useCallback(() => {
+    const store = current.current
+    if (store) readStore(store.subdomain, () => current.current?.subdomain === store.subdomain)
+  }, [readStore])
+
+  const loadStore = useCallback((subdomain: string, tenantId: string) => {
+    current.current = { subdomain, tenantId }
+    let cancelled = false
+    readStore(subdomain, () => !cancelled)
     api.shop
       .demoCustomers(subdomain)
       .then(({ customers }) => !cancelled && setState((s) => mergeState(s, { customers })))
@@ -176,7 +194,7 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
       close()
       if (current.current?.subdomain === subdomain) current.current = null
     }
-  }, [])
+  }, [readStore])
 
   const send = useCallback(async (action: AppAction) => {
     if (action.type === 'system/tick') return null
@@ -194,8 +212,8 @@ function ApiStateProvider({ children }: { children: ReactNode }) {
   const preview = usePreview()
   const shown = useMemo(() => (preview ? { ...state, ...preview } : state), [state, preview])
   const value = useMemo<StoreValue>(
-    () => ({ state: shown, send, loadStore, merge, ready, onlinePayments, currencyRates }),
-    [shown, send, loadStore, merge, ready, onlinePayments, currencyRates],
+    () => ({ state: shown, send, loadStore, merge, ready, onlinePayments, currencyRates, holidays, reloadStore }),
+    [shown, send, loadStore, merge, ready, onlinePayments, currencyRates, holidays, reloadStore],
   )
   // Pages read the tenant list on their first render; the canvas waits for it.
   if (offline) return <StoreOffline />

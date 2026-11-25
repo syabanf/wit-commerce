@@ -16,6 +16,7 @@ import { type FormEvent, type ReactNode, useId, useState } from 'react'
 import { Link } from 'react-router'
 import { type MessageKey, t, tp } from '../i18n'
 import { isBuyable, sortProducts } from '../lib/catalog'
+import { returnsPolicy } from '../lib/policy'
 import { paths } from '../lib/paths'
 import { readRaw, writeStored } from '../lib/storage'
 import { useShop } from '../state/shop'
@@ -23,12 +24,6 @@ import { useTheme } from '../themes/registry'
 import { type HeadingProps, PlainHeading, RAIL, lgCols, sellerKindLabel } from './sections'
 
 type Heading = (p: HeadingProps) => ReactNode
-
-const RETURNS: Partial<Record<Industry, { title: MessageKey; text: MessageKey }>> = {
-  sport: { title: 'catalog.benefit.returns14', text: 'catalog.benefit.returns.sport' },
-  beauty: { title: 'catalog.benefit.returns14', text: 'catalog.benefit.returns.beauty' },
-  industrial: { title: 'catalog.benefit.returnsParts', text: 'catalog.benefit.returns.industrial' },
-}
 
 /** Short method names, so the ways-to-pay line fits one line in the strip. */
 const PAY_SHORT: Record<PaymentMethod, MessageKey> = {
@@ -50,14 +45,14 @@ export function BenefitsStrip() {
   const pays = catalog.paymentTypes.filter((p) => p.enabled).sort((a, b) => a.sort - b.sort)
   const points = tenant.loyalty.pointsPer10k
   const bpom = catalog.attributes.find((a) => a.code === 'bpom_number')
-  const returns = RETURNS[tenant.industry] ?? RETURNS.sport!
+  const returns = returnsPolicy(tenant)
   const items = [
     {
       icon: Truck,
       title: t('catalog.benefit.freeShipping'),
       text: t('catalog.benefit.freeShippingText', { amount: fmtIdr(tenant.loyalty.freeShippingMin) }),
     },
-    { icon: RotateCcw, title: t(returns.title), text: t(returns.text) },
+    { icon: RotateCcw, title: returns.title, text: returns.text },
     ...(tenant.industry === 'beauty'
       ? [
           {

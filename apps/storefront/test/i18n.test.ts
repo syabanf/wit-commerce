@@ -6,6 +6,7 @@ import * as catalog from '../src/i18n/areas/catalog'
 import * as checkout from '../src/i18n/areas/checkout'
 import * as common from '../src/i18n/areas/common'
 import * as payment from '../src/i18n/areas/payment'
+import * as refusal from '../src/i18n/areas/refusal'
 import * as shell from '../src/i18n/areas/shell'
 import * as theme from '../src/i18n/areas/theme'
 import { en } from '../src/i18n/en'
@@ -13,7 +14,7 @@ import { id } from '../src/i18n/id'
 import { chooseLanguage, currentLang, setStoreLanguage, t, tp } from '../src/i18n'
 import { etaLabel, fmtDate } from '../src/i18n/format'
 
-const areas = { account, agent, catalog, checkout, common, payment, shell, theme }
+const areas = { account, agent, catalog, checkout, common, payment, refusal, shell, theme }
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 
 test('both dictionaries have the same keys, none empty', () => {
@@ -61,4 +62,27 @@ test('plurals pick the form and format the count', () => {
   assert.match(tp(key, 1200), /1,200/)
   chooseLanguage('id')
   assert.match(tp(key, 1200), /1\.200/)
+})
+
+test('a name that ends in a full stop, ! or ? never doubles the full stop after it', () => {
+  for (const lang of ['id', 'en'] as const) {
+    chooseLanguage(lang)
+    for (const store of ['Lari Running Co.', 'Yay!', 'Why?']) {
+      for (const text of [
+        t('agent.ask.greeting', { store }),
+        t('agent.thread.greeting', { name: 'Rina', store }),
+        t('agent.thread.greetingGuest', { store, next: 'Go.' }),
+      ]) {
+        assert.ok(text.includes(store), text)
+        assert.doesNotMatch(text, /[.!?]\./, text)
+      }
+    }
+  }
+  chooseLanguage('id')
+  assert.equal(
+    t('agent.ask.greeting', { store: 'Lari Running Co.' }),
+    'Halo, saya asisten Lari Running Co. Ceritakan apa yang Anda cari, atau pilih di bawah.',
+  )
+  assert.equal(t('shell.greeting.welcomeBack', { name: 'Rina' }), 'Selamat datang kembali, Rina.')
+  chooseLanguage('en')
 })

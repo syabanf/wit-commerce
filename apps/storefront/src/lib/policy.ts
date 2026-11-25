@@ -1,27 +1,20 @@
-import type { Industry } from '@rc/types'
+import { LEGAL_RETURN_WORKING_DAYS, returnWindowDays } from '@rc/fixtures'
+import type { Tenant } from '@rc/types'
 import { t } from '../i18n'
 
 /**
- * The returns rule each industry's stores state in footers, FAQs and the benefits strip. Each entry is
- * a getter, so it reads the shopper's language when a page renders it.
+ * The return rule footers, FAQs and the benefits strip state, from the brand's return window and the
+ * PP 80/2019 Pasal 69(1) floor, so no page promises a window the store does not keep.
  */
-export const RETURNS_POLICY: Record<Industry, string> = {
-  get sport() {
-    return t('account.policy.sport')
-  },
-  get fashion() {
-    return t('account.policy.fashion')
-  },
-  get beauty() {
-    return t('account.policy.beauty')
-  },
-  get electronics() {
-    return t('account.policy.electronics')
-  },
-  get industrial() {
-    return t('account.policy.industrial')
-  },
-  get fnb() {
-    return t('account.policy.fnb')
-  },
+export function returnsPolicy(tenant: Pick<Tenant, 'returnWindowDays'>) {
+  const days = returnWindowDays(tenant)
+  const legal = LEGAL_RETURN_WORKING_DAYS
+  return {
+    /** One sentence for footers and FAQs. */
+    sentence:
+      days > 0 ? t('account.policy.window', { days, legal }) : t('account.policy.byMessage', { legal }),
+    /** A short title and line for the benefits strip. */
+    title: days > 0 ? t('catalog.benefit.returnsDays', { days }) : t('catalog.benefit.returnsLegal'),
+    text: t('catalog.benefit.returnsFloor', { legal }),
+  }
 }

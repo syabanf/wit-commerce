@@ -66,6 +66,7 @@ import { ORDER_STATUS_LABEL, SHOPPER_EMAIL_KINDS, STORE_LANGUAGES } from '@rc/ty
 import { cleanMenus, cleanSellerProfile, menusBlocker, sellerProfileBlocker } from './content'
 import { isDisplayCurrency } from './currency'
 import { domainProblem, domainTaken } from './domains'
+import { closedDaysBlocker, closedDaysOf, normalizeClosedDays, PUBLIC_HOLIDAY_DATES } from './holidays'
 import {
   type ComplaintInput,
   addWorkingDays,
@@ -207,6 +208,8 @@ export type AppAction =
   | { type: 'tenants/setLegal'; tenantId: string; legal: SellerLegal }
   /** Delivery days per courier; an empty map brings back the platform's estimates. */
   | { type: 'tenants/setCourierEta'; tenantId: string; courierEtaDays: Partial<Record<Courier, EtaDays>> }
+  /** Days the brand is closed besides weekends and public holidays; an empty list clears them. */
+  | { type: 'tenants/setClosedDays'; tenantId: string; closedDays: string[] }
   /** Whether the brand charges PPN, how prices hold it, and per product or category overrides. */
   | { type: 'tenants/setTax'; tenantId: string; tax: TaxSettings }
   /** Connects a custom domain, or disconnects it with null. The API issues its own token. */
@@ -822,6 +825,16 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         ),
       }
     }
+    case 'tenants/setClosedDays': {
+      const days = normalizeClosedDays(action.closedDays)
+      if (closedDaysBlocker(days) || !state.tenants.some((t) => t.id === action.tenantId)) return state
+      return {
+        ...state,
+        tenants: patch(state.tenants, action.tenantId, ({ closedDays: _, ...t }) =>
+          days.length ? { ...t, closedDays: days } : t,
+        ),
+      }
+    }
     case 'tenants/setTax': {
       const tax = normalizeTax(action.tax)
       const tenant = state.tenants.find((t) => t.id === action.tenantId)
@@ -1257,7 +1270,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
     case 'orders/place': {
       const { customer } = action
       // A shopper's browser never decides that an order is paid.
-      const placed = by === 'storefront' ? shopperPlacement(action.order) : action.order
+      const placed = by === 'storefront' ? shopperPlacement(action.order, at) : action.order
       // The brand's PPN settings decide the order's tax, whatever the client sent.
       const order = withOrderTax(
         placed,
@@ -1317,7 +1330,15 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       const own = state.returns.filter((r) => r.tenantId === order.tenantId)
       if (
         !tenant ||
-        returnRequestBlocker(order, own, action.items, action.who, toMs(at), returnWindowDays(tenant))
+        returnRequestBlocker(
+          order,
+          own,
+          action.items,
+          action.who,
+          toMs(at),
+          returnWindowDays(tenant),
+          closedDaysOf(PUBLIC_HOLIDAY_DATES, tenant),
+        )
       )
         return state
       const code = nextCode(
@@ -1633,7 +1654,7 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         channel: 'web',
         assigneeId: null,
         createdAt: at,
-        slaDueAt: addWorkingDays(at, complaintDays(tenant)),
+        slaDueAt: addWorkingDays(at, complaintDays(tenant), closedDaysOf(PUBLIC_HOLIDAY_DATES, tenant)),
         resolvedAt: null,
         message: c.message.trim(),
         contact: trimContact(c.contact),

@@ -15,6 +15,9 @@ import type {
 } from '@rc/types'
 import type { Lead, PrivacyRequest, PrivacyRequestKind, Ticket } from '@rc/types'
 import type { Product } from '@rc/types'
+import type { PublicHoliday } from '@rc/types'
+import type { Promotion } from '@rc/types'
+import { withListedOrders } from './orderList'
 
 // The HTTP client for apps/api. Every reducer action maps to one request (actionRequest), every
 // answer is a Delta the app lays over its AppState (applyDelta), and the event stream delivers the
@@ -118,6 +121,12 @@ export function actionRequest(action: AppAction, store?: string): ActionRequest 
         method: 'PUT',
         path: `/tenants/${action.tenantId}/courier-eta`,
         body: { courierEtaDays: action.courierEtaDays },
+      }
+    case 'tenants/setClosedDays':
+      return {
+        method: 'PUT',
+        path: `/tenants/${action.tenantId}/closed-days`,
+        body: { closedDays: action.closedDays },
       }
     case 'tenants/setDomain':
       // The server issues its own token, so the client's never leaves the browser.
@@ -484,6 +493,19 @@ export interface StateResponse {
   onlinePayments?: string[]
   /** A store's state: rates for the store's display currencies, units per 1 IDR. */
   currencyRates?: ShopRate[]
+  /** A store's state: public holiday dates (YYYY-MM-DD) that working-day deadlines skip. */
+  holidays?: string[]
+}
+
+/** A public holiday as the platform keeps it, with who saved it last. */
+export interface PlatformHoliday extends PublicHoliday {
+  updatedBy: string | null
+  updatedAt: string | null
+}
+
+/** GET /settings/holidays: every public holiday, oldest first. */
+export interface HolidaysResponse {
+  holidays: PlatformHoliday[]
 }
 
 export interface StaffInput {
@@ -1512,7 +1534,7 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       apply: (id: string, batch?: number) =>
         call<ProductImport>('POST', `/product-imports/${id}/apply`, { batch: batch ?? 0 }),
     },
-    state: () => call<StateResponse>('GET', '/state'),
+    state: () => call<StateResponse>('GET', '/state').then(withListedOrders),
     /** Sends an action; the answer is the delta it produced. */
     send: (action: AppAction, store?: string) => {
       const { method, path, body } = actionRequest(action, store)
@@ -1549,6 +1571,15 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       /** An empty secret keeps the saved one; both empty turns the check off. */
       save: (input: { siteKey: string; secret: string }) =>
         call<CaptchaSettings>('PUT', '/settings/captcha', input),
+    },
+    holidays: {
+      /** Every public holiday, for anyone signed in. */
+      list: () => call<HolidaysResponse>('GET', '/settings/holidays'),
+      /** Adds or replaces the holiday on that date (platform admin). */
+      save: (date: string, input: Omit<PublicHoliday, 'date'>) =>
+        call<HolidaysResponse>('PUT', `/settings/holidays/${date}`, input),
+      /** Removes the holiday on that date (platform admin). */
+      remove: (date: string) => call<HolidaysResponse>('DELETE', `/settings/holidays/${date}`),
     },
     plans: {
       /** The catalog, every brand's plan, requests and invoices (platform admin). */
@@ -1648,6 +1679,9 @@ export function createApi({ baseUrl, getToken }: ApiOptions) {
       /** The top products and categories for what a shopper has typed so far. */
       suggest: (store: string, q: string) =>
         call<ShopSuggestResult>('GET', `/shop/${store}/suggest?q=${encodeURIComponent(q)}`),
+      /** The brand promotion a typed voucher code opens; brand codes stay out of the public dataset. */
+      voucher: (store: string, code: string) =>
+        call<Promotion>('GET', `/shop/${store}/vouchers/${encodeURIComponent(code.trim())}`),
       /** Stores the signed-in shopper's image of a payment, for the proof of a payment confirmation. */
       uploadPaymentProof: (store: string, file: File) => {
         const form = new FormData()

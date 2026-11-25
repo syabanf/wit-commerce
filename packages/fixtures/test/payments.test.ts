@@ -42,7 +42,7 @@ const report = (amount: number) => ({ amount, channel: 'BCA', senderName: 'Rina'
 
 describe('payments', () => {
   it('places a shopper order unpaid, whatever the browser sent', () => {
-    const placed = shopperPlacement(browserPaid())
+    const placed = shopperPlacement(browserPaid(), browserPaid().createdAt)
     assert.equal(placed.status, 'confirmed')
     assert.equal(placed.paymentStatus, 'pending')
     assert.deepEqual(
@@ -81,7 +81,7 @@ describe('payments', () => {
   })
 
   it('keeps the payment window open while staff check, and reopens it after a rejection', () => {
-    const order = shopperPlacement(browserPaid())
+    const order = shopperPlacement(browserPaid(), browserPaid().createdAt)
     const window = 24 * HOUR
     assert.equal(paymentWindowOpen(order, now + 25 * HOUR, window), false)
     const checking: Order = {

@@ -35,6 +35,9 @@ type Scope struct {
 	// Keep, when set, decides row by row. It sees customer rows before the rest of a change, and
 	// runs under the hub's lock, so it may keep state of its own.
 	Keep func(collection string, data json.RawMessage) bool
+	// Shape, when set, rewrites each kept row before it is sent, such as dropping fields the
+	// subscriber may not read. A nil result drops the row.
+	Shape func(collection string, data json.RawMessage) json.RawMessage
 }
 
 func (s Scope) tenant(id string) bool {
@@ -66,9 +69,16 @@ func (s Scope) Filter(c Change) (map[string]any, bool) {
 			continue
 		}
 		for _, r := range c.Upserts[collection] {
-			if s.tenant(r.TenantID) && (s.Keep == nil || s.Keep(collection, r.Data)) {
-				upserts[collection] = append(upserts[collection], r.Data)
+			if !s.tenant(r.TenantID) || (s.Keep != nil && !s.Keep(collection, r.Data)) {
+				continue
 			}
+			data := r.Data
+			if s.Shape != nil {
+				if data = s.Shape(collection, data); data == nil {
+					continue
+				}
+			}
+			upserts[collection] = append(upserts[collection], data)
 		}
 	}
 	for collection, ids := range c.Removes {

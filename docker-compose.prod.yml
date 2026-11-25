@@ -91,6 +91,9 @@ services:
       RETAIN_TRAFFIC_YEARS: ${RETAIN_TRAFFIC_YEARS:-}
       RETAIN_AUDIT_LOG_YEARS: ${RETAIN_AUDIT_LOG_YEARS:-}
       RETAIN_PRODUCT_IMPORTS_DAYS: ${RETAIN_PRODUCT_IMPORTS_DAYS:-}
+      RETAIN_TRANSACTIONS_YEARS: ${RETAIN_TRANSACTIONS_YEARS:-}
+      RETAIN_CUSTOMERS_YEARS: ${RETAIN_CUSTOMERS_YEARS:-}
+      RETAIN_PRIVACY_REQUESTS_YEARS: ${RETAIN_PRIVACY_REQUESTS_YEARS:-}
     # Uploaded images, written by the API as uid 10001 with mode 0644 and served by web from the same
     # place. An absolute path is a host folder, which deploy-prod.sh creates and hands to uid 10001;
     # a plain name such as "media" is a Docker volume instead.

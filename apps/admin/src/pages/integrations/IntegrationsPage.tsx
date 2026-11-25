@@ -1,6 +1,6 @@
 import { fmtAgo, fmtNumber, fmtWhen, plural, toMs } from '@rc/fixtures'
 import type { Integration, IntegrationCategory, IntegrationLog } from '@rc/types'
-import { INTEGRATION_CATEGORY_LABEL } from '@rc/types'
+import { INTEGRATION_CATEGORY_LABEL, LIVE_INTEGRATIONS } from '@rc/types'
 import {
   Badge,
   Banner,
@@ -231,10 +231,10 @@ export function IntegrationsPage() {
         description="Payment, courier, ERP, messaging and marketplace connections for this brand, with the events they exchange."
       />
       <div className="space-y-4">
-        <Banner tone="neutral" title="Who owns which data">
-          Payments settle in the payment gateway, invoices and accounting live in the ERP, and marketplace
-          orders are imported here and fulfilled like any other order. Couriers own tracking; WIT Commerce owns
-          products, stock, customers and orders.
+        <Banner tone="neutral" title="What is connected today">
+          WIT Commerce takes payments and refunds through Midtrans. Couriers, ERPs, messaging and marketplaces
+          are listed so you can plan them and store their credentials; they start exchanging data in a later
+          release.
         </Banner>
 
         <PillTabs
@@ -373,6 +373,8 @@ function ConnectionCard({
   onSync: () => void
 }) {
   const [editing, setEditing] = useState(false)
+  // A provider WIT Commerce does not talk to yet shows no health, counts or sync: those are examples.
+  const live = LIVE_INTEGRATIONS.includes(i.provider)
   return (
     <Card id={`integration-${i.id}`} className={cn('p-5 flex flex-col', focused && 'ring-2 ring-accent')}>
       <div className="gap-3 flex items-start justify-between">
@@ -383,53 +385,64 @@ function ConnectionCard({
             <p className="text-xs text-muted">{INTEGRATION_CATEGORY_LABEL[i.category]}</p>
           </div>
         </div>
-        <HealthBadge health={i.health} />
+        {live ? <HealthBadge health={i.health} /> : <Badge variant="outline">Coming soon</Badge>}
       </div>
       <p className="mt-3 text-xs truncate font-mono text-muted" title={i.endpoint}>
         {i.endpoint}
       </p>
-      <div className="mt-3 gap-2 text-xs flex flex-wrap items-center justify-between text-muted">
-        <span>Last sync {i.lastSyncAt ? fmtAgo(i.lastSyncAt, now) : 'never'}</span>
-        <span className="tabular-nums">
-          {plural(i.events24h, 'event')} ·{' '}
-          <span className={cn(i.errors24h > 0 && 'font-semibold text-accent-strong')}>
-            {plural(i.errors24h, 'error')}
-          </span>{' '}
-          in 24 h
-        </span>
-      </div>
-      {i.health === 'failing' ? (
-        <div className="mt-3 gap-2 rounded-2xl px-3 py-2 flex flex-wrap items-center justify-between bg-danger-soft">
-          <p className="min-w-0 text-sm flex-1 text-accent-strong">{i.note}</p>
-          {manage && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                toast('Reconnect link sent', {
-                  description: `The ${i.provider} shop owner got an authorisation link by email. Orders resume once they approve it.`,
-                })
-              }
-            >
-              Reconnect
-            </Button>
-          )}
-        </div>
+      {!live ? (
+        <p className="mt-3 text-sm text-body">
+          WIT Commerce does not exchange data with {i.provider} yet. You can store its credentials now; they
+          are used once the connection ships.
+        </p>
       ) : (
-        <p className="mt-3 text-sm text-body">{i.note}</p>
+        <>
+          <div className="mt-3 gap-2 text-xs flex flex-wrap items-center justify-between text-muted">
+            <span>Last sync {i.lastSyncAt ? fmtAgo(i.lastSyncAt, now) : 'never'}</span>
+            <span className="tabular-nums">
+              {plural(i.events24h, 'event')} ·{' '}
+              <span className={cn(i.errors24h > 0 && 'font-semibold text-accent-strong')}>
+                {plural(i.errors24h, 'error')}
+              </span>{' '}
+              in 24 h
+            </span>
+          </div>
+          {i.health === 'failing' ? (
+            <div className="mt-3 gap-2 rounded-2xl px-3 py-2 flex flex-wrap items-center justify-between bg-danger-soft">
+              <p className="min-w-0 text-sm flex-1 text-accent-strong">{i.note}</p>
+              {manage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    toast('Reconnect link sent', {
+                      description: `The ${i.provider} shop owner got an authorisation link by email. Orders resume once they approve it.`,
+                    })
+                  }
+                >
+                  Reconnect
+                </Button>
+              )}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-body">{i.note}</p>
+          )}
+        </>
       )}
       {manage && (
         <div className="pt-4 mt-auto">
           <div className="gap-2 pt-4 flex flex-wrap items-center justify-between border-t border-border">
-            <label className="gap-2 text-sm flex items-center">
-              <Switch
-                size="sm"
-                checked={i.enabled}
-                aria-label={`Turn ${i.provider} on or off`}
-                onCheckedChange={onToggle}
-              />
-              {i.enabled ? 'On' : 'Off'}
-            </label>
+            {live && (
+              <label className="gap-2 text-sm flex items-center">
+                <Switch
+                  size="sm"
+                  checked={i.enabled}
+                  aria-label={`Turn ${i.provider} on or off`}
+                  onCheckedChange={onToggle}
+                />
+                {i.enabled ? 'On' : 'Off'}
+              </label>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -440,17 +453,19 @@ function ConnectionCard({
               <KeyRound />
               Credentials
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              loading={syncing}
-              disabled={!i.enabled}
-              title={i.enabled ? undefined : `Turn ${i.provider} on to sync it.`}
-              onClick={onSync}
-            >
-              <RefreshCw />
-              Sync now
-            </Button>
+            {live && (
+              <Button
+                variant="outline"
+                size="sm"
+                loading={syncing}
+                disabled={!i.enabled}
+                title={i.enabled ? undefined : `Turn ${i.provider} on to sync it.`}
+                onClick={onSync}
+              >
+                <RefreshCw />
+                Sync now
+              </Button>
+            )}
           </div>
         </div>
       )}

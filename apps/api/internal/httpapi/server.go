@@ -99,8 +99,10 @@ type Server struct {
 	assistantUsers, assistantTenants        *keyLimiter
 	complaintClients                        *keyLimiter
 	searchLogs                              *keyLimiter
+	voucherClients                          *keyLimiter
 	assistant                               *aimodule.AI
 	segments                                segmentCache
+	summaries                               summaryCache
 	media                                   *media.Media
 	mediaDisk                               media.Disk
 	currency                                *currency.Currency
@@ -119,6 +121,7 @@ func New(o Options) *Server {
 	s.assistantUsers, s.assistantTenants = newKeyLimiter(assistantRatePerUser), newPeriodLimiter(assistantDailyPerTenant, 24*time.Hour)
 	s.complaintClients = newPeriodLimiter(complaintsPerHour, time.Hour)
 	s.searchLogs = newKeyLimiter(searchLogsPerClient)
+	s.voucherClients = newKeyLimiter(voucherChecksPerClient)
 	s.passwords = auth.NewPasswordGate(o.PasswordSlots, o.PasswordWait)
 	s.shareLimits()
 	s.antispam = &antispam.Antispam{Runtime: s.svc.Runtime}
@@ -458,6 +461,7 @@ func (s *Server) publish(d *service.Delta) map[string]any {
 			_ = json.Unmarshal(raw, &keys)
 			upserts[collection] = append(upserts[collection], raw)
 			s.segments.forget(collection, keys.TenantID)
+			s.summaries.forget(collection, keys.TenantID)
 			for _, tenantID := range rowTenants(collection, keys.ID, keys.TenantID, keys.TenantIDs) {
 				change.Upserts[collection] = append(change.Upserts[collection], events.Row{TenantID: tenantID, Data: raw})
 			}

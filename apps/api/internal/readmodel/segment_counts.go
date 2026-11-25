@@ -36,3 +36,15 @@ func SegmentCounts(ctx context.Context, q Querier, tenantID string, segments []d
 	}
 	return counts[1:], counts[0], nil
 }
+
+// SegmentReach counts a segment's customers and those of them a marketing message may go to, in
+// one scan, as SegmentAudience filtered by rules.MarketingAllowed would. The cast on $2 types the
+// moment when no rule reads it.
+func SegmentReach(ctx context.Context, q Querier, tenantID string, segment domain.Segment, nowMs int64) (inSegment, reach int, err error) {
+	args := []any{tenantID, nowMs}
+	in := rules.SegmentSQL(segment, 2, &args)
+	err = q.QueryRow(ctx, `select count(*) filter (where `+in+`), count(*) filter (where `+in+` and `+rules.MarketingAllowedSQL+`)
+		from customers c left join customer_metrics m on m.customer_id = c.id
+		where c.tenant_id = $1 and $2::bigint is not null`, args...).Scan(&inSegment, &reach)
+	return inSegment, reach, err
+}

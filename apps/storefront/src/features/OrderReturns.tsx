@@ -12,12 +12,12 @@ import {
 import type { Order, OrderReturn, ReturnReason, ReturnStatus } from '@rc/types'
 import { RETURN_REASON_LABEL } from '@rc/types'
 import { useId, useState } from 'react'
-import { ApiError } from '@rc/api'
 import { Button, Field, Pill, inputClass } from '../components/ui'
 import { type MessageKey, t } from '../i18n'
+import { problemText, refusalText } from '../i18n/refusals'
 import { fmtDate, fmtDateTime } from '../i18n/format'
 import { useShop } from '../state/shop'
-import { returnBlockerText, returnReasonLabel, returnStatusLabel, shippingPayerLabel } from './accountLabels'
+import { returnReasonLabel, returnStatusLabel, shippingPayerLabel } from './accountLabels'
 
 const TONE: Record<ReturnStatus, 'accent' | 'primary' | 'soft' | 'dark'> = {
   requested: 'accent',
@@ -54,7 +54,7 @@ function refundLine(r: OrderReturn): string {
 
 /** The order's returns and, for a delivered order inside the window, the form to ask for one. */
 export function OrderReturns({ order }: { order: Order }) {
-  const { returns, catalog, customer, tenant, send } = useShop()
+  const { returns, catalog, customer, tenant, send, closedDays } = useShop()
   const uid = useId()
   const own = returns.filter((r) => r.orderId === order.id)
   const [open, setOpen] = useState(false)
@@ -68,8 +68,8 @@ export function OrderReturns({ order }: { order: Order }) {
   const delivered = order.status === 'delivered' || order.status === 'completed'
   // A damaged, wrong, late, defective or expired item always gets 2 working days (PP 80/2019 Pasal 69);
   // change of mind and fit follow the store's own window, which may be off.
-  const deadline = returnDeadline(order, windowDays, 'damaged')!
-  const choiceDeadline = returnDeadline(order, windowDays, 'changed_mind')
+  const deadline = returnDeadline(order, windowDays, 'damaged', closedDays)!
+  const choiceDeadline = returnDeadline(order, windowDays, 'changed_mind', closedDays)
   const left = returnableQty(order, own)
   const items = Object.entries(qty)
     .filter(([, n]) => n > 0)
@@ -77,9 +77,9 @@ export function OrderReturns({ order }: { order: Order }) {
   const canAsk = mine && delivered && nowMs() <= deadline && [...left.values()].some((n) => n > 0)
   const choiceOpen = choiceDeadline !== null && nowMs() <= choiceDeadline
   const refusal = items.length
-    ? returnRequestBlocker(order, own, items, 'shopper', nowMs(), windowDays)
+    ? returnRequestBlocker(order, own, items, 'shopper', nowMs(), windowDays, closedDays)
     : null
-  const blocker = refusal && returnBlockerText(refusal)
+  const blocker = refusal && refusalText(refusal)
 
   if (!own.length && !canAsk) return null
   const lines = order.lines.filter((l, i, all) => all.findIndex((x) => x.variantId === l.variantId) === i)
@@ -100,7 +100,7 @@ export function OrderReturns({ order }: { order: Order }) {
       setQty({})
       setNote('')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('account.noAnswer'))
+      setError(problemText(err))
     }
     setBusy(false)
   }

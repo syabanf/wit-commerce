@@ -4,6 +4,7 @@ import * as catalog from './areas/catalog'
 import * as checkout from './areas/checkout'
 import * as common from './areas/common'
 import * as payment from './areas/payment'
+import * as refusal from './areas/refusal'
 import * as shell from './areas/shell'
 import * as theme from './areas/theme'
 
@@ -17,6 +18,7 @@ export const en = {
   ...account.en,
   ...agent.en,
   ...payment.en,
+  ...refusal.en,
 }
 
 export type MessageKey = keyof typeof en

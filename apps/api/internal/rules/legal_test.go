@@ -12,13 +12,20 @@ import (
 func TestTermsVersionMatchesTheStorefront(t *testing.T) {
 	days, window := 5, 14
 	etas := map[string]domain.EtaDays{"jne": {Min: 1, Max: 2}, "pickup": {}}
-	tenant := domain.Tenant{Name: "Lari.", ReturnWindowDays: &window, CourierEtaDays: etas, Legal: &domain.SellerLegal{
+	tenant := domain.Tenant{ID: "ten-lari", Name: "Lari.", ReturnWindowDays: &window, CourierEtaDays: etas, Legal: &domain.SellerLegal{
 		EntityName: "PT Lari Nusantara", Address: "Jl. Senopati 10 · Kebayoran Baru", ComplaintDays: &days,
 	}}
-	if got := rules.TermsVersion(tenant); got != "1.b9b751ae" {
+	// Enabled payment types of the brand count; a disabled one and another brand's do not.
+	pays := []domain.PaymentType{
+		{TenantID: "ten-lari", Name: "QRIS", Method: "qris", Enabled: true},
+		{TenantID: "ten-lari", Name: "Bayar di tempat", Method: "cod", Enabled: true},
+		{TenantID: "ten-lari", Name: "Kartu kredit", Method: "credit_card"},
+		{TenantID: "ten-other", Name: "Transfer BCA", Method: "bank_transfer", Enabled: true},
+	}
+	if got := rules.TermsVersion(tenant, pays); got != "1.11fdac78" {
 		t.Errorf("filled: %s", got)
 	}
-	if got := rules.TermsVersion(domain.Tenant{Name: "Lari."}); got != "1.3052ede8" {
+	if got := rules.TermsVersion(domain.Tenant{Name: "Lari."}, nil); got != "1.098c9bd5" {
 		t.Errorf("empty: %s", got)
 	}
 }
@@ -33,7 +40,7 @@ func TestAddWorkingDaysSkipsWeekends(t *testing.T) {
 		{"2026-10-10T10:00:00+07:00", 1, "2026-10-12T10:00:00+07:00"}, // Saturday
 		{"2026-10-05T09:41:00+07:00", 0, "2026-10-05T09:41:00+07:00"},
 	} {
-		if got := rules.AddWorkingDays(c.at, c.n); got != c.want {
+		if got := rules.AddWorkingDays(c.at, c.n, nil); got != c.want {
 			t.Errorf("%s + %d: %s, want %s", c.at, c.n, got, c.want)
 		}
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/crm"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
@@ -13,9 +14,10 @@ import (
 // Complaint is a shopper's complaint from the storefront form.
 type Complaint = crm.Complaint
 
-// OpenTicket is tickets/open. The facade reads the tenant, whose code and complaint days shape the
-// ticket, and checks that a named order is the shopper's own: tickets belong to crm, orders and
-// tenants to other modules. It shadows crm's OpenTicket, so every caller passes these checks.
+// OpenTicket is tickets/open. The facade reads the tenant, whose code, complaint days and closed
+// days shape the ticket with the platform's holidays, and checks that a named order is the
+// shopper's own: tickets belong to crm, orders and tenants to other modules. It shadows crm's
+// OpenTicket, so every caller passes these checks.
 func (s *Service) OpenTicket(ctx context.Context, m Meta, c Complaint) (*Delta, error) {
 	tenant, err := store.Get[domain.Tenant](ctx, s.DB.Pool, "tenants", c.TenantID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -33,5 +35,9 @@ func (s *Service) OpenTicket(ctx context.Context, m Meta, c Complaint) (*Delta, 
 			return nil, Invalid{Reason: "Pick one of your own orders, or leave the order out."}
 		}
 	}
-	return s.CRM.OpenTicket(ctx, m, c, tenant.Code, rules.ComplaintDays(tenant))
+	closed, err := identity.Calendar(ctx, s.DB.Pool, tenant)
+	if err != nil {
+		return nil, err
+	}
+	return s.CRM.OpenTicket(ctx, m, c, tenant.Code, rules.ComplaintDays(tenant), closed)
 }

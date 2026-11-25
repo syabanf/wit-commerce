@@ -27,7 +27,7 @@ import { SuggestInput } from '../../components/SearchSuggest'
 import { useStoreMenu } from '../../lib/menus'
 import { paths } from '../../lib/paths'
 import { MenuLink } from '../../components/MenuLink'
-import { RETURNS_POLICY } from '../../lib/policy'
+import { returnsPolicy } from '../../lib/policy'
 import { useShop } from '../../state/shop'
 import { CurrencySwitcher } from '../../components/Money'
 import { SellerIdentity } from '../../components/SellerIdentity'
@@ -272,7 +272,7 @@ function Footer() {
               <span className="whitespace-nowrap">{fmtIdr(tenant.loyalty.freeShippingMin)}</span>.
             </li>
             <li>{t('shell.footer.couriers')}</li>
-            <li>{RETURNS_POLICY[tenant.industry]}</li>
+            <li>{returnsPolicy(tenant).sentence}</li>
           </ul>
         </div>
         <div className="min-w-0">

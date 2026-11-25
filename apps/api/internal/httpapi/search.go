@@ -104,7 +104,12 @@ func (s *Server) shopSearch(w http.ResponseWriter, r *http.Request) {
 			s.publish(d)
 		}
 	}
-	writeJSON(w, http.StatusOK, res)
+	out, err := publicSearch(res)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 // shopSuggest is GET /shop/{store}/suggest: the top products and categories for what a shopper has

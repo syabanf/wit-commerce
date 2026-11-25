@@ -363,6 +363,7 @@ func (db *DB) Truncate(ctx context.Context) error {
 	names = append(names, "payment_refunds")
 	names = append(names, "order_invoices")
 	names = append(names, "audit_log", "product_imports")
+	names = append(names, "public_holidays")
 	_, err := db.Pool.Exec(ctx, `truncate `+strings.Join(names, ", "))
 	return err
 }

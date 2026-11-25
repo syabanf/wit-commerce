@@ -23,7 +23,7 @@ func ForgetCustomer(ctx context.Context, tx pgx.Tx, customerID, email string) er
 	if _, err := tx.Exec(ctx, `delete from email_outbox where lower("to") = $1 and sent_at is null`, email); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `update email_outbox set "to" = 'erased', subject = '', html = '', text = '' where lower("to") = $1`, email)
+	_, err := tx.Exec(ctx, `update email_outbox set "to" = 'erased', subject = '', html = '', text = '', headers = '{}' where lower("to") = $1`, email)
 	return err
 }
 
@@ -41,5 +41,16 @@ func ComposeMarketing(b Branding, lang, to string, e Email, unsubscribeURL strin
 		e.Footer = Say(lang, "marketing.footer", b.Name)
 	}
 	body, text := Render(b, e)
-	return mail.Message{To: to, Subject: e.Title, Text: text, HTML: body}
+	return mail.Message{To: to, Subject: e.Title, Text: text, HTML: body, Headers: ListUnsubscribe(unsubscribeURL, b.Contact)}
+}
+
+// ListUnsubscribe is the header pair mail apps use for their own unsubscribe button (RFC 2369 and
+// RFC 8058): the HTTPS link, which takes the one-click POST, and a mailto when the brand has an
+// address.
+func ListUnsubscribe(unsubscribeURL, mailbox string) map[string]string {
+	value := "<" + unsubscribeURL + ">"
+	if mailbox = strings.TrimSpace(mailbox); mailbox != "" {
+		value += ", <mailto:" + mailbox + "?subject=unsubscribe>"
+	}
+	return map[string]string{"List-Unsubscribe": value, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
 }

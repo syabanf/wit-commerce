@@ -187,9 +187,9 @@ type Complaint struct {
 	Contact    domain.TicketContact `json:"contact"`
 }
 
-// OpenTicket is tickets/open: a complaint ticket due complaintDays working days from now. tenantCode
-// prefixes the ticket's code.
-func (s *CRM) OpenTicket(ctx context.Context, m kernel.Meta, c Complaint, tenantCode string, complaintDays int) (*kernel.Delta, error) {
+// OpenTicket is tickets/open: a complaint ticket due complaintDays working days from now, skipping
+// the closed days. tenantCode prefixes the ticket's code.
+func (s *CRM) OpenTicket(ctx context.Context, m kernel.Meta, c Complaint, tenantCode string, complaintDays int, closed rules.ClosedDays) (*kernel.Delta, error) {
 	if err := kernel.Access(m, c.TenantID); err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (s *CRM) OpenTicket(ctx context.Context, m kernel.Meta, c Complaint, tenant
 		tk := domain.Ticket{
 			ID: c.ID, TenantID: c.TenantID, Code: ids.NextCode(codes, tenantCode+"-T", 4), CustomerID: customerID,
 			OrderID: c.OrderID, Kind: "complaint", Status: "open", Subject: strings.TrimSpace(c.Subject), Channel: "web",
-			CreatedAt: m.At, SlaDueAt: rules.AddWorkingDays(m.At, complaintDays),
+			CreatedAt: m.At, SlaDueAt: rules.AddWorkingDays(m.At, complaintDays, closed),
 			Message: strings.TrimSpace(c.Message), Contact: &contact,
 		}
 		t.Created[tk.ID] = true

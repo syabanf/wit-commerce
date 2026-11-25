@@ -1,4 +1,4 @@
-import type { Order } from '@rc/types'
+import type { IsoDate, Order } from '@rc/types'
 import { toMs } from './dates'
 
 // The server alone decides that an order is paid. A shopper's order arrives waiting for payment, a
@@ -19,7 +19,7 @@ export interface PaymentConfirmationInput {
  * The order a shopper may place: open and waiting for payment, whatever the browser sent. Cash on
  * delivery turns paid on delivery, a gateway from its verified status, a transfer once staff confirm.
  */
-export function shopperPlacement(order: Order): Order {
+export function shopperPlacement(order: Order, at: IsoDate): Order {
   const { paymentConfirmation: _pc, cancelRefund: _refund, ...rest } = order
   return {
     ...rest,
@@ -28,7 +28,11 @@ export function shopperPlacement(order: Order): Order {
     refundedAmount: 0,
     cancelReason: null,
     trackingNo: null,
-    events: order.events.filter((e) => e.status === null || e.status === 'new' || e.status === 'confirmed'),
+    // The server's clock starts the 24-hour payment window, never the browser's.
+    createdAt: at,
+    events: order.events
+      .filter((e) => e.status === null || e.status === 'new' || e.status === 'confirmed')
+      .map((e) => ({ ...e, at })),
   }
 }
 

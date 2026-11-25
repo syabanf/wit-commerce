@@ -1,6 +1,7 @@
-import type { Courier, EtaDays, IsoDate, SellerLegal, Tenant, TicketContact } from '@rc/types'
+import type { Courier, EtaDays, IsoDate, PaymentType, SellerLegal, Tenant, TicketContact } from '@rc/types'
 import { BUSINESS_TYPES, DISPUTE_FORUMS } from '@rc/types'
-import { DAY, toIso, toMs, wib } from './dates'
+import { DAY, toIso, toMs } from './dates'
+import { type ClosedDays, isWorkingDay, NO_CLOSED_DAYS } from './holidays'
 import { returnWindowDays } from './rules'
 
 // Seller identity, complaint service, terms and delivery estimates (PP 80/2019 Pasal 9, 13, 27, 39,
@@ -164,14 +165,16 @@ export const arrivalWindow = (shippedAt: IsoDate, eta: EtaDays) => ({
 
 // --- complaints ---
 
-/** The instant n working days (Monday to Friday, WIB) after at. Public holidays still count. */
-export function addWorkingDays(at: IsoDate, n: number): IsoDate {
+/**
+ * The instant n working days after at: Monday to Friday in WIB, skipping public holidays and the
+ * brand's closed days.
+ */
+export function addWorkingDays(at: IsoDate, n: number, closedDays: ClosedDays = NO_CLOSED_DAYS): IsoDate {
   let ms = toMs(at)
   let left = n
   while (left > 0) {
     ms += DAY
-    const { weekday } = wib(ms)
-    if (weekday !== 0 && weekday !== 6) left--
+    if (isWorkingDay(ms, closedDays)) left--
   }
   return toIso(ms)
 }
@@ -222,13 +225,25 @@ function fnv1a(text: string): string {
   return hash.toString(16).padStart(8, '0')
 }
 
+/** The brand's enabled payment types as method:name, sorted, the way the terms page lists them. */
+export const paymentTermsPart = (
+  tenantId: string | undefined,
+  paymentTypes: readonly Pick<PaymentType, 'tenantId' | 'name' | 'method' | 'enabled'>[],
+) =>
+  paymentTypes
+    .filter((p) => p.enabled && p.tenantId === tenantId)
+    .map((p) => `${p.method}:${p.name}`)
+    .sort()
+    .join(',')
+
 /**
  * The version of the terms a store shows now: the template revision and a hash of the brand's values
- * the terms page prints. Any change to the legal details, return window or delivery days gives a new
- * version. The payment methods it lists come from checkout and are not part of the version.
+ * the terms page prints. Any change to the legal details, return window, delivery days or enabled
+ * payment types gives a new version.
  */
 export function termsVersion(
-  tenant: Pick<Tenant, 'name' | 'legal' | 'returnWindowDays' | 'courierEtaDays'>,
+  tenant: Pick<Tenant, 'name' | 'legal' | 'returnWindowDays' | 'courierEtaDays'> & { id?: string },
+  paymentTypes: readonly Pick<PaymentType, 'tenantId' | 'name' | 'method' | 'enabled'>[],
 ): string {
   const l = tenant.legal ?? {}
   const parts = [
@@ -253,6 +268,7 @@ export function termsVersion(
       const eta = tenant.courierEtaDays?.[c]
       return eta ? [`${c}:${eta.min}-${eta.max}`] : []
     }).join(','),
+    paymentTermsPart(tenant.id, paymentTypes),
   ]
   return `${TERMS_REVISION}.${fnv1a(parts.join('\u001f'))}`
 }

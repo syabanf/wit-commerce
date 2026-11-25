@@ -1,15 +1,13 @@
-import { ApiError } from '@rc/api'
 import type { PrivacyRequest, PrivacyRequestKind } from '@rc/types'
 import { MARKETING_CONSENT_VERSION } from '@rc/types'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { Button, Field, describedBy, inputClass } from '../components/ui'
 import { HTTP, api } from '../lib/api'
 import { type MessageKey, t } from '../i18n'
+import { problemText } from '../i18n/refusals'
 import { fmtDate } from '../i18n/format'
 import { useShop } from '../state/shop'
 import { privacyKindLabel } from './accountLabels'
-
-const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : t('account.noAnswer'))
 
 /** The shopper's own switch for offers and news. Order emails arrive either way. */
 export function MarketingCard() {
@@ -31,7 +29,7 @@ export function MarketingCard() {
       textVersion: MARKETING_CONSENT_VERSION,
     })
       .then(() => reloadAccount())
-      .catch((err: unknown) => setError(messageOf(err)))
+      .catch((err: unknown) => setError(problemText(err)))
       .finally(() => setBusy(false))
   }
 
@@ -110,7 +108,7 @@ export function PrivacyRequestsCard() {
         setNote('')
         setSent(true)
       })
-      .catch((err: unknown) => setError(messageOf(err)))
+      .catch((err: unknown) => setError(problemText(err)))
       .finally(() => setBusy(false))
   }
 
@@ -127,7 +125,7 @@ export function PrivacyRequestsCard() {
         link.click()
         URL.revokeObjectURL(url)
       })
-      .catch((err: unknown) => setError(messageOf(err)))
+      .catch((err: unknown) => setError(problemText(err)))
   }
   const ready = requests.some((r) => r.kind === 'access' && r.status === 'completed')
   const open = (k: PrivacyRequestKind) => requests.some((r) => r.kind === k && r.status === 'open')

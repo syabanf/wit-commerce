@@ -20,8 +20,17 @@ const run = (state: AppState, action: AppAction) =>
 
 describe('terms version', () => {
   // apps/api/internal/rules/legal_test.go pins the same values, so both sides agree on a consent.
+  // Enabled payment types of the brand count; a disabled one and another brand's do not.
+  const pays = [
+    { tenantId: 'ten-lari', name: 'QRIS', method: 'qris', enabled: true },
+    { tenantId: 'ten-lari', name: 'Bayar di tempat', method: 'cod', enabled: true },
+    { tenantId: 'ten-lari', name: 'Kartu kredit', method: 'credit_card', enabled: false },
+    { tenantId: 'ten-other', name: 'Transfer BCA', method: 'bank_transfer', enabled: true },
+  ] as const
+
   it('matches the API for the same tenant', () => {
     const tenant = {
+      id: 'ten-lari',
       name: 'Lari.',
       returnWindowDays: 14,
       courierEtaDays: { pickup: { min: 0, max: 0 }, jne: { min: 1, max: 2 } },
@@ -31,14 +40,21 @@ describe('terms version', () => {
         complaintDays: 5,
       },
     }
-    assert.equal(termsVersion(tenant), '1.b9b751ae')
-    assert.equal(termsVersion({ name: 'Lari.' }), '1.3052ede8')
+    assert.equal(termsVersion(tenant, pays), '1.11fdac78')
+    assert.equal(termsVersion({ name: 'Lari.' }, []), '1.098c9bd5')
+  })
+
+  it('changes when an enabled payment type changes, whatever the list order', () => {
+    const tenant = { id: 'ten-lari', name: 'Lari.' }
+    assert.equal(termsVersion(tenant, pays), termsVersion(tenant, [...pays].reverse()))
+    assert.notEqual(termsVersion(tenant, pays), termsVersion(tenant, pays.slice(1)))
+    assert.equal(termsVersion(tenant, pays), termsVersion(tenant, pays.slice(0, 3)))
   })
 
   it('changes when the return window or the legal details change', () => {
     const base = { name: 'Lari.', legal: { city: 'Bandung' } }
-    assert.notEqual(termsVersion(base), termsVersion({ ...base, returnWindowDays: 10 }))
-    assert.notEqual(termsVersion(base), termsVersion({ ...base, legal: { city: 'Bogor' } }))
+    assert.notEqual(termsVersion(base, []), termsVersion({ ...base, returnWindowDays: 10 }, []))
+    assert.notEqual(termsVersion(base, []), termsVersion({ ...base, legal: { city: 'Bogor' } }, []))
   })
 })
 

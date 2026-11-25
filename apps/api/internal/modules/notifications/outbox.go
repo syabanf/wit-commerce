@@ -25,8 +25,12 @@ const (
 
 // enqueue writes a message for Drain to send.
 func enqueue(ctx context.Context, q store.Querier, kind string, m mail.Message) error {
-	_, err := q.Exec(ctx, `insert into email_outbox ("to", subject, html, text, kind) values ($1, $2, $3, $4, $5)`,
-		m.To, m.Subject, m.HTML, m.Text, kind)
+	headers := m.Headers
+	if headers == nil {
+		headers = map[string]string{}
+	}
+	_, err := q.Exec(ctx, `insert into email_outbox ("to", subject, html, text, kind, headers) values ($1, $2, $3, $4, $5, $6)`,
+		m.To, m.Subject, m.HTML, m.Text, kind, headers)
 	return err
 }
 
@@ -42,7 +46,7 @@ func (n *Notifications) claim(ctx context.Context) ([]queued, error) {
 	rows, err := n.DB.Pool.Query(ctx, `update email_outbox set attempts = attempts + 1, next_attempt_at = now() + $2 * interval '1 second'
 		where id in (select id from email_outbox where sent_at is null and attempts < $3 and next_attempt_at <= now()
 			order by next_attempt_at limit $1 for update skip locked)
-		returning id, attempts, "to", subject, html, text`, drainBatch, claimLease.Seconds(), MaxAttempts)
+		returning id, attempts, "to", subject, html, text, headers`, drainBatch, claimLease.Seconds(), MaxAttempts)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +54,7 @@ func (n *Notifications) claim(ctx context.Context) ([]queued, error) {
 	var out []queued
 	for rows.Next() {
 		var q queued
-		if err := rows.Scan(&q.id, &q.attempts, &q.msg.To, &q.msg.Subject, &q.msg.HTML, &q.msg.Text); err != nil {
+		if err := rows.Scan(&q.id, &q.attempts, &q.msg.To, &q.msg.Subject, &q.msg.HTML, &q.msg.Text, &q.msg.Headers); err != nil {
 			return nil, err
 		}
 		out = append(out, q)
@@ -103,13 +107,13 @@ func (n *Notifications) settle(ctx context.Context, q queued, sendErr error) err
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), bookkeepingTimeout)
 	defer cancel()
 	if sendErr == nil {
-		_, err := n.DB.Pool.Exec(ctx, `update email_outbox set sent_at = now(), html = '', text = '', last_error = null where id = $1`, q.id)
+		_, err := n.DB.Pool.Exec(ctx, `update email_outbox set sent_at = now(), html = '', text = '', headers = '{}', last_error = null where id = $1`, q.id)
 		return err
 	}
 	// Errors from mail name the status only, never the body, so they are safe to store and log.
 	if q.attempts >= MaxAttempts {
 		n.Log.Error("email given up", "err", sendErr, "id", q.id, "subject", q.msg.Subject)
-		_, err := n.DB.Pool.Exec(ctx, `update email_outbox set html = '', text = '', last_error = $2 where id = $1`, q.id, sendErr.Error())
+		_, err := n.DB.Pool.Exec(ctx, `update email_outbox set html = '', text = '', headers = '{}', last_error = $2 where id = $1`, q.id, sendErr.Error())
 		return err
 	}
 	n.Log.Warn("email not sent, will retry", "err", sendErr, "id", q.id, "attempts", q.attempts)

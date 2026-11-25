@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react'
 import { HTTP, api } from '../lib/api'
 
 /**
- * The order with its whole history. With the API the console's state keeps only orders still under
- * way, each with only its shipments, so this reads the order by id: once, and again when the listed
- * copy changes. A closed order is not listed, so the read copy stands in for it until a change on
- * the stream lists it. The longer history wins, since a change on the stream arrives with the full
- * order. `loading` is true while an unlisted order is being read.
+ * The whole order. With the API the console's state keeps only orders still under way, each as a
+ * list item with only its shipments and without the detail fields (tax, discount lines, terms), so
+ * this reads the order by id: once, and again when the listed copy changes. A closed order is not
+ * listed, so the read copy stands in for it until a change on the stream lists it. The read copy
+ * fills in what the list item leaves out, the listed values win since the stream keeps them current,
+ * and the longer history wins since a change on the stream arrives with the full order. `loading`
+ * is true while an unlisted order is being read.
  */
 export function useFullOrder(
   id: string | undefined,
@@ -34,6 +36,7 @@ export function useFullOrder(
 
   const read = fetched && fetched.id === id ? fetched : undefined
   if (!listed) return { order: read, loading: HTTP && !!id && !read && failed !== id }
-  if (!read || read.events.length <= listed.events.length) return { order: listed, loading: false }
-  return { order: { ...listed, events: read.events }, loading: false }
+  if (!read) return { order: listed, loading: false }
+  const events = read.events.length > listed.events.length ? read.events : listed.events
+  return { order: { ...read, ...listed, events }, loading: false }
 }

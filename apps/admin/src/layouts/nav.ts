@@ -49,6 +49,7 @@ import {
   Workflow,
   Gauge,
   WalletCards,
+  CalendarDays,
 } from 'lucide-react'
 
 /** Counts shown on navigation items. */
@@ -321,6 +322,7 @@ export const NAV: NavSection[] = [
       },
       { to: '/settings/email', code: 'EML', label: 'Email', icon: Mail, platformOnly: true },
       { to: '/settings/currencies', code: 'FXR', label: 'Currencies', icon: Coins, platformOnly: true },
+      { to: '/settings/holidays', code: 'HOL', label: 'Public holidays', icon: CalendarDays, platformOnly: true },
       { to: '/settings/plan', code: 'PLU', label: 'Plan & usage', icon: Gauge, needs: ['user.manage'] },
       { to: '/settings/plans', code: 'PLN', label: 'Plans', icon: WalletCards, platformOnly: true },
       { to: '/settings/assistant-log', code: 'ASL', label: 'Assistant log', icon: ScrollText, needs: ['user.manage'] },

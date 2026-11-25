@@ -74,7 +74,11 @@ func (s *Orders) RequestReturn(ctx context.Context, m kernel.Meta, in ReturnRequ
 		if err != nil {
 			return err
 		}
-		if why := rules.ReturnRequestBlocker(o, returns, in.Items, who, clock.Ms(m.At), rules.ReturnWindowDays(tenant)); why != "" {
+		closed, err := identity.Calendar(t.Ctx, t.Tx, tenant)
+		if err != nil {
+			return err
+		}
+		if why := rules.ReturnRequestBlocker(o, returns, in.Items, who, clock.Ms(m.At), rules.ReturnWindowDays(tenant), closed); why != "" {
 			return kernel.Refuse(why)
 		}
 		// One code at a time per brand: requests for different orders would otherwise pick the same one.

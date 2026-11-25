@@ -49,6 +49,7 @@ export const en = {
     apps: 'Apps',
     email: 'Email',
     currencies: 'Currencies',
+    holidays: 'Public holidays',
     planUsage: 'Plan & usage',
     plans: 'Plans',
     assistantLog: 'Assistant log',

@@ -8,6 +8,7 @@ import { useStore } from '../state/store'
 import { Button, Field, describedBy, inputClass } from './ui'
 import { firstName } from '../lib/paths'
 import { t } from '../i18n'
+import { problemText } from '../i18n/refusals'
 
 type Errors = Partial<Record<'name' | 'company' | 'phone' | 'note', string>>
 
@@ -61,7 +62,7 @@ export function TalkToSalesForm({ product, onDone }: { product: Product | null; 
       },
     })
       .then(() => setSentCode(code))
-      .catch((err: Error) => setErrors({ note: err.message }))
+      .catch((err: unknown) => setErrors({ note: problemText(err) }))
   }
 
   if (sentCode)

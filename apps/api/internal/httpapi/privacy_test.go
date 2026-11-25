@@ -73,6 +73,11 @@ func TestErasureRemovesPersonalDataEverywhere(t *testing.T) {
 	}
 	box.count()
 	e.expect(200, "POST", "/customers/"+id+"/notes", e.admin, map[string]string{"note": "Call " + name + " at " + phone})
+	// The admin assistant keeps staff questions for 90 days, and one may name the shopper.
+	if _, err := e.db.Pool.Exec(ctx, `insert into assistant_log (id, tenant_id, user_id, at, question) values ('ans-erase', 'ten-lari', 'usr-andi', now(), $1)`,
+		"Has "+name+" ("+email+", "+phone+") paid?"); err != nil {
+		t.Fatal(err)
+	}
 	e.expect(200, "POST", "/shop/lari/consent", shopper.Token, map[string]any{"granted": true, "source": "checkout", "textVersion": "2026-11"})
 	if hits := e.tablesHolding(email); len(hits) == 0 {
 		t.Fatal("the email is nowhere before erasure; the check below proves nothing")

@@ -66,6 +66,9 @@ func MarketingAllowed(c domain.Customer) bool {
 	return c.ErasedAt == "" && c.MarketingConsent != nil && c.MarketingConsent.Granted
 }
 
+// MarketingAllowedSQL mirrors MarketingAllowed as a SQL condition on a customers row read as c.
+const MarketingAllowedSQL = `(coalesce(c.data->>'erasedAt', '') = '' and coalesce((c.data->'marketingConsent'->>'granted')::boolean, false))`
+
 // ConsentBlocker refuses a consent change that changes nothing or comes from an unknown place.
 func ConsentBlocker(c domain.Customer, granted bool, source, textVersion string) string {
 	if c.ErasedAt != "" {

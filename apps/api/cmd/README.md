@@ -360,6 +360,9 @@ bad signature answers 401 and changes nothing.
 | `RETAIN_TRAFFIC_YEARS` | 5 (floor 5) | `traffic`, other PMSE data. |
 | `RETAIN_AUDIT_LOG_YEARS` | 5 (floor 5) | `audit_log`, the record of who changed what; other PMSE data. |
 | `RETAIN_PRODUCT_IMPORTS_DAYS` | 30 | `product_imports`, the working copy of an uploaded product CSV. |
+| `RETAIN_TRANSACTIONS_YEARS` | 10 (floor 10) | Orders with their payments, refund attempts, returns and invoice numbers, after the order's last activity; platform invoices after issue. |
+| `RETAIN_CUSTOMERS_YEARS` | 5 (floor 5) | Customers after their last activity: anonymised through the erasure path, deleted with their timeline, tickets and leads once no order is left. |
+| `RETAIN_PRIVACY_REQUESTS_YEARS` | 5 (floor 5) | Completed `privacy_requests`, after completion. |
 
 Durations are Go durations (`90s`, `30m`, `2h`). A retention of 0 keeps that table forever; a value
 below its legal floor is raised to the floor with a warning at start. An unreadable pool or password
@@ -370,9 +373,10 @@ value stops the process at start.
 The tick (every minute) calls `service.PruneIfDue`, which does the work at most once an hour across
 every API process: it claims the hour by updating the `meta` row `retention_pruned_at`. Each table
 gets deletes of 5,000 rows, at most 20 per run, so a first run over a large backlog commits in pieces
-and leaves the rest for the next hour. Migration 0032 indexes each prune condition. Orders, payments,
-refunds, returns, invoices and customers are never pruned. `docs/compliance.md` (Performance and
-retention) explains the periods.
+and leaves the rest for the next hour. Migration 0032 indexes each prune condition. The core records
+follow `service/retention_core.go` (migration 0040 indexes them): orders and what hangs off them go 500
+at a time, customers past their period are anonymised through the erasure path, 200 a run.
+`docs/compliance.md` (Performance and retention) explains the periods.
 
 ### Sign-in under load
 
@@ -433,3 +437,51 @@ shared with the API and nginx. Each can be overridden from `.env.production` whe
 On 8 GB or more, raise `PG_SHARED_BUFFERS` to a quarter of RAM and `PG_EFFECTIVE_CACHE_SIZE` to
 half. The dev compose keeps Postgres defaults.
 
+
+### Load profiles (k6)
+
+`perf/k6` holds one k6 script per profile; each fails on its thresholds.
+
+| Profile | Load | Thresholds |
+| --- | --- | --- |
+| `admin-state` | `GET /state`, 5 tenant admins and 5 sales users | p95 under 2 s (admin) and 1.5 s (sales), no errors, body under 3 MB uncompressed |
+| `customers` | `GET /views/customers` (list, search, filters) and `GET /views/customer-summary`, 5 sessions each | list p95 under 3 s, summary p95 under 300 ms, no errors |
+| `storefront` | `GET /shop/{store}/state` then a revalidation with `If-None-Match`, search and suggest | state p95 under 500 ms, every revalidation a 304, search under 600 ms, suggest under 400 ms |
+| `checkout` | guest checkouts with cash on delivery, 5 at once, built as the storefront builds them | no errors, p95 under 1.5 s |
+| `order-advance` | 30 staff sessions moving 300 different open orders a step at once | no errors, p95 under 3 s |
+
+`perf/scale.sql` multiplies the demo seed for them: every brand's orders, customers, customer events,
+order rows and customer metrics get `copies` more copies with suffixed ids and codes (`x3`, `X3`). Run
+it once on a freshly seeded database with the API stopped. CI uses 19 copies, 20 times the seed.
+
+Run locally against a scratch database (never the one you work in, the profiles place and advance
+orders):
+
+```sh
+createdb -h localhost -p 5433 -U commerce commerce_perf
+cd apps/api && go build -o /tmp/perf-api ./cmd/api && cd ../..
+export DATABASE_URL='postgres://commerce:commerce@localhost:5433/commerce_perf?sslmode=disable'
+export JWT_SECRET=perf-local-secret-0123456789abcdef DEMO_PASSWORD=perf-demo-pass PORT=8095
+SEED_DIR=$PWD/packages/fixtures/data /tmp/perf-api &   # seeds, then stop it once /api/v1/health answers
+kill %1
+psql "$DATABASE_URL" -v copies=19 -f perf/scale.sql
+(cd /tmp && ./perf-api &)                              # from outside the repo, so it skips apps/api/.env
+BASE_URL=http://localhost:8095 ./perf/run.sh
+```
+
+Measured on the 50 times copy (34k orders and 36k customers in one brand), Postgres 17 in Docker with
+2 CPUs, before and after wave 8: `GET /state` 2.50 MB to 2.04 MB for a tenant admin with p95 about
+600 ms; customer summary p95 4.9 s to 7 ms (cached; about 160 ms cold); storefront state and 304 p95
+about 200 ms, search 140 ms, suggest 110 ms; checkout went from 80% answering 500 (two guests took the
+same customer code) to none, p95 400 ms; 300 concurrent order advances all succeed, p95 550 ms. The
+customers list reached p95 1.5 s with 5 sessions, and Docker's 64 MB shared memory failed some of its
+parallel queries (see below).
+
+`PROFILES="customers storefront"` runs some of them, `DURATION=10s` shortens each, and the summaries
+land in `perf/out/<profile>.json`. `scripts/perf-terms-version.ts` prints the store's terms version,
+which a checkout must carry; `run.sh` passes it to k6 as `TERMS_VERSION`.
+
+The `perf` job in `.github/workflows/ci.yml` does the same on pushes to `main`, on a manual run and on
+pull requests that touch `apps/api` or `perf`, and keeps the summaries and the API log as the
+`k6-summary` artifact. Its Postgres gets 256 MB of shared memory: with Docker's default 64 MB, parallel
+query workers under load fail with "could not resize shared memory segment".

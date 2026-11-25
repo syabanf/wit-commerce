@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -79,3 +80,94 @@ jobs:
         run: |
           docker run --rm web:ci nginx -t
           docker run --rm -e STORE_ROOT_DOMAIN=shop.example.com -e SPLIT_SERVICES=true web:ci nginx -t
+
+  # On a pull request, the load profiles run only when it touches the API or the profiles.
+  perf-scope:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.diff.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- apps/api perf scripts/perf-terms-version.ts; then
+            echo "api=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "api=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # k6 load profiles (perf/k6) against the demo data multiplied PERF_COPIES + 1 times. A job of its own,
+  # so the checks above stay fast; it fails when a profile breaks a threshold.
+  perf:
+    needs: perf-scope
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.perf-scope.outputs.api == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: commerce
+          POSTGRES_USER: commerce
+          POSTGRES_PASSWORD: commerce
+        ports: ['5433:5432']
+        # Parallel query workers need more than Docker's default 64 MB of shared memory under load.
+        options: >-
+          --shm-size=256m
+          --health-cmd "pg_isready -U commerce -d commerce"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://commerce:commerce@localhost:5433/commerce?sslmode=disable
+      JWT_SECRET: perf-ci-secret-0123456789abcdef0123
+      DEMO_PASSWORD: perf-demo-pass
+      PORT: '8090'
+      BASE_URL: http://localhost:8090
+      PERF_COPIES: '19'
+      OUT: perf/out
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - run: pnpm install --frozen-lockfile
+      - name: Build the API
+        run: cd apps/api && go build -o "$RUNNER_TEMP/api" ./cmd/api
+      - name: Seed and scale the data
+        run: |
+          SEED_DIR="$GITHUB_WORKSPACE/packages/fixtures/data" "$RUNNER_TEMP/api" > "$RUNNER_TEMP/seed.log" 2>&1 &
+          pid=$!
+          for _ in $(seq 60); do curl -sf "$BASE_URL/api/v1/health" > /dev/null && break; sleep 1; done
+          kill "$pid"
+          wait "$pid" || true
+          psql "$DATABASE_URL" -v copies="$PERF_COPIES" -f perf/scale.sql
+      - name: Start the API
+        run: |
+          cd "$RUNNER_TEMP"
+          nohup ./api > "$RUNNER_TEMP/api.log" 2>&1 &
+          for _ in $(seq 60); do curl -sf "$BASE_URL/api/v1/health" > /dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+      - uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '2.1.0'
+      - name: Run the k6 profiles
+        run: ./perf/run.sh
+      - name: Keep the summaries and the API log
+        if: ${{ !cancelled() }}
+        run: cp "$RUNNER_TEMP/api.log" "$RUNNER_TEMP/seed.log" perf/out/ || true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: k6-summary
+          path: perf/out

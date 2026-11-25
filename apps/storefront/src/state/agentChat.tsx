@@ -3,6 +3,7 @@ import type { AgentPolicy, Customer, Industry, Order, Product } from '@rc/types'
 import type { AIChatAnswer } from '@rc/api'
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { type MessageKey, t } from '../i18n'
+import { problemText, refusalText } from '../i18n/refusals'
 import {
   type AgentPlan,
   type MandateInput,
@@ -370,13 +371,15 @@ export function AgentChatProvider({ children }: { children: ReactNode }) {
     if (!customer || cart.status !== 'awaiting') return
     const placed = placeAgentOrder(cart.plan, catalog, customer, state)
     if (typeof placed === 'string') {
-      patch(cart.id, { status: 'failed', note: placed })
-      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason: placed }) })
+      const reason = refusalText(placed)
+      patch(cart.id, { status: 'failed', note: reason })
+      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason }) })
       return
     }
-    send({ type: 'orders/place', order: withTerms(placed, tenant), customer: null }).catch((err: Error) => {
-      patch(cart.id, { status: 'failed', note: err.message })
-      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason: err.message }) })
+    send({ type: 'orders/place', order: withTerms(placed, tenant, catalog.paymentTypes), customer: null }).catch((err: unknown) => {
+      const reason = problemText(err)
+      patch(cart.id, { status: 'failed', note: reason })
+      push({ id: id(), kind: 'bot', text: t('agent.chat.couldNotPlace', { reason }) })
     })
     setOrders((list) => [placed, ...list])
     patch(cart.id, { status: 'paid' })

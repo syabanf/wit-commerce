@@ -1,24 +1,12 @@
 import { awaitsPayment, fmtIdr, paymentConfirmationBlocker } from '@rc/fixtures'
 import type { Order } from '@rc/types'
-import { ApiError } from '@rc/api'
 import { useId, useState } from 'react'
 import { Button, Field, Pill, describedBy, inputClass } from '../components/ui'
-import { type MessageKey, t } from '../i18n'
+import { t } from '../i18n'
+import { problemText, refusalText } from '../i18n/refusals'
 import { fmtDate } from '../i18n/format'
 import { HTTP, api } from '../lib/api'
 import { useShop } from '../state/shop'
-
-/** The refusals @rc/fixtures writes in English for a payment confirmation, in the shopper's language. */
-const BLOCKER_TEXT: Record<string, MessageKey> = {
-  'This order is not waiting for payment.': 'payment.block.notWaiting',
-  'The store is already checking your payment.': 'payment.block.checking',
-  'Enter the amount you sent.': 'payment.block.amount',
-  'Enter the bank or wallet you paid from.': 'payment.block.channel',
-  'Enter the name on the account you paid from.': 'payment.block.sender',
-  'Enter when you sent the money.': 'payment.block.time',
-  'Upload the proof image here.': 'payment.block.proof',
-}
-const blockerText = (message: string) => (BLOCKER_TEXT[message] ? t(BLOCKER_TEXT[message]) : message)
 
 /** Where a cancelled paid order's money stands, with the reference the shopper can trace. */
 function refundText(order: Order, store: string): string {
@@ -81,7 +69,7 @@ export function OrderPayment({ order }: { order: Order }) {
   const submit = async () => {
     const refusal = paymentConfirmationBlocker(order, input)
     if (refusal) {
-      setError(blockerText(refusal))
+      setError(refusalText(refusal))
       return
     }
     setBusy(true)
@@ -90,7 +78,7 @@ export function OrderPayment({ order }: { order: Order }) {
       await send({ type: 'orders/submitPayment', id: order.id, confirmation: input })
       setOpen(false)
     } catch (err) {
-      setError(err instanceof ApiError ? blockerText(err.message) : t('account.noAnswer'))
+      setError(problemText(err))
     }
     setBusy(false)
   }
@@ -101,7 +89,7 @@ export function OrderPayment({ order }: { order: Order }) {
     try {
       setProofUrl((await api.shop.uploadPaymentProof(store, file)).url)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('account.noAnswer'))
+      setError(problemText(err))
     }
     setUploading(false)
   }

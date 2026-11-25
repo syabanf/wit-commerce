@@ -3,17 +3,20 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/auth"
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
+	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
@@ -313,7 +316,7 @@ func (s *Server) customerSummary(w http.ResponseWriter, r *http.Request) {
 			rewards = append(rewards, n)
 		}
 	}
-	out, err := s.summarise(r.Context(), tenantID, sellers, rewards)
+	out, err := s.summaries.get(r.Context(), s, tenantID, sellers, rewards)
 	if err != nil {
 		s.writeError(w, r, err)
 		return
@@ -321,114 +324,212 @@ func (s *Server) customerSummary(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// summaryCacheTTL bounds how long a summary is served from memory. Writes through this process
+// drop the brand's summaries at once (publish calls forget); the limit covers the clock moving on,
+// since the figures count days back from it, and writes made by another process.
+const summaryCacheTTL = 60 * time.Second
+
+// summaryCacheMax caps the summaries kept; past it the cache starts over. Each brand, scope and
+// rewards list is one entry, so a handful per brand in practice.
+const summaryCacheMax = 512
+
+// summaryCache keeps each brand's summaries per scope and rewards. A brand's generation goes up on
+// every write that changes its figures, so a summary computed before that write is never kept.
+// Callers asking for the same summary at once share one computation.
+type summaryCache struct {
+	mu       sync.Mutex
+	gens     map[string]int
+	entries  map[string]summaryEntry
+	inflight map[string]*summaryCall
+}
+
+type summaryEntry struct {
+	at  time.Time
+	gen int
+	out CustomerSummary
+}
+
+type summaryCall struct {
+	done chan struct{}
+	out  CustomerSummary
+	err  error
+}
+
+// forget drops a brand's summaries when a write touches what they count.
+func (c *summaryCache) forget(collection, tenantID string) {
+	switch collection {
+	case "customers", "segments", readmodel.CustomerMetricsCollection:
+	default:
+		return
+	}
+	c.mu.Lock()
+	if c.gens == nil {
+		c.gens = map[string]int{}
+	}
+	c.gens[tenantID]++
+	c.mu.Unlock()
+}
+
+func (c *summaryCache) get(ctx context.Context, s *Server, tenantID string, sellers []string, rewards []int64) (CustomerSummary, error) {
+	scope := "brand"
+	if sellers != nil {
+		scope = "sellers:" + strings.Join(sellers, ",")
+	}
+	key := fmt.Sprintf("%s|%s|%v", tenantID, scope, rewards)
+	now := s.Clock.Now()
+	c.mu.Lock()
+	gen := c.gens[tenantID]
+	if e, ok := c.entries[key]; ok && e.gen == gen && now.Sub(e.at) < summaryCacheTTL && !now.Before(e.at) {
+		c.mu.Unlock()
+		return e.out, nil
+	}
+	if call, ok := c.inflight[key]; ok {
+		c.mu.Unlock()
+		select {
+		case <-call.done:
+			return call.out, call.err
+		case <-ctx.Done():
+			return CustomerSummary{}, ctx.Err()
+		}
+	}
+	if c.inflight == nil {
+		c.inflight, c.entries = map[string]*summaryCall{}, map[string]summaryEntry{}
+	}
+	call := &summaryCall{done: make(chan struct{})}
+	c.inflight[key] = call
+	c.mu.Unlock()
+
+	// The computation outlives a caller who leaves, since others may be waiting on it.
+	call.out, call.err = s.summarise(context.WithoutCancel(ctx), tenantID, sellers, rewards)
+	c.mu.Lock()
+	delete(c.inflight, key)
+	if call.err == nil && c.gens[tenantID] == gen {
+		if len(c.entries) >= summaryCacheMax {
+			clear(c.entries)
+		}
+		c.entries[key] = summaryEntry{at: now, gen: gen, out: call.out}
+	}
+	c.mu.Unlock()
+	close(call.done)
+	return call.out, call.err
+}
+
 func (s *Server) summarise(ctx context.Context, tenantID string, sellers []string, rewards []int64) (CustomerSummary, error) {
 	pool := s.DB.Pool
 	now := s.Clock.Now()
 	out := CustomerSummary{ByTier: map[string]int{}, ByStage: map[string]int{}, BySeller: map[string]int{}, Redeemable: make([]int, len(rewards))}
 
-	cols := []string{"count(*)", "count(*) filter (where (data->>'createdAt')::timestamptz >= $2)", "coalesce(sum((data->>'points')::bigint), 0)"}
-	args := []any{tenantID, now.Add(-30 * 24 * time.Hour)}
-	for _, n := range rewards {
-		args = append(args, n)
-		cols = append(cols, fmt.Sprintf("count(*) filter (where (data->>'points')::bigint >= $%d)", len(args)))
-	}
-	dest := []any{&out.Total, &out.NewIn30, &out.Points}
-	for i := range out.Redeemable {
-		dest = append(dest, &out.Redeemable[i])
-	}
-	if err := pool.QueryRow(ctx, `select `+strings.Join(cols, ", ")+` from customers where tenant_id = $1`, args...).Scan(dest...); err != nil {
-		return out, err
-	}
-
-	// One scan groups by tier, stage, seller and city at once.
-	rows, err := pool.Query(ctx, `select grouping(data->>'tier'), grouping(data->>'stage'), grouping(data->>'sellerId'),
-		coalesce(data->>'tier', ''), coalesce(data->>'stage', ''), coalesce(data->>'sellerId', ''), coalesce(data->>'city', ''), count(*)
-		from customers where tenant_id = $1
-		group by grouping sets ((data->>'tier'), (data->>'stage'), (data->>'sellerId'), (data->>'city'))
-		order by count(*) desc, min(id)`, tenantID)
-	if err != nil {
-		return out, err
-	}
-	for rows.Next() {
-		var gTier, gStage, gSeller int
-		var tier, stage, seller, city string
-		var n int
-		if err := rows.Scan(&gTier, &gStage, &gSeller, &tier, &stage, &seller, &city, &n); err != nil {
-			rows.Close()
-			return out, err
+	// Each part reads its own rows into its own fields, so they run at once.
+	err := runAll(func() error {
+		cols := []string{"count(*)", "count(*) filter (where (data->>'createdAt')::timestamptz >= $2)", "coalesce(sum((data->>'points')::bigint), 0)"}
+		args := []any{tenantID, now.Add(-30 * 24 * time.Hour)}
+		for _, n := range rewards {
+			args = append(args, n)
+			cols = append(cols, fmt.Sprintf("count(*) filter (where (data->>'points')::bigint >= $%d)", len(args)))
 		}
-		switch {
-		case gTier == 0:
-			out.ByTier[tier] = n
-		case gStage == 0:
-			out.ByStage[stage] = n
-		case gSeller == 0:
-			if seller != "" {
-				out.BySeller[seller] = n
-			}
-		case city != "":
-			out.Cities = append(out.Cities, city)
+		dest := []any{&out.Total, &out.NewIn30, &out.Points}
+		for i := range out.Redeemable {
+			dest = append(dest, &out.Redeemable[i])
 		}
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return out, err
-	}
-
-	if out.Top, err = store.List[domain.Customer](ctx, pool, "customers",
-		fmt.Sprintf("id in (select id from customers where tenant_id = $1 order by (data->>'points')::bigint desc, id limit %d)", summaryTop), tenantID); err != nil {
-		return out, err
-	}
-	slices.SortStableFunc(out.Top, func(a, b domain.Customer) int { return b.Points - a.Points })
-
-	strs := func(sql string) ([]string, error) {
-		rows, err := pool.Query(ctx, sql, tenantID)
+		return pool.QueryRow(ctx, `select `+strings.Join(cols, ", ")+` from customers where tenant_id = $1`, args...).Scan(dest...)
+	}, func() error {
+		// One scan groups by tier, stage, seller and city at once. The inner select keeps the sorts
+		// narrow: grouping the documents themselves sorted every whole row four times.
+		rows, err := pool.Query(ctx, `select grouping(tier), grouping(stage), grouping(seller),
+			coalesce(tier, ''), coalesce(stage, ''), coalesce(seller, ''), coalesce(city, ''), count(*)
+			from (select id, data->>'tier' tier, data->>'stage' stage, data->>'sellerId' seller, data->>'city' city
+				from customers where tenant_id = $1) c
+			group by grouping sets ((tier), (stage), (seller), (city))
+			order by count(*) desc, min(id)`, tenantID)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		list, err := pgx.CollectRows(rows, pgx.RowTo[string])
-		if list == nil {
-			list = []string{}
+		defer rows.Close()
+		for rows.Next() {
+			var gTier, gStage, gSeller int
+			var tier, stage, seller, city string
+			var n int
+			if err := rows.Scan(&gTier, &gStage, &gSeller, &tier, &stage, &seller, &city, &n); err != nil {
+				return err
+			}
+			switch {
+			case gTier == 0:
+				out.ByTier[tier] = n
+			case gStage == 0:
+				out.ByStage[stage] = n
+			case gSeller == 0:
+				if seller != "" {
+					out.BySeller[seller] = n
+				}
+			case city != "":
+				out.Cities = append(out.Cities, city)
+			}
 		}
-		return list, err
-	}
-	if out.Tags, err = strs(`select distinct t collate "C" from customers, jsonb_array_elements_text(data->'tags') t
-		where tenant_id = $1 order by 1`); err != nil {
-		return out, err
-	}
-	if out.Colors, err = strs(`select data->>'color' from customers where tenant_id = $1 and data->>'color' is not null
-		group by 1 order by min(id)`); err != nil {
-		return out, err
-	}
+		return rows.Err()
+	}, func() (err error) {
+		out.Top, err = store.List[domain.Customer](ctx, pool, "customers",
+			fmt.Sprintf("id in (select id from customers where tenant_id = $1 order by (data->>'points')::bigint desc, id limit %d)", summaryTop), tenantID)
+		slices.SortStableFunc(out.Top, func(a, b domain.Customer) int { return b.Points - a.Points })
+		return err
+	}, func() (err error) {
+		out.Tags, err = summaryStrings(ctx, pool, `select distinct t collate "C" from customers, jsonb_array_elements_text(data->'tags') t
+			where tenant_id = $1 order by 1`, tenantID)
+		return err
+	}, func() (err error) {
+		out.Colors, err = summaryStrings(ctx, pool, `select data->>'color' from customers where tenant_id = $1 and data->>'color' is not null
+			group by 1 order by min(id)`, tenantID)
+		return err
+	}, func() error {
+		var tenantCode string
+		if err := pool.QueryRow(ctx, `select coalesce(data->>'code', '') from tenants where id = $1`, tenantID).Scan(&tenantCode); err != nil {
+			return err
+		}
+		prefix := tenantCode + "-C"
+		highest, err := store.HighestCode(ctx, pool, "customers", tenantID, prefix)
+		out.NextCode = ids.NextCode([]string{highest}, prefix, 5)
+		return err
+	}, func() error {
+		segments, err := store.List[domain.Segment](ctx, pool, "segments", "tenant_id = $1", tenantID)
+		if err != nil {
+			return err
+		}
+		if out.Segments, out.Abandoned, err = s.segmentSizes(ctx, tenantID, segments, sellers); err != nil {
+			return err
+		}
+		out.InCustomSegments, err = inAnySegment(ctx, pool, tenantID, segments, sellers, now.UnixMilli())
+		return err
+	}, func() (err error) {
+		out.Buyers, err = readmodel.Buyers(ctx, pool, tenantID, sellers, now)
+		return err
+	})
 	if out.Cities == nil {
 		out.Cities = []string{}
 	}
-
-	var tenantCode string
-	if err := pool.QueryRow(ctx, `select coalesce(data->>'code', '') from tenants where id = $1`, tenantID).Scan(&tenantCode); err != nil {
-		return out, err
-	}
-	prefix := tenantCode + "-C"
-	var highest string
-	if err := pool.QueryRow(ctx, `select coalesce(max(substr(code, length($2) + 1)::numeric), 0)::text from customers
-		where tenant_id = $1 and starts_with(code, $2) and substr(code, length($2) + 1) ~ '^[0-9]+$'`, tenantID, prefix).Scan(&highest); err != nil {
-		return out, err
-	}
-	next, _ := strconv.ParseInt(highest, 10, 64)
-	out.NextCode = fmt.Sprintf("%s%05d", prefix, next+1)
-
-	segments, err := store.List[domain.Segment](ctx, pool, "segments", "tenant_id = $1", tenantID)
-	if err != nil {
-		return out, err
-	}
-	if out.Segments, out.Abandoned, err = s.segmentSizes(ctx, tenantID, segments, sellers); err != nil {
-		return out, err
-	}
-	if out.InCustomSegments, err = inAnySegment(ctx, pool, tenantID, segments, sellers, now.UnixMilli()); err != nil {
-		return out, err
-	}
-	out.Buyers, err = readmodel.Buyers(ctx, pool, tenantID, sellers, now)
 	return out, err
+}
+
+// summaryStrings reads one text column of a brand's rows, never nil.
+func summaryStrings(ctx context.Context, q store.Querier, sql, tenantID string) ([]string, error) {
+	rows, err := q.Query(ctx, sql, tenantID)
+	if err != nil {
+		return []string{}, err
+	}
+	list, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if list == nil {
+		list = []string{}
+	}
+	return list, err
+}
+
+// runAll runs each function in its own goroutine and returns their errors joined.
+func runAll(fns ...func() error) error {
+	errs := make([]error, len(fns))
+	var wg sync.WaitGroup
+	for i, fn := range fns {
+		wg.Go(func() { errs[i] = fn() })
+	}
+	wg.Wait()
+	return errors.Join(errs...)
 }
 
 // inAnySegment counts the customers that at least one of the brand's own segments holds, scoped

@@ -17,6 +17,9 @@ func TestEveryMarketingEmailCarriesItsUnsubscribeLink(t *testing.T) {
 			t.Errorf("%s has no unsubscribe link", part)
 		}
 	}
+	if m.Headers["List-Unsubscribe"] != "<"+link+">" || m.Headers["List-Unsubscribe-Post"] != "List-Unsubscribe=One-Click" {
+		t.Errorf("headers without a brand address: %v", m.Headers)
+	}
 	if m.To != "rina@example.com" || m.Subject != "New trail shoes" || !strings.Contains(m.Text, "agreed to offers and news from Lari") {
 		t.Errorf("message: %+v", m)
 	}

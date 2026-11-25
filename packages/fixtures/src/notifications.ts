@@ -1,5 +1,5 @@
 import type { Campaign, Integration, IsoDate, Lead, Order, Product, StockLevel, Ticket } from '@rc/types'
-import { OPEN_LEAD_STAGES } from '@rc/types'
+import { LIVE_INTEGRATIONS, OPEN_LEAD_STAGES } from '@rc/types'
 import { nowMs } from './clock'
 import { DAY, HOUR, toIso, toMs } from './dates'
 import { stockByProduct, stockState } from './derive'
@@ -108,7 +108,8 @@ export function deriveNotifications(input: NotificationInput, now = nowMs()): No
     })
   }
   for (const i of input.integrations) {
-    if (!i.enabled || (i.health !== 'failing' && i.health !== 'degraded')) continue
+    if (!i.enabled || !LIVE_INTEGRATIONS.includes(i.provider)) continue
+    if (i.health !== 'failing' && i.health !== 'degraded') continue
     items.push({
       id: `int-${i.id}-${i.health}`,
       kind: 'integration',

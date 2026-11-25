@@ -47,6 +47,19 @@ func SegmentAudience(t *kernel.Tx, tenantID, segmentID string, now int64) ([]dom
 	return out, nil
 }
 
+// SegmentReach counts the tenant's customers in a segment at now, and how many of them a marketing
+// message may go to, without loading them. A missing segment has no audience.
+func SegmentReach(t *kernel.Tx, tenantID, segmentID string, now int64) (inSegment, reach int, err error) {
+	segment, err := kernel.Get[domain.Segment](t, "segments", segmentID, "segment")
+	if err != nil {
+		if _, missing := err.(kernel.NotFound); missing {
+			return 0, 0, nil
+		}
+		return 0, 0, err
+	}
+	return readmodel.SegmentReach(t.Ctx, t.Tx, tenantID, segment, now)
+}
+
 func ms(at *time.Time) int64 {
 	if at == nil {
 		return 0

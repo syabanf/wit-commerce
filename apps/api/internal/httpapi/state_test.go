@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
@@ -97,4 +98,53 @@ func TestCustomerEventsQuery(t *testing.T) {
 	e.expect(422, "GET", "/views/customer-events?tenantId=ten-lari&limit=9000", e.admin, nil)
 	e.expect(403, "GET", "/views/customer-events", e.issue("orders:read").Secret, nil)
 	e.expect(200, "GET", "/views/customer-events", e.issue("customers:read").Secret, nil)
+}
+
+// An open order in the state is a list item: every value it keeps is the stored one, and what it
+// leaves out is a detail field, a null, a zero, or history other than the shipments.
+func TestStateOrdersAreListItems(t *testing.T) {
+	e := setup(t)
+	var out struct {
+		State map[string][]map[string]json.RawMessage `json:"state"`
+	}
+	if code := e.call("GET", "/state", e.admin, nil, &out); code != 200 {
+		t.Fatalf("state: %d", code)
+	}
+	if len(out.State["orders"]) == 0 {
+		t.Fatal("no open orders in the state")
+	}
+	omitted := map[string]bool{"tax": true, "discountLines": true, "termsVersion": true, "termsAcceptedAt": true}
+	for _, item := range out.State["orders"] {
+		var id string
+		_ = json.Unmarshal(item["id"], &id)
+		var raw []byte
+		if err := e.db.Pool.QueryRow(context.Background(), `select data from orders where id = $1`, id).Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		var whole map[string]json.RawMessage
+		_ = json.Unmarshal(raw, &whole)
+		for key, value := range whole {
+			kept, ok := item[key]
+			switch {
+			case key == "events":
+			case !ok && (omitted[key] || string(value) == "null" || string(value) == "0"):
+			case !ok:
+				t.Fatalf("order %s lost %s = %s", id, key, value)
+			case !jsonEqual(kept, value):
+				t.Fatalf("order %s %s: %s, stored %s", id, key, kept, value)
+			}
+		}
+		for key := range item {
+			if _, ok := whole[key]; !ok {
+				t.Fatalf("order %s gained %s", id, key)
+			}
+		}
+	}
+}
+
+func jsonEqual(a, b json.RawMessage) bool {
+	var x, y any
+	_ = json.Unmarshal(a, &x)
+	_ = json.Unmarshal(b, &y)
+	return reflect.DeepEqual(x, y)
 }

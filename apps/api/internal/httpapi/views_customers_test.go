@@ -450,3 +450,35 @@ func TestShopStateRevalidatesWithAnETag(t *testing.T) {
 		t.Errorf("after a product change: %d, tag %q", changed.StatusCode, changed.Header.Get("ETag"))
 	}
 }
+
+// The summary comes from memory between writes, and a write that changes the brand's customers
+// shows in the next one.
+func TestCustomerSummaryCacheFollowsWrites(t *testing.T) {
+	e := setup(t)
+	read := func() (out struct {
+		Total    int    `json:"total"`
+		NextCode string `json:"nextCode"`
+	}) {
+		t.Helper()
+		if code := e.call("GET", "/views/customer-summary?tenantId=ten-lari", e.admin, nil, &out); code != 200 {
+			t.Fatalf("summary: %d", code)
+		}
+		return out
+	}
+	before := read()
+	// A row written behind the API's back does not show until the cache ends.
+	if _, err := e.db.Pool.Exec(context.Background(), `insert into customers (id, data) select 'cus-behind',
+		data || '{"id": "cus-behind", "code": "LARI-C99990", "email": "behind@example.com"}' from customers where id = 'cus-lari-0001'`); err != nil {
+		t.Fatal(err)
+	}
+	if again := read(); again.Total != before.Total {
+		t.Errorf("summary not cached: %d then %d", before.Total, again.Total)
+	}
+	guest := map[string]any{"id": "cus-cache", "tenantId": "ten-lari", "code": "LARI-C00001", "name": "Cache Guest", "email": "cache@example.com",
+		"createdAt": clock.FixtureNow, "tags": []string{}, "interests": []string{}, "tier": "member", "stage": "first_buyer"}
+	e.expect(200, "POST", "/shop/lari/orders", "", map[string]any{"order": e.placeable("ord-cache", "cus-cache"), "customer": guest})
+	after := read()
+	if after.Total != before.Total+2 || after.NextCode != "LARI-C99991" {
+		t.Errorf("after a checkout: total %d (was %d), next code %s", after.Total, before.Total, after.NextCode)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -161,5 +162,56 @@ func TestGuestCheckoutsGetFreeCustomerCodes(t *testing.T) {
 			t.Fatalf("guest %s took the code %s another customer holds", id, got)
 		}
 		codes[got] = true
+	}
+}
+
+// Guests checking out at the same moment all get their order: each takes its own order and customer
+// code instead of one of them failing on the unique index.
+func TestConcurrentGuestCheckoutsAllSucceed(t *testing.T) {
+	e := setup(t)
+	const n = 8
+	bodies := make([]map[string]any, n)
+	for i := range n {
+		id := fmt.Sprintf("cus-rush-%d", i)
+		guest := map[string]any{"id": id, "tenantId": "ten-lari", "code": "LARI-C00001", "name": "Rush", "email": id + "@example.com"}
+		bodies[i] = map[string]any{"order": e.placeable(fmt.Sprintf("ord-rush-%d", i), id), "customer": guest}
+	}
+	var wg sync.WaitGroup
+	codes := make([]int, n)
+	for i := range n {
+		wg.Go(func() { codes[i] = e.call("POST", "/shop/lari/orders", "", bodies[i], nil) })
+	}
+	wg.Wait()
+	for i, code := range codes {
+		if code != 200 {
+			t.Errorf("checkout %d: %d", i, code)
+		}
+	}
+	var orders, customers int
+	if err := e.db.Pool.QueryRow(context.Background(), `select count(distinct o.code), count(distinct c.code) from orders o
+		join customers c on c.id = o.customer_id where o.id like 'ord-rush-%'`).Scan(&orders, &customers); err != nil {
+		t.Fatal(err)
+	}
+	if orders != n || customers != n {
+		t.Errorf("%d order codes and %d customer codes for %d checkouts", orders, customers, n)
+	}
+}
+
+// The 24-hour payment window starts on the server's clock: an order whose browser claims it was
+// placed days ago is stored with the time the API took it.
+func TestShopperOrdersTakeTheServerTime(t *testing.T) {
+	e := setup(t)
+	guest := map[string]any{"id": "cus-guest-time", "tenantId": "ten-lari", "code": "LARI-C00001", "name": "Guest", "email": "guest-time@example.com"}
+	order := e.placeable("ord-guest-time", "cus-guest-time")
+	order["createdAt"] = "2020-01-01T00:00:00+07:00"
+	if code := e.call("POST", "/shop/lari/orders", "", map[string]any{"order": order, "customer": guest}, nil); code != 200 {
+		t.Fatalf("guest order: %d", code)
+	}
+	var created string
+	if err := e.db.Pool.QueryRow(context.Background(), `select data->>'createdAt' from orders where id = 'ord-guest-time'`).Scan(&created); err != nil {
+		t.Fatal(err)
+	}
+	if strings.HasPrefix(created, "2020") {
+		t.Fatalf("the order kept the browser's time %s", created)
 	}
 }

@@ -65,10 +65,13 @@ export function cartTax(tenant: Tenant, totals: CartTotals): OrderTax | undefine
   return orderTax(lines, totals.discount, tenant.tax, (id) => categories.get(id))
 }
 
-/** The order with the shopper's consent to the store's current terms (PP 80/2019 Pasal 46). */
-export const withTerms = (order: Order, tenant: Tenant): Order => ({
+/**
+ * The order with the shopper's consent to the store's current terms (PP 80/2019 Pasal 46). The
+ * version covers the payment types the terms list.
+ */
+export const withTerms = (order: Order, tenant: Tenant, paymentTypes: readonly PaymentType[]): Order => ({
   ...order,
-  termsVersion: termsVersion(tenant),
+  termsVersion: termsVersion(tenant, paymentTypes),
   termsAcceptedAt: nowIso(),
 })
 

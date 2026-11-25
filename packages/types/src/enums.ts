@@ -737,3 +737,10 @@ export const CANCEL_REFUND_STATUS_LABEL: Record<CancelRefundStatus, string> = {
   failed: 'Refund failed',
   succeeded: 'Refunded',
 }
+
+/**
+ * Providers WIT Commerce exchanges real requests with. Every other provider in the integrations list
+ * is a plan: a brand can store its credentials, but nothing is sent yet, so its health, event counts
+ * and sync are examples and the console marks it as coming soon.
+ */
+export const LIVE_INTEGRATIONS: readonly string[] = ['Midtrans']

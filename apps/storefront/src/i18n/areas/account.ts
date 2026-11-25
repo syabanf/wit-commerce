@@ -276,12 +276,10 @@ export const en = {
   'account.seller.policies': 'Store policies',
   'account.seller.terms': 'Terms',
   'account.seller.privacy': 'Privacy',
-  'account.policy.sport': 'Returns within 14 days of delivery, unused and in the original box.',
-  'account.policy.fashion': 'Returns within 14 days of delivery, unworn with the tags on.',
-  'account.policy.beauty': 'Unopened products return within 14 days of delivery.',
-  'account.policy.electronics': 'Returns within 7 days of delivery, sealed in the original box.',
-  'account.policy.industrial': 'Parts return under the warranty terms in your quote.',
-  'account.policy.fnb': 'Damaged or wrong items replaced if you tell us within 2 days.',
+  'account.policy.window':
+    'Returns within {days} days of delivery. Wrong or damaged items: ask within at least {legal} working days.',
+  'account.policy.byMessage':
+    'Ask the store by message for other returns. Wrong or damaged items: ask within {legal} working days of delivery.',
 }
 
 export const id: Record<keyof typeof en, string> = {
@@ -567,10 +565,8 @@ export const id: Record<keyof typeof en, string> = {
   'account.seller.policies': 'Kebijakan toko',
   'account.seller.terms': 'Syarat',
   'account.seller.privacy': 'Privasi',
-  'account.policy.sport': 'Retur dalam 14 hari setelah diterima, belum dipakai dan dalam kotak asli.',
-  'account.policy.fashion': 'Retur dalam 14 hari setelah diterima, belum dipakai dan label masih terpasang.',
-  'account.policy.beauty': 'Produk yang belum dibuka bisa diretur dalam 14 hari setelah diterima.',
-  'account.policy.electronics': 'Retur dalam 7 hari setelah diterima, masih tersegel dalam kotak asli.',
-  'account.policy.industrial': 'Retur suku cadang mengikuti ketentuan garansi di penawaran Anda.',
-  'account.policy.fnb': 'Barang rusak atau salah kami ganti jika Anda lapor dalam 2 hari.',
+  'account.policy.window':
+    'Retur dalam {days} hari setelah barang tiba. Barang salah atau rusak: ajukan paling sedikit dalam {legal} hari kerja.',
+  'account.policy.byMessage':
+    'Retur lain diajukan ke toko lewat pesan. Barang salah atau rusak: ajukan dalam {legal} hari kerja setelah barang tiba.',
 }

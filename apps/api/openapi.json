@@ -1959,6 +1959,58 @@
         ],
         "type": "object"
       },
+      "Holiday": {
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "date": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedBy": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmed",
+          "date",
+          "kind",
+          "name",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "type": "object"
+      },
+      "HolidayInput": {
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmed",
+          "kind",
+          "name"
+        ],
+        "type": "object"
+      },
       "ImportIssue": {
         "properties": {
           "column": {
@@ -4793,6 +4845,12 @@
           "brand": {
             "$ref": "#/components/schemas/BrandConfig"
           },
+          "closedDays": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "code": {
             "type": "string"
           },
@@ -5412,6 +5470,20 @@
         ],
         "type": "object"
       },
+      "closedDaysInput": {
+        "properties": {
+          "closedDays": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "closedDays"
+        ],
+        "type": "object"
+      },
       "consentInput": {
         "properties": {
           "granted": {
@@ -5612,6 +5684,20 @@
         "required": [
           "more",
           "rows"
+        ],
+        "type": "object"
+      },
+      "holidaysResponse": {
+        "properties": {
+          "holidays": {
+            "items": {
+              "$ref": "#/components/schemas/Holiday"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "holidays"
         ],
         "type": "object"
       },
@@ -19546,6 +19632,265 @@
         ]
       }
     },
+    "/settings/holidays": {
+      "get": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "getSettingsHolidays",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/holidaysResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Public holidays and cuti bersama that working-day deadlines skip, oldest first",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
+    "/settings/holidays/{date}": {
+      "delete": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "deleteSettingsHolidaysDate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/holidaysResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Remove the public holiday on a date (platform admin)",
+        "tags": [
+          "Platform"
+        ]
+      },
+      "put": {
+        "description": "For people signed in to the console. API keys cannot call this.",
+        "operationId": "putSettingsHolidaysDate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/holidaysResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Add or change the public holiday on a date (platform admin)",
+        "tags": [
+          "Platform"
+        ]
+      }
+    },
     "/settings/plans": {
       "get": {
         "description": "For people signed in to the console. API keys cannot call this.",
@@ -21807,6 +22152,76 @@
         ]
       }
     },
+    "/shop/{store}/vouchers/{code}": {
+      "get": {
+        "operationId": "getShopStoreVouchersCode",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "store",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Promotion"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          }
+        },
+        "security": [],
+        "summary": "The brand promotion a typed voucher code opens",
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
     "/signup/subdomain": {
       "get": {
         "operationId": "getSignupSubdomain",
@@ -22712,6 +23127,115 @@
           "Store"
         ],
         "x-action": "brand/toggleLock",
+        "x-required-permission": "brand.manage",
+        "x-required-scope": "store:write"
+      }
+    },
+    "/tenants/{id}/closed-days": {
+      "put": {
+        "description": "API keys need the scope `store:write`.",
+        "operationId": "putTenantsIdClosedDays",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/closedDaysInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaResponse"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Missing or invalid token."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The role or the API key's scopes do not allow this, or the tenant is out of reach."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No such record, or it belongs to another tenant."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "A business rule refused the action; detail holds the sentence to show."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request cannot be acted on."
+          },
+          "429": {
+            "description": "This API key sent more than 600 requests this minute."
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          },
+          {
+            "apiKeyHeader": []
+          },
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set the days the brand is closed besides weekends and public holidays; working-day deadlines skip them",
+        "tags": [
+          "Store"
+        ],
+        "x-action": "tenants/setClosedDays",
         "x-required-permission": "brand.manage",
         "x-required-scope": "store:write"
       }

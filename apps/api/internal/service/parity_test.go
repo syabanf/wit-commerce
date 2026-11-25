@@ -558,6 +558,13 @@ func dispatch(ctx context.Context, s *service.Service, m service.Meta, raw json.
 		}
 		parse(&a)
 		return s.SetCourierEta(ctx, m, a.TenantID, a.CourierEtaDays)
+	case "tenants/setClosedDays":
+		var a struct {
+			TenantID   string
+			ClosedDays []string
+		}
+		parse(&a)
+		return s.SetClosedDays(ctx, m, a.TenantID, a.ClosedDays)
 	case "tickets/open":
 		var a struct{ Complaint service.Complaint }
 		parse(&a)

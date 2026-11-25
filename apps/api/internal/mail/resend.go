@@ -40,6 +40,8 @@ type Message struct {
 	Subject string
 	Text    string
 	HTML    string
+	// Headers are extra email headers, such as List-Unsubscribe on marketing email.
+	Headers map[string]string
 }
 
 // Error is a refusal from Resend. Error names the status only, because Resend's answer can quote the
@@ -54,7 +56,12 @@ func (e *Error) Error() string { return fmt.Sprintf("resend: answered %d", e.Sta
 
 // Send delivers a message. A refusal comes back as *Error.
 func (c *Client) Send(ctx context.Context, m Message) error {
-	body, err := json.Marshal(map[string]any{"from": c.From, "to": []string{m.To}, "subject": m.Subject, "text": m.Text, "html": m.HTML})
+	payload := map[string]any{"from": c.From, "to": []string{m.To}, "subject": m.Subject, "text": m.Text, "html": m.HTML}
+	// Resend takes custom headers as an object of name to value.
+	if len(m.Headers) > 0 {
+		payload["headers"] = m.Headers
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}

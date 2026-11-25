@@ -31,14 +31,14 @@ var LegalReturnReasons = []string{"damaged", "wrong_item", "not_as_described", "
 // IsLegalReturnReason mirrors isLegalReturnReason.
 func IsLegalReturnReason(reason string) bool { return slices.Contains(LegalReturnReasons, reason) }
 
-// LegalReturnDeadline mirrors legalReturnDeadline: the end of the second working day (Monday to
-// Friday, WIB) after the day of delivery, in milliseconds.
-func LegalReturnDeadline(deliveredMs int64) int64 {
+// LegalReturnDeadline mirrors legalReturnDeadline: the end of the second working day after the day
+// of delivery, in milliseconds. closed holds the public holidays and the brand's closed days.
+func LegalReturnDeadline(deliveredMs int64, closed ClosedDays) int64 {
 	day := clock.FromMs(deliveredMs)
 	day = time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, clock.WIB)
 	for left := LegalReturnWorkingDays; left > 0; {
 		day = day.AddDate(0, 0, 1)
-		if wd := day.Weekday(); wd != time.Saturday && wd != time.Sunday {
+		if IsWorkingDay(day, closed) {
 			left--
 		}
 	}
@@ -64,7 +64,7 @@ func ShippingPayerOf(r domain.OrderReturn) string {
 }
 
 // ReturnDeadline mirrors returnDeadline; ok is false when the store takes no such requests.
-func ReturnDeadline(o domain.Order, windowDays int, reason string) (deadline int64, ok bool) {
+func ReturnDeadline(o domain.Order, windowDays int, reason string, closed ClosedDays) (deadline int64, ok bool) {
 	delivered := clock.Ms(DeliveredAt(o))
 	var brand int64
 	if windowDays > 0 {
@@ -73,12 +73,12 @@ func ReturnDeadline(o domain.Order, windowDays int, reason string) (deadline int
 	if !IsLegalReturnReason(reason) {
 		return brand, ok
 	}
-	return max(brand, LegalReturnDeadline(delivered)), true
+	return max(brand, LegalReturnDeadline(delivered, closed)), true
 }
 
 // returnWindowBlocker mirrors returnWindowBlocker.
-func returnWindowBlocker(o domain.Order, windowDays int, reason string, now int64) string {
-	deadline, ok := ReturnDeadline(o, windowDays, reason)
+func returnWindowBlocker(o domain.Order, windowDays int, reason string, now int64, closed ClosedDays) string {
+	deadline, ok := ReturnDeadline(o, windowDays, reason, closed)
 	if !ok {
 		return "This store takes change-of-mind and fit returns by message. Contact the store."
 	}
@@ -135,7 +135,7 @@ func DeliveredAt(o domain.Order) string {
 
 // ReturnRequestBlocker mirrors returnRequestBlocker. who is "staff" or "shopper"; now is in
 // milliseconds; returns are the tenant's returns.
-func ReturnRequestBlocker(o domain.Order, returns []domain.OrderReturn, items []domain.ReturnItem, who string, now int64, windowDays int) string {
+func ReturnRequestBlocker(o domain.Order, returns []domain.OrderReturn, items []domain.ReturnItem, who string, now int64, windowDays int, closed ClosedDays) string {
 	delivered := o.Status == "delivered" || o.Status == "completed"
 	if who == "shopper" {
 		if !delivered {
@@ -163,7 +163,7 @@ func ReturnRequestBlocker(o domain.Order, returns []domain.OrderReturn, items []
 			return "Choose a reason for each item."
 		}
 		if who == "shopper" {
-			if closed := returnWindowBlocker(o, windowDays, item.Reason, now); closed != "" {
+			if closed := returnWindowBlocker(o, windowDays, item.Reason, now, closed); closed != "" {
 				return closed
 			}
 		}

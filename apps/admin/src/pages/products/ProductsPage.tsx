@@ -238,7 +238,8 @@ export function ProductsPage() {
               placeholder="Search name, code, SKU or tag"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="min-w-0 sm:w-72 sm:flex-none flex-1"
+              // On phones the search takes its own row and the buttons wrap below it.
+              className="min-w-0 sm:w-72 sm:flex-none sm:basis-auto basis-full"
             />
             {HTTP && can('product.manage') && (
               <>

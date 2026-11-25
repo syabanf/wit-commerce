@@ -17,8 +17,8 @@ import (
 // Retention is how long the housekeeping keeps each log before deleting it. Zero keeps a log forever.
 //
 // PP 80/2019 Pasal 25 asks a PMSE operator to keep transaction data for 10 years and other PMSE data
-// for 5 years. Orders, payments, refunds, returns, invoices and customers are never pruned here.
-// Stock moves record what each order and return did to stock, so they count as transaction data and
+// for 5 years. The core records (orders and what hangs off them, customers, tickets, leads, privacy
+// requests) follow the rules in retention_core.go. Stock moves record what each order and return did to stock, so they count as transaction data and
 // keep 10 years. Integration logs (connector calls and their results) and traffic (daily visit counts,
 // no personal data) are records of the electronic system, so they keep the 5 years that apply to
 // other PMSE data. The request log, finished webhook deliveries and finished email are operational
@@ -34,6 +34,14 @@ type Retention struct {
 	Traffic           time.Duration
 	AuditLog          time.Duration
 	ProductImports    time.Duration
+	// Transactions is how long an order, its payment, refunds, returns and invoice stay after the
+	// order's last activity, and a platform invoice after it was issued.
+	Transactions time.Duration
+	// Customers is how long a customer, their events, tickets and leads stay after their last activity
+	// before the erasure path anonymises them.
+	Customers time.Duration
+	// PrivacyRequests is how long a completed privacy request stays as proof it was answered.
+	PrivacyRequests time.Duration
 }
 
 const (
@@ -53,6 +61,7 @@ func DefaultRetention() Retention {
 		RequestLog: 30 * day, WebhookDeliveries: 30 * day, EmailOutbox: 30 * day,
 		StockMoves: transactionYears * year, IntegrationLogs: pmseYears * year, Traffic: pmseYears * year,
 		AuditLog: pmseYears * year, ProductImports: 30 * day,
+		Transactions: transactionYears * year, Customers: pmseYears * year, PrivacyRequests: pmseYears * year,
 	}
 }
 
@@ -88,6 +97,9 @@ func RetentionFromEnv(getenv func(string) string) (Retention, []string) {
 	read("RETAIN_TRAFFIC_YEARS", year, pmseYears, &r.Traffic)
 	read("RETAIN_AUDIT_LOG_YEARS", year, pmseYears, &r.AuditLog)
 	read("RETAIN_PRODUCT_IMPORTS_DAYS", day, 1, &r.ProductImports)
+	read("RETAIN_TRANSACTIONS_YEARS", year, transactionYears, &r.Transactions)
+	read("RETAIN_CUSTOMERS_YEARS", year, pmseYears, &r.Customers)
+	read("RETAIN_PRIVACY_REQUESTS_YEARS", year, pmseYears, &r.PrivacyRequests)
 	return r, warnings
 }
 
@@ -163,7 +175,7 @@ func (s *Service) Prune(ctx context.Context, realNow, appNow time.Time, r Retent
 			}
 		}
 	}
-	return deleted, nil
+	return deleted, s.pruneCore(ctx, appNow, r, deleted)
 }
 
 // pruneExec runs one prune delete. The audit log refuses deletes unless its transaction sets

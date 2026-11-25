@@ -31,7 +31,7 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 	}
 	// A shopper's browser never decides that an order is paid.
 	if m.P.Kind == "customer" {
-		o = rules.ShopperPlacement(o)
+		o = rules.ShopperPlacement(o, m.At)
 	}
 	if o.PaymentMethod != "cod" && o.PaymentTypeID != nil && s.Payments != nil {
 		online, err := s.Payments.CollectsOnline(ctx, o.TenantID, *o.PaymentTypeID, o.Total)
@@ -59,28 +59,23 @@ func (s *Orders) PlaceOrder(ctx context.Context, m kernel.Meta, o domain.Order, 
 		}
 		// The brand's PPN settings decide the order's tax, whatever the client sent.
 		o = rules.WithOrderTax(o, tenant, l.Products)
-		// Two checkouts can pick the same next code; the second one takes the one after.
+		// Checkouts of one brand pick their order and customer codes one at a time: two that read the
+		// same highest code would both insert it. The lock holds until commit.
+		if _, err := t.Exec(t.Ctx, `select pg_advisory_xact_lock(hashtext('codes:' || $1))`, o.TenantID); err != nil {
+			return err
+		}
+		// The storefront holds no orders, so its code is often taken; the order then takes the next one.
 		var taken bool
 		if err := t.QueryRow(t.Ctx, `select exists (select 1 from orders where tenant_id = $1 and code = $2)`,
 			o.TenantID, o.Code).Scan(&taken); err != nil {
 			return err
 		}
 		if taken {
-			rows, err := t.Query(t.Ctx, `select code from orders where tenant_id = $1`, o.TenantID)
+			highest, err := store.HighestCode(t.Ctx, t.Tx, "orders", o.TenantID, tenant.Code+"-")
 			if err != nil {
 				return err
 			}
-			var codes []string
-			for rows.Next() {
-				var code string
-				if err := rows.Scan(&code); err != nil {
-					rows.Close()
-					return err
-				}
-				codes = append(codes, code)
-			}
-			rows.Close()
-			o.Code = ids.NextCode(codes, tenant.Code+"-", 5)
+			o.Code = ids.NextCode([]string{highest}, tenant.Code+"-", 5)
 		}
 		paid := o.PaymentStatus == "paid"
 		if err := crm.RecordOrderPlaced(t, o, customer, m.At, m.By()); err != nil {

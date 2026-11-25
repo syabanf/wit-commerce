@@ -1,6 +1,5 @@
 import { fmtIdr, initials } from '@rc/fixtures'
 import { Package } from 'lucide-react'
-import { ApiError } from '@rc/api'
 import { Turnstile } from '@rc/ui'
 import { type ChangeEvent, type FormEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
@@ -10,6 +9,7 @@ import { paths } from '../lib/paths'
 import { useTitle } from '../lib/useTitle'
 import { useShop } from '../state/shop'
 import { t } from '../i18n'
+import { problemText } from '../i18n/refusals'
 import { fmtDate } from '../i18n/format'
 import { MarketingCard, PrivacyRequestsCard } from './AccountPrivacy'
 import { orderStatusLabel, stageLabel, tierLabel } from './accountLabels'
@@ -395,8 +395,6 @@ function PasswordCard() {
   )
 }
 
-const messageOf = (err: unknown) => (err instanceof ApiError ? err.message : t('account.noAnswer'))
-
 /** Emails a link to the address typed above it. */
 function ForgotButton({ email }: { email: string }) {
   const { store } = useShop()
@@ -408,7 +406,7 @@ function ForgotButton({ email }: { email: string }) {
       const { message } = await api.shop.forgotPassword(store, email)
       setNote(message)
     } catch (err) {
-      setNote(messageOf(err))
+      setNote(problemText(err))
     }
   }
 
@@ -448,7 +446,7 @@ function ResetForm({ token }: { token: string }) {
       await api.shop.resetPassword(store, token, next)
       navigate(paths.account(store), { replace: true })
     } catch (err) {
-      setError(messageOf(err))
+      setError(problemText(err))
       setBusy(false)
     }
   }
@@ -494,7 +492,7 @@ function VerifyNotice() {
         setNote(t('account.verified'))
         reloadAccount()
       })
-      .catch((err: unknown) => setNote(messageOf(err)))
+      .catch((err: unknown) => setNote(problemText(err)))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- spends the link once
   }, [token])
 
@@ -517,7 +515,7 @@ function ConfirmEmailCard() {
       await api.shop.sendVerifyEmail(store)
       setNote(t('account.confirm.sent', { email: customer.email }))
     } catch (err) {
-      setNote(messageOf(err))
+      setNote(problemText(err))
     }
   }
 

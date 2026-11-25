@@ -24,7 +24,9 @@ type fakeResend struct {
 	mu   sync.Mutex
 	got  map[string]int
 	text []string
-	fail atomic.Bool
+	// headers holds the headers object of each request body.
+	headers []map[string]string
+	fail    atomic.Bool
 }
 
 func outboxEnv(t *testing.T) (*Notifications, *fakeResend) {
@@ -37,14 +39,16 @@ func outboxEnv(t *testing.T) (*Notifications, *fakeResend) {
 			return
 		}
 		var m struct {
-			To   []string `json:"to"`
-			Text string   `json:"text"`
+			To      []string          `json:"to"`
+			Text    string            `json:"text"`
+			Headers map[string]string `json:"headers"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&m)
 		time.Sleep(5 * time.Millisecond) // lets concurrent drains overlap
 		fake.mu.Lock()
 		fake.got[m.To[0]]++
 		fake.text = append(fake.text, m.Text)
+		fake.headers = append(fake.headers, m.Headers)
 		fake.mu.Unlock()
 	}))
 	t.Cleanup(srv.Close)
@@ -193,5 +197,35 @@ func TestEmailOffQueuesNothing(t *testing.T) {
 	n.MailUserReset(t.Context(), domain.User{ID: "usr-off", Email: "off@example.com"})
 	if pending, err := n.Pending(t.Context()); err != nil || pending != 0 {
 		t.Fatalf("pending with email off: %d, %v", pending, err)
+	}
+}
+
+// A queued marketing email reaches Resend with its List-Unsubscribe headers, and the row keeps none
+// once sent, since the link carries the shopper's token.
+func TestMarketingEmailSendsListUnsubscribeHeaders(t *testing.T) {
+	n, fake := outboxEnv(t)
+	link := n.UnsubscribeURL("tok.en")
+	m := ComposeMarketing(Branding{Name: "Lari", Contact: "cs@lari.co.id"}, "id", "rina@example.com", Email{Title: "Sepatu baru"}, link)
+	if err := enqueue(t.Context(), n.DB.Pool, "marketing", m); err != nil {
+		t.Fatal(err)
+	}
+	if sent, err := n.Drain(t.Context()); err != nil || sent != 1 {
+		t.Fatalf("drain: %d %v", sent, err)
+	}
+	got := fake.headers[0]
+	if got["List-Unsubscribe"] != "<"+link+">, <mailto:cs@lari.co.id?subject=unsubscribe>" || got["List-Unsubscribe-Post"] != "List-Unsubscribe=One-Click" {
+		t.Errorf("headers: %v", got)
+	}
+	var left string
+	if err := n.DB.Pool.QueryRow(t.Context(), `select headers::text from email_outbox`).Scan(&left); err != nil || left != "{}" {
+		t.Errorf("sent row keeps headers %q (%v)", left, err)
+	}
+	// Transactional email carries no headers object at all.
+	n.MailUserReset(t.Context(), domain.User{ID: "usr-h", Email: "h@example.com"})
+	if _, err := n.Drain(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if fake.headers[1] != nil {
+		t.Errorf("transactional headers: %v", fake.headers[1])
 	}
 }

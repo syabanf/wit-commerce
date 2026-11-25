@@ -17,6 +17,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/events"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/antispam"
+	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
@@ -301,13 +302,13 @@ func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, col
 		switch c {
 		case "orders":
 			// Only orders still under way: the queues, notifications and badges work on these. Every
-			// other order is one query away (GET /views/orders, GET /orders/{id}). Each carries only the
-			// shipment from its history; a detail reads the whole order.
+			// other order is one query away (GET /views/orders, GET /orders/{id}). Each comes as a list
+			// item (orderListItems); a detail reads the whole order.
 			// A cancelled order whose refund is still owed stays too, so staff see it to settle.
 			rows, err = store.Raw(ctx, s.DB.Pool, c, where+" and (status in ('new', 'confirmed', 'paid', 'processing', 'packed', 'shipped')"+
 				" or status = 'cancelled' and data->'cancelRefund'->>'status' in ('owed', 'pending', 'failed'))", args...)
 			if err == nil {
-				err = withShipmentsOnly(rows)
+				err = orderListItems(rows)
 			}
 		case "customers":
 			// Customer records load as screens need them (GET /views/customers). A sales user keeps the
@@ -361,42 +362,6 @@ func (s *Server) loadState(ctx context.Context, tenantIDs, sellers []string, col
 // every customer GET /views/customer-summary.
 var stateCollections = append(slices.DeleteFunc(slices.Clone(store.Collections), func(c string) bool { return c == "customerEvents" }),
 	readmodel.Collections...)
-
-// withShipmentsOnly trims each order's history to its shipped events, the part lists and the
-// dashboard read. The rest is half of an order's size.
-func withShipmentsOnly(rows []json.RawMessage) error {
-	for i, raw := range rows {
-		var order map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &order); err != nil {
-			return err
-		}
-		var history []struct {
-			Status *string `json:"status"`
-		}
-		if err := json.Unmarshal(order["events"], &history); err != nil {
-			return err
-		}
-		var all []json.RawMessage
-		if err := json.Unmarshal(order["events"], &all); err != nil {
-			return err
-		}
-		kept := []json.RawMessage{}
-		for j, e := range history {
-			if e.Status != nil && *e.Status == "shipped" {
-				kept = append(kept, all[j])
-			}
-		}
-		trimmed, err := json.Marshal(kept)
-		if err != nil {
-			return err
-		}
-		order["events"] = trimmed
-		if rows[i], err = json.Marshal(order); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func (s *Server) state(w http.ResponseWriter, r *http.Request) {
 	p, _ := auth.From(r.Context())
@@ -521,7 +486,7 @@ func shopScope(tenantID string) events.Scope {
 	for _, c := range shopCollections {
 		visible[c] = true
 	}
-	return events.Scope{TenantIDs: []string{tenantID}, Collections: visible}
+	return events.Scope{TenantIDs: []string{tenantID}, Collections: visible, Shape: publicRow}
 }
 
 func (s *Server) storeTenant(r *http.Request) (domain.Tenant, error) {
@@ -553,6 +518,7 @@ func (s *Server) shopState(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
+	publicState(state)
 	online, err := s.svc.OnlinePaymentTypes(r.Context(), tenant.ID)
 	if err != nil {
 		s.writeError(w, r, err)
@@ -563,7 +529,12 @@ func (s *Server) shopState(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, err)
 		return
 	}
-	writeShopState(w, r, map[string]any{"state": state, "onlinePayments": online, "currencyRates": rates}, s.Clock.NowIso())
+	holidays, err := identity.HolidayDates(r.Context(), s.DB.Pool)
+	if err != nil {
+		s.writeError(w, r, err)
+		return
+	}
+	writeShopState(w, r, map[string]any{"state": state, "onlinePayments": online, "currencyRates": rates, "holidays": holidays}, s.Clock.NowIso())
 }
 
 func (s *Server) shopEvents(w http.ResponseWriter, r *http.Request) {
@@ -779,7 +750,10 @@ func (s *Server) shopPlaceOrder(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if why := termsProblem(tenant, in.Order); why != "" {
+	if why, err := s.termsProblem(r.Context(), tenant, in.Order); err != nil {
+		s.writeError(w, r, err)
+		return
+	} else if why != "" {
 		writeProblem(w, http.StatusUnprocessableEntity, "TERMS_NOT_ACCEPTED", why)
 		return
 	}

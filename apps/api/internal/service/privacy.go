@@ -56,6 +56,9 @@ func erase(t *tx, m Meta, c domain.Customer, note string) error {
 	if err := t.ScrubDeliveries(c.TenantID, rules.ErasedText, c.Email, c.Phone, c.Name); err != nil {
 		return err
 	}
+	if err := t.ScrubAssistantLog(c.TenantID, rules.ErasedText, c.Email, c.Phone, c.Name); err != nil {
+		return err
+	}
 	// Live changes too large for a NOTIFY wait here for ten minutes; drop the ones that name the
 	// customer.
 	if c.Email != "" {

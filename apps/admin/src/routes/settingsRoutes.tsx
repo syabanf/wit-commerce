@@ -48,6 +48,11 @@ export const settingsRoutes: RouteObject[] = [
     lazy: page(() => import('../pages/settings/CurrencySettingsPage'), 'CurrencySettingsPage'),
   },
   {
+    path: 'settings/holidays',
+    handle: { breadcrumb: t.breadcrumb.holidays },
+    lazy: page(() => import('../pages/settings/HolidaysPage'), 'HolidaysPage'),
+  },
+  {
     path: 'settings/assistant-log',
     handle: { breadcrumb: t.breadcrumb.assistantLog },
     lazy: page(() => import('../pages/settings/AssistantLogPage'), 'AssistantLogPage'),

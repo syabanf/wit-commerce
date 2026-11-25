@@ -38,6 +38,7 @@ import { useState } from 'react'
 import { useAuth } from '../../auth/auth'
 import { storefrontUrl } from '../../lib/storefront'
 import { useScoped } from '../../state/scoped'
+import { ClosedDaysCard } from './ClosedDaysCard'
 import { TaxCard } from './TaxCard'
 
 /** Seller identity, complaint service, terms choices and delivery days (PP 80/2019). */
@@ -56,6 +57,7 @@ export function LegalPage() {
         <LegalEditor key={`${tenant.id}:${JSON.stringify(legal)}`} saved={legal} />
         <TaxCard key={`${tenant.id}:${JSON.stringify(tenant.tax ?? null)}`} />
         <DeliveryDaysCard key={`${tenant.id}:${JSON.stringify(etas)}`} />
+        <ClosedDaysCard key={`${tenant.id}:${JSON.stringify(tenant.closedDays ?? [])}`} />
       </div>
     </>
   )
@@ -111,7 +113,7 @@ function LegalEditor({ saved }: { saved: SellerLegal }) {
       await s.dispatchAsync({ type: 'tenants/setLegal', tenantId: s.tenantId, legal: next })
       toast('Legal details saved', {
         tone: 'success',
-        description: `${s.tenant.name} · terms version ${termsVersion({ ...s.tenant, legal: next })}`,
+        description: `${s.tenant.name} · terms version ${termsVersion({ ...s.tenant, legal: next }, s.paymentTypes)}`,
       })
     } catch (err) {
       toast('Not saved', { tone: 'danger', description: (err as Error).message })
@@ -228,7 +230,7 @@ function LegalEditor({ saved }: { saved: SellerLegal }) {
           <CardDescription>
             The storefront writes the terms in Bahasa Indonesia from these details, the return window and the
             delivery days. Shoppers agree to them at checkout, and every order keeps the version they agreed
-            to. Current version <span className="font-mono">{termsVersion(s.tenant)}</span>.
+            to. Current version <span className="font-mono">{termsVersion(s.tenant, s.paymentTypes)}</span>.
           </CardDescription>
         </CardHeader>
         <CardContent className="gap-4 md:grid-cols-2 grid grid-cols-1">

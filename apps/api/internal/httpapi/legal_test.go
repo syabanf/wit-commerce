@@ -16,7 +16,11 @@ func (e *env) termsVersion(tenantID string) string {
 	if err != nil {
 		e.t.Fatal(err)
 	}
-	return rules.TermsVersion(tenant)
+	pays, err := store.List[domain.PaymentType](context.Background(), e.db.Pool, "paymentTypes", "tenant_id = $1", tenantID)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return rules.TermsVersion(tenant, pays)
 }
 
 func TestShopOrderNeedsTheCurrentTerms(t *testing.T) {
@@ -107,7 +111,7 @@ func TestShopComplaintOpensATicket(t *testing.T) {
 	if tk.Kind != "complaint" || tk.Channel != "web" || tk.Status != "open" || tk.CustomerID != "" || tk.Contact == nil || tk.Contact.Name != "Rina" {
 		t.Errorf("ticket: %+v", tk)
 	}
-	if tk.SlaDueAt != rules.AddWorkingDays(tk.CreatedAt, rules.DefaultComplaintDays) || tk.Code == "" {
+	if tk.SlaDueAt != rules.AddWorkingDays(tk.CreatedAt, rules.DefaultComplaintDays, nil) || tk.Code == "" {
 		t.Errorf("sla %s for %s, code %q", tk.SlaDueAt, tk.CreatedAt, tk.Code)
 	}
 
@@ -138,4 +142,27 @@ func TestShopComplaintOpensATicket(t *testing.T) {
 	if status, code := e.problem("POST", "/shop/lari/complaints", "", complaint); status != 429 || code != "RATE_LIMITED" {
 		t.Errorf("sixth complaint: %d %s", status, code)
 	}
+}
+
+// The terms page lists the brand's payment types, so turning one off gives the terms a new version
+// and an order agreed under the old one is refused until the shopper agrees again.
+func TestPaymentTypeChangeAsksForNewConsent(t *testing.T) {
+	e := setup(t)
+	pays, err := store.List[domain.PaymentType](context.Background(), e.db.Pool, "paymentTypes", "tenant_id = $1 and (data->>'enabled')::boolean", "ten-lari")
+	if err != nil || len(pays) == 0 {
+		t.Fatalf("no enabled payment type: %v", err)
+	}
+	order := e.placeable("ord-terms-pay", "cus-terms-pay")
+	old := e.termsVersion("ten-lari")
+	e.expect(200, "POST", "/payment-types/"+pays[0].ID+"/toggle", e.admin, nil)
+	if e.termsVersion("ten-lari") == old {
+		t.Fatal("the terms version did not change with the payment types")
+	}
+	customer := map[string]any{"id": "cus-terms-pay", "tenantId": "ten-lari", "code": "LARI-C9pay1", "name": "Guest", "email": "pay@example.com"}
+	order["termsVersion"] = old
+	if status, code := e.problem("POST", "/shop/lari/orders", "", map[string]any{"order": order, "customer": customer}); status != 422 || code != "TERMS_NOT_ACCEPTED" {
+		t.Errorf("stale consent: %d %s", status, code)
+	}
+	order["termsVersion"] = e.termsVersion("ten-lari")
+	e.expect(200, "POST", "/shop/lari/orders", "", map[string]any{"order": order, "customer": customer})
 }

@@ -18,6 +18,7 @@ import { SummaryRows } from '../components/cartParts'
 import { TermsConsent, termsRequired } from '../components/TermsConsent'
 import { ProductImage } from '../components/product'
 import { Button, ButtonLink, EmptyState, Field, describedBy, inputClass } from '../components/ui'
+import { ApiError } from '@rc/api'
 import { HTTP } from '../lib/api'
 import { cartTotals } from '../lib/cart'
 import {
@@ -38,6 +39,7 @@ import { useShop } from '../state/shop'
 import { useStore } from '../state/store'
 import { PayInRupiahNote } from '../components/Money'
 import { RupiahOnlyArea } from '../state/currency'
+import { problemText, refusalText } from '../i18n/refusals'
 import { MARKETING_CONSENT_VERSION } from '@rc/types'
 import { type MessageKey, t, tp, tx } from '../i18n'
 import { codeErrorText, describePromotion } from '../i18n/format'
@@ -236,7 +238,7 @@ function Choice({
 export function CheckoutPage() {
   const { state } = useStore()
   const shop = useShop()
-  const { catalog, cart, customer, customers, referral, store, tenant, send, signIn, paysOnline } = shop
+  const { catalog, cart, customer, customers, referral, store, tenant, send, signIn, paysOnline, reloadStore } = shop
   const navigate = useNavigate()
   const uid = useId()
   useTitle(t('checkout.pageTitle', { store: tenant.name }))
@@ -258,7 +260,8 @@ export function CheckoutPage() {
   const [courierId, setCourierId] = useState<Courier>(firstCourier.id)
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [errors, setErrors] = useState<Errors>({})
-  const [placeError, setPlaceError] = useState<string | null>(null)
+  // Kept as a function so the message follows the language when the shopper switches it.
+  const [placeError, setPlaceError] = useState<{ text: () => string } | null>(null)
   const [agreed, setAgreed] = useState(false)
   // Marketing consent is optional and starts unticked (UU PDP Pasal 20 to 24).
   const [offers, setOffers] = useState(false)
@@ -351,7 +354,7 @@ export function CheckoutPage() {
   const place = () => {
     if (!payment) return
     if (!agreed) {
-      setPlaceError(termsRequired())
+      setPlaceError({ text: termsRequired })
       return
     }
     const contactInfo =
@@ -382,10 +385,10 @@ export function CheckoutPage() {
       state.products,
     )
     if (blocker) {
-      setPlaceError(blocker)
+      setPlaceError({ text: () => refusalText(blocker) })
       return
     }
-    send({ type: 'orders/place', order: withTerms(order, tenant), customer: created })
+    send({ type: 'orders/place', order: withTerms(order, tenant, catalog.paymentTypes), customer: created })
       .then(async (answer) => {
         await signIn(order.customerId)
         // Someone who already agreed is refused as unchanged, which changes nothing here.
@@ -402,7 +405,17 @@ export function CheckoutPage() {
         if (answer?.payment) window.location.assign(answer.payment.redirectUrl)
         else navigate(paths.order(store, order.id), { replace: true })
       })
-      .catch((err: Error) => setPlaceError(err.message))
+      .catch((err: unknown) => {
+        // The store changed its terms (or the payment types they list) since this page loaded: read
+        // them again and ask for a fresh agreement.
+        if (err instanceof ApiError && err.code === 'TERMS_NOT_ACCEPTED') {
+          reloadStore()
+          setAgreed(false)
+          setPlaceError({ text: () => t('checkout.terms.changed') })
+          return
+        }
+        setPlaceError({ text: () => problemText(err) })
+      })
   }
 
   const field = (key: keyof typeof contact) => ({
@@ -748,7 +761,7 @@ export function CheckoutPage() {
                   role="alert"
                   className="p-4 text-sm font-semibold rounded-[var(--sf-tile-radius)] border border-danger text-danger"
                 >
-                  {placeError}
+                  {placeError.text()}
                 </p>
               )}
             </div>

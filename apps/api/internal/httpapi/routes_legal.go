@@ -1,12 +1,14 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/ids"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
+	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
 // complaintsPerHour is how many complaints one client may send to any store in an hour.
@@ -48,6 +50,19 @@ func (s *Server) legalRoutes(rt *router) {
 			return s.svc.SetCourierEta(r.Context(), m, r.PathValue("id"), in.CourierEtaDays)
 		})
 	})
+	rt.add("PUT", "/tenants/{id}/closed-days", "tenants/setClosedDays", "brand.manage", "Set the days the brand is closed besides weekends and public holidays; working-day deadlines skip them", func(w http.ResponseWriter, r *http.Request) {
+		var in closedDaysInput
+		if err := decode(r, &in); err != nil {
+			s.writeError(w, r, err)
+			return
+		}
+		s.act(w, r, func(m service.Meta) (*service.Delta, error) {
+			return s.svc.SetClosedDays(r.Context(), m, r.PathValue("id"), in.ClosedDays)
+		})
+	})
+	rt.add("GET", "/settings/holidays", "", "", "Public holidays and cuti bersama that working-day deadlines skip, oldest first", s.user("", s.getHolidays))
+	rt.add("PUT", "/settings/holidays/{date}", "", "", "Add or change the public holiday on a date (platform admin)", s.platformAdmin(s.saveHoliday))
+	rt.add("DELETE", "/settings/holidays/{date}", "", "", "Remove the public holiday on a date (platform admin)", s.platformAdmin(s.removeHoliday))
 	rt.add("PUT", "/tenants/{id}/tax", "tenants/setTax", "brand.manage", "Set whether the brand charges PPN, how its prices hold it, and product or category overrides; PKP needs an NPWP", func(w http.ResponseWriter, r *http.Request) {
 		var in domain.TaxSettings
 		if err := decode(r, &in); err != nil {
@@ -97,13 +112,15 @@ func (s *Server) shopComplaint(w http.ResponseWriter, r *http.Request) {
 }
 
 // termsProblem is why a storefront order cannot be placed under the store's terms, or "" when the
-// shopper agreed to the version the store shows now (PP 80/2019 Pasal 46).
-func termsProblem(tenant domain.Tenant, o domain.Order) string {
-	switch o.TermsVersion {
-	case "":
-		return "Agree to the store's Terms and Privacy Policy to place the order."
-	case rules.TermsVersion(tenant):
-		return ""
+// shopper agreed to the version the store shows now (PP 80/2019 Pasal 46). The version covers the
+// payment types the terms list, so the store's enabled ones are read here.
+func (s *Server) termsProblem(ctx context.Context, tenant domain.Tenant, o domain.Order) (string, error) {
+	if o.TermsVersion == "" {
+		return "Agree to the store's Terms and Privacy Policy to place the order.", nil
 	}
-	return "The store's terms changed. Reload the checkout, read them, and agree again."
+	pays, err := store.List[domain.PaymentType](ctx, s.DB.Pool, "paymentTypes", "tenant_id = $1", tenant.ID)
+	if err != nil || o.TermsVersion == rules.TermsVersion(tenant, pays) {
+		return "", err
+	}
+	return "The store's terms changed. Reload the checkout, read them, and agree again.", nil
 }

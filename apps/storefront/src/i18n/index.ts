@@ -56,9 +56,15 @@ export const useLang = () => useSyncExternalStore(subscribe, currentLang, curren
 /** The Intl locale for dates and numbers. */
 export const locale = (lang: Lang = currentLang()) => (lang === 'id' ? 'id-ID' : 'en-GB')
 
+// A value that ends a sentence itself ("Lari Running Co.", "Yay!") takes the place of the full stop after
+// it, so "{store}." never reads "Co..".
 const fill = (text: string, vars?: Vars) =>
   vars
-    ? text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole))
+    ? text.replace(/\{(\w+)\}(\.?)/g, (whole, name: string, stop: string) => {
+        if (!(name in vars)) return whole
+        const value = String(vars[name])
+        return stop && /[.!?]$/.test(value) ? value : value + stop
+      })
     : text
 
 /** One message in the current language, with `{name}` placeholders filled from `vars`. */

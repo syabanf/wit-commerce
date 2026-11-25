@@ -266,6 +266,12 @@ var routeDocs = map[string]routeDoc{
 	"POST /tickets":                 {body: service.Complaint{}},
 	"POST /shop/{store}/complaints": {body: shopComplaintInput{}},
 
+	// Working-day calendar: public holidays and each brand's closed days.
+	"PUT /tenants/{id}/closed-days":    {body: closedDaysInput{}},
+	"GET /settings/holidays":           {response: holidaysResponse{}},
+	"PUT /settings/holidays/{date}":    {body: identity.HolidayInput{}, response: holidaysResponse{}},
+	"DELETE /settings/holidays/{date}": {response: holidaysResponse{}},
+
 	// PPN settings and order invoices.
 	"PUT /tenants/{id}/tax":                     {body: domain.TaxSettings{}},
 	"GET /orders/{id}/invoice.pdf":              {pdf: true, query: [][3]string{{"tenantId", "string", "Required with a user token; an API key always reads its own tenant."}}},
@@ -294,8 +300,9 @@ var routeDocs = map[string]routeDoc{
 		{"page", "integer", "From 1."},
 		{"pageSize", "integer", "24 when left out, at most 60."},
 	}},
-	"GET /shop/{store}/suggest": {response: service.SuggestResult{}, query: [][3]string{{"q", "string", "What the shopper has typed so far."}}},
-	"GET /shop/{store}/export":  {response: service.CustomerExport{}},
+	"GET /shop/{store}/vouchers/{code}": {response: domain.Promotion{}},
+	"GET /shop/{store}/suggest":         {response: service.SuggestResult{}, query: [][3]string{{"q", "string", "What the shopper has typed so far."}}},
+	"GET /shop/{store}/export":          {response: service.CustomerExport{}},
 
 	// Audit log and product CSV.
 	"GET /audit-log":                   {response: AuditPage{}},
@@ -354,6 +361,7 @@ var publicRoutes = map[string]bool{
 	"POST /shop/{store}/complaints":        true,
 	"GET /shop/{store}/search":             true,
 	"GET /shop/{store}/suggest":            true,
+	"GET /shop/{store}/vouchers/{code}":    true,
 }
 
 var pathParam = regexp.MustCompile(`\{([a-zA-Z]+)\}`)

@@ -133,6 +133,21 @@ export interface Tenant {
   courierEtaDays?: Partial<Record<Courier, EtaDays>>
   /** Whether the brand charges PPN and how. Without it the brand charges none. */
   tax?: TaxSettings
+  /**
+   * Days the brand is closed besides weekends and public holidays, as YYYY-MM-DD in WIB. Working-day
+   * deadlines (the legal return floor, complaint due times) skip them.
+   */
+  closedDays?: string[]
+}
+
+/** A national holiday or cuti bersama, platform-wide. */
+export interface PublicHoliday {
+  /** YYYY-MM-DD in WIB. */
+  date: string
+  name: string
+  kind: 'national' | 'cuti_bersama'
+  /** False while the date still needs checking against the official SKB 3 Menteri text. */
+  confirmed: boolean
 }
 
 /** How PPN applies to a product: on the 11/12 tax base, on the full price, or not at all. */

@@ -10,7 +10,7 @@ import { useStoreMenu } from '../../lib/menus'
 import { firstName, paths } from '../../lib/paths'
 import { MenuLink } from '../../components/MenuLink'
 import { EMBED } from '../../lib/embed'
-import { RETURNS_POLICY } from '../../lib/policy'
+import { returnsPolicy } from '../../lib/policy'
 import { usePersisted } from '../../lib/storage'
 import { useIsPhone } from '../../lib/useIsPhone'
 import { useShop } from '../../state/shop'
@@ -278,7 +278,7 @@ function Footer() {
           {t('shell.footer.freeShipping')}{' '}
           <span className="whitespace-nowrap">{fmtIdr(tenant.loyalty.freeShippingMin)}</span>.
         </li>
-        <li>{RETURNS_POLICY[tenant.industry]}</li>
+        <li>{returnsPolicy(tenant).sentence}</li>
         <li>
           {t('shell.footer.payWith')}{' '}
           {catalog.paymentTypes
