@@ -65,6 +65,9 @@ func (m Meta) By() string { return m.P.By() }
 type Delta struct {
 	Upserts map[string][]any    `json:"upserts"`
 	Removes map[string][]string `json:"removes"`
+	// RemovedTenants names the brand of each removed row, by collection and id, so the event stream
+	// sends a removal only to that brand's subscribers.
+	RemovedTenants map[string]map[string]string `json:"-"`
 }
 
 // NewDelta makes an empty delta.
@@ -189,9 +192,17 @@ func (t *Tx) Del(collection, id string) error {
 			return err
 		}
 	}
-	if err := store.Delete(t.Ctx, t.Tx, collection, id); err != nil {
+	tenantID, err := store.Delete(t.Ctx, t.Tx, collection, id)
+	if err != nil {
 		return err
 	}
+	if t.D.RemovedTenants == nil {
+		t.D.RemovedTenants = map[string]map[string]string{}
+	}
+	if t.D.RemovedTenants[collection] == nil {
+		t.D.RemovedTenants[collection] = map[string]string{}
+	}
+	t.D.RemovedTenants[collection][id] = tenantID
 	if t.audit != nil {
 		t.audit.removed(collection, id)
 	}

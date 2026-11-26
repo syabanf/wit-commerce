@@ -22,7 +22,11 @@ func (priceBooks) PriceBook(t *kernel.Tx, tenantID string) (rules.PriceBook, err
 	if err != nil {
 		return rules.PriceBook{}, err
 	}
-	book := rules.PriceBook{Promotions: promotions, Categories: categories}
+	paymentTypes, err := store.ListTenant[domain.PaymentType](t.Ctx, t.Tx, "paymentTypes", tenantID)
+	if err != nil {
+		return rules.PriceBook{}, err
+	}
+	book := rules.PriceBook{Promotions: promotions, Categories: categories, PaymentTypes: paymentTypes}
 	policy, err := store.Get[domain.AgentPolicy](t.Ctx, t.Tx, "agentPolicies", tenantID)
 	switch {
 	case err == nil:

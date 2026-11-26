@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/identity"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/media"
 	"github.com/syabanf/wit-commerce/apps/api/internal/modules/notifications"
+	"github.com/syabanf/wit-commerce/apps/api/internal/readmodel"
 	"github.com/syabanf/wit-commerce/apps/api/internal/service"
 	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
@@ -469,7 +471,7 @@ func (s *Server) publish(d *service.Delta) map[string]any {
 	}
 	for collection, ids := range d.Removes {
 		for _, id := range ids {
-			change.Removes[collection] = append(change.Removes[collection], events.Removed{ID: id})
+			change.Removes[collection] = append(change.Removes[collection], events.Removed{TenantID: removedTenant(d, collection, id), ID: id})
 		}
 	}
 	s.Hub.Publish(change)
@@ -488,4 +490,17 @@ func (s *Server) act(w http.ResponseWriter, r *http.Request, run func(m service.
 		return
 	}
 	writeJSON(w, http.StatusOK, s.publish(d))
+}
+
+// removedTenant is the brand a removed row belonged to. Rows a module deleted carry it in the delta;
+// sales fact ids begin with their tenant ("ten-lari:2026-10-05:..."). Anything else stays unnamed, and
+// the hub sends an unnamed removal only to subscribers that see every brand.
+func removedTenant(d *service.Delta, collection, id string) string {
+	if tenantID, ok := d.RemovedTenants[collection][id]; ok {
+		return tenantID
+	}
+	if tenantID, _, ok := strings.Cut(id, ":"); ok && slices.Contains(readmodel.Collections, collection) {
+		return tenantID
+	}
+	return ""
 }

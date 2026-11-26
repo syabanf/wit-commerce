@@ -127,6 +127,11 @@ func (s *Orders) reprice(t *kernel.Tx, o domain.Order, tenant domain.Tenant, l r
 		return o, err
 	}
 	book.Tenant, book.Products, book.Modifiers, book.Now = tenant, l.Products, l.Modifiers, clock.Ms(at)
+	// The payment choice is checked first, so a shopper hears that the method is unavailable rather
+	// than that a price changed because of it; its amount limits wait for the server's own total.
+	if why := rules.PaymentTypeBlocker(o, book.PaymentTypes, false); why != "" {
+		return o, kernel.Conflict{Code: "PAYMENT_UNAVAILABLE", Reason: why}
+	}
 	priced, why := rules.RepriceShopperOrder(o, book)
 	if why == "" {
 		// Another checkout may have taken the last use of a promotion since the book was read.
@@ -140,6 +145,9 @@ func (s *Orders) reprice(t *kernel.Tx, o domain.Order, tenant domain.Tenant, l r
 	}
 	if why != "" {
 		return o, kernel.Conflict{Code: "PRICE_CHANGED", Reason: why}
+	}
+	if why := rules.PaymentTypeBlocker(priced, book.PaymentTypes, true); why != "" {
+		return o, kernel.Conflict{Code: "PAYMENT_UNAVAILABLE", Reason: why}
 	}
 	return priced, nil
 }

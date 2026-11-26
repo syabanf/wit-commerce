@@ -31,3 +31,21 @@ func TestShapeRewritesRowsBeforeTheyLeave(t *testing.T) {
 		t.Fatalf("shaped row dropped: %s", out)
 	}
 }
+
+// A removal whose brand is unknown reaches only subscribers that see every brand.
+func TestUnnamedRemovalsStayWithThePlatform(t *testing.T) {
+	change := events.Change{Removes: map[string][]events.Removed{"categories": {{ID: "cat-x"}}}}
+	if _, ok := (events.Scope{TenantIDs: []string{"ten-lari"}}).Filter(change); ok {
+		t.Fatal("a brand subscriber received an unnamed removal")
+	}
+	if _, ok := (events.Scope{}).Filter(change); !ok {
+		t.Fatal("the platform lost an unnamed removal")
+	}
+	named := events.Change{Removes: map[string][]events.Removed{"categories": {{TenantID: "ten-aruna", ID: "cat-y"}}}}
+	if _, ok := (events.Scope{TenantIDs: []string{"ten-lari"}}).Filter(named); ok {
+		t.Fatal("ten-lari received ten-aruna's removal")
+	}
+	if _, ok := (events.Scope{TenantIDs: []string{"ten-aruna"}}).Filter(named); !ok {
+		t.Fatal("ten-aruna lost its own removal")
+	}
+}

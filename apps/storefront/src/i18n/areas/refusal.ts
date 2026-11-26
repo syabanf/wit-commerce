@@ -23,6 +23,8 @@ export const en = {
   'refusal.order.noInvoice': 'A cancelled order gets no invoice.',
   'refusal.order.priceChanged':
     'Prices or offers changed since you opened the checkout. Check the new total and place the order again.',
+  'refusal.order.paymentUnavailable':
+    'This payment method is not available for this order. Choose another one.',
   'refusal.order.agentDiscount':
     'The store does not allow this agent discount. Ask the agent for a new total.',
   // Talk to sales
@@ -122,6 +124,8 @@ export const id: Record<keyof typeof en, string> = {
   'refusal.order.noInvoice': 'Pesanan yang dibatalkan tidak mendapat faktur.',
   'refusal.order.priceChanged':
     'Harga atau promo berubah sejak Anda membuka checkout. Periksa total baru, lalu buat pesanan lagi.',
+  'refusal.order.paymentUnavailable':
+    'Metode pembayaran ini tidak tersedia untuk pesanan ini. Pilih metode lain.',
   'refusal.order.agentDiscount': 'Toko tidak mengizinkan diskon agen ini. Minta total baru kepada agen.',
   'refusal.lead.otherStore': 'Permintaan ini milik toko lain.',
   'refusal.lead.sent': 'Permintaan ini sudah terkirim.',

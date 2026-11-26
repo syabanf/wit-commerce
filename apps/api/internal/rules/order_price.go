@@ -19,6 +19,31 @@ const AgentDiscountRefused = "The store does not allow this agent discount. Ask 
 // AgentNegotiationID marks the discount line a buying agent negotiated (state/agentChat.tsx).
 const AgentNegotiationID = "agent-negotiation"
 
+// PaymentUnavailable refuses an order whose payment type the store does not offer for it.
+const PaymentUnavailable = "This payment method is not available for this order. Choose another one."
+
+// PaymentTypeBlocker checks a shopper's payment choice against the store's own payment types: it must
+// be one of them, switched on, and of the method the order names. With amounts, its limits must also
+// allow the order's total, which only means something once the server has priced the order.
+func PaymentTypeBlocker(o domain.Order, types []domain.PaymentType, amounts bool) string {
+	if o.PaymentTypeID == nil {
+		return PaymentUnavailable
+	}
+	for _, pt := range types {
+		if pt.ID != *o.PaymentTypeID {
+			continue
+		}
+		if !pt.Enabled || pt.TenantID != o.TenantID || pt.Method != o.PaymentMethod {
+			return PaymentUnavailable
+		}
+		if amounts && (o.Total < pt.MinAmount || (pt.MaxAmount != nil && o.Total > *pt.MaxAmount)) {
+			return PaymentUnavailable
+		}
+		return ""
+	}
+	return PaymentUnavailable
+}
+
 // CourierFees mirrors COURIERS in apps/storefront/src/lib/checkout.ts.
 var CourierFees = map[string]int{"jne": 18_000, "sicepat": 15_000, "gojek": 32_000, "pickup": 0}
 
@@ -30,7 +55,9 @@ type PriceBook struct {
 	Promotions  []domain.Promotion
 	Categories  []domain.Category
 	AgentPolicy *domain.AgentPolicy
-	Now         int64
+	// PaymentTypes are the store's own payment types.
+	PaymentTypes []domain.PaymentType
+	Now          int64
 }
 
 // PriceShopperOrder returns the order with every amount taken from the store's data: line prices,

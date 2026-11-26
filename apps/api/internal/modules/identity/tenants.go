@@ -53,6 +53,11 @@ func FreeTenantCode(t *kernel.Tx, name string) (string, error) {
 		return -1
 	}, strings.ToUpper(name))
 	base = cmp.Or(base[:min(len(base), 10)], "TENANT")
+	// Two sign-ups with names that share a base would both see the same free code; the lock makes the
+	// second wait until the first has committed its tenant.
+	if _, err := t.Exec(t.Ctx, `select pg_advisory_xact_lock(hashtext('tenant-code:' || $1))`, base); err != nil {
+		return "", err
+	}
 	rows, err := t.Query(t.Ctx, `select data->>'code' from tenants where data->>'code' like $1`, base+"%")
 	if err != nil {
 		return "", err

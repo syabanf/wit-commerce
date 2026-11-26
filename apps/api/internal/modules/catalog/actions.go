@@ -2,11 +2,13 @@ package catalog
 
 import (
 	"context"
+	"slices"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/kernel"
 
 	"github.com/syabanf/wit-commerce/apps/api/internal/domain"
 	"github.com/syabanf/wit-commerce/apps/api/internal/rules"
+	"github.com/syabanf/wit-commerce/apps/api/internal/store"
 )
 
 // SaveProduct is products/save.
@@ -14,7 +16,21 @@ func (s *Catalog) SaveProduct(ctx context.Context, m kernel.Meta, p domain.Produ
 	if err := kernel.Access(m, p.TenantID); err != nil {
 		return nil, err
 	}
-	return s.Run(ctx, func(t *kernel.Tx) error { return t.Put("products", p.ID, p) })
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		// Put first, so a save of another brand's product id answers not found as before; a refusal
+		// below rolls the write back.
+		if err := t.Put("products", p.ID, p); err != nil {
+			return err
+		}
+		if err := ownRows(t, "categories", p.TenantID, "Choose a category of this brand.", p.CategoryID); err != nil {
+			return err
+		}
+		// Saving straight to active must pass the same check as switching the status.
+		if p.Status == "active" {
+			return activatable(t, p)
+		}
+		return nil
+	})
 }
 
 // SetProductAttributes is products/setAttributes.
@@ -46,16 +62,8 @@ func (s *Catalog) SetProductStatus(ctx context.Context, m kernel.Meta, id, statu
 			return err
 		}
 		if status == "active" {
-			defs, err := kernel.TenantRows[domain.AttributeDef](t, "attributes", p.TenantID)
-			if err != nil {
+			if err := activatable(t, p); err != nil {
 				return err
-			}
-			categories, err := kernel.TenantRows[domain.Category](t, "categories", p.TenantID)
-			if err != nil {
-				return err
-			}
-			if why := rules.ProductActivateBlocker(p, rules.AttributesFor(p.CategoryID, defs, categories)); why != "" {
-				return kernel.Refuse(why)
 			}
 		}
 		p.Status = status
@@ -68,7 +76,17 @@ func (s *Catalog) SaveCategory(ctx context.Context, m kernel.Meta, c domain.Cate
 	if err := kernel.Access(m, c.TenantID); err != nil {
 		return nil, err
 	}
-	return s.Run(ctx, func(t *kernel.Tx) error { return t.Put("categories", c.ID, c) })
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		if c.ParentID != nil && *c.ParentID == c.ID {
+			return kernel.Invalid{Reason: "A category cannot sit under itself."}
+		}
+		if c.ParentID != nil {
+			if err := ownRows(t, "categories", c.TenantID, "Choose a parent category of this brand.", *c.ParentID); err != nil {
+				return err
+			}
+		}
+		return t.Put("categories", c.ID, c)
+	})
 }
 
 // RemoveCategory is categories/remove: attributes scoped to it drop the reference.
@@ -221,7 +239,15 @@ func (s *Catalog) SaveCollection(ctx context.Context, m kernel.Meta, c domain.Co
 	if err := kernel.Access(m, c.TenantID); err != nil {
 		return nil, err
 	}
-	return s.Run(ctx, func(t *kernel.Tx) error { return t.Put("collections", c.ID, c) })
+	return s.Run(ctx, func(t *kernel.Tx) error {
+		if err := ownRows(t, "products", c.TenantID, "A collection holds only this brand's products.", c.ProductIDs...); err != nil {
+			return err
+		}
+		if err := ownRows(t, "categories", c.TenantID, "A collection rule names only this brand's categories.", c.RuleCategoryIDs...); err != nil {
+			return err
+		}
+		return t.Put("collections", c.ID, c)
+	})
 }
 
 // RemoveCollection is collections/remove.
@@ -292,4 +318,44 @@ func without(list []string, id string) []string {
 		}
 	}
 	return out
+}
+
+// activatable refuses a product that may not go live: it runs the same blocker as products/setStatus.
+func activatable(t *kernel.Tx, p domain.Product) error {
+	defs, err := kernel.TenantRows[domain.AttributeDef](t, "attributes", p.TenantID)
+	if err != nil {
+		return err
+	}
+	categories, err := kernel.TenantRows[domain.Category](t, "categories", p.TenantID)
+	if err != nil {
+		return err
+	}
+	if why := rules.ProductActivateBlocker(p, rules.AttributesFor(p.CategoryID, defs, categories)); why != "" {
+		return kernel.Refuse(why)
+	}
+	return nil
+}
+
+// ownRows refuses with reason unless every non-empty id names a row of the tenant in collection, so
+// one brand's records can never point at another brand's.
+func ownRows(t *kernel.Tx, collection, tenantID, reason string, ids ...string) error {
+	wanted := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id != "" && !slices.Contains(wanted, id) {
+			wanted = append(wanted, id)
+		}
+	}
+	if len(wanted) == 0 {
+		return nil
+	}
+	found, err := store.List[struct {
+		ID string `json:"id"`
+	}](t.Ctx, t.Tx, collection, "tenant_id = $1 and id = any($2)", tenantID, wanted)
+	if err != nil {
+		return err
+	}
+	if len(found) != len(wanted) {
+		return kernel.Invalid{Reason: reason}
+	}
+	return nil
 }

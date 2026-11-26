@@ -48,6 +48,17 @@ func (e *env) priceBook(tenantID string) rules.PriceBook {
 func (e *env) price(order map[string]any) {
 	e.t.Helper()
 	order["voucherCode"], order["courier"] = nil, "jne"
+	// The storefront always names one of the store's payment types: keep the order's own when the store
+	// has it switched on, else one of the order's method, else the first type on, each allowing the total.
+	var typeID, method string
+	if err := e.db.Pool.QueryRow(context.Background(), `select id, data->>'method' from payment_types
+		where tenant_id = $1 and (data->>'enabled')::boolean
+			and (data->'maxAmount' = 'null'::jsonb or (data->>'maxAmount')::bigint >= $4)
+		order by (id = $3) desc, (data->>'method' = $2) desc, id limit 1`,
+		order["tenantId"], order["paymentMethod"], order["paymentTypeId"], order["total"]).Scan(&typeID, &method); err != nil {
+		e.t.Fatal(err)
+	}
+	order["paymentTypeId"], order["paymentMethod"] = typeID, method
 	raw, _ := json.Marshal(order)
 	var o domain.Order
 	if err := json.Unmarshal(raw, &o); err != nil {

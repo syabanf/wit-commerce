@@ -29,6 +29,8 @@ export const REFUSAL_SENTENCES: Record<string, MessageKey> = {
   // RepriceShopperOrder
   'Prices or offers changed since you opened the checkout. Check the new total and place the order again.':
     'refusal.order.priceChanged',
+  'This payment method is not available for this order. Choose another one.':
+    'refusal.order.paymentUnavailable',
   'The store does not allow this agent discount. Ask the agent for a new total.':
     'refusal.order.agentDiscount',
   // shopLead
@@ -154,6 +156,7 @@ export const REFUSAL_CODES: Record<string, MessageKey> = {
   ACCOUNT_EXISTS: 'refusal.account.exists',
   TERMS_NOT_ACCEPTED: 'refusal.order.terms',
   PRICE_CHANGED: 'refusal.order.priceChanged',
+  PAYMENT_UNAVAILABLE: 'refusal.order.paymentUnavailable',
   LINK_EXPIRED: 'refusal.account.linkExpired',
   CAPTCHA_FAILED: 'refusal.account.captcha',
   CAPTCHA_UNAVAILABLE: 'refusal.code.unavailable',

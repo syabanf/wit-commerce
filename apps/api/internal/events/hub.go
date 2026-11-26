@@ -44,8 +44,9 @@ func (s Scope) tenant(id string) bool {
 	if s.TenantIDs == nil {
 		return true
 	}
+	// A row with no named brand reaches only subscribers that see every brand.
 	for _, t := range s.TenantIDs {
-		if t == id || id == "" {
+		if t == id && id != "" {
 			return true
 		}
 	}

@@ -15,7 +15,7 @@ func syntheticTenant(t *testing.T, e *env, customers, orders int) {
 	t.Helper()
 	ctx := context.Background()
 	for _, sql := range []string{
-		`insert into tenants (id, data) select 'ten-synth', data || '{"id": "ten-synth", "subdomain": "synth", "name": "Synth"}' from tenants where id = 'ten-lari'`,
+		`insert into tenants (id, data) select 'ten-synth', data || '{"id": "ten-synth", "subdomain": "synth", "name": "Synth", "code": "SYNTH"}' from tenants where id = 'ten-lari'`,
 		`insert into segments (id, data) select id || '-synth', data || '{"tenantId": "ten-synth"}' || jsonb_build_object('id', id || '-synth') from segments where tenant_id = 'ten-lari'`,
 		`insert into customers (id, data) select 'cus-s-' || i, jsonb_build_object('id', 'cus-s-' || i, 'tenantId', 'ten-synth', 'code', 'S-' || i,
 			'name', 'Synth Person ' || i, 'tier', (array['member', 'silver', 'gold', 'platinum'])[i % 4 + 1],

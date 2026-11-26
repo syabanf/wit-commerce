@@ -747,6 +747,13 @@ function tick(state: AppState, at: IsoDate): AppState {
   return { ...state, stock, modifierStock, orders, promotions, pages, pageDrafts, campaigns }
 }
 
+/** Whether every id names a row of this tenant, so one brand's records never point at another's. */
+const ownedBy = (
+  rows: readonly { id: string; tenantId: string | null }[],
+  tenantId: string,
+  ids: readonly string[],
+) => ids.every((id) => rows.some((r) => r.id === id && r.tenantId === tenantId))
+
 export function reduce(state: AppState, { action, meta }: Envelope): AppState {
   const { by, at } = meta
   switch (action.type) {
@@ -900,16 +907,31 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
         })),
       }
 
-    case 'products/save':
-      return { ...state, products: upsert(state.products, action.product) }
+    case 'products/save': {
+      const product = action.product
+      // A product names only its own brand's category, and saving it straight to active passes the
+      // same check as switching the status.
+      if (product.categoryId && !ownedBy(state.categories, product.tenantId, [product.categoryId]))
+        return state
+      const defs = state.attributes.filter((a) => a.tenantId === product.tenantId)
+      if (
+        product.status === 'active' &&
+        productActivateBlocker(product, attributesFor(product.categoryId, defs, state.categories))
+      )
+        return state
+      return { ...state, products: upsert(state.products, product) }
+    }
     case 'products/setAttributes':
       return {
         ...state,
         products: patch(state.products, action.id, (p) => ({ ...p, attributes: action.attributes })),
       }
 
-    case 'categories/save':
+    case 'categories/save': {
+      const { parentId, id, tenantId } = action.category
+      if (parentId && (parentId === id || !ownedBy(state.categories, tenantId, [parentId]))) return state
       return { ...state, categories: upsert(state.categories, action.category) }
+    }
     case 'categories/remove': {
       const category = state.categories.find((c) => c.id === action.id)
       if (!category || categoryRemoveBlocker(category, state.products, state.categories)) return state
@@ -963,8 +985,15 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
             modifierStock: state.modifierStock.filter((s) => s.groupId !== action.id),
           }
 
-    case 'collections/save':
+    case 'collections/save': {
+      const { tenantId, productIds, ruleCategoryIds } = action.collection
+      if (
+        !ownedBy(state.products, tenantId, productIds) ||
+        !ownedBy(state.categories, tenantId, ruleCategoryIds)
+      )
+        return state
       return { ...state, collections: upsert(state.collections, action.collection) }
+    }
     case 'collections/remove':
       return { ...state, collections: state.collections.filter((c) => c.id !== action.id) }
 
@@ -1155,7 +1184,10 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       // A paid order owes its money back; it closes as refunded once staff recorded the transfer.
       const paid = order.paymentStatus === 'paid'
       const proven = paid && !!action.refundReference?.trim()
-      if (proven && returnRefundProofBlocker({ reference: action.refundReference, refundedOn: action.refundedOn }))
+      if (
+        proven &&
+        returnRefundProofBlocker({ reference: action.refundReference, refundedOn: action.refundedOn })
+      )
         return state
       const amount = order.total - order.refundedAmount
       const cancelRefund: CancelRefund | undefined = !paid
@@ -1202,7 +1234,10 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
             submittedAt: at,
             status: 'submitted',
           },
-          events: [orderEvent(at, by, null, `Payment confirmation sent: ${input.amount} from ${channel}`), ...o.events],
+          events: [
+            orderEvent(at, by, null, `Payment confirmation sent: ${input.amount} from ${channel}`),
+            ...o.events,
+          ],
         })),
       }
     }
@@ -1211,9 +1246,21 @@ export function reduce(state: AppState, { action, meta }: Envelope): AppState {
       if (!order || paymentReviewBlocker(order)) return state
       const checked: Order = {
         ...order,
-        paymentConfirmation: { ...order.paymentConfirmation!, status: 'confirmed', reviewedAt: at, reviewedBy: by },
+        paymentConfirmation: {
+          ...order.paymentConfirmation!,
+          status: 'confirmed',
+          reviewedAt: at,
+          reviewedBy: by,
+        },
       }
-      return advanceOrder({ ...state, orders: patch(state.orders, order.id, () => checked) }, checked, by, at, undefined, 'paid')
+      return advanceOrder(
+        { ...state, orders: patch(state.orders, order.id, () => checked) },
+        checked,
+        by,
+        at,
+        undefined,
+        'paid',
+      )
     }
     case 'orders/rejectPayment': {
       const order = state.orders.find((o) => o.id === action.id)

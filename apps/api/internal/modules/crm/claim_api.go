@@ -22,7 +22,8 @@ func MergeGuest(ctx context.Context, tx pgx.Tx, c *domain.Customer, guest string
 			return err
 		}
 	}
-	return store.Delete(ctx, tx, "customers", guest)
+	_, err = store.Delete(ctx, tx, "customers", guest)
+	return err
 }
 
 // SaveMerged writes the account after its guests are merged.

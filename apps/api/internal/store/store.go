@@ -306,9 +306,20 @@ func Put(ctx context.Context, q Querier, collection, id string, v any) error {
 }
 
 // Delete removes a document; missing rows are not an error.
-func Delete(ctx context.Context, q Querier, collection, id string) error {
-	_, err := q.Exec(ctx, `delete from `+table(collection)+` where id = $1`, id)
-	return err
+func Delete(ctx context.Context, q Querier, collection, id string) (tenantID string, err error) {
+	// The brand the row belonged to: a tenant is its own brand, and users belong to none.
+	owner := "tenant_id"
+	switch collection {
+	case "tenants":
+		owner = "id"
+	case "users":
+		owner = "null"
+	}
+	err = q.QueryRow(ctx, `delete from `+table(collection)+` where id = $1 returning coalesce(`+owner+`, '')`, id).Scan(&tenantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return tenantID, err
 }
 
 // Raw lists documents as raw JSON, for the state endpoints that pass them through untouched.
